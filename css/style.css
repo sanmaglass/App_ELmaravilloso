@@ -47,8 +47,10 @@ body {
     font-family: var(--font-main);
     color: var(--text-primary);
     line-height: 1.5;
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    /* Permitir scroll para que las barras del navegador respondan */
 
     /* --- ATMÓSFERA 'EL MARAVILLOSO' --- */
     background-color: #0f0202;
@@ -130,7 +132,8 @@ body {
 
 .main-content {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: visible;
+    /* Dejar que el scroll lo maneje el body en móvil */
     padding: 40px;
     position: relative;
 }
@@ -139,7 +142,9 @@ body {
     .main-content {
         padding: 16px;
         padding-top: 10px;
-        /* Bring content up closer to bar but keeping safe area */
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        /* Suavidad en iOS */
     }
 }
 
