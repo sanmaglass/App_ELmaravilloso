@@ -69,12 +69,14 @@ window.Sync = {
                 // 2. Pull: Traer TODO lo de la nube y actualizar localmente
                 const { data: cloudData, error } = await window.Sync.client
                     .from(table)
-                    .select('*');
+                    .select('*')
+                    .order('id', { ascending: true }); // Ordenar para estabilizar y evitar caches
 
                 if (error) throw error;
 
                 // 3. Put into Dexie (sobrescribe si existe el ID, añade si no)
                 if (cloudData && cloudData.length > 0) {
+                    // Solo marcar como cambiado si realmente trajo algo que no teníamos o actualizó
                     await window.db[table].bulkPut(cloudData);
                     dataChanged = true;
                 }
@@ -84,7 +86,9 @@ window.Sync = {
                 window.dispatchEvent(new CustomEvent('sync-data-updated'));
             }
 
-            window.Sync.updateIndicator('connected');
+            // Contar total para feedback
+            const totalLocal = (await Promise.all(['employees', 'workLogs', 'products'].map(t => window.db[t].count()))).reduce((a, b) => a + b, 0);
+            window.Sync.updateIndicator('connected', `Registros: ${totalLocal}`);
             return { success: true };
         } catch (e) {
             console.error("Sync Error:", e);
@@ -107,7 +111,7 @@ window.Sync = {
                 break;
             case 'connected':
                 el.style.color = '#10b981';
-                el.innerHTML = '<i class="ph ph-cloud-check"></i> <span id="sync-text">Nube Activa</span>';
+                el.innerHTML = `<i class="ph ph-cloud-check"></i> <span id="sync-text">${errorMsg || 'En Línea'}</span>`;
                 el.title = "Última sincronización: " + new Date().toLocaleTimeString();
                 break;
             case 'error':
