@@ -223,7 +223,8 @@ window.Views.calculator = async (container) => {
             salePrice: calculatedState.finalPrice,
             stock: Number(document.getElementById('calc-stock').value) || 0,
             expiryDate: document.getElementById('calc-expiry').value || null,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            deleted: false  // Soft delete field
         };
 
         try {
@@ -251,12 +252,15 @@ window.Views.calculator = async (container) => {
 async function loadInventory(container) {
     try {
         const products = await window.db.products.toArray();
-        if (products.length === 0) {
+        // Filter out deleted products
+        const activeProducts = products.filter(p => !p.deleted);
+
+        if (activeProducts.length === 0) {
             container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">No hay productos guardados.</div>';
             return;
         }
 
-        container.innerHTML = products.reverse().map(p => `
+        container.innerHTML = activeProducts.reverse().map(p => `
             <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
                 <div style="font-weight:600; margin-bottom:4px;">${p.name}</div>
                 <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
