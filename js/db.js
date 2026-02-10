@@ -21,6 +21,15 @@ db.open().catch(async (err) => {
 });
 
 async function seedDatabase() {
+    // DISABLED: No demo data wanted
+    return;
+
+    // Don't seed if user explicitly deleted everything
+    if (localStorage.getItem('wm_skip_seed') === 'true') {
+        console.log('Skipping seed (user deleted all data)');
+        return;
+    }
+
     const allEmployees = await db.employees.toArray();
     const activeEmployees = allEmployees.filter(e => !e.deleted);
 
