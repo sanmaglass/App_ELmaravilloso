@@ -188,10 +188,11 @@ window.Sync = {
 
         for (const table of tables) {
             // Delete all rows from the table
+            // Using .gte('id', 0) to select all rows (id >= 0)
             const { error } = await window.Sync.client
                 .from(table)
                 .delete()
-                .neq('id', 0); // Delete where id != 0 (deletes all rows)
+                .gte('id', 0);
 
             if (error) {
                 console.error(`Error deleting from ${table}:`, error);
