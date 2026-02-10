@@ -176,5 +176,29 @@ window.Sync = {
         window.Sync.syncInterval = setInterval(() => {
             window.Sync.syncAll();
         }, intervalMs);
+    },
+
+    // DELETE ALL DATA FROM CLOUD (DANGER)
+    nukeCloud: async function () {
+        if (!window.Sync.client) {
+            throw new Error('No cloud connection');
+        }
+
+        const tables = ['employees', 'worklogs', 'products', 'promotions'];
+
+        for (const table of tables) {
+            // Delete all rows from the table
+            const { error } = await window.Sync.client
+                .from(table)
+                .delete()
+                .neq('id', 0); // Delete where id != 0 (deletes all rows)
+
+            if (error) {
+                console.error(`Error deleting from ${table}:`, error);
+                throw error;
+            }
+        }
+
+        console.log('All cloud data deleted successfully');
     }
 };
