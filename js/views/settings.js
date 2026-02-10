@@ -195,13 +195,52 @@ window.Views.settings = async (container) => {
         });
     }
 
+    const cleanUrl = (u) => {
+        u = u.trim();
+        if (!u.startsWith('http')) u = 'https://' + u;
+        return u.replace(/\/$/, ''); // Remove trailing slash
+    };
+
+    const tryParsePaste = (text) => {
+        try {
+            const data = JSON.parse(text);
+            if (data.u && data.k) {
+                supaUrl.value = data.u;
+                supaKey.value = data.k;
+                updateStatus('<i class="ph ph-magic-wand"></i> Credenciales detectadas. Dale a Conectar.', 'success');
+                return true;
+            }
+        } catch (e) {
+            return false;
+        }
+    };
+
+    // Smart Paste Listener
+    [supaUrl, supaKey].forEach(input => {
+        input.addEventListener('paste', (e) => {
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            if (tryParsePaste(text)) {
+                e.preventDefault();
+            }
+        });
+        // Also sanitize on blur
+        input.addEventListener('blur', () => {
+            if (input === supaUrl) input.value = cleanUrl(input.value);
+            input.value = input.value.trim();
+        });
+    });
+
     btnConnect.addEventListener('click', async () => {
-        const url = supaUrl.value.trim();
+        const url = cleanUrl(supaUrl.value);
         const key = supaKey.value.trim();
 
         if (!url || !key) {
             updateStatus('Por favor, ingresa URL y API Key.', 'error');
             return;
+        }
+
+        if (!url.includes('supabase.co')) {
+            updateStatus('Advertencia: La URL no parece ser de Supabase.', 'error');
         }
 
         localStorage.setItem('supabase_url', url);

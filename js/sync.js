@@ -14,7 +14,7 @@ window.Sync = {
                     throw new Error("El SDK de Supabase no se cargó. Revisa tu conexión a internet.");
                 }
 
-                window.Sync.client = supabase.createClient(url, key);
+                window.Sync.client = supabase.createClient(url.trim(), key.trim());
 
                 // PRUEBA DE CONEXIÓN REAL: Intentar leer una tabla (ej. settings)
                 // Usamos un limit(0) para que sea rápido y no traiga datos
