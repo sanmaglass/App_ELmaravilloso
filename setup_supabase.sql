@@ -48,6 +48,10 @@ CREATE TABLE IF NOT EXISTS public.products (
     "expiryDate" TEXT,
     stock NUMERIC,
     "costUnit" NUMERIC,
+    units NUMERIC,
+    "isNeto" BOOLEAN,
+    margin NUMERIC,
+    "createdAt" TEXT,
     deleted BOOLEAN DEFAULT FALSE
 );
 
