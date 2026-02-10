@@ -21,8 +21,10 @@ db.open().catch(async (err) => {
 });
 
 async function seedDatabase() {
-    const count = await db.employees.count();
-    if (count === 0) {
+    const allEmployees = await db.employees.toArray();
+    const activeEmployees = allEmployees.filter(e => !e.deleted);
+
+    if (activeEmployees.length === 0) {
         console.log("Seeding database...");
         await db.employees.add({
             id: Date.now(),
@@ -32,7 +34,8 @@ async function seedDatabase() {
             hourlyRate: 5000,
             dailyRate: 40000,
             avatar: "DE",
-            startDate: new Date().toISOString()
+            startDate: new Date().toISOString(),
+            deleted: false  // Explicitly set not deleted
         });
     }
 }

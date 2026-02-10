@@ -108,9 +108,20 @@ window.Sync = {
                 window.dispatchEvent(new CustomEvent('sync-data-updated'));
             }
 
-            // Contar total para feedback
-            const totalLocal = (await Promise.all(['employees', 'workLogs', 'products'].map(t => window.db[t].count()))).reduce((a, b) => a + b, 0);
-            window.Sync.updateIndicator('connected', `Registros: ${totalLocal}`);
+            // Calculate total ACTIVE records (excluding deleted)
+            const tables = ['employees', 'workLogs', 'products', 'promotions'];
+            let totalLocal = 0;
+            for (const tableName of tables) {
+                const records = await window.db[tableName].toArray();
+                const activeRecords = records.filter(r => !r.deleted);
+                totalLocal += activeRecords.length;
+            }
+
+            if (window.Sync.client) {
+                window.Sync.updateIndicator('connected', `Registros: ${totalLocal}`);
+            } else {
+                window.Sync.updateIndicator('off', `Registros: ${totalLocal}`); // Changed 'disconnected' to 'off' as per existing cases
+            }
             return { success: true };
         } catch (e) {
             console.error("Sync Error:", e);
