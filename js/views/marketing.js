@@ -78,7 +78,26 @@ async function renderPromos() {
         // Events
         document.querySelectorAll('.btn-launch-whatsapp').forEach(btn => btn.addEventListener('click', (e) => handleLaunchPromo(Number(e.currentTarget.dataset.id))));
         document.querySelectorAll('.btn-delete-promo').forEach(btn => btn.addEventListener('click', async (e) => {
-            if (confirm('¿Eliminar campaña?')) { await window.db.promotions.delete(Number(e.currentTarget.dataset.id)); renderPromos(); }
+            if (confirm('¿Eliminar campaña?')) {
+                try {
+                    const id = Number(e.currentTarget.dataset.id);
+
+                    // Delete from cloud first (if connected)
+                    if (window.Sync.client) {
+                        const { error } = await window.Sync.client
+                            .from('promotions')
+                            .delete()
+                            .eq('id', id);
+                        if (error) throw error;
+                    }
+
+                    // Then delete locally
+                    await window.db.promotions.delete(id);
+                    renderPromos();
+                } catch (err) {
+                    alert('Error al eliminar: ' + err.message);
+                }
+            }
         }));
     } catch (e) { console.error(e); }
 }

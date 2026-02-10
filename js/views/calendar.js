@@ -170,15 +170,30 @@ async function openDayModal(dateStr) {
     // DELETE
     window.deleteLog = async (id) => {
         if (confirm('¿Seguro que deseas eliminar este registro?')) {
-            await window.db.workLogs.delete(id);
-            window.Sync.syncAll(); // Sync Inmediato
-            // Reload logs & Re-render
-            const newLogs = await window.db.workLogs.where('date').equals(dateStr).toArray();
-            logs.length = 0; logs.push(...newLogs);
-            modalContainer.innerHTML = renderContent();
-            // Refresh calendar view background
-            const container = document.getElementById('view-container');
-            if (window.Views.calendar) window.Views.calendar(container);
+            try {
+                // Delete from cloud first (if connected)
+                if (window.Sync.client) {
+                    const { error } = await window.Sync.client
+                        .from('worklogs')  // lowercase 'worklogs'
+                        .delete()
+                        .eq('id', id);
+                    if (error) throw error;
+                }
+
+                // Then delete locally
+                await window.db.workLogs.delete(id);
+
+                // Reload logs & Re-render
+                const newLogs = await window.db.workLogs.where('date').equals(dateStr).toArray();
+                logs.length = 0; logs.push(...newLogs);
+                modalContainer.innerHTML = renderContent();
+
+                // Refresh calendar view background
+                const container = document.getElementById('view-container');
+                if (window.Views.calendar) window.Views.calendar(container);
+            } catch (err) {
+                alert('Error al eliminar: ' + err.message);
+            }
         }
     };
 

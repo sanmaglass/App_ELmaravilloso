@@ -74,9 +74,24 @@ window.Views.employees = async (container) => {
     // --- ACTIONS ---
     window.deleteEmployee = async (id) => {
         if (confirm('¿Eliminar este empleado? Se mantendrán sus registros históricos pero ya no aparecerá en nuevos turnos.')) {
-            await window.db.employees.delete(id);
-            window.Sync.syncAll(); // Sync Inmediato
-            window.Views.employees(container); // Refresh
+            try {
+                // Delete from cloud first (if connected)
+                if (window.Sync.client) {
+                    const { error } = await window.Sync.client
+                        .from('employees')
+                        .delete()
+                        .eq('id', id);
+                    if (error) throw error;
+                }
+
+                // Then delete locally
+                await window.db.employees.delete(id);
+
+                // Refresh view immediately
+                window.Views.employees(container);
+            } catch (err) {
+                alert('Error al eliminar: ' + err.message);
+            }
         }
     };
 

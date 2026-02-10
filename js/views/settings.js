@@ -83,6 +83,33 @@ window.Views.settings = async (container) => {
                     </div>
                 </div>
 
+                <!-- STORAGE MONITOR --  >
+                <div class="card" style="border: 1px solid var(--accent); background: linear-gradient(to bottom, rgba(99,102,241,0.05), transparent);">
+                    <h3 style="margin-bottom:16px; display:flex; align-items:center; gap:8px; color:var(--text-primary);">
+                        <i class="ph ph-database" style="color:var(--accent);"></i>
+                        Monitor de Almacenamiento
+                    </h3>
+                    <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:16px;">
+                        Visualiza cuántos datos tienes almacenados localmente y en la nube.
+                    </p>
+                    
+                    <div id="storage-stats" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:16px;">
+                        <!-- Stats will be injected here -->
+                    </div>
+                    
+                    <div style="display:flex; gap:10px; margin-top:16px;">
+                        <button id="btn-refresh-stats" class="btn btn-secondary" style="flex:1;">
+                            <i class="ph ph-arrow-clockwise"></i> Actualizar
+                        </button>
+                        <button id="btn-clear-local" class="btn btn-secondary" style="flex:1; color:var(--warning); border-color:var(--warning);">
+                            <i class="ph ph-broom"></i> Limpiar Local
+                        </button>
+                    </div>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:8px; font-style:italic;">
+                        *Limpiar Local borra los datos del dispositivo actual y los vuelve a bajar de la nube. Útil para liberar espacio.
+                    </p>
+                </div>
+
                 <!-- DANGER ZONE -->
                 <div class="card" style="border: 1px solid #fee2e2; background: #fffafb;">
                     <h3 style="margin-bottom:12px; display:flex; align-items:center; gap:8px; color:#b91c1c;">
@@ -289,6 +316,92 @@ window.Views.settings = async (container) => {
         } finally {
             btnSync.disabled = false;
             btnSync.innerHTML = original;
+        }
+    });
+
+    // --- STORAGE MONITOR ---
+    const refreshStats = async () => {
+        const statsContainer = document.getElementById('storage-stats');
+        if (!statsContainer) return;
+
+        statsContainer.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:var(--text-muted);">Cargando...</div>';
+
+        try {
+            const counts = {
+                employees: await window.db.employees.count(),
+                workLogs: await window.db.workLogs.count(),
+                products: await window.db.products.count(),
+                promotions: await window.db.promotions.count()
+            };
+
+            const total = Object.values(counts).reduce((a, b) => a + b, 0);
+
+            // Estimate storage (rough calculation: ~1KB per record average)
+            const estimatedKB = total;
+            const estimatedMB = (estimatedKB / 1024).toFixed(2);
+
+            statsContainer.innerHTML = `
+                <div style="padding:12px; background:white; border-radius:8px; border:1px solid var(--border);">
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Empleados</div>
+                    <div style="font-size:1.3rem; font-weight:bold; color:var(--primary);">${counts.employees}</div>
+                </div>
+                <div style="padding:12px; background:white; border-radius:8px; border:1px solid var(--border);">
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Jornadas</div>
+                    <div style="font-size:1.3rem; font-weight:bold; color:var(--accent);">${counts.workLogs}</div>
+                </div>
+                <div style="padding:12px; background:white; border-radius:8px; border:1px solid var(--border);">
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Productos</div>
+                    <div style="font-size:1.3rem; font-weight:bold; color:var(--success);">${counts.products}</div>
+                </div>
+                <div style="padding:12px; background:white; border-radius:8px; border:1px solid var(--border);">
+                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Campañas</div>
+                    <div style="font-size:1.3rem; font-weight:bold; color:var(--warning);">${counts.promotions}</div>
+                </div>
+                <div style="padding:12px; background:linear-gradient(135deg, var(--primary), var(--accent)); border-radius:8px; color:white; grid-column:span 2;">
+                    <div style="font-size:0.75rem; opacity:0.9; text-transform:uppercase; margin-bottom:4px;">Total Records</div>
+                    <div style="font-size:1.5rem; font-weight:bold;">${total}</div>
+                    <div style="font-size:0.7rem; opacity:0.8; margin-top:2px;">~${estimatedMB} MB estimado</div>
+                </div>
+            `;
+        } catch (err) {
+            statsContainer.innerHTML = `<div style="grid-column: 1/-1; color:var(--danger);">Error: ${err.message}</div>`;
+        }
+    };
+
+    // Initial load
+    refreshStats();
+
+    // Refresh button
+    document.getElementById('btn-refresh-stats').addEventListener('click', refreshStats);
+
+    // Clear local button
+    document.getElementById('btn-clear-local').addEventListener('click', async () => {
+        if (!confirm('Esto borrará todos los datos locales y los volverá a descargar desde la nube. ¿Continuar?')) return;
+
+        const btn = document.getElementById('btn-clear-local');
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Limpiando...';
+        btn.disabled = true;
+
+        try {
+            // Clear all local tables
+            const tables = ['employees', 'workLogs', 'products', 'promotions'];
+            for (const table of tables) {
+                await window.db[table].clear();
+            }
+
+            // Re-sync from cloud
+            if (window.Sync.client) {
+                await window.Sync.syncAll();
+            }
+
+            alert('¡Datos locales limpiados y re-sincronizados desde la nube!');
+            refreshStats();
+        } catch (err) {
+            alert('Error: ' + err.message);
+        } finally {
+            btn.innerHTML = original;
+            btn.disabled = false;
         }
     });
 
