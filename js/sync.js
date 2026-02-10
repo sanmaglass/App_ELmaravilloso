@@ -62,11 +62,11 @@ window.Sync = {
             // Tablas a sincronizar (Mapeo Local -> Remoto)
             // Postgres suele usar minúsculas, Dexie usa CamelCase
             const tableMap = [
-                { local: 'employees', remote: 'employees' },
-                { local: 'workLogs', remote: 'worklogs' }, // FIX: Lowercase for Postgres
-                { local: 'products', remote: 'products' },
-                { local: 'promotions', remote: 'promotions' },
-                { local: 'settings', remote: 'settings' }
+                { local: 'employees', remote: 'employees', orderBy: 'id' },
+                { local: 'workLogs', remote: 'worklogs', orderBy: 'id' },
+                { local: 'products', remote: 'products', orderBy: 'id' },
+                { local: 'promotions', remote: 'promotions', orderBy: 'id' },
+                { local: 'settings', remote: 'settings', orderBy: 'key' } // Settings usa 'key', no 'id'
             ];
 
             let dataChanged = false;
@@ -74,6 +74,7 @@ window.Sync = {
             for (const map of tableMap) {
                 const localName = map.local;
                 const remoteName = map.remote;
+                const orderKey = map.orderBy || 'id';
 
                 // 1. Push: Enviar lo local a la nube primero (UPSERT)
                 const localData = await window.db[localName].toArray();
@@ -88,7 +89,7 @@ window.Sync = {
                 const { data: cloudData, error } = await window.Sync.client
                     .from(remoteName)
                     .select('*')
-                    .order('id', { ascending: true }); // Ordenar para estabilizar y evitar caches
+                    .order(orderKey, { ascending: true }); // Ordenar dinámico
 
                 if (error) throw error;
 
