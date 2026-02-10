@@ -102,6 +102,14 @@ window.Sync = {
             return { success: true };
         } catch (e) {
             console.error("Sync Error:", e);
+            window.Sync.updateIndicator('error', e.message); // Update UI!
+
+            // Helpful Debuging for Mobile users
+            if (!window.hasShownErrorAlert) {
+                alert("Error de Sincronización: " + e.message + "\n(Revisa tu conexión o las claves)");
+                window.hasShownErrorAlert = true; // Don't spam alerts
+            }
+
             return { success: false, error: e.message };
         } finally {
             window.Sync.isSyncing = false;
