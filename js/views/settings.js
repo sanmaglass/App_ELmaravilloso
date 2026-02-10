@@ -139,9 +139,28 @@ window.Views.settings = async (container) => {
     const btnGenQr = document.getElementById('btn-gen-qr');
     const qrContainer = document.getElementById('qr-container');
 
-    // Cargar valores guardados
+    // Load saved values
     supaUrl.value = localStorage.getItem('supabase_url') || '';
     supaKey.value = localStorage.getItem('supabase_key') || '';
+
+    // Check for PRO MODE (Hardcoded Config)
+    if (window.AppConfig && window.AppConfig.supabaseUrl) {
+        supaUrl.value = window.AppConfig.supabaseUrl;
+        supaKey.value = "**********************************"; // Masked key
+
+        supaUrl.disabled = true;
+        supaKey.disabled = true;
+        btnConnect.disabled = true;
+        btnToggleKey.disabled = true;
+        btnGenQr.style.display = 'none'; // No need for QR in Pro Mode
+
+        const proBadge = document.createElement('div');
+        proBadge.innerHTML = '<i class="ph ph-crown"></i> MODO PRO ACTIVO: Configuración Global 24/7';
+        proBadge.style.cssText = 'background: linear-gradient(135deg, #FFD700, #FFA500); color: black; padding: 10px; border-radius: 8px; font-weight: bold; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(255, 215, 0, 0.3);';
+
+        // Insert before the input group
+        supaUrl.closest('.form-group').parentNode.insertBefore(proBadge, supaUrl.closest('.form-group'));
+    }
 
     const updateStatus = (msg, type = 'info') => {
         cloudStatus.style.display = 'block';
