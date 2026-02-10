@@ -4,11 +4,11 @@ const db = new Dexie('WorkMasterDB');
 
 // Version 6: Switch to manual IDs to avoid cloud collisions
 db.version(6).stores({
-    employees: 'id, name, email, role, hourlyRate, dailyRate',
-    workLogs: 'id, employeeId, date, status',
+    employees: 'id, name, email, role, hourlyRate, dailyRate, deleted',
+    workLogs: 'id, employeeId, date, status, deleted',
     settings: 'key',
-    products: 'id, name, category, buyPrice, salePrice, expiryDate, stock',
-    promotions: 'id, title, text, isActive'
+    products: 'id, name, category, buyPrice, salePrice, expiryDate, stock, deleted',
+    promotions: 'id, title, text, isActive, deleted'
 });
 
 // Initial check and auto-migration fix

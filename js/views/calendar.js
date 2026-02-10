@@ -23,7 +23,8 @@ window.Views.calendar = async (container) => {
 
     // Generate Days
     const daysContainer = document.getElementById('calendar-days');
-    const logs = await window.db.workLogs.toArray(); // Optimization needed for real app
+    const logs = await window.db.workLogs.toArray();
+    const activeLogs = logs.filter(l => !l.deleted); // Filter deleted logs
 
     let htmlDays = '';
     const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
@@ -34,7 +35,7 @@ window.Views.calendar = async (container) => {
     for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         // Find logs for this day
-        const dayLogs = logs.filter(l => l.date === dateStr);
+        const dayLogs = activeLogs.filter(l => l.date === dateStr);
 
         let indicators = '';
         if (dayLogs.length > 0) {
@@ -67,6 +68,7 @@ window.Views.calendar = async (container) => {
 async function openDayModal(dateStr) {
     const modalContainer = document.getElementById('modal-container');
     const logs = await window.db.workLogs.where('date').equals(dateStr).toArray();
+    const activeLogs = logs.filter(l => !l.deleted); // Filter deleted
     const employees = await window.db.employees.toArray();
 
     // Helper to render
@@ -75,10 +77,10 @@ async function openDayModal(dateStr) {
 
         // List HTML
         let listHtml = '';
-        if (logs.length === 0) {
+        if (activeLogs.length === 0) {
             listHtml = '<p style="font-size:0.9rem; color:var(--text-muted); padding:10px; text-align:center;">No hay registros hoy. ¡Agrega uno!</p>';
         } else {
-            listHtml = logs.map(l => {
+            listHtml = activeLogs.map(l => {
                 const emp = employees.find(e => e.id == l.employeeId);
                 return `
                     <div style="padding:12px; background:rgba(255,255,255,0.4); margin-bottom:8px; border-radius:12px; border:1px solid rgba(255,255,255,0.5); display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 5px rgba(0,0,0,0.02);">
@@ -171,17 +173,17 @@ async function openDayModal(dateStr) {
     window.deleteLog = async (id) => {
         if (confirm('¿Seguro que deseas eliminar este registro?')) {
             try {
-                // Delete from cloud first (if connected)
+                // Soft Delete: Mark as deleted in cloud first (if connected)
                 if (window.Sync.client) {
                     const { error } = await window.Sync.client
                         .from('worklogs')  // lowercase 'worklogs'
-                        .delete()
+                        .update({ deleted: true })
                         .eq('id', id);
                     if (error) throw error;
                 }
 
-                // Then delete locally
-                await window.db.workLogs.delete(id);
+                // Then mark as deleted locally
+                await window.db.workLogs.update(id, { deleted: true });
 
                 // Reload logs & Re-render
                 const newLogs = await window.db.workLogs.where('date').equals(dateStr).toArray();

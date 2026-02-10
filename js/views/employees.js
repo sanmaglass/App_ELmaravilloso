@@ -9,6 +9,8 @@ window.Views.employees = async (container) => {
     }
 
     const employees = await window.db.employees.toArray();
+    // Filter out deleted employees
+    const activeEmployees = employees.filter(e => !e.deleted);
 
     container.innerHTML = `
         <div class="stack-on-mobile" style="justify-content:space-between; align-items:center; margin-bottom:24px;">
@@ -22,14 +24,14 @@ window.Views.employees = async (container) => {
         </div>
         
         <div class="grid-employees" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:24px;">
-            ${employees.length === 0 ? '<p style="grid-column:1/-1; text-align:center; padding:40px;">No hay empleados registrados.</p>' : ''}
+            ${activeEmployees.length === 0 ? '<p style="grid-column:1/-1; text-align:center; padding:40px;">No hay empleados registrados.</p>' : ''}
         </div>
     `;
 
     const grid = container.querySelector('.grid-employees');
 
-    if (employees.length > 0) {
-        grid.innerHTML = employees.map(emp => `
+    if (activeEmployees.length > 0) {
+        grid.innerHTML = activeEmployees.map(emp => `
             <div class="card card-hover" style="position:relative;">
                 <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px;">
                     <div style="display:flex; align-items:center; gap:16px;">
@@ -75,17 +77,17 @@ window.Views.employees = async (container) => {
     window.deleteEmployee = async (id) => {
         if (confirm('¿Eliminar este empleado? Se mantendrán sus registros históricos pero ya no aparecerá en nuevos turnos.')) {
             try {
-                // Delete from cloud first (if connected)
+                // Soft Delete: Mark as deleted in cloud first (if connected)
                 if (window.Sync.client) {
                     const { error } = await window.Sync.client
                         .from('employees')
-                        .delete()
+                        .update({ deleted: true })
                         .eq('id', id);
                     if (error) throw error;
                 }
 
-                // Then delete locally
-                await window.db.employees.delete(id);
+                // Then mark as deleted locally
+                await window.db.employees.update(id, { deleted: true });
 
                 // Refresh view immediately
                 window.Views.employees(container);

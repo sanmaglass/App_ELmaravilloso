@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS public.employees (
     "baseSalary" NUMERIC,
     "paymentFrequency" TEXT,
     "workHoursPerDay" NUMERIC,
-    "breakMinutes" NUMERIC
+    "breakMinutes" NUMERIC,
+    deleted BOOLEAN DEFAULT FALSE
 );
 
 -- 2. Tabla Registros de Trabajo
@@ -27,7 +28,8 @@ CREATE TABLE IF NOT EXISTS public.workLogs (
     "startTime" TEXT,
     "endTime" TEXT,
     "totalHours" NUMERIC,
-    "payAmount" NUMERIC
+    "payAmount" NUMERIC,
+    deleted BOOLEAN DEFAULT FALSE
 );
 
 -- 3. Tabla Ajustes
@@ -45,7 +47,8 @@ CREATE TABLE IF NOT EXISTS public.products (
     "salePrice" NUMERIC,
     "expiryDate" TEXT,
     stock NUMERIC,
-    "costUnit" NUMERIC
+    "costUnit" NUMERIC,
+    deleted BOOLEAN DEFAULT FALSE
 );
 
 -- 5. Tabla Promociones
@@ -53,7 +56,8 @@ CREATE TABLE IF NOT EXISTS public.promotions (
     id BIGSERIAL PRIMARY KEY,
     title TEXT,
     text TEXT,
-    "isActive" BOOLEAN
+    "isActive" BOOLEAN,
+    deleted BOOLEAN DEFAULT FALSE
 );
 
 -- 6. Habilitar Seguridad de Nivel de Fila (RLS)

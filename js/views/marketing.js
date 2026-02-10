@@ -30,10 +30,11 @@ async function renderPromos() {
 
     try {
         const promos = await window.db.promotions.toArray();
+        const activePromos = promos.filter(p => !p.deleted); // Filter deleted
         // Clear old helpers to avoid duplicates
         delete window.insertFormat;
 
-        if (promos.length === 0) {
+        if (activePromos.length === 0) {
             grid.innerHTML = `
                 <div style="grid-column: 1/-1; text-align:center; padding:60px; background:white; border-radius:12px; border:2px dashed var(--border);">
                     <i class="ph ph-rocket-launch" style="font-size:3rem; color:var(--primary); margin-bottom:16px; opacity:0.5;"></i>
@@ -44,7 +45,7 @@ async function renderPromos() {
             return;
         }
 
-        grid.innerHTML = promos.reverse().map(p => `
+        grid.innerHTML = activePromos.reverse().map(p => `
             <div class="card" style="padding:0; overflow:hidden; display:flex; flex-direction:column; border-top: 4px solid var(--primary);">
                 <div style="height:200px; background:#f1f5f9; position:relative; overflow:hidden;">
                     ${p.imageData
@@ -82,17 +83,17 @@ async function renderPromos() {
                 try {
                     const id = Number(e.currentTarget.dataset.id);
 
-                    // Delete from cloud first (if connected)
+                    // Soft Delete: Mark as deleted in cloud first (if connected)
                     if (window.Sync.client) {
                         const { error } = await window.Sync.client
                             .from('promotions')
-                            .delete()
+                            .update({ deleted: true })
                             .eq('id', id);
                         if (error) throw error;
                     }
 
-                    // Then delete locally
-                    await window.db.promotions.delete(id);
+                    // Then mark as deleted locally
+                    await window.db.promotions.update(id, { deleted: true });
                     renderPromos();
                 } catch (err) {
                     alert('Error al eliminar: ' + err.message);
