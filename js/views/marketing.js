@@ -29,7 +29,8 @@ async function renderPromos() {
     if (!grid) return;
 
     try {
-        const promos = await window.db.promotions.toArray();
+        const allPromos = await window.db.promotions.toArray();
+        const promos = allPromos.filter(p => !p.deleted);
         const activePromos = promos.filter(p => !p.deleted); // Filter deleted
         // Clear old helpers to avoid duplicates
         delete window.insertFormat;

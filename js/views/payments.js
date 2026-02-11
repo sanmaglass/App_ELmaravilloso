@@ -268,10 +268,11 @@ window.Views.payments = async (container) => {
 
         document.getElementById('current-week-days').textContent = `${daysElapsed} de 7`;
 
-        // Calculate estimated payment for current week
-        const employees = await window.db.employees.toArray();
-        const weeklyEmployees = employees.filter(e => e.paymentMode === 'salary' && e.paymentFrequency === 'weekly');
-        const totalWeeklyPayment = weeklyEmployees.reduce((sum, emp) => sum + (emp.baseSalary / 4), 0);
+        // Calculate estimated payment        // Load data
+        const allEmployees = await window.db.employees.toArray();
+        const employees = allEmployees.filter(e => !e.deleted);
+        const weekEmployees = employees.filter(e => e.paymentMode === 'salary' && e.paymentFrequency === 'weekly');
+        const totalWeeklyPayment = weekEmployees.reduce((sum, emp) => sum + (emp.baseSalary / 4), 0);
 
         document.getElementById('current-week-payment').innerHTML = window.Utils.formatCurrency(totalWeeklyPayment);
     };
@@ -279,7 +280,9 @@ window.Views.payments = async (container) => {
     // Update month summary
     const updateMonthSummary = async () => {
         const monthStr = `${currentDisplayYear}-${String(currentDisplayMonth + 1).padStart(2, '0')}`;
-        const logs = await window.db.workLogs.toArray();
+        // MONTHLY SUMMARY SECTION
+        const allLogs = await window.db.workLogs.toArray();
+        const logs = allLogs.filter(l => !l.deleted);
         const monthLogs = logs.filter(l => l.date.startsWith(monthStr));
 
         const totalPaid = monthLogs.reduce((sum, log) => sum + (log.payAmount || 0), 0);
@@ -292,8 +295,9 @@ window.Views.payments = async (container) => {
     };
 
     // Update upcoming payments
-    const updateUpcomingPayments = async () => {
-        const employees = await window.db.employees.toArray();
+    async function renderUpcomingPayments() {
+        const allEmployees = await window.db.employees.toArray();
+        const employees = allEmployees.filter(e => !e.deleted);
         const html = await window.Utils.calculateNextPayments(employees);
         document.getElementById('upcoming-payments-list').innerHTML = html;
     };

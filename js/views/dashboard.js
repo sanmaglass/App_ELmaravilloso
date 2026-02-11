@@ -86,14 +86,16 @@ window.Views.dashboard = async (container) => {
         const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
 
         // 1. Employees Count
-        const employees = await window.db.employees.toArray();
+        const allEmployees = await window.db.employees.toArray();
+        const employees = allEmployees.filter(e => !e.deleted);
         document.getElementById('dashboard-active-employees').textContent = employees.length;
 
         // Populate Payments Widget
         document.getElementById('upcoming-payments-list').innerHTML = await calculateNextPayments(employees);
 
         // 2. Expiry Alerts Logic
-        const products = await window.db.products.toArray();
+        const allProducts = await window.db.products.toArray();
+        const products = allProducts.filter(p => !p.deleted);
         const expiryList = document.getElementById('expiry-alerts-list');
         const alertContainer = document.getElementById('expiry-alerts-container');
 
@@ -129,7 +131,8 @@ window.Views.dashboard = async (container) => {
         }
 
         // 3. Work Logs Calculations
-        const logs = await window.db.workLogs.toArray();
+        const allLogs = await window.db.workLogs.toArray();
+        const logs = allLogs.filter(l => !l.deleted);
 
         // Filter Current Month
         const currentMonthLogs = logs.filter(l => l.date.startsWith(currentMonthStr));
