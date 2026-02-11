@@ -93,16 +93,13 @@ async function init() {
         views.dashboard();
 
         // Escuchar cambios de datos en segundo plano
-        // DISABLED: Auto-refresh was clearing active input fields (calculator, forms, etc.)
-        // Users can manually refresh by navigating away and back
-        /*
+        // RE-ENABLED for WebSocket real-time sync
         window.addEventListener('sync-data-updated', () => {
             console.log("Datos nuevos recibidos. Refrescando vista:", window.state.currentView);
             if (views[window.state.currentView]) {
                 views[window.state.currentView]();
             }
         });
-        */
     } catch (err) {
         console.error("Critical Init Error:", err);
         document.body.innerHTML = `<div style="color:white; padding:50px; text-align:center;"><h1>Error de Carga</h1><p>${err.message}</p></div>`;
