@@ -261,7 +261,11 @@ window.Views.payments = async (container) => {
             `${formatShort(currentWeekStart)} - ${formatShort(currentWeekEnd)}`;
 
         // Calculate days elapsed in current week
-        const daysElapsed = Math.floor((today - currentWeekStart) / (1000 * 60 * 60 * 24)) + 1;
+        // Count which day number we're on (1-7)
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const daysDiff = (today - currentWeekStart) / msPerDay;
+        const daysElapsed = Math.floor(daysDiff) + 1;
+
         document.getElementById('current-week-days').textContent = `${daysElapsed} de 7`;
 
         // Calculate estimated payment for current week
