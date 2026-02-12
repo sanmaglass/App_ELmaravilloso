@@ -348,5 +348,95 @@ window.Utils = {
             reader.onerror = () => reject(new Error("Error leyendo el archivo."));
             reader.readAsText(file);
         });
+    },
+
+    // Calculate total payments for a given month
+    // This accounts for both work logs with individual payAmount AND completed payment cycles for salary employees
+    calculateMonthlyPayments: async (employees, logs, referenceDate) => {
+        const month = referenceDate.getMonth();
+        const year = referenceDate.getFullYear();
+        const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+        let totalPaid = 0;
+
+        // Method 1: Sum up all work logs with payAmount (for manual/hourly employees)
+        const monthLogs = logs.filter(l => l.date.startsWith(monthStr));
+
+        // Add manual employee payments from work logs
+        const manualPayments = monthLogs
+            .filter(l => {
+                const emp = employees.find(e => e.id === l.employeeId);
+                return emp && (!emp.paymentMode || emp.paymentMode === 'manual');
+            })
+            .reduce((sum, log) => sum + (log.payAmount || 0), 0);
+
+        totalPaid += manualPayments;
+
+        // Method 2: Calculate completed payment cycles for salary employees
+        const salaryEmployees = employees.filter(e => e.paymentMode === 'salary');
+
+        for (const emp of salaryEmployees) {
+            if (!emp.startDate || !emp.baseSalary) continue;
+
+            const startDate = new Date(emp.startDate);
+            const monthStart = new Date(year, month, 1);
+            const monthEnd = new Date(year, month + 1, 0);
+
+            // Only count if employee started before or during this month
+            if (startDate > monthEnd) continue;
+
+            const freq = emp.paymentFrequency || 'monthly';
+            const cycleAmount = freq === 'weekly' ? (emp.baseSalary / 4) :
+                freq === 'biweekly' ? (emp.baseSalary / 2) :
+                    emp.baseSalary;
+
+            let cyclesCompleted = 0;
+
+            if (freq === 'weekly') {
+                // Count completed weeks within the month
+                const weekStartDay = await window.Utils.getWeekStartDay();
+
+                // Find all week start dates in the month
+                let currentDate = new Date(monthStart);
+                while (currentDate <= monthEnd) {
+                    const dayOfWeek = currentDate.getDay();
+
+                    // If this is a week start day
+                    if (dayOfWeek === weekStartDay) {
+                        // Check if this week started after employee's start date
+                        if (currentDate >= startDate) {
+                            cyclesCompleted++;
+                        }
+                    }
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+            } else if (freq === 'biweekly') {
+                // Biweekly: 15th and end of month
+                const mid = new Date(year, month, 15);
+
+                // Count payments that occurred in this month
+                if (mid >= startDate && mid >= monthStart && mid <= monthEnd) {
+                    cyclesCompleted++;
+                }
+                if (monthEnd >= startDate) {
+                    cyclesCompleted++;
+                }
+            } else {
+                // Monthly: one payment at end of month
+                if (monthEnd >= startDate) {
+                    cyclesCompleted = 1;
+                }
+            }
+
+            totalPaid += cyclesCompleted * cycleAmount;
+        }
+
+        return {
+            totalPaid: Math.round(totalPaid),
+            breakdown: {
+                manual: Math.round(manualPayments),
+                salary: Math.round(totalPaid - manualPayments)
+            }
+        };
     }
 };

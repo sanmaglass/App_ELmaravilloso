@@ -90,8 +90,15 @@ window.Views.dashboard = async (container) => {
         const employees = allEmployees.filter(e => !e.deleted);
         document.getElementById('dashboard-active-employees').textContent = employees.length;
 
-        // Populate Payments Widget
-        document.getElementById('upcoming-payments-list').innerHTML = await calculateNextPayments(employees);
+        // Populate Payments Widget with error handling
+        try {
+            const paymentsHTML = await window.Utils.calculateNextPayments(employees);
+            document.getElementById('upcoming-payments-list').innerHTML = paymentsHTML;
+        } catch (paymentError) {
+            console.error('Error calculating next payments:', paymentError);
+            document.getElementById('upcoming-payments-list').innerHTML =
+                '<p style="color: var(--danger); font-size: 0.85rem;">⚠️ Error calculando pagos. Revisa la configuración de empleados.</p>';
+        }
 
         // 2. Expiry Alerts Logic
         const allProducts = await window.db.products.toArray();
@@ -130,18 +137,19 @@ window.Views.dashboard = async (container) => {
             alertContainer.classList.add('hidden');
         }
 
-        // 3. Work Logs Calculations
+        // 3. Work Logs + Payment Calculations
         const allLogs = await window.db.workLogs.toArray();
         const logs = allLogs.filter(l => !l.deleted);
 
-        // Filter Current Month
-        const currentMonthLogs = logs.filter(l => l.date.startsWith(currentMonthStr));
+        // NEW: Calculate total payments for the month including completed payment cycles
+        const monthlyPayments = await window.Utils.calculateMonthlyPayments(employees, logs, now);
 
-        const totalSpent = currentMonthLogs.reduce((acc, curr) => acc + (curr.payAmount || 0), 0);
+        // Filter Current Month logs for hours calculation
+        const currentMonthLogs = logs.filter(l => l.date.startsWith(currentMonthStr));
         const totalHours = currentMonthLogs.reduce((acc, curr) => acc + (curr.totalHours || 0), 0);
 
-        // Update DOM
-        document.getElementById('dashboard-total-spent').innerHTML = window.Utils.formatCurrency(totalSpent);
+        // Update DOM with new calculation
+        document.getElementById('dashboard-total-spent').innerHTML = window.Utils.formatCurrency(monthlyPayments.totalPaid);
         document.getElementById('dashboard-total-hours').textContent = totalHours.toFixed(1) + 'h';
         document.getElementById('stat-month-label').textContent = window.Utils.formatDate(now, { month: 'long' });
 
