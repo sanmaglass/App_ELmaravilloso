@@ -7,7 +7,7 @@
     <title>EL MARAVILLOSO</title>
 
     <!-- PWA Meta Tags -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#dc2626">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -37,8 +37,7 @@
     <!-- QRCode.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-    <!-- date-fns (via global bundle if available or simple alternatives within util, using native Intl for now to keep simple or cdn) -->
-    <!-- We will use native JS Date and Intl for now to reduce dependencies, or simple helpers -->
+    <!-- Using native JS Date and Intl API for date formatting -->
 
     <!-- SheetJS for Excel Export -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -152,7 +151,6 @@
     </div>
 
     <!-- App Logic (Loaded in order) -->
-    <!-- App Logic (Loaded in order) -->
     <script src="js/config.js?v=60"></script>
     <script src="js/utils.js?v=60"></script>
     <script src="js/db.js?v=60"></script>
@@ -171,9 +169,30 @@
     <!-- PWA Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js')
-                .then(() => console.log('Service Worker registrado'))
-                .catch(err => console.log('Error registrando SW:', err));
+            navigator.serviceWorker.register('./service-worker.js')
+                .then((reg) => {
+                    console.log('✅ Service Worker registrado');
+
+                    // Check for updates every 60 seconds
+                    setInterval(() => {
+                        reg.update();
+                    }, 60000);
+
+                    // Detect when new service worker is waiting
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // New version available!
+                                if (confirm('🎉 Nueva versión disponible! ¿Actualizar ahora?')) {
+                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                    window.location.reload();
+                                }
+                            }
+                        });
+                    });
+                })
+                .catch(err => console.error('❌ Error registrando SW:', err));
         }
     </script>
 

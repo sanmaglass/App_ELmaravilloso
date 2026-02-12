@@ -38,8 +38,26 @@ async function init() {
         // If Auth passed, ensure main layout is visible
         document.querySelector('.app-container').style.display = 'flex';
 
-        await window.seedDatabase();
-        await window.Sync.init();
+        // Database initialization
+        try {
+            await window.seedDatabase();
+        } catch (dbError) {
+            console.error("Database initialization failed:", dbError);
+            showError('Error de Base de Datos',
+                'No se pudo inicializar la base de datos local. Intenta recargar la página.',
+                dbError.message
+            );
+            return;
+        }
+
+        // Cloud sync initialization (non-blocking)
+        try {
+            await window.Sync.init();
+        } catch (syncError) {
+            console.warn("Cloud sync initialization failed:", syncError);
+            // Don't block app loading if cloud sync fails
+            // User will see "Sin Nube" indicator
+        }
 
         // Navigation Logic
         const navItems = document.querySelectorAll('.nav-item');
@@ -78,8 +96,31 @@ async function init() {
         views.dashboard();
     } catch (err) {
         console.error("Critical Init Error:", err);
-        document.body.innerHTML = `<div style="color:white; padding:50px; text-align:center;"><h1>Error de Carga</h1><p>${err.message}</p></div>`;
+        showError('Error de Carga',
+            'No se pudo cargar la aplicación. Por favor recarga la página.',
+            err.message
+        );
     }
+}
+
+// Helper function to show user-friendly errors
+function showError(title, message, details) {
+    document.body.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-family: 'Outfit', sans-serif; padding: 20px;">
+            <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 40px; border-radius: 20px; max-width: 500px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+                <div style="font-size: 64px; margin-bottom: 20px;">⚠️</div>
+                <h1 style="margin: 0 0 10px 0; font-size: 28px;">${title}</h1>
+                <p style="margin: 0 0 20px 0; font-size: 16px; opacity: 0.9;">${message}</p>
+                ${details ? `<details style="text-align: left; margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px; font-size: 12px;">
+                    <summary style="cursor: pointer; font-weight: 600;">Detalles técnicos</summary>
+                    <code style="display: block; margin-top: 10px; white-space: pre-wrap; word-break: break-word;">${details}</code>
+                </details>` : ''}
+                <button onclick="window.location.reload()" style="margin-top: 30px; padding: 12px 30px; background: white; color: #667eea; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s;">
+                    🔄 Recargar Aplicación
+                </button>
+            </div>
+        </div>
+    `;
 }
 
 // Mobile Menu Toggle Logic
