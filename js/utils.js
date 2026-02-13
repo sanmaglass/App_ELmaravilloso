@@ -351,13 +351,19 @@ window.Utils = {
     },
 
     // Calculate total payments for a given month
-    // This accounts for both work logs with individual payAmount AND completed payment cycles for salary employees
+    // NOW: Only counts COMPLETED/EARNED payments up to TODAY (not projected to end of month)
+    // Returns detailed breakdown with projections
     calculateMonthlyPayments: async (employees, logs, referenceDate) => {
         const month = referenceDate.getMonth();
         const year = referenceDate.getFullYear();
         const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-        let totalPaid = 0;
+        let totalEarned = 0;
+        let totalProjected = 0;
+        let salaryEarned = 0;
+        let salaryProjected = 0;
 
         // Method 1: Sum up all work logs with payAmount (for manual/hourly employees)
         const monthLogs = logs.filter(l => l.date.startsWith(monthStr));
@@ -370,7 +376,8 @@ window.Utils = {
             })
             .reduce((sum, log) => sum + (log.payAmount || 0), 0);
 
-        totalPaid += manualPayments;
+        totalEarned += manualPayments;
+        totalProjected += manualPayments; // For manual, earned = projected (already happened)
 
         // Method 2: Calculate completed payment cycles for salary employees
         const salaryEmployees = employees.filter(e => e.paymentMode === 'salary');
@@ -390,7 +397,8 @@ window.Utils = {
                 freq === 'biweekly' ? (emp.baseSalary / 2) :
                     emp.baseSalary;
 
-            let cyclesCompleted = 0;
+            let cyclesCompleted = 0; // Up to TODAY
+            let cyclesProjected = 0; // Total for the month
 
             if (freq === 'weekly') {
                 // Count completed weeks within the month
@@ -424,19 +432,29 @@ window.Utils = {
             } else {
                 // Monthly: one payment at end of month
                 if (monthEnd >= startDate) {
-                    cyclesCompleted = 1;
+                    cyclesProjected = 1;
+                    if (monthEnd <= today) cyclesCompleted = 1;
                 }
             }
 
-            totalPaid += cyclesCompleted * cycleAmount;
+            const earned = cyclesCompleted * cycleAmount;
+            const projected = cyclesProjected * cycleAmount;
+
+            salaryEarned += earned;
+            salaryProjected += projected;
+            totalEarned += earned;
+            totalProjected += projected;
         }
 
         return {
-            totalPaid: Math.round(totalPaid),
+            totalPaid: Math.round(totalEarned), // What's been EARNED up to today
+            totalProjected: Math.round(totalProjected), // What will be paid by end of month
             breakdown: {
                 manual: Math.round(manualPayments),
-                salary: Math.round(totalPaid - manualPayments)
-            }
+                salaryEarned: Math.round(salaryEarned),
+                salaryProjected: Math.round(salaryProjected)
+            },
+            pending: Math.round(totalProjected - totalEarned) // What's still to be earned
         };
     }
 };

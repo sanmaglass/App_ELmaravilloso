@@ -280,16 +280,23 @@ window.Views.payments = async (container) => {
     // Update month summary
     const updateMonthSummary = async () => {
         const monthStr = `${currentDisplayYear}-${String(currentDisplayMonth + 1).padStart(2, '0')}`;
-        // MONTHLY SUMMARY SECTION
+
+        // Get employees and logs
+        const allEmployees = await window.db.employees.toArray();
+        const employees = allEmployees.filter(e => !e.deleted);
         const allLogs = await window.db.workLogs.toArray();
         const logs = allLogs.filter(l => !l.deleted);
-        const monthLogs = logs.filter(l => l.date.startsWith(monthStr));
 
-        const totalPaid = monthLogs.reduce((sum, log) => sum + (log.payAmount || 0), 0);
+        // Use new payment calculation
+        const referenceDate = new Date(currentDisplayYear, currentDisplayMonth, 15);
+        const monthlyPayments = await window.Utils.calculateMonthlyPayments(employees, logs, referenceDate);
+
+        // Calculate unique days and employees from logs
+        const monthLogs = logs.filter(l => l.date.startsWith(monthStr));
         const uniqueDays = new Set(monthLogs.map(l => l.date)).size;
         const uniqueEmployees = new Set(monthLogs.map(l => l.employeeId)).size;
 
-        document.getElementById('month-total-paid').innerHTML = window.Utils.formatCurrency(totalPaid);
+        document.getElementById('month-total-paid').innerHTML = window.Utils.formatCurrency(monthlyPayments.totalPaid);
         document.getElementById('month-days-worked').textContent = uniqueDays;
         document.getElementById('month-active-employees').textContent = uniqueEmployees;
     };
@@ -328,5 +335,5 @@ window.Views.payments = async (container) => {
 
     // Initial render
     await renderCalendar();
-    await updateUpcomingPayments();
+    await renderUpcomingPayments();
 };
