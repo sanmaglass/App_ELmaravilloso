@@ -400,6 +400,7 @@ window.Utils = {
             let cyclesCompleted = 0; // Up to TODAY
             let cyclesProjected = 0; // Total for the month
 
+
             if (freq === 'weekly') {
                 // Count completed weeks within the month
                 const weekStartDay = await window.Utils.getWeekStartDay();
@@ -409,10 +410,17 @@ window.Utils = {
                 while (currentDate <= monthEnd) {
                     const dayOfWeek = currentDate.getDay();
 
-                    // If this is a week start day
-                    if (dayOfWeek === weekStartDay) {
-                        // Check if this week started after employee's start date
-                        if (currentDate >= startDate) {
+                    // If this is a week start day AND after employee started
+                    if (dayOfWeek === weekStartDay && currentDate >= startDate) {
+                        // This week started in the month
+                        cyclesProjected++;
+
+                        // Calculate week end (6 days after start)
+                        const weekEnd = new Date(currentDate);
+                        weekEnd.setDate(currentDate.getDate() + 6);
+
+                        // Only count as COMPLETED if week end has PASSED
+                        if (weekEnd <= today) {
                             cyclesCompleted++;
                         }
                     }
@@ -421,13 +429,18 @@ window.Utils = {
             } else if (freq === 'biweekly') {
                 // Biweekly: 15th and end of month
                 const mid = new Date(year, month, 15);
+                const end = new Date(year, month + 1, 0);
 
-                // Count payments that occurred in this month
+                // Check 15th payment
                 if (mid >= startDate && mid >= monthStart && mid <= monthEnd) {
-                    cyclesCompleted++;
+                    cyclesProjected++;
+                    if (mid <= today) cyclesCompleted++;
                 }
-                if (monthEnd >= startDate) {
-                    cyclesCompleted++;
+
+                // Check end of month payment
+                if (end >= startDate) {
+                    cyclesProjected++;
+                    if (end <= today) cyclesCompleted++;
                 }
             } else {
                 // Monthly: one payment at end of month
