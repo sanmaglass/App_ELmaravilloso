@@ -42,6 +42,10 @@
     <!-- SheetJS for Excel Export -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
+    <!-- jsPDF for PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
     <!-- Styles -->
     <link rel="stylesheet" href="css/style.css?v=60">
     <link rel="stylesheet" href="css/components.css?v=60">
@@ -87,6 +91,24 @@
                 <button class="nav-item" data-view="security">
                     <i class="ph ph-video-camera"></i>
                     <span>Cámaras</span>
+                </button>
+                <div style="height:1px; background:var(--border); margin:8px 16px;"></div>
+                <button class="nav-item" data-view="suppliers">
+                    <i class="ph ph-package"></i>
+                    <span>Proveedores</span>
+                </button>
+                <button class="nav-item" data-view="purchase_invoices">
+                    <i class="ph ph-receipt"></i>
+                    <span>Facturas Compra</span>
+                </button>
+                <button class="nav-item" data-view="sales_invoices">
+                    <i class="ph ph-file-text"></i>
+                    <span>Ventas</span>
+                </button>
+                <div style="height:1px; background:var(--border); margin:8px 16px;"></div>
+                <button class="nav-item" data-view="reports">
+                    <i class="ph ph-chart-line-up"></i>
+                    <span>Reportes</span>
                 </button>
                 <button class="nav-item" data-view="settings">
                     <i class="ph ph-gear"></i>
@@ -161,6 +183,10 @@
     <script src="js/views/marketing.js?v=60"></script>
     <script src="js/views/payments.js?v=60"></script>
     <script src="js/views/security.js?v=60"></script>
+    <script src="js/views/suppliers.js?v=60"></script>
+    <script src="js/views/purchase_invoices.js?v=60"></script>
+    <script src="js/views/sales_invoices.js?v=60"></script>
+    <script src="js/views/reports.js?v=60"></script>
     <script src="js/views/auth.js?v=60"></script>
     <script src="js/views/settings.js?v=60"></script>
     <script src="js/sync.js?v=60"></script>

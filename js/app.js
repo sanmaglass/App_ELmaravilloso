@@ -15,6 +15,10 @@ const views = {
     marketing: () => window.Views.marketing(document.getElementById('view-container')),
     payments: () => window.Views.payments(document.getElementById('view-container')),
     security: () => window.Views.security(document.getElementById('view-container')),
+    suppliers: () => window.Views.suppliers(document.getElementById('view-container')),
+    purchase_invoices: () => window.Views.purchase_invoices(document.getElementById('view-container')),
+    sales_invoices: () => window.Views.sales_invoices(document.getElementById('view-container')),
+    reports: () => window.Views.reports(document.getElementById('view-container')),
     settings: () => window.Views.settings(document.getElementById('view-container'))
 };
 
