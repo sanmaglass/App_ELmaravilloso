@@ -2,6 +2,11 @@
 window.Views = window.Views || {};
 
 window.Views.payments = async (container) => {
+    // Force Monday as default if not set (User feedback preference)
+    if (await window.db.settings.where('key').equals('weekStartDay').count() === 0) {
+        await window.Utils.setWeekStartDay(1);
+    }
+
     // Get current settings
     const weekStartDay = await window.Utils.getWeekStartDay();
     const now = new Date();
@@ -99,7 +104,7 @@ window.Views.payments = async (container) => {
                             <strong style="color:#15803d;" id="month-total-paid">$0</strong>
                         </div>
                         <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                            <span style="color:var(--text-muted);">Días trabajados:</span>
+                            <span style="color:var(--text-muted);">Días transcurridos:</span>
                             <strong id="month-days-worked">0</strong>
                         </div>
                         <div style="display:flex; justify-content:space-between;">
@@ -291,13 +296,13 @@ window.Views.payments = async (container) => {
         const referenceDate = new Date(currentDisplayYear, currentDisplayMonth, 15);
         const monthlyPayments = await window.Utils.calculateMonthlyPayments(employees, logs, referenceDate);
 
-        // Calculate unique days and employees from logs
-        const monthLogs = logs.filter(l => l.date.startsWith(monthStr));
-        const uniqueDays = new Set(monthLogs.map(l => l.date)).size;
-        const uniqueEmployees = new Set(monthLogs.map(l => l.employeeId)).size;
+        // Días transcurridos (Requested by user: show simple days elapsed in month)
+        const today = new Date();
+        const isCurrentMonth = currentDisplayMonth === today.getMonth() && currentDisplayYear === today.getFullYear();
+        const daysElapsed = isCurrentMonth ? today.getDate() : new Date(currentDisplayYear, currentDisplayMonth + 1, 0).getDate();
 
         document.getElementById('month-total-paid').innerHTML = window.Utils.formatCurrency(monthlyPayments.totalPaid);
-        document.getElementById('month-days-worked').textContent = uniqueDays;
+        document.getElementById('month-days-worked').textContent = daysElapsed;
         document.getElementById('month-active-employees').textContent = uniqueEmployees;
     };
 
