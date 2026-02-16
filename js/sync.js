@@ -67,11 +67,12 @@ window.Sync = {
                 { local: 'employees', remote: 'employees', orderBy: 'id' },
                 { local: 'workLogs', remote: 'worklogs', orderBy: 'id' },
                 { local: 'products', remote: 'products', orderBy: 'id' },
-                { local: 'products', remote: 'products', orderBy: 'id' },
                 { local: 'promotions', remote: 'promotions', orderBy: 'id' },
                 { local: 'suppliers', remote: 'suppliers', orderBy: 'name' },
                 { local: 'purchase_invoices', remote: 'purchase_invoices', orderBy: 'date' },
                 { local: 'sales_invoices', remote: 'sales_invoices', orderBy: 'date' },
+                { local: 'expenses', remote: 'expenses', orderBy: 'date' },
+                { local: 'daily_sales', remote: 'daily_sales', orderBy: 'date' },
                 { local: 'settings', remote: 'settings', orderBy: 'key' } // Settings usa 'key', no 'id'
             ];
 

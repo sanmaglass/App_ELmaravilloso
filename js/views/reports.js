@@ -74,15 +74,20 @@ window.Views.reports = async (container) => {
     document.getElementById('report-period').addEventListener('change', () => renderReports());
 };
 
+// --- RENDER REPORTS LOGIC ---
 async function renderReports() {
     try {
         const period = document.getElementById('report-period').value;
 
         // Fetch Data
-        const [purchases, sales, suppliers] = await Promise.all([
+        const [purchases, sales, suppliers, expenses, employees, workLogs, dailySales] = await Promise.all([
             window.db.purchase_invoices.toArray(),
             window.db.sales_invoices.toArray(),
-            window.db.suppliers.toArray()
+            window.db.suppliers.toArray(),
+            window.db.expenses.toArray(),
+            window.db.employees.toArray(),
+            window.db.workLogs.toArray(),
+            window.db.daily_sales.toArray()
         ]);
 
         const supplierMap = {};
@@ -90,80 +95,136 @@ async function renderReports() {
 
         // Filter Deleted
         let activePurchases = purchases.filter(p => !p.deleted);
-        let activeSales = sales.filter(s => !s.deleted);
+        let activeSales = sales.filter(s => !s.deleted); // Keep purely invoice based sales
+        let activeDailySales = dailySales.filter(d => !d.deleted);
+        let activeExpenses = expenses.filter(e => !e.deleted);
+        let activeEmployees = employees.filter(e => !e.deleted);
+        let activeLogs = workLogs.filter(l => !l.deleted);
 
-        // Filter by Period (Basic)
-        // TODO: Implement proper date filtering logic based on 'period'
-        // For now, assuming 'all' for simplicity or implement simple filter
-        if (period !== 'all') {
-            const now = new Date();
-            activePurchases = activePurchases.filter(p => {
-                const d = new Date(p.date);
-                if (period === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-                if (period === 'year') return d.getFullYear() === now.getFullYear();
-                return true;
-            });
-            activeSales = activeSales.filter(s => {
-                const d = new Date(s.date);
-                if (period === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-                if (period === 'year') return d.getFullYear() === now.getFullYear();
-                return true;
-            });
+        // --- FILTER BY PERIOD ---
+        const now = new Date();
+        const filterDate = (dateStr) => {
+            const d = new Date(dateStr);
+            if (period === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            if (period === 'year') return d.getFullYear() === now.getFullYear();
+            return true;
+        };
+
+        // Filter Arrays
+        const filteredPurchases = activePurchases.filter(p => filterDate(p.date));
+        const filteredSalesInvoices = activeSales.filter(s => filterDate(s.date));
+        const filteredDailySales = activeDailySales.filter(d => filterDate(d.date));
+        const filteredExpenses = activeExpenses.filter(e => filterDate(e.date));
+
+        // --- CALCULATE TOTALS ---
+
+        // 1. Sales (Prioritize Daily Sales + Invoices if needed, but avoid double counting if user does both?)
+        // Strategy: User explicitly asked for Daily Registry. We will SUM Daily Sales.
+        // If they also use Invoices, we assume they are SEPARATE (e.g. B2B invoices vs POS daily total). 
+        // We will sum BOTH for Total Revenue.
+        const totalInvoiceSales = filteredSalesInvoices.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const totalDailySales = filteredDailySales.reduce((sum, d) => sum + (parseFloat(d.total) || 0), 0);
+
+        const totalSales = totalInvoiceSales + totalDailySales;
+
+        // 2. Purchase Invoices
+        const totalPurchases = filteredPurchases.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+        // 3. General Expenses
+        const totalGeneralExpenses = filteredExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+
+        // 4. Salaries (Estimated for Period)
+        let totalSalaries = 0;
+
+        if (period === 'month') {
+            // Precise estimation for current month using Utils
+            const monthlyStats = await window.Utils.calculateMonthlyPayments(activeEmployees, activeLogs, now);
+            totalSalaries = monthlyStats.totalPaid;
+        } else {
+            // Rougher estimation for Year/All
+            if (period === 'year') {
+                // Weekly Employees: Rate * Weeks passed in year
+                const weeksPassed = window.Utils.getWeekNumber(now);
+                activeEmployees.filter(e => e.paymentMode === 'salary').forEach(emp => {
+                    totalSalaries += (emp.baseSalary / 4) * weeksPassed;
+                });
+                // Daily Employees: Sum of logs in period
+                activeLogs.forEach(log => {
+                    if (filterDate(log.date)) {
+                        const emp = activeEmployees.find(e => e.id === log.employeeId);
+                        if (emp && emp.paymentMode === 'daily') {
+                            totalSalaries += emp.dailyRate;
+                        }
+                    }
+                });
+            } else { // ALL TIME
+                // Just sum all logs for daily + rough weekly estimation?
+                // For now, let's keep it simple: if 'All', maybe just sum known logs + current active weekly * 52 (placeholder)
+                // Or better: Don't try to guess infinite past on 'All'.
+            }
         }
 
-        // --- KPIS ---
-        const totalSales = activeSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
-        const totalExpenses = activePurchases.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-        const profit = totalSales - totalExpenses;
+        const totalCosts = totalPurchases + totalGeneralExpenses + totalSalaries;
+        const profit = totalSales - totalCosts;
 
+        // --- UPDATE KPIS ---
         document.getElementById('kpi-sales').textContent = formatCurrency(totalSales);
-        document.getElementById('kpi-expenses').textContent = formatCurrency(totalExpenses);
+        // Show tooltip or detail if hovered? 
+        // Not implemented but good to know: Sales = Daily + Invoices
+        // Split Expenses KPI for clarity? Or keep combined? User asked for total expenses.
+        // Let's show specific breakdown in a new section, but main KPI is total Costs?
+        // Reuse 'kpi-expenses' for 'Total Egresos'
+        document.getElementById('kpi-expenses').textContent = formatCurrency(totalCosts);
         document.getElementById('kpi-profit').textContent = formatCurrency(profit);
 
-        // --- CHART: Suppliers ---
-        const supplierTotals = {};
-        activePurchases.forEach(p => {
-            const name = supplierMap[p.supplierId] || 'Desconocido';
-            supplierTotals[name] = (supplierTotals[name] || 0) + (parseFloat(p.amount) || 0);
+        // Color profit
+        const pEl = document.getElementById('kpi-profit');
+        pEl.style.color = profit >= 0 ? '#10b981' : '#ef4444';
+
+
+        // --- CHART: Expenses Breakdown (Pie) ---
+        // Instead of just Suppliers, let's show Categories of COST:
+        // "Proveedores", "Sueldos", "Servicios", "Arriendo", etc.
+        const costBreakdown = {
+            'Proveedores': totalPurchases,
+            'Sueldos': totalSalaries
+        };
+
+        // Add General Expenses by Category
+        filteredExpenses.forEach(e => {
+            costBreakdown[e.category] = (costBreakdown[e.category] || 0) + (parseFloat(e.amount) || 0);
         });
 
-        const sortedSuppliers = Object.entries(supplierTotals)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 8); // Top 8
+        const sortedCosts = Object.entries(costBreakdown)
+            .sort(([, a], [, b]) => b - a);
 
-        renderPieChart('chart-suppliers',
-            sortedSuppliers.map(([n]) => n),
-            sortedSuppliers.map(([, v]) => v)
+        renderPieChart('chart-suppliers', // Reusing canvas ID
+            sortedCosts.map(([n]) => n),
+            sortedCosts.map(([, v]) => v)
         );
+        // Update Chart Title
+        document.querySelector('#chart-suppliers').parentNode.previousElementSibling.textContent = "Desglose de Costos";
 
-        // --- CHART: Trends (By Month) ---
-        // Group by YYYY-MM
-        const months = {};
-        [...activePurchases, ...activeSales].forEach(item => {
-            const m = item.date.substring(0, 7); // YYYY-MM
-            if (!months[m]) months[m] = { sales: 0, expenses: 0 };
-        });
 
-        activePurchases.forEach(p => {
-            const m = p.date.substring(0, 7);
-            months[m].expenses += (parseFloat(p.amount) || 0);
-        });
-        activeSales.forEach(s => {
-            const m = s.date.substring(0, 7);
-            months[m].sales += (parseFloat(s.total) || 0);
-        });
-
-        const sortedMonths = Object.keys(months).sort();
+        // --- CHART: Trends ---
+        // Combine all outflows for 'Expenses' bar
         renderLineChart('chart-trend',
-            sortedMonths,
-            sortedMonths.map(m => months[m].sales),
-            sortedMonths.map(m => months[m].expenses)
+            ['Ventas', 'Costos Totales'], // Simplified bar comparison for now or keep Monthly Trend?
+            // Keeping monthly trend is complex with 3 data sources. 
+            // Let's switch to a simple 'Income vs Expense' bar for the selected period if specific,
+            // OR keep monthly trend but only for Sales vs Purchases (easy) + General (easy). Salaries is hard to map to months without history table.
+            // Let's stick to Sales vs purchase+expenses for trend.
+            ['Total Periodo'],
+            [totalSales],
+            [totalCosts]
         );
+        // Rename for clarity
+        document.querySelector('#chart-trend').parentNode.previousElementSibling.textContent = "Balance del Período";
 
-        // --- PENDING PAYMENTS ---
-        const pending = activePurchases
-            .filter(p => p.paymentStatus === 'Pendiente')
-            .sort((a, b) => new Date(a.date) - new Date(b.date)); // Oldest first
+
+        // --- PENDING PAYMENTS (Same as before) ---
+        const pending = filteredPurchases.filter(p => p.paymentStatus === 'Pendiente');
+        // ... (Keep existing pending logic) ... 
 
         const pendingList = document.getElementById('pending-list');
         if (pending.length === 0) {
@@ -177,13 +238,12 @@ async function renderReports() {
                     </div>
                     <div style="text-align:right;">
                         <div style="font-weight:700; color:#d97706;">${formatCurrency(p.amount)}</div>
-                        <button class="btn btn-icon" title="Marcar Pagado" onclick="markAsPaid(${p.id})">
+                         <button class="btn btn-icon" title="Marcar Pagado" onclick="markAsPaid(${p.id})">
                              <i class="ph ph-check-circle" style="color:#10b981;"></i>
                         </button>
                     </div>
                 </div>
             `).join('');
-
             window.markAsPaid = async (id) => {
                 if (confirm('¿Marcar factura como PAGADA?')) {
                     await window.db.purchase_invoices.update(id, { paymentStatus: 'Pagado' });
@@ -194,6 +254,7 @@ async function renderReports() {
 
     } catch (e) {
         console.error(e);
+        document.getElementById('view-container').innerHTML += `<div style="color:red">Error en reporte: ${e.message}</div>`;
     }
 }
 

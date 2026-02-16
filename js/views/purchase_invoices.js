@@ -16,11 +16,15 @@ window.Views.purchase_invoices = async (container) => {
         </div>
 
         <!-- Filters -->
-        <div style="display:grid; grid-template-columns: 1fr auto auto; gap:12px; margin-bottom:24px; align-items:center;">
+        <div style="display:grid; grid-template-columns: 1fr auto auto auto; gap:12px; margin-bottom:24px; align-items:center;">
              <div style="position:relative;">
                 <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
                 <input type="text" id="invoice-search" class="form-input" placeholder="Buscar por proveedor o N° factura..." style="padding-left:36px; width:100%;">
             </div>
+            <select id="filter-date" class="form-input">
+                <option value="all">Todo el Historial</option>
+                <!-- Dynamic Months will be injected here -->
+            </select>
             <select id="filter-status" class="form-input">
                 <option value="all">Todos los Estados</option>
                 <option value="Pendiente">Pendiente</option>
@@ -32,28 +36,87 @@ window.Views.purchase_invoices = async (container) => {
         </div>
 
         <!-- Invoices List -->
-        <div id="invoices-list" style="display:flex; flex-direction:column; gap:12px;">
+        <div id="invoices-list" style="display:flex; flex-direction:column; gap:12px; min-height: 200px;">
             <div class="loading-state">
                 <div class="spinner"></div>
                 <p>Cargando facturas...</p>
             </div>
         </div>
+
+        <!-- Pagination Controls -->
+        <div id="pagination-controls" style="display:flex; justify-content:center; gap:12px; margin-top:24px; align-items:center;">
+            <!-- Buttons injected by JS -->
+        </div>
     `;
 
+    // State for Pagination
+    window.state.invoicesPage = 1;
+    window.state.invoicesPerPage = 10;
+
+    // Initialize component
+    await initDateFilter();
     renderInvoices();
 
     // Events
     document.getElementById('btn-add-invoice').addEventListener('click', () => showInvoiceModal());
-    document.getElementById('invoice-search').addEventListener('input', () => renderInvoices());
-    document.getElementById('filter-status').addEventListener('change', () => renderInvoices());
+    document.getElementById('invoice-search').addEventListener('input', () => { window.state.invoicesPage = 1; renderInvoices(); });
+    document.getElementById('filter-status').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
+    document.getElementById('filter-date').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('btn-export-excel').addEventListener('click', exportInvoicesToExcel);
 };
+
+// --- INIT FILTERS ---
+async function initDateFilter() {
+    const filter = document.getElementById('filter-date');
+    if (!filter) return;
+
+    try {
+        const invoices = await window.db.purchase_invoices.toArray();
+        const active = invoices.filter(i => !i.deleted);
+
+        // Extract unique YYYY-MM
+        const months = new Set();
+        active.forEach(i => {
+            if (i.date && i.date.length >= 7) {
+                months.add(i.date.substring(0, 7));
+            }
+        });
+
+        // Sort DESC
+        const sortedMonths = Array.from(months).sort().reverse();
+
+        // Populate
+        sortedMonths.forEach(m => {
+            const [y, monthNum] = m.split('-');
+            const dateObj = new Date(y, monthNum - 1);
+            const label = dateObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+
+            const option = document.createElement('option');
+            option.value = m;
+            option.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+            filter.appendChild(option);
+        });
+
+        // Set Default to Current Month if exists
+        const currentMonth = new Date().toISOString().substring(0, 7);
+        if (months.has(currentMonth)) {
+            filter.value = currentMonth;
+        } else {
+            filter.value = 'all';
+        }
+
+    } catch (e) { console.error("Error init date filter", e); }
+}
 
 // --- RENDER LOGIC ---
 async function renderInvoices() {
     const list = document.getElementById('invoices-list');
+    const pagination = document.getElementById('pagination-controls');
+
+    // Get Filter Values
     const search = document.getElementById('invoice-search').value.toLowerCase();
     const statusFilter = document.getElementById('filter-status').value;
+    const dateFilter = document.getElementById('filter-date').value;
 
     if (!list) return;
 
@@ -76,11 +139,28 @@ async function renderInvoices() {
             const supplierName = (supplierMap[i.supplierId] || 'Desconocido').toLowerCase();
             const matchesSearch = supplierName.includes(search) || i.invoiceNumber.toLowerCase().includes(search);
             const matchesStatus = statusFilter === 'all' || i.paymentStatus === statusFilter;
-            return matchesSearch && matchesStatus;
+
+            let matchesDate = true;
+            if (dateFilter !== 'all') {
+                matchesDate = i.date.startsWith(dateFilter);
+            }
+
+            return matchesSearch && matchesStatus && matchesDate;
         });
 
         // Sort by Date DESC
         filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        // --- PAGINATION LOGIC ---
+        const page = window.state.invoicesPage || 1;
+        const perPage = window.state.invoicesPerPage || 10;
+        const totalItems = filtered.length;
+        const totalPages = Math.ceil(totalItems / perPage);
+
+        // Slice logic
+        const start = (page - 1) * perPage;
+        const end = start + perPage;
+        const paginatedItems = filtered.slice(start, end);
 
         if (filtered.length === 0) {
             list.innerHTML = `
@@ -92,17 +172,21 @@ async function renderInvoices() {
             return;
         }
 
-        // Totals
+        // Totals (Calculate on filtered total, not just page)
         let totalAmount = 0;
         let totalPending = 0;
 
-        const html = filtered.map(inv => {
+        // Calculate totals for ALL matches (not just visible page) to be useful
+        filtered.forEach(inv => {
+            const amount = parseFloat(inv.amount) || 0;
+            totalAmount += amount;
+            if (inv.paymentStatus === 'Pendiente') totalPending += amount;
+        });
+
+        const html = paginatedItems.map(inv => {
             const supplierName = supplierMap[inv.supplierId] || 'Proveedor Eliminado';
             const isPending = inv.paymentStatus === 'Pendiente';
             const amount = parseFloat(inv.amount) || 0;
-
-            totalAmount += amount;
-            if (isPending) totalPending += amount;
 
             return `
             <div class="card" style="padding:16px; display:grid; grid-template-columns: 1fr 1fr 1fr auto; align-items:center; gap:16px; border-left: 4px solid ${isPending ? '#f59e0b' : '#10b981'};">
@@ -159,6 +243,27 @@ async function renderInvoices() {
         `;
 
         list.innerHTML = summaryHtml + html;
+
+        // Render Pagination Controls
+        if (totalPages > 1) {
+            pagination.innerHTML = `
+                <button class="btn btn-secondary" ${page === 1 ? 'disabled' : ''} onclick="window.changeInvoicePage(${page - 1})">
+                    <i class="ph ph-caret-left"></i> Anterior
+                </button>
+                <span style="font-weight:600; color:var(--text-muted);">Página ${page} de ${totalPages}</span>
+                <button class="btn btn-secondary" ${page === totalPages ? 'disabled' : ''} onclick="window.changeInvoicePage(${page + 1})">
+                    Siguiente <i class="ph ph-caret-right"></i>
+                </button>
+            `;
+        } else {
+            pagination.innerHTML = '';
+        }
+
+        // Global function for pagination click
+        window.changeInvoicePage = (newPage) => {
+            window.state.invoicesPage = newPage;
+            renderInvoices();
+        };
 
         // Attach Events
         document.querySelectorAll('.btn-edit-invoice').forEach(btn =>
@@ -366,6 +471,11 @@ async function showInvoiceModal(invoiceToEdit = null) {
             }
 
             modal.classList.add('hidden');
+            // Reset to page 1 and reload date filter if new invoice added impacts list
+            if (!isEdit) {
+                await initDateFilter();
+                window.state.invoicesPage = 1;
+            }
             renderInvoices();
         } catch (e) { alert('Error: ' + e.message); }
     });

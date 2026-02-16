@@ -293,7 +293,10 @@ window.Utils = {
                 tables: {}
             };
 
-            const tableNames = ['employees', 'workLogs', 'settings', 'products', 'promotions'];
+            const tableNames = [
+                'employees', 'workLogs', 'settings', 'products', 'promotions',
+                'suppliers', 'purchase_invoices', 'sales_invoices', 'expenses', 'daily_sales'
+            ];
             for (const name of tableNames) {
                 data.tables[name] = await window.db[name].toArray();
             }

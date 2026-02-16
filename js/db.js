@@ -2,17 +2,18 @@
 
 const db = new Dexie('WorkMasterDB');
 
-// Version 7: Add Invoice & Supplier Management
-db.version(7).stores({
+// Version 9: Add Daily Sales (Cierre Diario)
+db.version(9).stores({
     employees: 'id, name, email, role, hourlyRate, dailyRate, deleted',
     workLogs: 'id, employeeId, date, status, deleted',
     settings: 'key',
     products: 'id, name, category, buyPrice, salePrice, expiryDate, stock, deleted',
     promotions: 'id, title, text, isActive, deleted',
-    // New Tables for Invoice Management
     suppliers: 'id, name, contact, deleted',
     purchase_invoices: 'id, supplierId, invoiceNumber, date, paymentStatus, period, deleted',
-    sales_invoices: 'id, invoiceNumber, clientName, date, paymentStatus, deleted'
+    sales_invoices: 'id, invoiceNumber, clientName, date, paymentStatus, deleted',
+    expenses: 'id, title, category, date, deleted',
+    daily_sales: 'id, date, deleted'
 });
 
 // Initial check and auto-migration fix

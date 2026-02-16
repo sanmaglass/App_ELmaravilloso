@@ -1,0 +1,312 @@
+// Daily Sales View (Cierre Diario)
+window.Views = window.Views || {};
+
+window.Views.daily_sales = async (container) => {
+    container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+            <div>
+                <h1 style="margin-bottom:8px; color:var(--text-primary); display:flex; align-items:center; gap:10px;">
+                    <i class="ph ph-currency-dollar" style="color:var(--primary);"></i> Ventas Diarias
+                </h1>
+                <p style="color:var(--text-muted);">Registro de cierre de caja (Efectivo, Transferencia, Débito)</p>
+            </div>
+            <button class="btn btn-primary" id="btn-add-daily-sale">
+                <i class="ph ph-plus-circle"></i> Nuevo Cierre
+            </button>
+        </div>
+
+        <!-- Filters -->
+         <div style="display:flex; gap:12px; margin-bottom:24px; align-items:center;">
+             <div style="position:relative; flex:1;">
+                <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
+                <input type="text" id="daily-search" class="form-input" placeholder="Buscar por fecha (YYYY-MM-DD)..." style="padding-left:36px; width:100%;">
+            </div>
+             <button class="btn btn-secondary" id="btn-export-daily">
+                <i class="ph ph-file-xls"></i> Exportar
+            </button>
+        </div>
+
+        <!-- Sales History List -->
+        <div id="daily-sales-list" style="display:flex; flex-direction:column; gap:12px; min-height: 200px;">
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Cargando historial...</p>
+            </div>
+        </div>
+    `;
+
+    renderDailySales();
+
+    // Events
+    document.getElementById('btn-add-daily-sale').addEventListener('click', () => showDailySaleModal());
+    document.getElementById('daily-search').addEventListener('input', () => renderDailySales());
+    document.getElementById('btn-export-daily').addEventListener('click', exportDailySalesToExcel);
+};
+
+// --- RENDER LOGIC ---
+async function renderDailySales() {
+    const list = document.getElementById('daily-sales-list');
+    const search = document.getElementById('daily-search').value.toLowerCase();
+
+    if (!list) return;
+
+    try {
+        const dailySales = await window.db.daily_sales.toArray();
+        const activeSales = dailySales.filter(s => !s.deleted);
+
+        // Filter
+        let filtered = activeSales.filter(s => {
+            return s.date.includes(search);
+        });
+
+        // Sort by Date DESC
+        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        if (filtered.length === 0) {
+            list.innerHTML = `
+                <div style="text-align:center; padding:40px; background:rgba(0,0,0,0.02); border-radius:12px; border:1px dashed var(--border);">
+                    <i class="ph ph-calendar-x" style="font-size:3rem; color:var(--text-muted); margin-bottom:12px;"></i>
+                    <h3 style="color:var(--text-muted);">No hay cierres registrados</h3>
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = filtered.map(sale => `
+            <div class="card" style="padding:16px; display:grid; grid-template-columns: 1fr 2fr 1fr auto; align-items:center; gap:16px;">
+                
+                <!-- Date -->
+                <div>
+                     <div style="font-weight:600; font-size:1.1rem; color:var(--text-primary); text-transform:capitalize;">
+                        ${new Date(sale.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}
+                     </div>
+                     <div style="font-size:0.85rem; color:var(--text-muted);">${sale.date}</div>
+                </div>
+
+                <!-- Breakdown -->
+                <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:0.85rem;">
+                    <div style="background:rgba(16, 185, 129, 0.1); padding:4px 8px; border-radius:6px; color:#065f46;">
+                        <i class="ph ph-money"></i> Efec: ${formatCurrency(sale.cash || 0)}
+                    </div>
+                    <div style="background:rgba(59, 130, 246, 0.1); padding:4px 8px; border-radius:6px; color:#1e3a8a;">
+                        <i class="ph ph-bank"></i> Trans: ${formatCurrency(sale.transfer || 0)}
+                    </div>
+                     <div style="background:rgba(245, 158, 11, 0.1); padding:4px 8px; border-radius:6px; color:#92400e;">
+                        <i class="ph ph-credit-card"></i> Débito: ${formatCurrency(sale.debit || 0)}
+                    </div>
+                </div>
+
+                <!-- Total -->
+                <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">Total Día</div>
+                    <div style="font-weight:700; font-size:1.2rem; color:var(--primary);">${formatCurrency(sale.total)}</div>
+                </div>
+
+                <!-- Actions -->
+                <div style="display:flex; gap:8px;">
+                     <button class="btn btn-icon btn-edit-daily" data-id="${sale.id}" title="Editar">
+                        <i class="ph ph-pencil-simple"></i>
+                    </button>
+                    <button class="btn btn-icon btn-delete-daily" data-id="${sale.id}" title="Eliminar" style="color:var(--error);">
+                        <i class="ph ph-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        // Attach Events
+        document.querySelectorAll('.btn-edit-daily').forEach(btn =>
+            btn.addEventListener('click', (e) => handleEditDailySale(Number(e.currentTarget.dataset.id)))
+        );
+        document.querySelectorAll('.btn-delete-daily').forEach(btn =>
+            btn.addEventListener('click', (e) => handleDeleteDailySale(Number(e.currentTarget.dataset.id)))
+        );
+
+    } catch (e) {
+        console.error("Error in renderDailySales:", e);
+        list.innerHTML = `<div style="color:red;">Error: ${e.message}</div>`;
+    }
+}
+
+// --- CRUD ---
+async function handleDeleteDailySale(id) {
+    if (confirm('¿Eliminar este registro diario?')) {
+        try {
+            await window.db.daily_sales.update(id, { deleted: true });
+            renderDailySales();
+            if (window.Sync?.client) {
+                await window.Sync.client.from('daily_sales').update({ deleted: true }).eq('id', id);
+            }
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+}
+
+async function handleEditDailySale(id) {
+    const sale = await window.db.daily_sales.get(id);
+    if (sale) showDailySaleModal(sale);
+}
+
+// --- MODAL ---
+function showDailySaleModal(saleToEdit = null) {
+    const isEdit = !!saleToEdit;
+    const modal = document.getElementById('modal-container');
+    const today = new Date().toISOString().split('T')[0];
+
+    modal.innerHTML = `
+        <div class="modal" style="max-width:500px;">
+            <div class="modal-header">
+                <h3 class="modal-title">${isEdit ? 'Editar Cierre' : 'Nuevo Cierre Diario'}</h3>
+                <button class="modal-close" onclick="document.getElementById('modal-container').classList.add('hidden')"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="daily-sale-form" style="display:flex; flex-direction:column; gap:16px;">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Fecha del Cierre</label>
+                        <input type="date" id="ds-date" class="form-input" value="${isEdit ? saleToEdit.date : today}">
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+                        <div class="form-group">
+                            <label class="form-label">Efectivo ($)</label>
+                            <input type="number" id="ds-cash" class="form-input calc-input" placeholder="0" value="${isEdit ? saleToEdit.cash : ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Transferencia ($)</label>
+                            <input type="number" id="ds-transfer" class="form-input calc-input" placeholder="0" value="${isEdit ? saleToEdit.transfer : ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Débito ($)</label>
+                            <input type="number" id="ds-debit" class="form-input calc-input" placeholder="0" value="${isEdit ? saleToEdit.debit : ''}">
+                        </div>
+                         <div class="form-group">
+                            <label class="form-label">Crédito ($)</label>
+                            <input type="number" id="ds-credit" class="form-input calc-input" placeholder="0" value="${isEdit ? saleToEdit.credit : ''}">
+                        </div>
+                    </div>
+
+                    <div class="card" style="background:var(--bg-input); padding:12px; text-align:center;">
+                        <div style="font-size:0.9rem; color:var(--text-muted);">Total Calculado</div>
+                        <div style="font-size:1.5rem; font-weight:700; color:var(--primary);" id="ds-total-preview">$0</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Notas (Opcional)</label>
+                        <textarea id="ds-notes" class="form-input" style="height:60px;">${isEdit && saleToEdit.notes ? saleToEdit.notes : ''}</textarea>
+                    </div>
+
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="btn-save-daily" style="width:100%;">
+                    ${isEdit ? 'Actualizar Cierre' : 'Guardar Cierre'}
+                </button>
+            </div>
+        </div>
+    `;
+
+    modal.classList.remove('hidden');
+
+    // Auto-calc Total
+    const inputs = document.querySelectorAll('.calc-input');
+    const totalPreview = document.getElementById('ds-total-preview');
+
+    const calcTotal = () => {
+        let total = 0;
+        inputs.forEach(input => {
+            total += parseFloat(input.value) || 0;
+        });
+        totalPreview.textContent = formatCurrency(total);
+        return total;
+    };
+
+    // Init calc
+    calcTotal();
+
+    inputs.forEach(input => input.addEventListener('input', calcTotal));
+
+    document.getElementById('btn-save-daily').addEventListener('click', async () => {
+        const date = document.getElementById('ds-date').value;
+        const cash = parseFloat(document.getElementById('ds-cash').value) || 0;
+        const transfer = parseFloat(document.getElementById('ds-transfer').value) || 0;
+        const debit = parseFloat(document.getElementById('ds-debit').value) || 0;
+        const credit = parseFloat(document.getElementById('ds-credit').value) || 0;
+        const notes = document.getElementById('ds-notes').value.trim();
+
+        const total = cash + transfer + debit + credit;
+
+        if (total <= 0) {
+            alert('El total debe ser mayor a 0');
+            return;
+        }
+
+        try {
+            // Check for duplicate date? (Optional, maybe warn but allow override)
+            const existing = await window.db.daily_sales.where('date').equals(date).first();
+            if (existing && !existing.deleted && (!isEdit || existing.id !== saleToEdit.id)) {
+                if (!confirm(`Ya existe un cierre para la fecha ${date}. ¿Deseas guardar otro registro para este día?`)) {
+                    return;
+                }
+            }
+
+            const dailyData = {
+                date,
+                cash,
+                transfer,
+                debit,
+                credit,
+                total,
+                notes,
+                deleted: false
+            };
+
+            if (isEdit) {
+                await window.db.daily_sales.update(saleToEdit.id, dailyData);
+                if (window.Sync?.client) {
+                    await window.Sync.client.from('daily_sales').update(dailyData).eq('id', saleToEdit.id);
+                }
+            } else {
+                dailyData.id = Date.now();
+                await window.db.daily_sales.add(dailyData);
+                if (window.Sync?.client) {
+                    await window.Sync.client.from('daily_sales').insert([dailyData]);
+                }
+            }
+
+            modal.classList.add('hidden');
+            renderDailySales();
+        } catch (e) { alert('Error: ' + e.message); }
+    });
+}
+
+// --- EXPORT TO EXCEL ---
+async function exportDailySalesToExcel() {
+    try {
+        const sales = await window.db.daily_sales.toArray();
+        const activeSales = sales.filter(s => !s.deleted);
+
+        if (activeSales.length === 0) {
+            alert('No hay datos para exportar');
+            return;
+        }
+
+        const data = activeSales.map(s => ({
+            Fecha: s.date,
+            Efectivo: s.cash,
+            Transferencia: s.transfer,
+            Debito: s.debit,
+            Credito: s.credit,
+            Total: s.total,
+            Notas: s.notes
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Ventas Diarias");
+        XLSX.writeFile(wb, `Ventas_Diarias_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+    } catch (e) {
+        console.error(e);
+        alert('Error exportando: ' + e.message);
+    }
+}

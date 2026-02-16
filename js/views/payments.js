@@ -308,10 +308,15 @@ window.Views.payments = async (container) => {
 
     // Update upcoming payments
     async function renderUpcomingPayments() {
-        const allEmployees = await window.db.employees.toArray();
-        const employees = allEmployees.filter(e => !e.deleted);
-        const html = await window.Utils.calculateNextPayments(employees);
-        document.getElementById('upcoming-payments-list').innerHTML = html;
+        try {
+            const allEmployees = await window.db.employees.toArray();
+            const employees = allEmployees.filter(e => !e.deleted);
+            const html = await window.Utils.calculateNextPayments(employees);
+            document.getElementById('upcoming-payments-list').innerHTML = html;
+        } catch (e) {
+            console.error("Error calculating payments:", e);
+            document.getElementById('upcoming-payments-list').innerHTML = `<div style="color:red; font-size:0.85rem;">Error: ${e.message}</div>`;
+        }
     };
 
     // Event Listeners
