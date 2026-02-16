@@ -187,6 +187,15 @@ window.Views.settings = async (container) => {
 
         // Insert before the input group
         supaUrl.closest('.form-group').parentNode.insertBefore(proBadge, supaUrl.closest('.form-group'));
+
+        // FIX: Habilitar botón de Sincronizar en Modo Pro
+        btnSync.disabled = false;
+
+        if (window.Sync && window.Sync.client) {
+            updateStatus('<i class="ph ph-wifi-high"></i> Conectado (Pro Mode)', 'success');
+        } else {
+            updateStatus('<i class="ph ph-warning"></i> Conectando...', 'warning');
+        }
     }
 
     const updateStatus = (msg, type = 'info') => {

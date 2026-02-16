@@ -51,9 +51,15 @@ window.Sync = {
 
     // Sincronización Completa
     syncAll: async () => {
+        // Auto-reconnect try
+        if (!window.Sync.client) {
+            console.log("Cliente Supabase nulo. Intentando reconectar...");
+            await window.Sync.init();
+        }
+
         if (!window.Sync.client) {
             window.Sync.updateIndicator('off');
-            return { success: false, error: "No conectado a la nube." };
+            return { success: false, error: "No se pudo conectar a la nube." };
         }
         if (window.Sync.isSyncing) return { success: false, error: "Sincronización en curso..." };
 
