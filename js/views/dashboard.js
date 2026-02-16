@@ -187,7 +187,13 @@ window.Views.dashboard = async (container) => {
         });
 
         const ctx = document.getElementById('expenseChart').getContext('2d');
-        new Chart(ctx, {
+
+        // FIX: Destroy previous instance to avoid "Canvas is already in use" error
+        if (window.myDashboardChart) {
+            window.myDashboardChart.destroy();
+        }
+
+        window.myDashboardChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
