@@ -298,6 +298,7 @@ window.Views.settings = async (container) => {
     });
 
     btnSync.addEventListener('click', async () => {
+        console.log("Botón Sincronizar presionado");
         btnSync.disabled = true;
         const original = btnSync.innerHTML;
         btnSync.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Sincronizando...';

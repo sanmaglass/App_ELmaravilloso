@@ -61,6 +61,10 @@ window.Sync = {
         window.Sync.updateIndicator('syncing');
 
         try {
+            console.log("Iniciando sincronización...");
+            // Debug para el usuario
+            // alert("Iniciando sincronización..."); 
+
             // Tablas a sincronizar (Mapeo Local -> Remoto)
             // Postgres suele usar minúsculas, Dexie usa CamelCase
             const tableMap = [
@@ -143,11 +147,8 @@ window.Sync = {
             console.error("Sync Error:", e);
             window.Sync.updateIndicator('error', e.message); // Update UI!
 
-            // Helpful Debuging for Mobile users
-            if (!window.hasShownErrorAlert) {
-                alert("Error de Sincronización: " + e.message + "\n(Revisa tu conexión o las claves)");
-                window.hasShownErrorAlert = true; // Don't spam alerts
-            }
+            // SIEMPRE mostrar alerta de error para depurar
+            alert("Error de Sincronización: " + e.message + "\n\nRevisa la consola (F12) para más detalles.");
 
             return { success: false, error: e.message };
         } finally {
