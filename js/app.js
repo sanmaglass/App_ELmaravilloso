@@ -98,6 +98,16 @@ async function init() {
         window.state.currentView = 'dashboard';
         views.dashboard();
 
+        // GLOBAL SYNC LISTENER: Auto-refresh view when data changes
+        window.addEventListener('sync-data-updated', () => {
+            console.log("♻️ Data sync detected - Refreshing view...");
+            const current = window.state.currentView;
+            if (views[current]) {
+                // Save scroll position if possible? (Optional refinement)
+                views[current]();
+            }
+        });
+
         // Escuchar cambios de datos en segundo plano
         // RE-ENABLED for WebSocket real-time sync
         window.addEventListener('sync-data-updated', () => {
