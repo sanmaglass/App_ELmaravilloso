@@ -275,11 +275,9 @@ window.Sync = {
         try {
             const record = payload.new || payload.old;
 
-            // Skip deleted records from sync
-            if (record && record.deleted && localTableName !== 'settings') {
-                console.log('Skipping deleted record from realtime');
-                return;
-            }
+            // FIXED: Do NOT skip deleted records. We need to process them 
+            // so the local DB also marks them as deleted.
+            // if (record && record.deleted && localTableName !== 'settings') { ... }
 
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                 // Upsert into local DB
