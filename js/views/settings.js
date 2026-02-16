@@ -132,7 +132,7 @@ window.Views.settings = async (container) => {
             <div class="card">
                 <h3 style="margin-bottom:16px;">Acerca de la App</h3>
                 <div style="font-size:0.9rem; color:var(--text-muted); line-height:1.6;">
-                    <p><strong>El Maravilloso v1.68</strong></p>
+                    <p><strong>El Maravilloso v1.69</strong></p>
                     <p>App de Gestión Integral</p>
                     <hr style="margin:12px 0; border:none; border-top:1px solid var(--border);">
                     <p>Desarrollada para control de personal, inventario y marketing.</p>
@@ -177,8 +177,8 @@ window.Views.settings = async (container) => {
         // --- SYNC HANDLERS ---
         if (btnSync) {
             btnSync.addEventListener('click', async () => {
-                alert('¡Botón presionado! Intentando sincronizar...');
-                console.log("Botón Sincronizar presionado");
+                // alert('¡Botón presionado! Intentando sincronizar...'); // Removed debug
+                // console.log("Botón Sincronizar presionado"); // Removed debug
                 btnSync.disabled = true;
                 const original = btnSync.innerHTML;
                 btnSync.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Sincronizando...';
