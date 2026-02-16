@@ -187,10 +187,18 @@ window.Views.dashboard = async (container) => {
         });
 
         const ctx = document.getElementById('expenseChart').getContext('2d');
+        const canvas = document.getElementById('expenseChart');
 
-        // FIX: Destroy previous instance to avoid "Canvas is already in use" error
-        if (window.myDashboardChart) {
-            window.myDashboardChart.destroy();
+        // FIX: Robust check for ANY existing chart on this canvas (Chart.js v3+)
+        // This handles race conditions better than just checking the variable
+        const existingChart = Chart.getChart(canvas);
+        if (existingChart) {
+            existingChart.destroy();
+        }
+
+        // Double check our manual variable just in case
+        if (window.myDashboardChart && window.myDashboardChart !== existingChart) {
+            try { window.myDashboardChart.destroy(); } catch (e) { }
         }
 
         window.myDashboardChart = new Chart(ctx, {
