@@ -131,7 +131,8 @@ window.Views.settings = async (container) => {
             <div class="card">
                 <h3 style="margin-bottom:16px;">Acerca de la App</h3>
                 <div style="font-size:0.9rem; color:var(--text-muted); line-height:1.6;">
-                    <p><strong>El Maravilloso v1.66</strong></p>
+                <div style="font-size:0.9rem; color:var(--text-muted); line-height:1.6;">
+                    <p><strong>El Maravilloso v1.67</strong></p>
                     <p>App de Gestión Integral</p>
                     <hr style="margin:12px 0; border:none; border-top:1px solid var(--border);">
                     <p>Desarrollada para control de personal, inventario y marketing.</p>
@@ -227,6 +228,12 @@ window.Views.settings = async (container) => {
 
                 // Prefix to prevent iPhone from opening as URL
                 const qrData = "CONFIG:" + JSON.stringify({ u: url, k: key });
+
+                // Check if QRCode lib exists
+                if (typeof QRCode === 'undefined') {
+                    alert("Librería QR no cargada. Revisa tu conexión.");
+                    return;
+                }
 
                 new QRCode(document.getElementById('qrcode'), {
                     text: qrData,
@@ -469,118 +476,7 @@ window.Views.settings = async (container) => {
                 }
             });
 
-            // ===== STORAGE MONITOR =====
-            async function updateStorageStats() {
-                const statsContainer = document.getElementById('storage-stats');
-                statsContainer.innerHTML = '<p style="text-align:center; color:var(--text-muted);"><i class="ph ph-spinner-gap ph-spin"></i> Cargando...</p>';
-
-                try {
-                    // Get counts from local IndexedDB
-                    const employees = await window.db.employees.toArray();
-                    const workLogs = await window.db.workLogs.toArray();
-                    const products = await window.db.products.toArray();
-                    const promotions = await window.db.promotions.toArray();
-
-                    // Filter active (non-deleted)
-                    const activeEmployees = employees.filter(e => !e.deleted);
-                    const activeWorkLogs = workLogs.filter(w => !w.deleted);
-                    const activeProducts = products.filter(p => !p.deleted);
-                    const activePromotions = promotions.filter(p => !p.deleted);
-
-                    const totalActive = activeEmployees.length + activeWorkLogs.length + activeProducts.length + activePromotions.length;
-                    const totalWithDeleted = employees.length + workLogs.length + products.length + promotions.length;
-
-                    statsContainer.innerHTML = `
-                <div style="padding:12px; background:rgba(99,102,241,0.1); border-radius:8px; text-align:center;">
-                    <div style="font-size:2rem; font-weight:700; color:var(--accent);">${totalActive}</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Registros Activos</div>
-                </div>
-                <div style="padding:12px; background:rgba(0,0,0,0.03); border-radius:8px; text-align:center;">
-                    <div style="font-size:1.5rem; font-weight:600; color:var(--text-secondary);">${employees.length - activeEmployees.length}</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Borrados (ocultos)</div>
-                </div>
-                <div style="padding:12px; background:rgba(16,185,129,0.1); border-radius:8px; text-align:center;">
-                    <div style="font-size:1.5rem; font-weight:600; color:#10b981;">${activeEmployees.length}</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Empleados</div>
-                </div>
-                <div style="padding:12px; background:rgba(245,158,11,0.1); border-radius:8px; text-align:center;">
-                    <div style="font-size:1.5rem; font-weight:600; color:#f59e0b;">${activeProducts.length}</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Productos</div>
-                </div>
-                <div style="padding:12px; background:rgba(59,130,246,0.1); border-radius:8px; text-align:center;">
-                    <div style="font-size:1.5rem; font-weight:600; color:#3b82f6;">${activeWorkLogs.length}</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Registros Laborales</div>
-                </div>
-                <div style="padding:12px; background:rgba(236,72,153,0.1); border-radius:8px; text-align:center;">
-                    <div style="font-size:1.5rem; font-weight:600; color:#ec4899;">${activePromotions.length}</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Promociones</div>
-                </div>
-            `;
-
-                    // Try to estimate storage size
-                    if ('storage' in navigator && 'estimate' in navigator.storage) {
-                        const estimate = await navigator.storage.estimate();
-                        const usedMB = (estimate.usage / (1024 * 1024)).toFixed(2);
-                        const quotaMB = (estimate.quota / (1024 * 1024)).toFixed(0);
-                        const percentUsed = ((estimate.usage / estimate.quota) * 100).toFixed(1);
-
-                        statsContainer.innerHTML += `
-                    <div style="grid-column: 1 / -1; padding:12px; background:rgba(139,92,246,0.1); border-radius:8px;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                            <span style="font-size:0.75rem; color:var(--text-muted);">Espacio usado</span>
-                            <span style="font-size:0.75rem; font-weight:600; color:#8b5cf6;">${usedMB} MB / ${quotaMB} MB</span>
-                        </div>
-                        <div style="width:100%; height:8px; background:rgba(0,0,0,0.1); border-radius:4px; overflow:hidden;">
-                            <div style="width:${percentUsed}%; height:100%; background:linear-gradient(90deg, #8b5cf6, #ec4899); transition: width 0.3s ease;"></div>
-                        </div>
-                    </div>
-                `;
-                    }
-
-                } catch (error) {
-                    statsContainer.innerHTML = '<p style="text-align:center; color:var(--danger);">Error al cargar estadísticas</p>';
-                    console.error('Storage stats error:', error);
-                }
-            }
-
-            // Load stats on view load
-            updateStorageStats();
-
-            // Refresh button
-            document.getElementById('btn-refresh-stats').addEventListener('click', () => {
-                updateStorageStats();
-            });
-
-            // Clear local button
-            document.getElementById('btn-clear-local').addEventListener('click', async () => {
-                if (!confirm('¿Borrar TODOS los datos locales y volver a sincronizar desde la nube?\n\nEsto puede tardar unos segundos.')) return;
-
-                try {
-                    const btn = document.getElementById('btn-clear-local');
-                    const original = btn.innerHTML;
-                    btn.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Limpiando...';
-                    btn.disabled = true;
-
-                    // Clear all tables
-                    await window.db.employees.clear();
-                    await window.db.workLogs.clear();
-                    await window.db.products.clear();
-                    await window.db.promotions.clear();
-
-                    // Trigger sync to re-download
-                    if (window.Sync && window.Sync.syncAll) {
-                        await window.Sync.syncAll();
-                    }
-
-                    alert('✅ Datos locales borrados. Recarga sincronizada desde la nube.');
-                    updateStorageStats();
-
-                    btn.innerHTML = original;
-                    btn.disabled = false;
-                } catch (error) {
-                    alert('Error: ' + error.message);
-                }
-            });
+            // (Duplicate code removed)
         } catch (criticalErr) { // Close the main TRY block
             console.error("Critical Error in Settings:", criticalErr);
             // Alert user but allow them to try navigation
