@@ -2,6 +2,7 @@
 window.Views = window.Views || {};
 
 window.Views.settings = async (container) => {
+    // 1. Render UI
     container.innerHTML = `
         <div class="stack-on-mobile" style="justify-content:space-between; align-items:center; margin-bottom:24px;">
             <div>
@@ -83,7 +84,7 @@ window.Views.settings = async (container) => {
                     </div>
                 </div>
 
-                <!-- STORAGE MONITOR --  >
+                <!-- STORAGE MONITOR -->
                 <div class="card" style="border: 1px solid var(--accent); background: linear-gradient(to bottom, rgba(99,102,241,0.05), transparent);">
                     <h3 style="margin-bottom:16px; display:flex; align-items:center; gap:8px; color:var(--text-primary);">
                         <i class="ph ph-database" style="color:var(--accent);"></i>
@@ -131,8 +132,7 @@ window.Views.settings = async (container) => {
             <div class="card">
                 <h3 style="margin-bottom:16px;">Acerca de la App</h3>
                 <div style="font-size:0.9rem; color:var(--text-muted); line-height:1.6;">
-                <div style="font-size:0.9rem; color:var(--text-muted); line-height:1.6;">
-                    <p><strong>El Maravilloso v1.67</strong></p>
+                    <p><strong>El Maravilloso v1.68</strong></p>
                     <p>App de Gestión Integral</p>
                     <hr style="margin:12px 0; border:none; border-top:1px solid var(--border);">
                     <p>Desarrollada para control de personal, inventario y marketing.</p>
@@ -142,179 +142,42 @@ window.Views.settings = async (container) => {
         </div>
     `;
 
-    // Handlers
+    // 2. Add Logic
     try {
-        // --- CLOUD LOGIC ---
+        // --- ELEMENTS ---
         const supaUrl = document.getElementById('supa-url');
         const supaKey = document.getElementById('supa-key');
         const btnConnect = document.getElementById('btn-connect-cloud');
-        const btnSync = document.getElementById('btn-sync-now'); // Defined here
-
-        // DEBUG: Verificar si el botón existe
-        if (!btnSync) alert("ERROR CRÍTICO: No se encuentra el botón de sincronizar");
-
+        const btnSync = document.getElementById('btn-sync-now');
         const cloudStatus = document.getElementById('cloud-status');
         const btnToggleKey = document.getElementById('btn-toggle-key');
         const btnGenQr = document.getElementById('btn-gen-qr');
         const qrContainer = document.getElementById('qr-container');
 
-        // FORCE ENABLE AGAIN
-        btnSync.disabled = false;
+        if (!btnSync) console.error("Critical: btnSync not found");
 
-        btnSync.addEventListener('click', async () => {
-            alert('¡Botón presionado! Intentando sincronizar...'); // DEBUG EXPLÍCITO
-            console.log("Botón Sincronizar presionado");
+        // Force enable Sync button
+        if (btnSync) btnSync.disabled = false;
 
-            // ... rest of the logic
+        // --- FUNCTIONS ---
+        const updateStatus = (msg, type = 'info') => {
+            if (!cloudStatus) return;
+            cloudStatus.style.display = 'block';
+            cloudStatus.innerHTML = msg;
+            cloudStatus.style.color = type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : 'var(--text-muted)');
+        };
 
+        const cleanUrl = (u) => {
+            u = u.trim();
+            if (!u) return '';
+            if (!u.startsWith('http')) u = 'https://' + u;
+            return u.replace(/\/$/, '');
+        };
 
-            // Load saved values
-            supaUrl.value = localStorage.getItem('supabase_url') || '';
-            supaKey.value = localStorage.getItem('supabase_key') || '';
-
-            // Check for PRO MODE (Hardcoded Config)
-            if (window.AppConfig && window.AppConfig.supabaseUrl) {
-                supaUrl.value = window.AppConfig.supabaseUrl;
-                supaKey.value = "**********************************"; // Masked key
-
-                supaUrl.disabled = true;
-                supaKey.disabled = true;
-                btnConnect.disabled = true;
-                btnToggleKey.disabled = true;
-                btnGenQr.style.display = 'none'; // No need for QR in Pro Mode
-
-                const proBadge = document.createElement('div');
-                proBadge.innerHTML = '<i class="ph ph-crown"></i> MODO PRO ACTIVO: Configuración Global 24/7';
-                proBadge.style.cssText = 'background: linear-gradient(135deg, #FFD700, #FFA500); color: black; padding: 10px; border-radius: 8px; font-weight: bold; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(255, 215, 0, 0.3);';
-
-                // Insert before the input group
-                supaUrl.closest('.form-group').parentNode.insertBefore(proBadge, supaUrl.closest('.form-group'));
-
-                // FIX: Habilitar botón de Sincronizar en Modo Pro
-                btnSync.disabled = false;
-
-                if (window.Sync && window.Sync.client) {
-                    updateStatus('<i class="ph ph-wifi-high"></i> Conectado (Pro Mode)', 'success');
-                } else {
-                    updateStatus('<i class="ph ph-warning"></i> Conectando...', 'warning');
-                }
-            }
-
-            const updateStatus = (msg, type = 'info') => {
-                cloudStatus.style.display = 'block';
-                cloudStatus.innerHTML = msg;
-                cloudStatus.style.color = type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : 'var(--text-muted)');
-            };
-
-            // Toggle Visibility
-            btnToggleKey.addEventListener('click', () => {
-                const type = supaKey.getAttribute('type') === 'password' ? 'text' : 'password';
-                supaKey.setAttribute('type', type);
-                btnToggleKey.innerHTML = type === 'text' ? '<i class="ph ph-eye-slash"></i>' : '<i class="ph ph-eye"></i>';
-            });
-
-            // Generate QR
-            btnGenQr.addEventListener('click', () => {
-                const url = supaUrl.value.trim();
-                const key = supaKey.value.trim();
-
-                if (!url || !key) {
-                    alert("Primero ingresa y guarda (Conectar) la URL y Key.");
-                    return;
-                }
-
-                qrContainer.style.display = 'block';
-                document.getElementById('qrcode').innerHTML = ""; // Clear prev
-
-                // Prefix to prevent iPhone from opening as URL
-                const qrData = "CONFIG:" + JSON.stringify({ u: url, k: key });
-
-                // Check if QRCode lib exists
-                if (typeof QRCode === 'undefined') {
-                    alert("Librería QR no cargada. Revisa tu conexión.");
-                    return;
-                }
-
-                new QRCode(document.getElementById('qrcode'), {
-                    text: qrData,
-                    width: 200,
-                    height: 200,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-            });
-
-            // ... (Verify connection on load code omitted intentionally if not changing) ...
-
-            const cleanUrl = (u) => {
-                u = u.trim();
-                // Return as is if it's empty to avoid adding https:// to nothing
-                if (!u) return '';
-                if (!u.startsWith('http')) u = 'https://' + u;
-                return u.replace(/\/$/, ''); // Remove trailing slash
-            };
-
-            const tryParsePaste = (text) => {
-                try {
-                    // Remove prefix if present
-                    if (text.startsWith("CONFIG:")) {
-                        text = text.substring(7);
-                    }
-
-                    const data = JSON.parse(text);
-                    if (data.u && data.k) {
-                        supaUrl.value = data.u;
-                        supaKey.value = data.k;
-                        updateStatus('<i class="ph ph-magic-wand"></i> Credenciales detectadas. Dale a Conectar.', 'success');
-                        return true;
-                    }
-                } catch (e) {
-                    return false;
-                }
-            };
-
-            // Smart Paste Listener
-            [supaUrl, supaKey].forEach(input => {
-                input.addEventListener('paste', (e) => {
-                    const text = (e.clipboardData || window.clipboardData).getData('text');
-                    if (tryParsePaste(text)) {
-                        e.preventDefault();
-                    }
-                });
-                // Also sanitize on blur
-                input.addEventListener('blur', () => {
-                    if (input === supaUrl && input.value) input.value = cleanUrl(input.value);
-                    input.value = input.value.trim();
-                });
-            });
-
-            btnConnect.addEventListener('click', async () => {
-                const url = cleanUrl(supaUrl.value);
-                const key = supaKey.value.trim();
-
-                if (!url || !key) {
-                    updateStatus('Por favor, ingresa URL y API Key.', 'error');
-                    return;
-                }
-
-                if (!url.includes('supabase.co')) {
-                    updateStatus('Advertencia: La URL no parece ser de Supabase.', 'error');
-                }
-
-                localStorage.setItem('supabase_url', url);
-                localStorage.setItem('supabase_key', key);
-
-                const result = await window.Sync.init();
-                if (result.success) {
-                    btnSync.disabled = false;
-                    updateStatus('<i class="ph ph-check-circle"></i> Conectado con éxito a Supabase.', 'success');
-                } else {
-                    updateStatus('Error: ' + result.error, 'error');
-                }
-            });
-
+        // --- SYNC HANDLERS ---
+        if (btnSync) {
             btnSync.addEventListener('click', async () => {
+                alert('¡Botón presionado! Intentando sincronizar...');
                 console.log("Botón Sincronizar presionado");
                 btnSync.disabled = true;
                 const original = btnSync.innerHTML;
@@ -328,160 +191,208 @@ window.Views.settings = async (container) => {
                         window.location.reload();
                     } else {
                         updateStatus('Fallo: ' + result.error, 'error');
+                        alert('Error Sync: ' + result.error);
                     }
                 } catch (e) {
                     updateStatus('Error inesperado: ' + e.message, 'error');
+                    alert('Excepción Sync: ' + e.message);
                 } finally {
                     btnSync.disabled = false;
                     btnSync.innerHTML = original;
                 }
             });
-
-            // --- STORAGE MONITOR ---
-            const refreshStats = async () => {
-                const statsContainer = document.getElementById('storage-stats');
-                if (!statsContainer) return;
-
-                statsContainer.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:var(--text-muted);">Cargando...</div>';
-
-                try {
-                    const counts = {
-                        employees: await window.db.employees.count(),
-                        workLogs: await window.db.workLogs.count(),
-                        products: await window.db.products.count(),
-                        promotions: await window.db.promotions.count()
-                    };
-
-                    const total = Object.values(counts).reduce((a, b) => a + b, 0);
-
-                    // Estimate storage (rough calculation: ~1KB per record average)
-                    const estimatedKB = total;
-                    const estimatedMB = (estimatedKB / 1024).toFixed(2);
-
-                    statsContainer.innerHTML = `
-                <div style="padding:12px; background:white; border-radius:8px; border:1px solid var(--border);">
-                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Empleados</div>
-                    <div style="font-size:1.3rem; font-weight:bold; color:var(--primary);">${counts.employees}</div>
-                </div>
-                <div style="padding:12px; background:white; border-radius:8px; border:1px solid var(--border);">
-                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Jornadas</div>
-                    <div style="font-size:1.3rem; font-weight:bold; color:var(--accent);">${counts.workLogs}</div>
-                </div>
-                <div style="padding:12px; background:white; border-radius:8px; border:1px solid var(--border);">
-                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Productos</div>
-                    <div style="font-size:1.3rem; font-weight:bold; color:var(--success);">${counts.products}</div>
-                </div>
-                <div style="padding:12px; background:white; border-radius:8px; border:1px solid var(--border);">
-                    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Campañas</div>
-                    <div style="font-size:1.3rem; font-weight:bold; color:var(--warning);">${counts.promotions}</div>
-                </div>
-                <div style="padding:12px; background:linear-gradient(135deg, var(--primary), var(--accent)); border-radius:8px; color:white; grid-column:span 2;">
-                    <div style="font-size:0.75rem; opacity:0.9; text-transform:uppercase; margin-bottom:4px;">Total Records</div>
-                    <div style="font-size:1.5rem; font-weight:bold;">${total}</div>
-                    <div style="font-size:0.7rem; opacity:0.8; margin-top:2px;">~${estimatedMB} MB estimado</div>
-                </div>
-            `;
-                } catch (err) {
-                    statsContainer.innerHTML = `<div style="grid-column: 1/-1; color:var(--danger);">Error: ${err.message}</div>`;
-                }
-            };
-
-            // Initial load
-            refreshStats();
-
-            // Refresh button
-            document.getElementById('btn-refresh-stats').addEventListener('click', refreshStats);
-
-            // Clear local button
-            document.getElementById('btn-clear-local').addEventListener('click', async () => {
-                if (!confirm('Esto borrará todos los datos locales y los volverá a descargar desde la nube. ¿Continuar?')) return;
-
-                const btn = document.getElementById('btn-clear-local');
-                const original = btn.innerHTML;
-                btn.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Limpiando...';
-                btn.disabled = true;
-
-                try {
-                    // Clear all local tables
-                    const tables = ['employees', 'workLogs', 'products', 'promotions'];
-                    for (const table of tables) {
-                        await window.db[table].clear();
-                    }
-
-                    // Re-sync from cloud
-                    if (window.Sync.client) {
-                        await window.Sync.syncAll();
-                    }
-
-                    alert('¡Datos locales limpiados y re-sincronizados desde la nube!');
-                    refreshStats();
-                } catch (err) {
-                    alert('Error: ' + err.message);
-                } finally {
-                    btn.innerHTML = original;
-                    btn.disabled = false;
-                }
-            });
-
-            // --- NUKE ALL ACTION ---
-            document.getElementById('btn-nuke-all').addEventListener('click', async () => {
-                const pass = prompt('Esto borrará TODO en este equipo y en la NUBE. Escribe "BORRAR" para confirmar:');
-                if (pass !== 'BORRAR') return;
-
-                if (!confirm('¿ESTÁS COMPLETAMENTE SEGURO? Esta acción no se puede deshacer.')) return;
-
-                const btn = document.getElementById('btn-nuke-all');
-                const original = btn.innerHTML;
-                btn.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> BORRANDO TODO...';
-                btn.disabled = true;
-
-                try {
-                    // 1. Nuke Cloud (si está conectado)
-                    if (window.Sync.client) {
-                        await window.Sync.nukeCloud();
-                    }
-
-                    // 2. Clear Local DB
-                    const tables = ['employees', 'workLogs', 'products', 'promotions', 'settings'];
-                    for (const table of tables) {
-                        await window.db[table].clear();
-                    }
-
-                    // 3. Set flag to prevent auto-seeding
-                    localStorage.setItem('wm_skip_seed', 'true');
-
-                    alert('¡Base de datos limpia! La app se reiniciará.');
-                    window.location.reload();
-                } catch (e) {
-                    alert('Error al borrar: ' + e.message);
-                } finally {
-                    btn.innerHTML = original;
-                    btn.disabled = false;
-                }
-            });
-
-            document.getElementById('import-db-input').addEventListener('change', async (e) => {
-                if (!e.target.files.length) return;
-
-                try {
-                    const success = await window.Utils.importDatabase(e.target.files[0]);
-                    if (success) {
-                        alert('¡Datos restaurados con éxito! La aplicación se reiniciará.');
-                        window.location.reload();
-                    }
-                } catch (err) {
-                    alert('Error al importar: ' + err.message);
-                } finally {
-                    e.target.value = ''; // Reset input
-                }
-            });
-
-            // (Duplicate code removed)
-        } catch (criticalErr) { // Close the main TRY block
-            console.error("Critical Error in Settings:", criticalErr);
-            // Alert user but allow them to try navigation
-            // alert("Error cargando pantalla: " + criticalErr.message);
-            container.innerHTML += `<div style="color:red; padding:10px;">Error: ${criticalErr.message}</div>`;
         }
-    };
 
+        // --- CONNECT HANDLER ---
+        if (btnConnect) {
+            btnConnect.addEventListener('click', async () => {
+                const url = cleanUrl(supaUrl.value);
+                const key = supaKey.value.trim();
+
+                if (!url || !key) {
+                    updateStatus('Por favor, ingresa URL y API Key.', 'error');
+                    return;
+                }
+
+                localStorage.setItem('supabase_url', url);
+                localStorage.setItem('supabase_key', key);
+
+                const result = await window.Sync.init();
+                if (result.success) {
+                    btnSync.disabled = false;
+                    updateStatus('<i class="ph ph-check-circle"></i> Conectado con éxito.', 'success');
+                } else {
+                    updateStatus('Error: ' + result.error, 'error');
+                }
+            });
+        }
+
+        // --- PASSWORD TOGGLE ---
+        if (btnToggleKey) {
+            btnToggleKey.addEventListener('click', () => {
+                const type = supaKey.getAttribute('type') === 'password' ? 'text' : 'password';
+                supaKey.setAttribute('type', type);
+                btnToggleKey.innerHTML = type === 'text' ? '<i class="ph ph-eye-slash"></i>' : '<i class="ph ph-eye"></i>';
+            });
+        }
+
+        // --- QR CODE GENERATION ---
+        if (btnGenQr) {
+            btnGenQr.addEventListener('click', () => {
+                const url = supaUrl.value.trim();
+                const key = supaKey.value.trim();
+
+                if (!url || !key) {
+                    alert("Primero ingresa y guarda (Conectar) la URL y Key.");
+                    return;
+                }
+
+                if (typeof QRCode === 'undefined') {
+                    alert("Librería QR no cargada. Revisa tu conexión.");
+                    return;
+                }
+
+                qrContainer.style.display = 'block';
+                document.getElementById('qrcode').innerHTML = "";
+                const qrData = "CONFIG:" + JSON.stringify({ u: url, k: key });
+
+                new QRCode(document.getElementById('qrcode'), {
+                    text: qrData,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            });
+        }
+
+        // --- BACKUP / EXPORT ---
+        document.getElementById('btn-export-db').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-export-db');
+            const original = btn.innerHTML;
+            btn.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Generando...';
+            try {
+                if (window.Utils && window.Utils.exportDatabase) {
+                    await window.Utils.exportDatabase();
+                } else {
+                    alert("Error: Utils no cargado");
+                }
+            } catch (e) {
+                alert('Error al exportar: ' + e.message);
+            } finally {
+                btn.innerHTML = original;
+            }
+        });
+
+        document.getElementById('import-db-input').addEventListener('change', async (e) => {
+            if (!e.target.files.length) return;
+            try {
+                const success = await window.Utils.importDatabase(e.target.files[0]);
+                if (success) {
+                    alert('¡Datos restaurados! La aplicación se reiniciará.');
+                    window.location.reload();
+                }
+            } catch (err) {
+                alert('Error al importar: ' + err.message);
+            } finally {
+                e.target.value = '';
+            }
+        });
+
+        // --- NUKE ALL ---
+        document.getElementById('btn-nuke-all').addEventListener('click', async () => {
+            const pass = prompt('Escribe "BORRAR" para confirmar borrado total:');
+            if (pass !== 'BORRAR') return;
+
+            const btn = document.getElementById('btn-nuke-all');
+            btn.innerHTML = 'Borrando...';
+            btn.disabled = true;
+
+            try {
+                if (window.Sync.client) await window.Sync.nukeCloud();
+
+                await window.db.employees.clear();
+                await window.db.workLogs.clear();
+                await window.db.products.clear();
+                await window.db.promotions.clear();
+                await window.db.settings.clear();
+
+                localStorage.setItem('wm_skip_seed', 'true');
+                alert('¡App reiniciada de cero!');
+                window.location.reload();
+            } catch (e) {
+                alert('Error: ' + e.message);
+                btn.disabled = false;
+            }
+        });
+
+        // --- INIT STATE ---
+        // Load saved values
+        supaUrl.value = localStorage.getItem('supabase_url') || '';
+        supaKey.value = localStorage.getItem('supabase_key') || '';
+
+        // PRO MODE OVERRIDE
+        if (window.AppConfig && window.AppConfig.supabaseUrl) {
+            supaUrl.value = window.AppConfig.supabaseUrl;
+            supaKey.value = "**********************************";
+            supaUrl.disabled = true;
+            supaKey.disabled = true;
+            if (btnConnect) btnConnect.disabled = true;
+            if (btnToggleKey) btnToggleKey.disabled = true;
+            if (btnGenQr) btnGenQr.style.display = 'none';
+
+            const proBadge = document.createElement('div');
+            proBadge.innerHTML = '<i class="ph ph-crown"></i> MODO PRO ACTIVO';
+            proBadge.style.cssText = 'background:#FFD700; color:black; padding:10px; border-radius:8px; font-weight:bold; text-align:center; margin-bottom:15px;';
+            const grp = supaUrl.closest('.form-group');
+            if (grp) grp.parentNode.insertBefore(proBadge, grp);
+
+            if (window.Sync && window.Sync.client) {
+                updateStatus('<i class="ph ph-wifi-high"></i> Conectado (Pro Mode)', 'success');
+            } else {
+                updateStatus('<i class="ph ph-warning"></i> Conectando...', 'warning');
+            }
+        }
+
+        // --- STORAGE STATS ---
+        const updateStorageStats = async () => {
+            const statsContainer = document.getElementById('storage-stats');
+            if (!statsContainer) return;
+            statsContainer.innerHTML = 'Cargando...';
+
+            try {
+                const employees = await window.db.employees.count();
+                const logs = await window.db.workLogs.count();
+                const products = await window.db.products.count();
+                const total = employees + logs + products;
+
+                statsContainer.innerHTML = `
+                    <div style="padding:10px; background:#f0f9ff; border-radius:8px; text-align:center;">
+                        <h2>${total}</h2>
+                        <span style="font-size:0.8rem; color:#666;">Total Registros</span>
+                    </div>
+                `;
+            } catch (e) {
+                statsContainer.innerHTML = 'Error stats';
+            }
+        };
+
+        updateStorageStats();
+        document.getElementById('btn-refresh-stats').addEventListener('click', updateStorageStats);
+
+        document.getElementById('btn-clear-local').addEventListener('click', async () => {
+            if (!confirm("¿Borrar datos locales?")) return;
+            await window.db.employees.clear();
+            await window.db.workLogs.clear();
+            await window.db.products.clear();
+            await window.db.promotions.clear();
+            alert("Datos locales borrados.");
+            updateStorageStats();
+        });
+
+    } catch (err) {
+        console.error("Critical Settings Error:", err);
+        container.innerHTML += `<div style="padding:20px; color:red;">Error cargando scripts de ajustes: ${err.message}</div>`;
+    }
+};
