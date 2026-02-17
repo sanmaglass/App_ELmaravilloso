@@ -174,7 +174,7 @@ function showSupplierModal(supplierToEdit = null) {
                 }
             } else {
                 const newSup = {
-                    id: Date.now(),
+                    id: Date.now() + Math.floor(Math.random() * 1000),
                     name,
                     contact,
                     deleted: false

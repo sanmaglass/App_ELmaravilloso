@@ -115,9 +115,8 @@ window.Sync = {
                 if (error) throw error;
 
                 // Filter out deleted records from cloud data (except settings table)
-                const activeCloudData = (cloudData && localName !== 'settings')
-                    ? cloudData.filter(item => !item.deleted)
-                    : cloudData;
+                // FIXED: We MUST download delete records too, otherwise local DB keeps them as active!
+                const activeCloudData = cloudData;
 
                 // 3. Put into Dexie (sobrescribe si existe el ID, añade si no)
                 if (activeCloudData && activeCloudData.length > 0) {

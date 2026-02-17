@@ -2,18 +2,18 @@
 
 const db = new Dexie('WorkMasterDB');
 
-// Version 9: Add Daily Sales (Cierre Diario)
-db.version(9).stores({
-    employees: 'id, name, email, role, hourlyRate, dailyRate, deleted',
-    workLogs: 'id, employeeId, date, status, deleted',
+// Version 10: Fix suppliers schema (remove indexed fields, use only id)
+db.version(10).stores({
+    employees: 'id',
+    workLogs: 'id',
     settings: 'key',
-    products: 'id, name, category, buyPrice, salePrice, expiryDate, stock, deleted',
-    promotions: 'id, title, text, isActive, deleted',
-    suppliers: 'id, name, contact, deleted',
-    purchase_invoices: 'id, supplierId, invoiceNumber, date, paymentStatus, period, deleted',
-    sales_invoices: 'id, invoiceNumber, clientName, date, paymentStatus, deleted',
-    expenses: 'id, title, category, date, deleted',
-    daily_sales: 'id, date, deleted'
+    products: 'id',
+    promotions: 'id',
+    suppliers: 'id',
+    purchase_invoices: 'id',
+    sales_invoices: 'id',
+    expenses: 'id',
+    daily_sales: 'id'
 });
 
 // Initial check and auto-migration fix

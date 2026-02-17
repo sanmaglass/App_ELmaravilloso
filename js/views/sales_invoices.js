@@ -262,6 +262,18 @@ async function showSaleModal() {
             return;
         }
 
+        // ✅ DUPLICATE CHECK: Verify invoice number doesn't already exist
+        const allSales = await window.db.sales_invoices.toArray();
+        const activeSales = allSales.filter(s => !s.deleted);
+        const duplicateExists = activeSales.some(sale =>
+            sale.invoiceNumber.toString() === nextNum.toString()
+        );
+
+        if (duplicateExists) {
+            alert(`❌ Ya existe una factura de venta con el número "${nextNum}".\n\nEsto no debería pasar (error en auto-numeración). Contacta soporte.`);
+            return;
+        }
+
         try {
             const saleData = {
                 id: Date.now(),

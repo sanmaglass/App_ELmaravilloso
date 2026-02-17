@@ -15,6 +15,16 @@ window.Views.purchase_invoices = async (container) => {
             </button>
         </div>
 
+        <!-- 📊 ANALYTICS PANEL -->
+        <div id="invoice-analytics" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;">
+            <!-- Stats cards will be injected here -->
+        </div>
+
+        <!-- 🚨 PENDING DOCUMENTS ALERT PANEL -->
+        <div id="pending-docs-alert" style="margin-bottom:20px;">
+            <!-- Alert cards will be injected here -->
+        </div>
+
         <!-- Filters -->
         <div style="display:grid; grid-template-columns: 1fr auto auto auto; gap:12px; margin-bottom:24px; align-items:center;">
              <div style="position:relative;">
@@ -55,6 +65,7 @@ window.Views.purchase_invoices = async (container) => {
 
     // Initialize component
     await initDateFilter();
+    await renderAnalytics();
     renderInvoices();
 
     // Events
@@ -106,6 +117,173 @@ async function initDateFilter() {
         }
 
     } catch (e) { console.error("Error init date filter", e); }
+}
+
+// --- ANALYTICS PANEL ---
+async function renderAnalytics() {
+    const panel = document.getElementById('invoice-analytics');
+    if (!panel) return;
+
+    try {
+        const invoices = await window.db.purchase_invoices.toArray();
+        const active = invoices.filter(i => !i.deleted);
+
+        const now = new Date();
+        const currentMonth = now.toISOString().substring(0, 7); // YYYY-MM
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().substring(0, 7);
+        const currentYear = now.getFullYear().toString();
+
+        // Filter by periods
+        const thisMonth = active.filter(i => i.date && i.date.startsWith(currentMonth));
+        const prevMonth = active.filter(i => i.date && i.date.startsWith(lastMonth));
+        const thisYear = active.filter(i => i.date && i.date.startsWith(currentYear));
+
+        // Calculate metrics
+        const monthCount = thisMonth.length;
+        const monthTotal = thisMonth.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+        const monthPending = thisMonth.filter(i => i.paymentStatus === 'Pendiente');
+        const monthPendingAmount = monthPending.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+
+        const yearTotal = thisYear.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+        const avgPerInvoice = monthCount > 0 ? monthTotal / monthCount : 0;
+
+        // Comparison with last month
+        const prevMonthCount = prevMonth.length;
+        const countDiff = monthCount - prevMonthCount;
+        const countDiffPercent = prevMonthCount > 0 ? ((countDiff / prevMonthCount) * 100).toFixed(0) : 0;
+        const trendIcon = countDiff > 0 ? '📈' : countDiff < 0 ? '📉' : '➡️';
+        const trendColor = countDiff > 0 ? '#f59e0b' : countDiff < 0 ? '#10b981' : '#6b7280';
+
+        panel.innerHTML = `
+            <div class="card" style="padding:16px; border-left:4px solid var(--primary);">
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Facturas del Mes</div>
+                <div style="font-size:1.8rem; font-weight:700; color:var(--primary);">${monthCount}</div>
+                <div style="font-size:0.75rem; color:${trendColor}; margin-top:4px;">
+                    ${trendIcon} ${countDiff > 0 ? '+' : ''}${countDiff} vs mes anterior
+                </div>
+            </div>
+
+            <div class="card" style="padding:16px; border-left:4px solid #10b981;">
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Total del Mes</div>
+                <div style="font-size:1.5rem; font-weight:700; color:#10b981;">${formatCurrency(monthTotal)}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+                    Promedio: ${formatCurrency(avgPerInvoice)}
+                </div>
+            </div>
+
+            <div class="card" style="padding:16px; border-left:4px solid #f59e0b;">
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Pendientes de Pago</div>
+                <div style="font-size:1.5rem; font-weight:700; color:#f59e0b;">${monthPending.length}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+                    ${formatCurrency(monthPendingAmount)}
+                </div>
+            </div>
+
+            <div class="card" style="padding:16px; border-left:4px solid #6366f1;">
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Total Año ${currentYear}</div>
+                <div style="font-size:1.5rem; font-weight:700; color:#6366f1;">${formatCurrency(yearTotal)}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+                    ${thisYear.length} facturas
+                </div>
+            </div>
+        `;
+
+    } catch (e) {
+        console.error("Error rendering analytics:", e);
+        panel.innerHTML = `<div style="color:var(--error); padding:12px;">Error cargando estadísticas</div>`;
+    }
+}
+
+// --- PENDING DOCUMENTS ALERT PANEL ---
+async function renderPendingDocuments() {
+    const panel = document.getElementById('pending-docs-alert');
+    if (!panel) return;
+
+    try {
+        const invoices = await window.db.purchase_invoices.toArray();
+        const suppliers = await window.db.suppliers.toArray();
+
+        const supplierMap = {};
+        suppliers.forEach(s => supplierMap[s.id] = s.name);
+
+        // Filter: Active invoices where documentReceived is false or undefined
+        const pending = invoices.filter(i =>
+            !i.deleted &&
+            !i.documentReceived &&
+            i.date // Has a date (not corrupted)
+        );
+
+        if (pending.length === 0) {
+            panel.innerHTML = ''; // No alerts
+            return;
+        }
+
+        // Sort by date (oldest first)
+        pending.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Calculate days since invoice date
+        const getDaysAgo = (dateStr) => {
+            const invoiceDate = new Date(dateStr);
+            const today = new Date();
+            const diff = Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24));
+            return diff;
+        };
+
+        panel.innerHTML = `
+            <div style="background:#fee2e2; border:2px solid #dc2626; border-radius:12px; padding:16px;">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                    <i class="ph ph-warning-circle" style="font-size:2rem; color:#dc2626;"></i>
+                    <div>
+                        <h3 style="margin:0; color:#7f1d1d; font-size:1.1rem;">🚨 Facturas Sin Recibir (${pending.length})</h3>
+                        <p style="margin:4px 0 0 0; font-size:0.85rem; color:#991b1b;">Estas facturas fueron registradas pero aún no has recibido el documento físico/digital del proveedor.</p>
+                    </div>
+                </div>
+                <div style="display:grid; gap:8px; max-height:300px; overflow-y:auto;">
+                    ${pending.map(inv => {
+            const supplierName = supplierMap[inv.supplierId] || 'Proveedor Desconocido';
+            const daysAgo = getDaysAgo(inv.date);
+            const urgency = daysAgo > 30 ? '🔴 MUY URGENTE' : daysAgo > 15 ? '🟠 URGENTE' : '🟡';
+            const urgencyColor = daysAgo > 30 ? '#7f1d1d' : daysAgo > 15 ? '#c2410c' : '#ca8a04';
+
+            return `
+                            <div style="background:white; border-left:4px solid ${urgencyColor}; padding:12px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <div style="font-weight:600; color:#1f2937;">${supplierName}</div>
+                                    <div style="font-size:0.8rem; color:#6b7280; margin-top:2px;">
+                                        Factura #${inv.invoiceNumber} • ${formatDate(inv.date)} 
+                                        <span style="color:${urgencyColor}; font-weight:600; margin-left:8px;">${urgency} (${daysAgo} días)</span>
+                                    </div>
+                                    <div style="font-size:0.85rem; color:#059669; margin-top:4px;">Monto: ${formatCurrency(inv.amount)}</div>
+                                </div>
+                                <button class="btn btn-secondary btn-mark-received" data-id="${inv.id}" style="font-size:0.8rem; white-space:nowrap;">
+                                    ✅ Marcar Recibida
+                                </button>
+                            </div>
+                        `;
+        }).join('')}
+                </div>
+            </div>
+        `;
+
+        // Attach "Mark Received" button events
+        document.querySelectorAll('.btn-mark-received').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = Number(e.currentTarget.dataset.id);
+                try {
+                    await window.db.purchase_invoices.update(id, { documentReceived: true });
+                    if (window.Sync?.client) {
+                        await window.Sync.client.from('purchase_invoices').update({ documentReceived: true }).eq('id', id);
+                    }
+                    renderPendingDocuments(); // Refresh panel
+                } catch (err) {
+                    alert('Error: ' + err.message);
+                }
+            });
+        });
+
+    } catch (e) {
+        console.error("Error rendering pending documents:", e);
+    }
 }
 
 // --- RENDER LOGIC ---
@@ -388,6 +566,14 @@ async function showInvoiceModal(invoiceToEdit = null) {
                         <textarea id="inv-notes" class="form-input" style="height:60px;">${isEdit && invoiceToEdit.notes ? invoiceToEdit.notes : ''}</textarea>
                     </div>
 
+                    <div class="form-group" style="grid-column:1/-1; background:rgba(0,0,0,0.02); padding:12px; border-radius:8px;">
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:500;">
+                            <input type="checkbox" id="inv-doc-received" ${isEdit && invoiceToEdit.documentReceived ? 'checked' : ''}>
+                            <span>✅ Ya recibí el documento físico/digital de esta factura</span>
+                        </label>
+                        <p style="font-size:0.75rem; color:var(--text-muted); margin:8px 0 0 28px;">Si no lo marcas, aparecerá en las alertas como pendiente de recibir.</p>
+                    </div>
+
                 </form>
             </div>
             <div class="modal-footer">
@@ -443,6 +629,21 @@ async function showInvoiceModal(invoiceToEdit = null) {
         const paymentMethod = document.getElementById('inv-method').value;
         const paymentStatus = document.getElementById('inv-status').value;
         const notes = document.getElementById('inv-notes').value.trim();
+        const documentReceived = document.getElementById('inv-doc-received').checked;
+
+        // ✅ DUPLICATE CHECK: Verify invoice number doesn't already exist
+        if (!isEdit) {
+            const allInvoices = await window.db.purchase_invoices.toArray();
+            const activeInvoices = allInvoices.filter(i => !i.deleted);
+            const duplicateExists = activeInvoices.some(inv =>
+                inv.invoiceNumber.toLowerCase() === invoiceNumber.toLowerCase()
+            );
+
+            if (duplicateExists) {
+                alert(`❌ Ya existe una factura con el número "${invoiceNumber}".\n\nPor favor usa un número diferente.`);
+                return;
+            }
+        }
 
         try {
             const invoiceData = {
@@ -454,6 +655,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
                 paymentMethod,
                 paymentStatus,
                 notes,
+                documentReceived,
                 deleted: false
             };
 
