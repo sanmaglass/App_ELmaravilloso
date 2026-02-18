@@ -241,8 +241,9 @@ function showDailySaleModal(saleToEdit = null) {
         }
 
         try {
-            // Check for duplicate date? (Optional, maybe warn but allow override)
-            const existing = await window.db.daily_sales.where('date').equals(date).first();
+            // Check for duplicate date (filter in memory, no index needed)
+            const allSales = await window.db.daily_sales.toArray();
+            const existing = allSales.find(s => s.date === date && !s.deleted);
             if (existing && !existing.deleted && (!isEdit || existing.id !== saleToEdit.id)) {
                 if (!confirm(`Ya existe un cierre para la fecha ${date}. ¿Deseas guardar otro registro para este día?`)) {
                     return;
