@@ -32,7 +32,7 @@ window.Views.suppliers = async (container) => {
         </div>
     `;
 
-    // Auto-seed if empty
+    // Auto-seed if empty (protected by localStorage flag)
     await seedSuppliersIfNeeded();
 
     renderSuppliers();
@@ -195,43 +195,67 @@ function showSupplierModal(supplierToEdit = null) {
 async function seedSuppliersIfNeeded() {
     try {
         const count = await window.db.suppliers.count();
-        if (count === 0) {
-            console.log("Seeding normalized suppliers...");
-            const initialSuppliers = [
-                "Distribuidora Kiwan",
-                "El Mesón Mayorista",
-                "BioÑuble",
-                "Minuto Verde",
-                "Coca Cola",
-                "Comercial CCU",
-                "Soprole",
-                "Comercial Río Maullin",
-                "Doña María",
-                "Central Mayorista",
-                "ICB",
-                "La Veneciana",
-                "Nestlé Chile S.A",
-                "Distribuidora AEDOS",
-                "ARCOR",
-                "RAFUÑCO",
-                "XFood Spa"
-            ];
 
-            const batch = initialSuppliers.map((name, index) => ({
-                id: Date.now() + index, // Unique IDs
-                name: name,
-                contact: "",
-                deleted: false
-            }));
+        // Si hay datos locales, no hacer nada
+        if (count > 0) return;
 
-            await window.db.suppliers.bulkAdd(batch);
+        // Si hay conexión a Supabase, intentar cargar desde la nube primero
+        if (window.Sync?.client) {
+            console.log("[Suppliers] Intentando cargar desde Supabase...");
+            const { data, error } = await window.Sync.client
+                .from('suppliers')
+                .select('*')
+                .eq('deleted', false);
 
-            // Cloud Sync logic would go here if needed, but usually we sync local changes up
-            if (window.Sync?.client) {
-                // Check if cloud is empty too before pushing everything? 
-                // For now, let's just seed locally.
+            if (!error && data && data.length > 0) {
+                console.log(`[Suppliers] Restaurando ${data.length} proveedores desde la nube.`);
+                await window.db.suppliers.bulkPut(data);
+                return; // Datos restaurados desde la nube, no sembrar datos de fábrica
             }
         }
+
+        // Solo sembrar datos iniciales si NUNCA se ha hecho antes
+        // (protegido por bandera en localStorage para evitar re-siembra accidental)
+        const alreadySeeded = localStorage.getItem('wm_suppliers_seeded') === 'true';
+        if (alreadySeeded) {
+            console.log("[Suppliers] Ya se sembró antes. No se insertan datos de fábrica.");
+            return;
+        }
+
+        console.log("[Suppliers] Primera vez: sembrando proveedores iniciales...");
+        const initialSuppliers = [
+            "Distribuidora Kiwan",
+            "El Mesón Mayorista",
+            "BioÑuble",
+            "Minuto Verde",
+            "Coca Cola",
+            "Comercial CCU",
+            "Soprole",
+            "Comercial Río Maullin",
+            "Doña María",
+            "Central Mayorista",
+            "ICB",
+            "La Veneciana",
+            "Nestlé Chile S.A",
+            "Distribuidora AEDOS",
+            "ARCOR",
+            "RAFUÑCO",
+            "XFood Spa"
+        ];
+
+        const batch = initialSuppliers.map((name, index) => ({
+            id: Date.now() + index,
+            name: name,
+            contact: "",
+            deleted: false
+        }));
+
+        await window.db.suppliers.bulkAdd(batch);
+
+        // Marcar que ya se sembró para no volver a hacerlo nunca
+        localStorage.setItem('wm_suppliers_seeded', 'true');
+        console.log("[Suppliers] Siembra inicial completada y protegida.");
+
     } catch (e) {
         console.error("Error seeding suppliers:", e);
     }

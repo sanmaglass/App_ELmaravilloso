@@ -30,9 +30,11 @@ async function seedDatabase() {
     // return; 
 
     // --- SEED SUPPLIERS (Critical for App Functionality) ---
+    // Protegido por bandera localStorage: solo siembra la primera vez
+    const alreadySeeded = localStorage.getItem('wm_suppliers_seeded') === 'true';
     const supCount = await db.suppliers.count();
-    if (supCount === 0) {
-        console.log("Seeding initial suppliers...");
+    if (supCount === 0 && !alreadySeeded) {
+        console.log("[DB] Seeding initial suppliers (first time only)...");
         const initialSuppliers = [
             "Distribuidora Kiwan", "El Mesón Mayorista", "BioÑuble", "Minuto Verde",
             "Coca Cola", "Comercial CCU", "Soprole", "Comercial Río Maullin",
@@ -47,6 +49,12 @@ async function seedDatabase() {
             deleted: false
         }));
         await db.suppliers.bulkAdd(batch);
+        localStorage.setItem('wm_suppliers_seeded', 'true');
+        console.log("[DB] Suppliers seeded and protected.");
+    } else if (supCount > 0 && !alreadySeeded) {
+        // Ya hay datos pero no tenía la bandera: marcarla ahora para proteger
+        localStorage.setItem('wm_suppliers_seeded', 'true');
+        console.log("[DB] Suppliers ya existían. Bandera de protección activada.");
     }
 
 

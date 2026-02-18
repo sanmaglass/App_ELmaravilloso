@@ -1,5 +1,5 @@
 // Service Worker for PWA - Enhanced Version
-const CACHE_NAME = 'el-maravilloso-v2.69-final-fix'; // Increment version for updates
+const CACHE_NAME = 'el-maravilloso-v2.72-supplier-fix'; // Increment version for updates
 const urlsToCache = [
     './index.html',
     './css/style.css',
@@ -14,11 +14,17 @@ const urlsToCache = [
     './js/views/calculator.js',
     './js/views/calendar.js',
     './js/views/dashboard.js',
+    './js/views/daily_sales.js',
     './js/views/employees.js',
+    './js/views/expenses.js',
     './js/views/marketing.js',
     './js/views/payments.js',
+    './js/views/purchase_invoices.js',
+    './js/views/reports.js',
+    './js/views/sales_invoices.js',
     './js/views/security.js',
     './js/views/settings.js',
+    './js/views/suppliers.js',
     // Assets
     './assets/logo.png',
     './manifest.json'
