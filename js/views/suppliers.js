@@ -199,29 +199,38 @@ async function seedSuppliersIfNeeded() {
         // Si hay datos locales, no hacer nada
         if (count > 0) return;
 
-        // Si hay conexión a Supabase, intentar cargar desde la nube primero
+        // SIEMPRE intentar cargar desde Supabase primero (incluye deleted para no perder historial)
         if (window.Sync?.client) {
-            console.log("[Suppliers] Intentando cargar desde Supabase...");
+            console.log("[Suppliers] Base local vacía. Intentando restaurar desde Supabase...");
             const { data, error } = await window.Sync.client
                 .from('suppliers')
-                .select('*')
-                .eq('deleted', false);
+                .select('*');
 
             if (!error && data && data.length > 0) {
                 console.log(`[Suppliers] Restaurando ${data.length} proveedores desde la nube.`);
                 await window.db.suppliers.bulkPut(data);
-                return; // Datos restaurados desde la nube, no sembrar datos de fábrica
+                // Activar bandera para que no se intente sembrar datos de fábrica en el futuro
+                localStorage.setItem('wm_suppliers_seeded', 'true');
+                return; // Datos restaurados desde la nube, NO sembrar datos de fábrica
+            }
+
+            // La nube está vacía también — no sembrar datos de fábrica para evitar duplicados futuros
+            // Solo sembrar si NUNCA se ha usado esta app antes (flag no existe)
+            const alreadySeeded = localStorage.getItem('wm_suppliers_seeded') === 'true';
+            if (alreadySeeded) {
+                console.log("[Suppliers] Ya se sembró antes pero la nube está vacía. No reinsertar.");
+                return;
+            }
+        } else {
+            // Sin Supabase: verificar flag antes de sembrar
+            const alreadySeeded = localStorage.getItem('wm_suppliers_seeded') === 'true';
+            if (alreadySeeded) {
+                console.log("[Suppliers] Ya se sembró antes. No se insertan datos de fábrica.");
+                return;
             }
         }
 
-        // Solo sembrar datos iniciales si NUNCA se ha hecho antes
-        // (protegido por bandera en localStorage para evitar re-siembra accidental)
-        const alreadySeeded = localStorage.getItem('wm_suppliers_seeded') === 'true';
-        if (alreadySeeded) {
-            console.log("[Suppliers] Ya se sembró antes. No se insertan datos de fábrica.");
-            return;
-        }
-
+        // Solo llega aquí si: local vacío + nube vacía o sin conexión + nunca se sembró
         console.log("[Suppliers] Primera vez: sembrando proveedores iniciales...");
         const initialSuppliers = [
             "Distribuidora Kiwan",
