@@ -1,10 +1,38 @@
 -- ============================================================
 -- LIMPIEZA DE PROVEEDORES DUPLICADOS EN SUPABASE
 -- Ejecutar en: Supabase > SQL Editor
--- Efecto: elimina filas duplicadas (mismo nombre), 
---         conservando SIEMPRE el registro con ID más bajo (el original).
--- Las facturas de compra NO se ven afectadas porque apuntan al ID original.
 -- ============================================================
+
+-- ============================================================
+-- PASO 0: LIMPIEZA + PROTECCIÓN PERMANENTE (SOLUCIÓN DEFINITIVA)
+-- Esto agrega una restricción ÚNICA en la base de datos.
+-- Después de esto es IMPOSIBLE que se vuelvan a crear duplicados.
+-- ============================================================
+
+-- Primero limpiar duplicados (queda solo el más antiguo de cada nombre)
+DELETE FROM suppliers
+WHERE id NOT IN (
+    SELECT MIN(id)
+    FROM suppliers
+    GROUP BY LOWER(TRIM(name))
+);
+
+-- Luego crear índice único para que Supabase rechace duplicados para siempre
+-- (Si ya existe, este comando no hace nada)
+CREATE UNIQUE INDEX IF NOT EXISTS suppliers_name_unique 
+ON suppliers (LOWER(TRIM(name)));
+
+-- Verificar que quedó limpio
+SELECT MIN(name) as name, COUNT(*) as total
+FROM suppliers
+WHERE deleted = false
+GROUP BY LOWER(TRIM(name))
+HAVING COUNT(*) > 1;
+
+-- Si la consulta anterior devuelve 0 filas: ✅ TODO LIMPIO
+
+-- ============================================================
+
 
 -- 1. VER CUÁNTOS DUPLICADOS HAY (antes de borrar, para confirmar)
 SELECT 
