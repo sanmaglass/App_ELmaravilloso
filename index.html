@@ -153,6 +153,8 @@
 
                     <button class="btn btn-icon" id="btn-toggle-privacy" title="Ocultar Montos"><i
                             class="ph ph-eye"></i></button>
+                    <button class="btn btn-icon" id="btn-toggle-dark" title="Modo Oscuro"><i
+                            class="ph ph-moon"></i></button>
                     <button class="btn btn-icon"><i class="ph ph-bell"></i></button>
                     <button class="btn btn-primary" id="global-add-btn">
                         <i class="ph ph-plus"></i>
@@ -198,6 +200,15 @@
     <script src="js/sync.js?v=74"></script>
     <script src="js/app.js?v=74"></script>
 
+    <!-- Dark Mode Init (before render to avoid flash) -->
+    <script>
+        (function () {
+            if (localStorage.getItem('wm_dark_mode') === 'true') {
+                document.body.classList.add('dark-mode');
+            }
+        })();
+    </script>
+
     <!-- PWA Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -228,6 +239,20 @@
         }
     </script>
 
+    <!-- Dark Mode Toggle Logic -->
+    <script>
+        document.getElementById('btn-toggle-dark').addEventListener('click', () => {
+            const isDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('wm_dark_mode', isDark);
+            const icon = document.querySelector('#btn-toggle-dark i');
+            icon.className = isDark ? 'ph ph-sun' : 'ph ph-moon';
+        });
+        // Set correct icon on load
+        if (localStorage.getItem('wm_dark_mode') === 'true') {
+            const icon = document.querySelector('#btn-toggle-dark i');
+            if (icon) icon.className = 'ph ph-sun';
+        }
+    </script>
 
 </body>
 

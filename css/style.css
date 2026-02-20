@@ -584,3 +584,174 @@ body.privacy-mode .money-sensitive:hover {
         padding-bottom: 4px;
     }
 }
+
+/* ============================================
+   🌙 DARK MODE — MODO PROGRAMADOR
+   ============================================ */
+
+body.dark-mode {
+    background-color: #0d1117 !important;
+    background-image:
+        radial-gradient(circle at 10% 20%, rgba(220, 38, 38, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(220, 38, 38, 0.05) 0%, transparent 40%),
+        linear-gradient(135deg, #0d1117 0%, #161b22 100%) !important;
+}
+
+body.dark-mode .sidebar {
+    background: rgba(22, 27, 34, 0.97) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+    box-shadow: 10px 0 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark-mode .nav-item {
+    color: #8b949e !important;
+}
+
+body.dark-mode .nav-item:hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: #e6edf3 !important;
+}
+
+body.dark-mode .nav-item.active {
+    background: linear-gradient(135deg, var(--primary), #8b0000) !important;
+    color: white !important;
+}
+
+body.dark-mode .user-profile {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+body.dark-mode .name,
+body.dark-mode .role {
+    color: #8b949e !important;
+}
+
+/* Main content area */
+body.dark-mode .main-content {
+    background: transparent;
+}
+
+/* Cards */
+body.dark-mode .card,
+body.dark-mode [class*="card"] {
+    background: #161b22 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #e6edf3 !important;
+}
+
+body.dark-mode .card:hover {
+    border-color: rgba(230, 0, 0, 0.3) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Text */
+body.dark-mode,
+body.dark-mode * {
+    --text-primary: #e6edf3;
+    --text-secondary: #b1bac4;
+    --text-muted: #8b949e;
+    --border: rgba(255, 255, 255, 0.08);
+    --bg-card: #161b22;
+    --bg-input: #0d1117;
+    --bg-glass: rgba(22, 27, 34, 0.95);
+}
+
+body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4 {
+    color: #e6edf3;
+}
+
+/* Inputs & Selects */
+body.dark-mode .form-input,
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+    background: #0d1117 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #e6edf3 !important;
+}
+
+body.dark-mode .form-input:focus,
+body.dark-mode input:focus,
+body.dark-mode select:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(230, 0, 0, 0.2) !important;
+}
+
+/* Buttons */
+body.dark-mode .btn-secondary {
+    background: #21262d !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #e6edf3 !important;
+}
+
+body.dark-mode .btn-secondary:hover {
+    background: #30363d !important;
+}
+
+body.dark-mode .btn-icon {
+    background: #21262d !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #8b949e !important;
+}
+
+body.dark-mode .btn-icon:hover {
+    color: #e6edf3 !important;
+    border-color: var(--primary) !important;
+}
+
+/* Top bar */
+body.dark-mode .top-bar {
+    background: transparent;
+}
+
+body.dark-mode #page-title {
+    background: -webkit-linear-gradient(45deg, #e6edf3, #8b949e);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Modal */
+body.dark-mode .modal-backdrop {
+    background: rgba(0, 0, 0, 0.7) !important;
+    backdrop-filter: blur(6px);
+}
+
+body.dark-mode .modal {
+    background: #161b22 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+body.dark-mode .modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark-mode .modal-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Scrollbar dark */
+body.dark-mode ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Table rows / borders */
+body.dark-mode [style*="border-bottom"] {
+    border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Sync indicator */
+body.dark-mode #sync-indicator {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: #8b949e !important;
+}
+
+/* Transition suave en todo */
+body, .sidebar, .main-content, .card, .form-input, .btn-secondary, .btn-icon, .modal {
+    transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+}
