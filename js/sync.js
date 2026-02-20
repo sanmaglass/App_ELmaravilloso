@@ -95,14 +95,34 @@ window.Sync = {
 
                 // 1. Push: Enviar lo local a la nube primero (UPSERT)
                 // FILTER OUT deleted records - don't upload them to cloud
-                const localData = await window.db[localName].toArray();
-                const activeLocalData = localName === 'settings' ? localData : localData.filter(item => !item.deleted);
+                let activeLocalData = localName === 'settings' ? localData : localData.filter(item => !item.deleted);
+
+                // For suppliers: deduplicate by name before pushing to avoid unique constraint errors
+                if (localName === 'suppliers') {
+                    const seen = new Map();
+                    const deduped = [];
+                    for (const item of activeLocalData) {
+                        const key = (item.name || '').toLowerCase().trim();
+                        if (!seen.has(key)) {
+                            seen.set(key, item.id);
+                            deduped.push(item);
+                        }
+                    }
+                    activeLocalData = deduped;
+                }
 
                 if (activeLocalData.length > 0) {
                     const { error: pushError } = await window.Sync.client
                         .from(remoteName)
                         .upsert(activeLocalData);
-                    if (pushError) throw pushError;
+                    if (pushError) {
+                        // If it's a unique constraint violation, just log and continue (don't break sync)
+                        if (pushError.code === '23505') {
+                            console.warn(`[Sync] Constraint violation on ${remoteName} push (ignorado):`, pushError.message);
+                        } else {
+                            throw pushError;
+                        }
+                    }
                 }
 
                 // 2. Pull: Traer TODO lo de la nube y actualizar localmente
