@@ -95,6 +95,7 @@ window.Sync = {
 
                 // 1. Push: Enviar lo local a la nube primero (UPSERT)
                 // FILTER OUT deleted records - don't upload them to cloud
+                const localData = await window.db[localName].toArray();
                 let activeLocalData = localName === 'settings' ? localData : localData.filter(item => !item.deleted);
 
                 // For suppliers: deduplicate by name before pushing to avoid unique constraint errors
@@ -124,6 +125,7 @@ window.Sync = {
                         }
                     }
                 }
+
 
                 // 2. Pull: Traer TODO lo de la nube y actualizar localmente
                 // FILTER OUT deleted records - don't download old deleted data
