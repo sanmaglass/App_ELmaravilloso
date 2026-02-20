@@ -495,7 +495,7 @@ async function renderInvoices() {
         // Filter
         let filtered = activeInvoices.filter(i => {
             const supplierName = (supplierMap[i.supplierId] || 'Desconocido').toLowerCase();
-            const matchesSearch = supplierName.includes(search) || i.invoiceNumber.toLowerCase().includes(search);
+            const matchesSearch = supplierName.includes(search) || (i.invoiceNumber || '').toLowerCase().includes(search);
             let matchesStatus = statusFilter === 'all' || i.paymentStatus === statusFilter;
             // Special filter: 'Crédito' shows credit invoices still pending
             if (statusFilter === 'Crédito') {
@@ -504,7 +504,7 @@ async function renderInvoices() {
 
             let matchesDate = true;
             if (dateFilter !== 'all') {
-                matchesDate = i.date.startsWith(dateFilter);
+                matchesDate = i.date && i.date.startsWith(dateFilter);
             }
 
             // Supplier filter

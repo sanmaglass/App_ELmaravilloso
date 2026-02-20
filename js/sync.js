@@ -96,7 +96,9 @@ window.Sync = {
                 // 1. Push: Enviar lo local a la nube primero (UPSERT)
                 // FILTER OUT deleted records - don't upload them to cloud
                 const localData = await window.db[localName].toArray();
-                let activeLocalData = localName === 'settings' ? localData : localData.filter(item => !item.deleted);
+                // Push ALL records including deleted so Supabase reflects true state
+                // This ensures soft-deleted records stay deleted on cloud
+                let activeLocalData = localData;
 
                 // For suppliers: deduplicate by name before pushing to avoid unique constraint errors
                 if (localName === 'suppliers') {

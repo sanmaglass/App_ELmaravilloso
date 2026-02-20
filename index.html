@@ -49,6 +49,20 @@
     <!-- Styles -->
     <link rel="stylesheet" href="css/style.css?v=65">
     <link rel="stylesheet" href="css/components.css?v=65">
+    <!-- Critical: Dark mode init before DOM renders to prevent flash -->
+    <script>
+        (function () {
+            if (localStorage.getItem('wm_dark_mode') === 'true') {
+                // Apply immediately to <html> for instant background color
+                document.documentElement.style.backgroundColor = '#0d1117';
+                // Then on DOMContentLoaded, move class to body (where CSS expects it)
+                document.addEventListener('DOMContentLoaded', function () {
+                    document.body.classList.add('dark-mode');
+                    document.documentElement.style.backgroundColor = '';
+                }, { once: true });
+            }
+        })();
+    </script>
 </head>
 
 <body>
@@ -200,14 +214,6 @@
     <script src="js/sync.js?v=74"></script>
     <script src="js/app.js?v=74"></script>
 
-    <!-- Dark Mode Init (before render to avoid flash) -->
-    <script>
-        (function () {
-            if (localStorage.getItem('wm_dark_mode') === 'true') {
-                document.body.classList.add('dark-mode');
-            }
-        })();
-    </script>
 
     <!-- PWA Service Worker Registration -->
     <script>
