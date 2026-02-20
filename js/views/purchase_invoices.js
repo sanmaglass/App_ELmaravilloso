@@ -31,11 +31,15 @@ window.Views.purchase_invoices = async (container) => {
         </div>
 
         <!-- Filters -->
-        <div style="display:grid; grid-template-columns: 1fr auto auto auto; gap:12px; margin-bottom:24px; align-items:center;">
+        <div style="display:grid; grid-template-columns: 1fr auto auto auto auto; gap:12px; margin-bottom:16px; align-items:center;">
              <div style="position:relative;">
                 <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
                 <input type="text" id="invoice-search" class="form-input" placeholder="Buscar por proveedor o N° factura..." style="padding-left:36px; width:100%;">
             </div>
+            <select id="filter-supplier" class="form-input" title="Filtrar por proveedor">
+                <option value="all">Todos los Proveedores</option>
+                <!-- Dynamic Suppliers will be injected here -->
+            </select>
             <select id="filter-date" class="form-input">
                 <option value="all">Todo el Historial</option>
                 <!-- Dynamic Months will be injected here -->
@@ -50,6 +54,9 @@ window.Views.purchase_invoices = async (container) => {
                 <i class="ph ph-file-xls"></i> Exportar
             </button>
         </div>
+
+        <!-- Supplier History Panel (collapsible) -->
+        <div id="supplier-history-panel" style="display:none; margin-bottom:20px;"></div>
 
         <!-- Invoices List -->
         <div id="invoices-list" style="display:flex; flex-direction:column; gap:12px; min-height: 200px;">
@@ -71,6 +78,7 @@ window.Views.purchase_invoices = async (container) => {
 
     // Initialize component
     await initDateFilter();
+    await populateSupplierFilter();
     await renderAnalytics();
     await renderPendingDocuments();
     await renderCreditAlerts();
@@ -81,6 +89,7 @@ window.Views.purchase_invoices = async (container) => {
     document.getElementById('invoice-search').addEventListener('input', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('filter-status').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('filter-date').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
+    document.getElementById('filter-supplier').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('btn-export-excel').addEventListener('click', exportInvoicesToExcel);
 };
 
@@ -465,6 +474,7 @@ async function renderInvoices() {
     const search = document.getElementById('invoice-search').value.toLowerCase();
     const statusFilter = document.getElementById('filter-status').value;
     const dateFilter = document.getElementById('filter-date').value;
+    const supplierFilter = (document.getElementById('filter-supplier')?.value) || 'all';
 
     if (!list) return;
 
@@ -497,8 +507,14 @@ async function renderInvoices() {
                 matchesDate = i.date.startsWith(dateFilter);
             }
 
-            return matchesSearch && matchesStatus && matchesDate;
+            // Supplier filter
+            const matchesSupplier = supplierFilter === 'all' || String(i.supplierId) === String(supplierFilter);
+
+            return matchesSearch && matchesStatus && matchesDate && matchesSupplier;
         });
+
+        // Render supplier history if a specific supplier is selected
+        renderSupplierHistory(supplierFilter, activeInvoices, supplierMap);
 
         // Sort by Date DESC
         filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -1000,7 +1016,6 @@ async function exportInvoicesToExcel() {
     }
 }
 
-// --- HELPERS ---
 function formatDate(dateString) {
     if (!dateString) return '-';
     const parts = dateString.split('-');
@@ -1010,4 +1025,104 @@ function formatDate(dateString) {
 
 function formatCurrency(amount) {
     return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(amount);
+}
+
+// --- SUPPLIER HISTORY PANEL ---
+function renderSupplierHistory(supplierFilter, allInvoices, supplierMap) {
+    const panel = document.getElementById('supplier-history-panel');
+    if (!panel) return;
+
+    if (supplierFilter === 'all') {
+        panel.style.display = 'none';
+        panel.innerHTML = '';
+        return;
+    }
+
+    const supplierName = supplierMap[supplierFilter] || 'Proveedor';
+    const supplierInvoices = allInvoices
+        .filter(i => String(i.supplierId) === String(supplierFilter))
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const totalComprado = supplierInvoices.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+    const totalPendiente = supplierInvoices
+        .filter(i => i.paymentStatus === 'Pendiente')
+        .reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+    const cantidadFacturas = supplierInvoices.length;
+    const primerCompra = supplierInvoices.length > 0 ? supplierInvoices[supplierInvoices.length - 1].date : null;
+
+    panel.style.display = 'block';
+    panel.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--primary); padding: 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                <h3 style="color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+                    <i class="ph ph-buildings" style="color:var(--primary);"></i> Historial: ${supplierName}
+                </h3>
+                <span style="font-size:0.8rem; color:var(--text-muted);">
+                    ${primerCompra ? `Primera compra: ${formatDate(primerCompra)}` : ''}
+                </span>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:16px; margin-bottom:16px;">
+                <div style="text-align:center; padding:12px; background:rgba(0,0,0,0.03); border-radius:12px;">
+                    <div style="font-size:1.4rem; font-weight:800; color:var(--primary);">${formatCurrency(totalComprado)}</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Total Comprado</div>
+                </div>
+                <div style="text-align:center; padding:12px; background:rgba(0,0,0,0.03); border-radius:12px;">
+                    <div style="font-size:1.4rem; font-weight:800; color:var(--text-primary);">${cantidadFacturas}</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Facturas</div>
+                </div>
+                <div style="text-align:center; padding:12px; background:${totalPendiente > 0 ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)'}; border-radius:12px;">
+                    <div style="font-size:1.4rem; font-weight:800; color:${totalPendiente > 0 ? '#d97706' : '#059669'};">${formatCurrency(totalPendiente)}</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Deuda Pendiente</div>
+                </div>
+            </div>
+            <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
+                Últimas facturas
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px; max-height:200px; overflow-y:auto;">
+                ${supplierInvoices.slice(0, 10).map(inv => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:rgba(0,0,0,0.02); border-radius:8px; font-size:0.85rem;">
+                        <div>
+                            <span style="font-weight:600; color:var(--text-primary);">${formatDate(inv.date)}</span>
+                            <span style="color:var(--text-muted); margin-left:8px;">#${inv.invoiceNumber}</span>
+                        </div>
+                        <div style="display:flex; gap:12px; align-items:center;">
+                            <span style="font-weight:700; color:var(--text-primary);">${formatCurrency(parseFloat(inv.amount) || 0)}</span>
+                            <span style="padding:2px 8px; border-radius:8px; font-size:0.75rem; font-weight:600;
+                                background:${inv.paymentStatus === 'Pagado' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)'};
+                                color:${inv.paymentStatus === 'Pagado' ? '#059669' : '#d97706'};">
+                                ${inv.paymentStatus}
+                            </span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// --- POPULATE SUPPLIER FILTER SELECT ---
+async function populateSupplierFilter() {
+    const select = document.getElementById('filter-supplier');
+    if (!select) return;
+
+    const [invoices, suppliers] = await Promise.all([
+        window.db.purchase_invoices.toArray(),
+        window.db.suppliers.toArray()
+    ]);
+
+    const activeInvoices = invoices.filter(i => !i.deleted);
+    const usedSupplierIds = [...new Set(activeInvoices.map(i => i.supplierId))];
+
+    const supplierMap = {};
+    suppliers.forEach(s => supplierMap[s.id] = s.name);
+
+    // Sort suppliers alphabetically
+    const supplierOptions = usedSupplierIds
+        .filter(id => supplierMap[id])
+        .map(id => ({ id, name: supplierMap[id] }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    const currentValue = select.value;
+    select.innerHTML = '<option value="all">Todos los Proveedores</option>' +
+        supplierOptions.map(s => `<option value="${s.id}" ${String(s.id) === String(currentValue) ? 'selected' : ''}>${s.name}</option>`).join('');
 }

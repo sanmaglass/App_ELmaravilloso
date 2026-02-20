@@ -20,6 +20,16 @@ window.Views.dashboard = async (container) => {
              </div>
         </div>
 
+        <!-- WEEKLY OVERDUE SUMMARY (shows when there are invoices due this week) -->
+        <div id="weekly-summary-container" class="hidden" style="margin-bottom:16px;">
+            <div class="card" style="border-left: 5px solid #d97706; background: rgba(251,191,36,0.05); padding:16px;">
+                <h3 style="color:#92400e; display:flex; align-items:center; gap:8px; margin-bottom:12px; font-size:1rem;">
+                    <i class="ph ph-calendar-check"></i> Vencimientos Esta Semana
+                </h3>
+                <div id="weekly-summary-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+        </div>
+
         <!-- TOP ALERTS (EXPIRY) -->
         <div id="expiry-alerts-container" class="hidden" style="margin-bottom:24px;">
             <div class="card" style="border-left: 5px solid var(--danger); background: rgba(255,23,68,0.05);">
@@ -31,6 +41,7 @@ window.Views.dashboard = async (container) => {
                 </div>
             </div>
         </div>
+
 
         <div class="stats-grid">
             <div class="card stat-card">
@@ -188,6 +199,46 @@ window.Views.dashboard = async (container) => {
                 const navBtn = document.querySelector('[data-view="purchase_invoices"]');
                 if (navBtn) navBtn.click();
             });
+
+            // --- WEEKLY OVERDUE SUMMARY ---
+            const todayStartOfWeek = new Date();
+            todayStartOfWeek.setHours(0, 0, 0, 0);
+            const endOfWeek = new Date(todayStartOfWeek);
+            endOfWeek.setDate(endOfWeek.getDate() + 7);
+
+            const dueThisWeek = creditPending.filter(i => {
+                if (!i.dueDate) return false;
+                const d = new Date(i.dueDate);
+                return d >= todayStartOfWeek && d <= endOfWeek;
+            }).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+            const weeklyContainer = document.getElementById('weekly-summary-container');
+            const weeklyList = document.getElementById('weekly-summary-list');
+
+            if (dueThisWeek.length > 0 && weeklyContainer && weeklyList) {
+                weeklyContainer.classList.remove('hidden');
+                weeklyList.innerHTML = dueThisWeek.map(i => {
+                    const d = new Date(i.dueDate);
+                    d.setHours(0, 0, 0, 0);
+                    const daysLeft = Math.ceil((d - todayStartOfWeek) / (1000 * 60 * 60 * 24));
+                    const supplierName = supplierMap[i.supplierId] || 'Proveedor';
+                    const color = daysLeft === 0 ? '#dc2626' : daysLeft <= 2 ? '#ea580c' : '#d97706';
+                    const label = daysLeft === 0 ? '¡HOY!' : `${daysLeft}d`;
+                    return `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:rgba(255,255,255,0.6); border-radius:8px; border:1px solid rgba(217,119,6,0.2);">
+                            <div>
+                                <span style="font-weight:700; color:var(--text-primary); font-size:0.9rem;">${supplierName}</span>
+                                <span style="font-size:0.8rem; color:var(--text-muted); margin-left:8px;">#${i.invoiceNumber}</span>
+                            </div>
+                            <div style="display:flex; gap:12px; align-items:center;">
+                                <span style="font-weight:700; color:var(--text-primary);">${window.Utils.formatCurrency(parseFloat(i.amount) || 0)}</span>
+                                <span style="background:${color}; color:white; padding:2px 10px; border-radius:12px; font-size:0.8rem; font-weight:700;">${label}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
         } catch (creditErr) {
             console.error('Error loading credit widget:', creditErr);
             document.getElementById('credit-widget-content').innerHTML =
