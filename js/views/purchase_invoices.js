@@ -598,21 +598,8 @@ async function renderInvoices() {
             `;
         }).join('');
 
-        // Summary Header
-        const summaryHtml = `
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
-                <div class="card" style="padding:12px; background:var(--bg-card);">
-                    <div style="font-size:0.8rem; color:var(--text-muted);">Total Registrado</div>
-                    <div style="font-size:1.2rem; font-weight:700;">${formatCurrency(totalAmount)}</div>
-                </div>
-                <div class="card" style="padding:12px; background:var(--bg-card);">
-                    <div style="font-size:0.8rem; color:var(--text-muted);">Por Pagar (Pendiente)</div>
-                    <div style="font-size:1.2rem; font-weight:700; color:#d97706;">${formatCurrency(totalPending)}</div>
-                </div>
-            </div>
-        `;
+        list.innerHTML = html;
 
-        list.innerHTML = summaryHtml + html;
 
         // Render Pagination Controls
         if (totalPages > 1) {

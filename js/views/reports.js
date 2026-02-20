@@ -29,8 +29,9 @@ window.Views.reports = async (container) => {
                 <div style="font-size:1.8rem; font-weight:700; color:var(--text-primary);" id="kpi-sales">$0</div>
             </div>
             <div class="card" style="padding:20px; border-left:4px solid #f59e0b;">
-                <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:4px;">Gastos (Compras)</div>
+                <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:4px;">Total Egresos</div>
                 <div style="font-size:1.8rem; font-weight:700; color:var(--text-primary);" id="kpi-expenses">$0</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;" id="kpi-expenses-detail">Compras + Gastos + Sueldos</div>
             </div>
              <div class="card" style="padding:20px; border-left:4px solid #10b981;">
                 <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:4px;">Ganancia Estimada</div>
@@ -175,12 +176,16 @@ async function renderReports() {
 
         // --- UPDATE KPIS ---
         document.getElementById('kpi-sales').textContent = formatCurrency(totalSales);
-        // Show tooltip or detail if hovered? 
-        // Not implemented but good to know: Sales = Daily + Invoices
-        // Split Expenses KPI for clarity? Or keep combined? User asked for total expenses.
-        // Let's show specific breakdown in a new section, but main KPI is total Costs?
-        // Reuse 'kpi-expenses' for 'Total Egresos'
         document.getElementById('kpi-expenses').textContent = formatCurrency(totalCosts);
+        // Show dynamic breakdown of costs
+        const detailEl = document.getElementById('kpi-expenses-detail');
+        if (detailEl) {
+            detailEl.innerHTML = `
+                Compras: <b>${formatCurrency(totalPurchases)}</b> •
+                Gastos: <b>${formatCurrency(totalGeneralExpenses)}</b> •
+                Sueldos: <b>${formatCurrency(totalSalaries)}</b>
+            `;
+        }
         document.getElementById('kpi-profit').textContent = formatCurrency(profit);
 
         // Color profit
