@@ -122,11 +122,9 @@ window.Sync = {
                 if (activeCloudData && activeCloudData.length > 0) {
                     await window.db[localName].bulkPut(activeCloudData);
                     dataChanged = true;
-                } else if (activeLocalData.length > 0) {
-                    // SI LA NUBE ESTÁ VACÍA PERO EL LOCAL TIENE ALGO -> Significa borrado total detectado
-                    await window.db[localName].clear();
-                    dataChanged = true;
                 }
+                // NOTE: If cloud is empty for a table, we keep local data intact.
+                // Never clear local data during sync — cloud empty ≠ data deleted.
             }
 
             if (dataChanged) {

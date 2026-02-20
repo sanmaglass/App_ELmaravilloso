@@ -16,14 +16,30 @@ window.Views.daily_sales = async (container) => {
         </div>
 
         <!-- Filters -->
-         <div style="display:flex; gap:12px; margin-bottom:24px; align-items:center;">
-             <div style="position:relative; flex:1;">
+        <div style="display:grid; grid-template-columns: 1fr auto auto; gap:12px; margin-bottom:16px; align-items:center;">
+            <div style="position:relative;">
                 <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
                 <input type="text" id="daily-search" class="form-input" placeholder="Buscar por fecha (YYYY-MM-DD)..." style="padding-left:36px; width:100%;">
             </div>
-             <button class="btn btn-secondary" id="btn-export-daily">
+            <select id="daily-filter-month" class="form-input">
+                <option value="all">Todo el Historial</option>
+                <!-- Dynamic Months -->
+            </select>
+            <button class="btn btn-secondary" id="btn-export-daily">
                 <i class="ph ph-file-xls"></i> Exportar
             </button>
+        </div>
+
+        <!-- Summary Card -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px;">
+            <div class="card" style="padding:14px; border-left:4px solid var(--primary);">
+                <div style="font-size:0.85rem; color:var(--text-muted);">Total Ventas (Filtrado)</div>
+                <div style="font-size:1.4rem; font-weight:700; color:var(--text-primary);" id="daily-total-amount">$0</div>
+            </div>
+            <div class="card" style="padding:14px; border-left:4px solid #10b981;">
+                <div style="font-size:0.85rem; color:var(--text-muted);">Cierres registrados</div>
+                <div style="font-size:1.4rem; font-weight:700; color:#10b981;" id="daily-count">0</div>
+            </div>
         </div>
 
         <!-- Sales History List -->
@@ -35,18 +51,44 @@ window.Views.daily_sales = async (container) => {
         </div>
     `;
 
+    await initDailyMonthFilter();
     renderDailySales();
 
     // Events
     document.getElementById('btn-add-daily-sale').addEventListener('click', () => showDailySaleModal());
     document.getElementById('daily-search').addEventListener('input', () => renderDailySales());
+    document.getElementById('daily-filter-month').addEventListener('change', () => renderDailySales());
     document.getElementById('btn-export-daily').addEventListener('click', exportDailySalesToExcel);
 };
 
-// --- RENDER LOGIC ---
+// --- INIT MONTH FILTER ---
+async function initDailyMonthFilter() {
+    const filter = document.getElementById('daily-filter-month');
+    if (!filter) return;
+    try {
+        const sales = await window.db.daily_sales.toArray();
+        const active = sales.filter(s => !s.deleted);
+        const months = new Set();
+        active.forEach(s => { if (s.date && s.date.length >= 7) months.add(s.date.substring(0, 7)); });
+        const sortedMonths = Array.from(months).sort().reverse();
+        sortedMonths.forEach(m => {
+            const [y, monthNum] = m.split('-');
+            const dateObj = new Date(y, monthNum - 1);
+            const label = dateObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            const option = document.createElement('option');
+            option.value = m;
+            option.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+            filter.appendChild(option);
+        });
+        const currentMonth = new Date().toISOString().substring(0, 7);
+        if (months.has(currentMonth)) filter.value = currentMonth;
+    } catch (e) { console.error('Error init daily month filter', e); }
+}
+
 async function renderDailySales() {
     const list = document.getElementById('daily-sales-list');
-    const search = document.getElementById('daily-search').value.toLowerCase();
+    const search = document.getElementById('daily-search')?.value.toLowerCase() || '';
+    const monthFilter = document.getElementById('daily-filter-month')?.value || 'all';
 
     if (!list) return;
 
@@ -54,13 +96,22 @@ async function renderDailySales() {
         const dailySales = await window.db.daily_sales.toArray();
         const activeSales = dailySales.filter(s => !s.deleted);
 
-        // Filter
+        // Filter by month and search
         let filtered = activeSales.filter(s => {
-            return s.date.includes(search);
+            const matchesSearch = s.date.includes(search);
+            const matchesMonth = monthFilter === 'all' ? true : s.date.startsWith(monthFilter);
+            return matchesSearch && matchesMonth;
         });
 
         // Sort by Date DESC
         filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        // Update summary cards
+        const totalAmount = filtered.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const totalEl = document.getElementById('daily-total-amount');
+        const countEl = document.getElementById('daily-count');
+        if (totalEl) totalEl.innerHTML = window.Utils.formatCurrency(totalAmount);
+        if (countEl) countEl.textContent = filtered.length;
 
         if (filtered.length === 0) {
             list.innerHTML = `

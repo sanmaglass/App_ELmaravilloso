@@ -303,7 +303,7 @@ window.Views.payments = async (container) => {
 
         document.getElementById('month-total-paid').innerHTML = window.Utils.formatCurrency(monthlyPayments.totalPaid);
         document.getElementById('month-days-worked').textContent = daysElapsed;
-        document.getElementById('month-active-employees').textContent = uniqueEmployees;
+        document.getElementById('month-active-employees').textContent = employees.length;
     };
 
     // Update upcoming payments

@@ -53,6 +53,11 @@ async function init() {
         const syncRes = await window.Sync.init();
 
         if (syncRes.success) {
+            console.log('☁️ Supabase conectado — descargando datos de la nube...');
+
+            // Sync first before rendering so the view has fresh data
+            await window.Sync.syncAll();
+
             // Initialize WebSocket real-time sync (enterprise-grade)
             await window.Sync.initRealtimeSync();
 

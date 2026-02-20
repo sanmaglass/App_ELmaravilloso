@@ -64,23 +64,7 @@ async function seedDatabase() {
         return;
     }
 
-    const allEmployees = await db.employees.toArray();
-    const activeEmployees = allEmployees.filter(e => !e.deleted);
-
-    if (activeEmployees.length === 0) {
-        console.log("Seeding database...");
-        await db.employees.add({
-            id: Date.now(),
-            name: "Demo Employee",
-            email: "demo@example.com",
-            role: "Developer",
-            hourlyRate: 5000,
-            dailyRate: 40000,
-            avatar: "DE",
-            startDate: new Date().toISOString(),
-            deleted: false  // Explicitly set not deleted
-        });
-    }
+    // No demo employee seed — production app should start empty
 }
 
 // Expose to window

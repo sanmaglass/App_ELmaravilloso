@@ -66,6 +66,16 @@ window.Views.dashboard = async (container) => {
                      </div>
                 </div>
 
+                <!-- NEW: CREDIT INVOICES WIDGET -->
+                <div class="card" id="credit-widget" style="background:linear-gradient(135deg, #fffbeb, #fef9e7); border:1px solid #fde68a; cursor:pointer; transition:all 0.2s;" title="Ir a Facturas de Compra">
+                     <h3 style="margin-bottom:12px; color:#92400e; display:flex; align-items:center; gap:8px;">
+                        <i class="ph ph-clock-countdown"></i> Facturas a Crédito
+                     </h3>
+                     <div id="credit-widget-content" style="font-size:0.9rem; color:var(--text-secondary);">
+                        <span class="loader"></span> Calculando...
+                     </div>
+                </div>
+
                 <div class="card">
                      <h3 style="margin-bottom:16px; color:var(--text-primary);">Ultimos Registros</h3>
                      <div id="recent-logs-list" style="font-size:0.9rem; color:var(--text-muted); display:flex; flex-direction:column; gap:8px;">
@@ -135,6 +145,53 @@ window.Views.dashboard = async (container) => {
             }).join('');
         } else {
             alertContainer.classList.add('hidden');
+        }
+
+        // 2b. Credit Invoices Widget
+        try {
+            const allInvoices = await window.db.purchase_invoices.toArray();
+            const allSuppliers = await window.db.suppliers.toArray();
+            const supplierMap = {};
+            allSuppliers.forEach(s => supplierMap[s.id] = s.name);
+
+            const creditPending = allInvoices.filter(i =>
+                !i.deleted && i.paymentMethod === 'Crédito' && i.paymentStatus === 'Pendiente' && i.dueDate
+            );
+            const totalCredit = creditPending.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+
+            const todayDate = new Date();
+            todayDate.setHours(0, 0, 0, 0);
+            const overdue = creditPending.filter(i => new Date(i.dueDate) < todayDate);
+            const dueSoon = creditPending.filter(i => {
+                const d = new Date(i.dueDate);
+                const diff = Math.ceil((d - todayDate) / (1000 * 60 * 60 * 24));
+                return diff >= 0 && diff <= 7;
+            });
+
+            const creditEl = document.getElementById('credit-widget-content');
+            if (creditPending.length === 0) {
+                creditEl.innerHTML = '<p style="color:#16a34a; font-weight:600;">✅ Sin deudas a crédito pendientes</p>';
+            } else {
+                let creditHTML = `<div style="font-size:1.3rem; font-weight:700; color:#92400e; margin-bottom:8px;">${window.Utils.formatCurrency(totalCredit)}</div>`;
+                creditHTML += `<div style="font-size:0.85rem; color:#78350f;">${creditPending.length} factura${creditPending.length > 1 ? 's' : ''} pendiente${creditPending.length > 1 ? 's' : ''}</div>`;
+                if (overdue.length > 0) {
+                    creditHTML += `<div style="margin-top:6px; color:#dc2626; font-weight:700; font-size:0.85rem;">🚨 ${overdue.length} vencida${overdue.length > 1 ? 's' : ''}</div>`;
+                }
+                if (dueSoon.length > 0) {
+                    creditHTML += `<div style="margin-top:4px; color:#ea580c; font-weight:600; font-size:0.8rem;">⏰ ${dueSoon.length} vence${dueSoon.length > 1 ? 'n' : ''} esta semana</div>`;
+                }
+                creditEl.innerHTML = creditHTML;
+            }
+
+            // Click to navigate to purchase invoices
+            document.getElementById('credit-widget').addEventListener('click', () => {
+                const navBtn = document.querySelector('[data-view="purchase_invoices"]');
+                if (navBtn) navBtn.click();
+            });
+        } catch (creditErr) {
+            console.error('Error loading credit widget:', creditErr);
+            document.getElementById('credit-widget-content').innerHTML =
+                '<p style="color:var(--text-muted); font-size:0.85rem;">No disponible</p>';
         }
 
         // 3. Work Logs + Payment Calculations

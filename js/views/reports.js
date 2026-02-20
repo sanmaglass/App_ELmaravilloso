@@ -140,28 +140,34 @@ async function renderReports() {
             // Precise estimation for current month using Utils
             const monthlyStats = await window.Utils.calculateMonthlyPayments(activeEmployees, activeLogs, now);
             totalSalaries = monthlyStats.totalPaid;
-        } else {
-            // Rougher estimation for Year/All
-            if (period === 'year') {
-                // Weekly Employees: Rate * Weeks passed in year
-                const weeksPassed = window.Utils.getWeekNumber(now);
-                activeEmployees.filter(e => e.paymentMode === 'salary').forEach(emp => {
-                    totalSalaries += (emp.baseSalary / 4) * weeksPassed;
-                });
-                // Daily Employees: Sum of logs in period
-                activeLogs.forEach(log => {
-                    if (filterDate(log.date)) {
-                        const emp = activeEmployees.find(e => e.id === log.employeeId);
-                        if (emp && emp.paymentMode === 'daily') {
-                            totalSalaries += emp.dailyRate;
-                        }
+        } else if (period === 'year') {
+            // Sum completed weekly cycles + daily logs for the year
+            const weeksPassed = window.Utils.getWeekNumber ? window.Utils.getWeekNumber(now) : 52;
+            activeEmployees.filter(e => e.paymentMode === 'salary').forEach(emp => {
+                totalSalaries += (emp.baseSalary / 4) * weeksPassed;
+            });
+            activeLogs.forEach(log => {
+                if (filterDate(log.date)) {
+                    const emp = activeEmployees.find(e => e.id === log.employeeId);
+                    if (emp && (!emp.paymentMode || emp.paymentMode === 'manual')) {
+                        totalSalaries += (log.payAmount || 0);
                     }
-                });
-            } else { // ALL TIME
-                // Just sum all logs for daily + rough weekly estimation?
-                // For now, let's keep it simple: if 'All', maybe just sum known logs + current active weekly * 52 (placeholder)
-                // Or better: Don't try to guess infinite past on 'All'.
-            }
+                }
+            });
+        } else { // ALL TIME
+            // Sum all manual daily logs
+            activeLogs.forEach(log => {
+                const emp = activeEmployees.find(e => e.id === log.employeeId);
+                if (emp && (!emp.paymentMode || emp.paymentMode === 'manual')) {
+                    totalSalaries += (log.payAmount || 0);
+                }
+            });
+            // For salary employees: approximate total based on months active
+            activeEmployees.filter(e => e.paymentMode === 'salary' && e.startDate && e.baseSalary).forEach(emp => {
+                const start = new Date(emp.startDate);
+                const monthsActive = Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()));
+                totalSalaries += emp.baseSalary * monthsActive;
+            });
         }
 
         const totalCosts = totalPurchases + totalGeneralExpenses + totalSalaries;
@@ -206,19 +212,12 @@ async function renderReports() {
         document.querySelector('#chart-suppliers').parentNode.previousElementSibling.textContent = "Desglose de Costos";
 
 
-        // --- CHART: Trends ---
-        // Combine all outflows for 'Expenses' bar
+        // --- CHART: Trends (Ventas vs Costos Totales) ---
         renderLineChart('chart-trend',
-            ['Ventas', 'Costos Totales'], // Simplified bar comparison for now or keep Monthly Trend?
-            // Keeping monthly trend is complex with 3 data sources. 
-            // Let's switch to a simple 'Income vs Expense' bar for the selected period if specific,
-            // OR keep monthly trend but only for Sales vs Purchases (easy) + General (easy). Salaries is hard to map to months without history table.
-            // Let's stick to Sales vs purchase+expenses for trend.
-            ['Total Periodo'],
+            ['Ventas del Período', 'Costos del Período'],
             [totalSales],
             [totalCosts]
         );
-        // Rename for clarity
         document.querySelector('#chart-trend').parentNode.previousElementSibling.textContent = "Balance del Período";
 
 
@@ -247,6 +246,10 @@ async function renderReports() {
             window.markAsPaid = async (id) => {
                 if (confirm('¿Marcar factura como PAGADA?')) {
                     await window.db.purchase_invoices.update(id, { paymentStatus: 'Pagado' });
+                    // Sync with Supabase
+                    if (window.Sync?.client) {
+                        await window.Sync.client.from('purchase_invoices').update({ paymentStatus: 'Pagado' }).eq('id', id);
+                    }
                     renderReports(); // Refresh
                 }
             };

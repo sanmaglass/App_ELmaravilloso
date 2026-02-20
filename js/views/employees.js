@@ -340,17 +340,25 @@ window.Views.employees = async (container) => {
 
                     // 5. Ask Confirmation
                     if (confirm(`Se generarán ${missingDates.length} registros (días hábiles faltantes).\nTotal a Pagar Estimado: ${window.Utils.formatCurrency(totalDebt)}\n\n¿Proceder?`)) {
-                        const newLogs = missingDates.map(date => ({
+                        const newLogs = missingDates.map((date, idx) => ({
+                            id: Date.now() + idx,
                             employeeId: Number(id),
                             date: date,
                             startTime: '09:00', // Default start
-                            endTime: '18:00',   // Default end (TODO: Calculate based on hours)
+                            endTime: '18:00',   // Default end
                             totalHours: effectiveHours,
                             payAmount: dailyPay,
-                            status: 'worked-auto'
+                            status: 'worked-auto',
+                            deleted: false
                         }));
 
                         await window.db.workLogs.bulkAdd(newLogs);
+
+                        // Sync with Supabase
+                        if (window.Sync?.client) {
+                            await window.Sync.client.from('workLogs').insert(newLogs);
+                        }
+
                         alert('¡Éxito! Registros generados. El calendario ahora está completo.');
                         modalContainer.classList.add('hidden');
                         window.Views.employees(container);
