@@ -8,9 +8,10 @@ window.Utils = {
         minimumFractionDigits: 0
     }),
 
-    formatCurrency: (amount) => {
+    formatCurrency: (amount, plain = false) => {
         // Optimized: Use cached formatter
         const formatted = window.Utils._currencyFormatter.format(amount);
+        if (plain) return formatted;
         // Privacy: Wrap in span to allow global blur toggle
         return `<span class="money-sensitive" title="Monto Oculto">${formatted}</span>`;
     },

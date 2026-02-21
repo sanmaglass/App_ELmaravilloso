@@ -626,7 +626,7 @@ window.Views.dashboard = async (container) => {
 
         // ---- WhatsApp Report ----
         document.getElementById('btn-whatsapp-report').addEventListener('click', () => {
-            const msg = `📊 *Reporte El Maravilloso*\n📅 ${now.toLocaleDateString('es-ES')}\n\n💰 Gasto Mes: ${fmt(gastoMes)}\n💵 Ventas Mes: ${fmt(ventasMes)}\n⏱ Horas: ${totalHours.toFixed(1)}h\n👥 Personal: ${employees.length}\n\n_Generado automáticamente_`;
+            const msg = `📊 *Reporte El Maravilloso*\n📅 ${now.toLocaleDateString('es-ES')}\n\n💰 Gasto Mes: ${window.Utils.formatCurrency(gastoMes, true)}\n💵 Ventas Mes: ${window.Utils.formatCurrency(ventasMes, true)}\n⏱ Horas: ${totalHours.toFixed(1)}h\n👥 Personal: ${employees.length}\n\n_Generado automáticamente_`;
             window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
         });
 
