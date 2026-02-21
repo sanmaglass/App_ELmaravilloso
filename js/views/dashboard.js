@@ -363,11 +363,11 @@ window.Views.dashboard = async (container) => {
         const fmt = v => window.Utils.formatCurrency(v);
 
         // Gasto mes with badge
-        document.getElementById('kpi-gasto-mes').textContent = fmt(gastoMes);
+        document.getElementById('kpi-gasto-mes').innerHTML = fmt(gastoMes);
         renderBadge('kpi-gasto-mes-badge', gastoMes, gastoPrev, true);
 
         // Ventas mes with badge
-        document.getElementById('kpi-ventas-mes').textContent = fmt(ventasMes);
+        document.getElementById('kpi-ventas-mes').innerHTML = fmt(ventasMes);
         renderBadge('kpi-ventas-mes-badge', ventasMes, ventasPrev, false);
 
         // ---- Health Indicator ----
@@ -681,11 +681,11 @@ async function renderReportsTab() {
         const fmt = v => window.Utils.formatCurrency(v);
 
         // Update KPIs
-        document.getElementById('kpi-sales').textContent = fmt(totalSales);
-        document.getElementById('kpi-expenses').textContent = fmt(totalCosts);
+        document.getElementById('kpi-sales').innerHTML = fmt(totalSales);
+        document.getElementById('kpi-expenses').innerHTML = fmt(totalCosts);
         document.getElementById('kpi-expenses-detail').innerHTML = `Compras: <b>${fmt(totalPurchases)}</b> • Gastos: <b>${fmt(totalGenExp)}</b> • Sueldos: <b>${fmt(totalSalaries)}</b>`;
         const profEl = document.getElementById('kpi-profit');
-        profEl.textContent = fmt(profit);
+        profEl.innerHTML = fmt(profit);
         profEl.style.color = profit >= 0 ? '#10b981' : '#ef4444';
 
         // ---- Pie chart: cost breakdown ----
