@@ -4,6 +4,7 @@ window.Sync = {
     syncInterval: null,
     realtimeChannel: null,
     isRealtimeActive: false,
+    _retryCount: 0,
 
     // Inicializar cliente
     init: async () => {
@@ -20,34 +21,48 @@ window.Sync = {
         if (url && key) {
             try {
                 if (typeof supabase === 'undefined') {
-                    throw new Error("El SDK de Supabase no se cargó. Revisa tu conexión a internet.");
+                    console.warn('SDK de Supabase no disponible (sin internet o CDN bloqueado).');
+                    window.Sync.updateIndicator('off', 'Sin internet');
+                    return { success: false, error: 'SDK no disponible' };
                 }
 
                 window.Sync.client = supabase.createClient(url.trim(), key.trim());
 
-                // PRUEBA DE CONEXIÓN REAL: Intentar leer una tabla (ej. settings)
-                // Usamos un limit(0) para que sea rápido y no traiga datos
-                const { error } = await window.Sync.client.from('settings').select('key', { count: 'exact', head: true }).limit(1);
+                // Prueba de conexión: usamos employees (tabla segura que siempre existe)
+                const { error } = await window.Sync.client
+                    .from('employees')
+                    .select('id', { count: 'exact', head: true })
+                    .limit(1);
 
                 if (error) {
-                    // Si el error es de RLS o API Key, lo capturamos
-                    if (error.code === 'PGRST301') throw new Error("API Key inválida.");
-                    if (error.code === '42P01') throw new Error("Las tablas no existen. ¿Corriste el script SQL?");
-                    throw new Error(error.message);
+                    // Error de tabla no existente — problema de configuración real
+                    if (error.code === 'PGRST301') throw new Error('API Key inválida.');
+                    if (error.code === '42P01') throw new Error('Las tablas no existen. Ejecuta el script SQL.');
+                    // Otros errores de Supabase — log pero continuar
+                    console.warn('Supabase warning en init:', error.message);
                 }
 
-                console.log("Supabase verificado y listo.");
+                console.log('Supabase conectado.');
+                window.Sync._retryCount = 0;
                 window.Sync.updateIndicator('connected');
                 return { success: true };
+
             } catch (e) {
-                console.error("Error inicializando Supabase:", e);
-                window.Sync.client = null; // Asegurar que sea null si falla
-                window.Sync.updateIndicator('error', e.message);
+                window.Sync.client = null;
+                const isNetworkError = e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Failed');
+                if (isNetworkError) {
+                    console.warn('Sin conexión a Supabase (red no disponible).');
+                    window.Sync.updateIndicator('off', 'Sin internet');
+                } else {
+                    console.error('Error de configuración Supabase:', e.message);
+                    window.Sync.updateIndicator('error', e.message);
+                }
                 return { success: false, error: e.message };
             }
         }
-        return { success: false, error: "Faltan credenciales." };
+        return { success: false, error: 'Faltan credenciales.' };
     },
+
 
     // Sincronización Completa
     syncAll: async () => {
@@ -171,12 +186,15 @@ window.Sync = {
             }
             return { success: true };
         } catch (e) {
-            console.error("Sync Error:", e);
-            window.Sync.updateIndicator('error', e.message); // Update UI!
-
-            // SIEMPRE mostrar alerta de error para depurar
-            alert("Error de Sincronización: " + e.message + "\n\nRevisa la consola (F12) para más detalles.");
-
+            console.error('Sync Error:', e);
+            const isNetworkError = e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Failed') || e.message?.includes('NetworkError');
+            if (isNetworkError) {
+                window.Sync.updateIndicator('off', 'Sin internet');
+                console.warn('Sync falló por red — reintentará en el próximo ciclo.');
+            } else {
+                window.Sync.updateIndicator('error', e.message || 'Error desconocido');
+                console.error('Error de sincronización no-red:', e.message);
+            }
             return { success: false, error: e.message };
         } finally {
             window.Sync.isSyncing = false;
