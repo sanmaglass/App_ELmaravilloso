@@ -363,11 +363,19 @@ window.Views.dashboard = async (container) => {
         const fmt = v => window.Utils.formatCurrency(v);
 
         // Gasto mes with badge
-        document.getElementById('kpi-gasto-mes').innerHTML = fmt(gastoMes);
-        renderBadge('kpi-gasto-mes-badge', gastoMes, gastoPrev, true);
+        const elGasto = document.getElementById('kpi-gasto-mes');
+        if (elGasto) {
+            elGasto.innerHTML = ''; // Clear
+            elGasto.insertAdjacentHTML('afterbegin', fmt(gastoTotal)); // Use gastoTotal (incl. Salaries) for main card per user request
+        }
+        renderBadge('kpi-gasto-mes-badge', gastoTotal, gastoPrev, true);
 
         // Ventas mes with badge
-        document.getElementById('kpi-ventas-mes').innerHTML = fmt(ventasMes);
+        const elVentas = document.getElementById('kpi-ventas-mes');
+        if (elVentas) {
+            elVentas.innerHTML = '';
+            elVentas.insertAdjacentHTML('afterbegin', fmt(ventasMes));
+        }
         renderBadge('kpi-ventas-mes-badge', ventasMes, ventasPrev, false);
 
         // ---- Health Indicator ----
@@ -681,12 +689,20 @@ async function renderReportsTab() {
         const fmt = v => window.Utils.formatCurrency(v);
 
         // Update KPIs
-        document.getElementById('kpi-sales').innerHTML = fmt(totalSales);
-        document.getElementById('kpi-expenses').innerHTML = fmt(totalCosts);
-        document.getElementById('kpi-expenses-detail').innerHTML = `Compras: <b>${fmt(totalPurchases)}</b> • Gastos: <b>${fmt(totalGenExp)}</b> • Sueldos: <b>${fmt(totalSalaries)}</b>`;
+        const elSales = document.getElementById('kpi-sales');
+        if (elSales) elSales.innerHTML = fmt(totalSales);
+
+        const elCosts = document.getElementById('kpi-expenses');
+        if (elCosts) elCosts.innerHTML = fmt(totalCosts);
+
+        const elCostsDetail = document.getElementById('kpi-expenses-detail');
+        if (elCostsDetail) elCostsDetail.innerHTML = `Compras: <b>${fmt(totalPurchases)}</b> • Gastos: <b>${fmt(totalGenExp)}</b> • Sueldos: <b>${fmt(totalSalaries)}</b>`;
+
         const profEl = document.getElementById('kpi-profit');
-        profEl.innerHTML = fmt(profit);
-        profEl.style.color = profit >= 0 ? '#10b981' : '#ef4444';
+        if (profEl) {
+            profEl.innerHTML = fmt(profit);
+            profEl.style.color = profit >= 0 ? '#10b981' : '#ef4444';
+        }
 
         // ---- Pie chart: cost breakdown ----
         const costMap = { 'Proveedores': totalPurchases, 'Sueldos': totalSalaries };
