@@ -100,14 +100,7 @@ window.Views.dashboard = async (container) => {
         </div>
 
         <!-- KPI Cards principales -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;">
-            <!-- Gasto mes -->
-            <div class="card kpi-card card-anim" style="padding:20px;border-left:4px solid var(--primary);">
-                <div class="kpi-glow" style="background:var(--primary);"></div>
-                <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Gasto Mensual</div>
-                <div id="kpi-gasto-mes" style="font-size:1.7rem;font-weight:800;color:var(--text-primary);margin:6px 0;" class="animated-val">...</div>
-                <div id="kpi-gasto-mes-badge" class="kpi-badge neutral">— vs mes anterior</div>
-            </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;">
             <!-- Ventas mes -->
             <div class="card kpi-card card-anim" style="padding:20px;border-left:4px solid #10b981;">
                 <div class="kpi-glow" style="background:#10b981;"></div>
@@ -115,19 +108,26 @@ window.Views.dashboard = async (container) => {
                 <div id="kpi-ventas-mes" style="font-size:1.7rem;font-weight:800;color:var(--text-primary);margin:6px 0;" class="animated-val">...</div>
                 <div id="kpi-ventas-mes-badge" class="kpi-badge neutral">— vs mes anterior</div>
             </div>
-            <!-- Horas trabajadas -->
-            <div class="card kpi-card card-anim" style="padding:20px;border-left:4px solid #3b82f6;">
-                <div class="kpi-glow" style="background:#3b82f6;"></div>
-                <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Horas este Mes</div>
-                <div id="dashboard-total-hours" style="font-size:1.7rem;font-weight:800;color:var(--text-primary);margin:6px 0;" class="animated-val">...</div>
-                <div style="font-size:0.8rem;color:var(--text-muted);" id="stat-month-label">Mes Actual</div>
+            <!-- Proyección Cierre -->
+            <div class="card kpi-card card-anim" style="padding:20px;border-left:4px solid #06b6d4;background:linear-gradient(135deg, rgba(6, 182, 212, 0.05), transparent);">
+                <div class="kpi-glow" style="background:#06b6d4;"></div>
+                <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Proyección Cierre</div>
+                <div id="kpi-proyeccion-cierre" style="font-size:1.7rem;font-weight:800;color:#0891b2;margin:6px 0;" class="animated-val">...</div>
+                <div style="font-size:0.75rem;color:var(--text-muted);">Basado en ritmo actual</div>
             </div>
-            <!-- Empleados activos -->
-            <div class="card kpi-card card-anim" style="padding:20px;border-left:4px solid #8b5cf6;">
-                <div class="kpi-glow" style="background:#8b5cf6;"></div>
-                <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Empleados Activos</div>
-                <div id="dashboard-active-employees" style="font-size:1.7rem;font-weight:800;color:var(--text-primary);margin:6px 0;" class="animated-val">...</div>
-                <div style="font-size:0.8rem;color:var(--text-muted);">Personal en nómina</div>
+             <!-- Gasto mes -->
+            <div class="card kpi-card card-anim" style="padding:20px;border-left:4px solid var(--primary);">
+                <div class="kpi-glow" style="background:var(--primary);"></div>
+                <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Gasto Mensual</div>
+                <div id="kpi-gasto-mes" style="font-size:1.7rem;font-weight:800;color:var(--text-primary);margin:6px 0;" class="animated-val">...</div>
+                <div id="kpi-gasto-mes-badge" class="kpi-badge neutral">— vs mes anterior</div>
+            </div>
+            <!-- Margen Neto -->
+            <div class="card kpi-card card-anim" style="padding:20px;border-left:4px solid #84cc16;">
+                <div class="kpi-glow" style="background:#84cc16;"></div>
+                <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Margen Neto</div>
+                <div id="kpi-margen-neto" style="font-size:1.7rem;font-weight:800;color:#65a30d;margin:6px 0;" class="animated-val">...</div>
+                <div id="kpi-margen-badge" class="kpi-badge neutral">Calculando...</div>
             </div>
         </div>
 
@@ -248,7 +248,11 @@ window.Views.dashboard = async (container) => {
         </div>
 
         <!-- Charts row -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;">
+            <div class="card card-anim" style="padding:20px;">
+                <h3 style="margin-bottom:16px;font-size:0.95rem;font-weight:700;">Ventas por Día de Semana</h3>
+                <div style="height:260px;position:relative;"><canvas id="chart-weekday"></canvas></div>
+            </div>
             <div class="card card-anim" style="padding:20px;">
                 <h3 style="margin-bottom:16px;font-size:0.95rem;font-weight:700;">Desglose de Costos</h3>
                 <div style="height:260px;position:relative;"><canvas id="chart-suppliers"></canvas></div>
@@ -370,13 +374,28 @@ window.Views.dashboard = async (container) => {
         }
         renderBadge('kpi-gasto-mes-badge', gastoTotal, gastoPrev, true);
 
-        // Ventas mes with badge
-        const elVentas = document.getElementById('kpi-ventas-mes');
-        if (elVentas) {
-            elVentas.innerHTML = '';
-            elVentas.insertAdjacentHTML('afterbegin', fmt(ventasMes));
-        }
         renderBadge('kpi-ventas-mes-badge', ventasMes, ventasPrev, false);
+
+        // ---- CEO Metrics: Forecast & Margin ----
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const currentDay = now.getDate();
+        const dailyAvg = ventasMes / currentDay;
+        const forecastVentas = dailyAvg * daysInMonth;
+
+        const elForecast = document.getElementById('kpi-proyeccion-cierre');
+        if (elForecast) elForecast.textContent = fmt(forecastVentas);
+
+        const margenNetoMonto = ventasMes - gastoTotal;
+        const margenNetoPct = ventasMes > 0 ? (margenNetoMonto / ventasMes * 100) : 0;
+
+        const elMargenMonto = document.getElementById('kpi-margen-neto');
+        if (elMargenMonto) elMargenMonto.textContent = fmt(margenNetoMonto);
+
+        const elMargenBadge = document.getElementById('kpi-margen-badge');
+        if (elMargenBadge) {
+            elMargenBadge.textContent = margenNetoPct.toFixed(1) + '% de rentabilidad';
+            elMargenBadge.className = 'kpi-badge ' + (margenNetoPct > 30 ? 'up' : margenNetoPct > 10 ? 'neutral' : 'down');
+        }
 
         // ---- Health Indicator ----
         const healthRatio = ventasMes > 0 ? (gastoTotal / ventasMes) : null;
@@ -703,6 +722,41 @@ async function renderReportsTab() {
             profEl.innerHTML = fmt(profit);
             profEl.style.color = profit >= 0 ? '#10b981' : '#ef4444';
         }
+
+        // ---- Bar chart: Sales by Weekday ----
+        const weekdaySales = [0, 0, 0, 0, 0, 0, 0]; // Sun-Sat
+        const weekdayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+        activeDailySales.forEach(s => {
+            if (filterDate(s.date)) {
+                const day = new Date(s.date + 'T12:00:00').getDay();
+                weekdaySales[day] += (parseFloat(s.total) || 0);
+            }
+        });
+
+        const wkCtx = document.getElementById('chart-weekday').getContext('2d');
+        const existWk = Chart.getChart('chart-weekday');
+        if (existWk) existWk.destroy();
+        new Chart(wkCtx, {
+            type: 'bar',
+            data: {
+                labels: weekdayNames,
+                datasets: [{
+                    label: 'Ventas',
+                    data: weekdaySales,
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
 
         // ---- Pie chart: cost breakdown ----
         const costMap = { 'Proveedores': totalPurchases, 'Sueldos': totalSalaries };
