@@ -100,7 +100,7 @@ window.Views.dashboard = async (container) => {
         </div>
 
         <!-- KPI Cards principales -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:16px;">
             <!-- Ventas mes -->
             <div class="card kpi-card card-anim" style="padding:20px;border-left:4px solid #10b981;">
                 <div class="kpi-glow" style="background:#10b981;"></div>
@@ -128,6 +128,22 @@ window.Views.dashboard = async (container) => {
                 <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Margen Neto</div>
                 <div id="kpi-margen-neto" style="font-size:1.7rem;font-weight:800;color:#65a30d;margin:6px 0;" class="animated-val">...</div>
                 <div id="kpi-margen-badge" class="kpi-badge neutral">Calculando...</div>
+            </div>
+        </div>
+
+        <!-- Métricas Operativas Secundarias -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px;">
+            <div style="background:rgba(0,0,0,0.03); padding:10px 16px; border-radius:12px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;"><i class="ph ph-timer"></i> Horas este mes</span>
+                <span id="dashboard-total-hours" style="font-weight:700; color:var(--text-primary);">...</span>
+            </div>
+            <div style="background:rgba(0,0,0,0.03); padding:10px 16px; border-radius:12px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;"><i class="ph ph-users"></i> Empleados ativos</span>
+                <span id="dashboard-active-employees" style="font-weight:700; color:var(--text-primary);">...</span>
+            </div>
+             <div style="background:rgba(0,0,0,0.03); padding:10px 16px; border-radius:12px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;"><i class="ph ph-calendar"></i> Período</span>
+                <span id="stat-month-label" style="font-weight:700; color:var(--text-primary); font-size:0.8rem;">...</span>
             </div>
         </div>
 
@@ -360,9 +376,14 @@ window.Views.dashboard = async (container) => {
         const totalHours = currentMonthLogs.reduce((a, l) => a + (l.totalHours || 0), 0);
 
         // ---- Update KPI DOM ----
-        document.getElementById('dashboard-active-employees').textContent = employees.length;
-        document.getElementById('dashboard-total-hours').textContent = totalHours.toFixed(1) + 'h';
-        document.getElementById('stat-month-label').textContent = now.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+        const elActiveEmp = document.getElementById('dashboard-active-employees');
+        if (elActiveEmp) elActiveEmp.textContent = employees.length;
+
+        const elTotalHours = document.getElementById('dashboard-total-hours');
+        if (elTotalHours) elTotalHours.textContent = totalHours.toFixed(1) + 'h';
+
+        const elMonthLabel = document.getElementById('stat-month-label');
+        if (elMonthLabel) elMonthLabel.textContent = now.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 
         const fmt = v => window.Utils.formatCurrency(v);
 
