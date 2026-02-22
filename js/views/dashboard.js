@@ -395,6 +395,9 @@ window.Views.dashboard = async (container) => {
         }
         renderBadge('kpi-gasto-mes-badge', gastoTotal, gastoPrev, true);
 
+        // Ventas mes with badge
+        const elVentas = document.getElementById('kpi-ventas-mes');
+        if (elVentas) elVentas.innerHTML = fmt(ventasMes);
         renderBadge('kpi-ventas-mes-badge', ventasMes, ventasPrev, false);
 
         // ---- CEO Metrics: Forecast & Margin ----
@@ -404,13 +407,13 @@ window.Views.dashboard = async (container) => {
         const forecastVentas = dailyAvg * daysInMonth;
 
         const elForecast = document.getElementById('kpi-proyeccion-cierre');
-        if (elForecast) elForecast.textContent = fmt(forecastVentas);
+        if (elForecast) elForecast.innerHTML = fmt(forecastVentas);
 
         const margenNetoMonto = ventasMes - gastoTotal;
         const margenNetoPct = ventasMes > 0 ? (margenNetoMonto / ventasMes * 100) : 0;
 
         const elMargenMonto = document.getElementById('kpi-margen-neto');
-        if (elMargenMonto) elMargenMonto.textContent = fmt(margenNetoMonto);
+        if (elMargenMonto) elMargenMonto.innerHTML = fmt(margenNetoMonto);
 
         const elMargenBadge = document.getElementById('kpi-margen-badge');
         if (elMargenBadge) {
