@@ -896,6 +896,27 @@ async function showInvoiceModal(invoiceToEdit = null) {
         }
     });
 
+    // --- VALIDATION LOGIC ---
+    async function isDuplicate(invoiceNumber) {
+        if (!invoiceNumber) return false;
+        const allInvoices = await window.db.purchase_invoices.toArray();
+        const activeInvoices = allInvoices.filter(i => !i.deleted);
+
+        // If editing, ignore the current invoice
+        return activeInvoices.some(inv =>
+            inv.invoiceNumber.toLowerCase() === invoiceNumber.toLowerCase() &&
+            (!isEdit || inv.id !== invoiceToEdit.id)
+        );
+    }
+
+    const numberInput = document.getElementById('inv-number');
+    numberInput.addEventListener('blur', async () => {
+        const val = numberInput.value.trim();
+        if (await isDuplicate(val)) {
+            alert(`❌ Ya existe una factura con el número "${val}".\n\nPor favor usa un número diferente.`);
+        }
+    });
+
     document.getElementById('btn-save-invoice').addEventListener('click', async () => {
         const supplierNameInput = document.getElementById('inv-supplier-input').value.trim();
 
@@ -923,17 +944,9 @@ async function showInvoiceModal(invoiceToEdit = null) {
         const dueDate = paymentMethod === 'Crédito' ? (document.getElementById('inv-due-date').value || null) : null;
 
         // ✅ DUPLICATE CHECK: Verify invoice number doesn't already exist
-        if (!isEdit) {
-            const allInvoices = await window.db.purchase_invoices.toArray();
-            const activeInvoices = allInvoices.filter(i => !i.deleted);
-            const duplicateExists = activeInvoices.some(inv =>
-                inv.invoiceNumber.toLowerCase() === invoiceNumber.toLowerCase()
-            );
-
-            if (duplicateExists) {
-                alert(`❌ Ya existe una factura con el número "${invoiceNumber}".\n\nPor favor usa un número diferente.`);
-                return;
-            }
+        if (await isDuplicate(invoiceNumber)) {
+            alert(`❌ Ya existe una factura con el número "${invoiceNumber}".\n\nPor favor usa un número diferente.`);
+            return;
         }
 
         try {
