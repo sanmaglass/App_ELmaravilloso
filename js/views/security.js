@@ -143,9 +143,26 @@ window.Views.security = async (container) => {
                             3. Crea un usuario "admin" ahí o asegúrate de que tenga permisos.
                         </div>
 
-                        <div class="form-group" style="margin-bottom:12px;">
-                            <label class="form-label">Dirección IP del NVR</label>
-                            <input type="text" id="cfg-nvr-ip" class="form-input" value="${nvrIp}">
+                        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:12px;">
+                            <div class="form-group" style="margin-bottom:12px;">
+                                <label class="form-label">Dirección IP del NVR</label>
+                                <input type="text" id="cfg-nvr-ip" class="form-input" value="${nvrIp}">
+                            </div>
+                            <div class="form-group" style="margin-bottom:12px;">
+                                <label class="form-label">Puerto</label>
+                                <input type="text" id="cfg-nvr-port" class="form-input" value="${nvrPort}">
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                            <div class="form-group" style="margin-bottom:12px;">
+                                <label class="form-label">Usuario</label>
+                                <input type="text" id="cfg-nvr-user" class="form-input" value="${nvrUser}">
+                            </div>
+                            <div class="form-group" style="margin-bottom:12px;">
+                                <label class="form-label">Contraseña</label>
+                                <input type="password" id="cfg-nvr-pass" class="form-input" value="${nvrPass}">
+                            </div>
                         </div>
 
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">

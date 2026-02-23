@@ -494,7 +494,10 @@ async function renderInvoices() {
 
         // Filter
         let filtered = activeInvoices.filter(i => {
-            const supplierName = (supplierMap[i.supplierId] || 'Desconocido').toLowerCase();
+            const nameFromMap = supplierMap[i.supplierId];
+            const nameFromBackup = i.supplierName || 'Desconocido';
+            const supplierName = (nameFromMap || nameFromBackup).toLowerCase();
+
             const matchesSearch = supplierName.includes(search) || (i.invoiceNumber || '').toLowerCase().includes(search);
             let matchesStatus = statusFilter === 'all' || i.paymentStatus === statusFilter;
             // Special filter: 'Crédito' shows credit invoices still pending
@@ -552,7 +555,24 @@ async function renderInvoices() {
         });
 
         const html = paginatedItems.map(inv => {
-            const supplierName = supplierMap[inv.supplierId] || 'Proveedor Eliminado';
+            let supplierName = supplierMap[inv.supplierId];
+
+            // --- SELF-HEALING FALLBACK ---
+            // If ID not found, try to find by name saved in record
+            if (!supplierName && inv.supplierName) {
+                const found = suppliers.find(s => s.name.toLowerCase() === inv.supplierName.toLowerCase() && !s.deleted);
+                if (found) {
+                    supplierName = found.name;
+                    // Auto-fix ID in background (non-blocking)
+                    window.db.purchase_invoices.update(inv.id, { supplierId: found.id });
+                    console.log(`[Fix] Vinculando factura ${inv.invoiceNumber} al proveedor ${found.name} (ID recuperado)`);
+                } else {
+                    supplierName = inv.supplierName + ' (Sin ID)';
+                }
+            } else if (!supplierName) {
+                supplierName = 'Proveedor Eliminado';
+            }
+
             const isPending = inv.paymentStatus === 'Pendiente';
             const amount = parseFloat(inv.amount) || 0;
 
@@ -952,6 +972,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
         try {
             const invoiceData = {
                 supplierId,
+                supplierName: supplierObj.name, // Save name as backup
                 invoiceNumber,
                 date,
                 amount,
