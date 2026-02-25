@@ -24,7 +24,7 @@ window.Views.suppliers = async (container) => {
         </div>
 
         <!-- Suppliers List -->
-        <div id="suppliers-list" class="grid grid-cols-auto gap-4">
+        <div id="suppliers-list" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:16px;">
             <div class="loading-state" style="grid-column:1/-1;">
                 <div class="spinner"></div>
                 <p>Cargando proveedores...</p>
@@ -158,8 +158,7 @@ function showSupplierModal(supplierToEdit = null) {
                     <i class="ph ph-floppy-disk"></i> ${isEdit ? 'Actualizar Proveedor' : 'Guardar Proveedor'}
                 </button>
             </div>
-        </div >
-        `;
+        </div>
     `;
 
     modal.classList.remove('hidden');
