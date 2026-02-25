@@ -932,21 +932,33 @@ async function showInvoiceModal(invoiceToEdit = null) {
     async function isDuplicate(invoiceNumber) {
         if (!invoiceNumber) return false;
 
-        // EXCEPTION: "PENDIENTE" or "S/N" can be repeated
-        const normalized = invoiceNumber.trim().toUpperCase();
-        if (normalized === 'PENDIENTE' || normalized === 'S/N' || normalized === '') {
+        // 1. Normalize input
+        const normalizedInput = String(invoiceNumber).trim().toUpperCase();
+
+        // 2. Exception: Keywords that can be repeated
+        const exceptions = ['PENDIENTE', 'S/N', '', 'NULL', 'SIN NUMERO'];
+        if (exceptions.includes(normalizedInput)) {
             return false;
         }
 
+        // 3. Check against existing invoices
         const allInvoices = await window.db.purchase_invoices.toArray();
         const activeInvoices = allInvoices.filter(i => !i.deleted);
 
-        // If editing, ignore the current invoice
-        return activeInvoices.some(inv =>
-            inv.invoiceNumber &&
-            inv.invoiceNumber.toLowerCase() === invoiceNumber.toLowerCase() &&
-            (!isEdit || inv.id !== invoiceToEdit.id)
-        );
+        return activeInvoices.some(inv => {
+            if (!inv.invoiceNumber) return false;
+
+            const existingNum = String(inv.invoiceNumber).trim().toUpperCase();
+
+            // Skip checking against existing "PENDIENTE" records
+            if (exceptions.includes(existingNum)) return false;
+
+            // Strict match for real numbers
+            const matches = existingNum === normalizedInput;
+            const isDifferentRecord = !isEdit || inv.id !== invoiceToEdit.id;
+
+            return matches && isDifferentRecord;
+        });
     }
 
     const numberInput = document.getElementById('inv-number');
