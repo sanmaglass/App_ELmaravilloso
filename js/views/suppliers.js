@@ -3,12 +3,12 @@ window.Views = window.Views || {};
 
 window.Views.suppliers = async (container) => {
     container.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <div class="flex justify-between items-center mb-6">
             <div>
-                <h1 style="margin-bottom:8px; color:var(--text-primary); display:flex; align-items:center; gap:10px;">
-                    <i class="ph ph-package" style="color:var(--primary);"></i> Proveedores
+                <h1 class="mb-2 text-primary flex items-center gap-2">
+                    <i class="ph ph-package"></i> Proveedores
                 </h1>
-                <p style="color:var(--text-muted);">Gestión de distribuidores y empresas</p>
+                <p class="text-muted">Gestión de distribuidores y empresas</p>
             </div>
             <button class="btn btn-primary" id="btn-add-supplier">
                 <i class="ph ph-plus-circle"></i> Nuevo Proveedor
@@ -16,15 +16,15 @@ window.Views.suppliers = async (container) => {
         </div>
 
         <!-- Search Bar -->
-        <div style="margin-bottom:20px;">
-            <div style="position:relative;">
-                <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
-                <input type="text" id="supplier-search" class="form-input" placeholder="Buscar proveedor..." style="padding-left:36px; width:100%;">
+        <div class="mb-4">
+            <div class="w-full relative">
+                <i class="ph ph-magnifying-glass absolute" style="left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
+                <input type="text" id="supplier-search" class="form-input" placeholder="Buscar proveedor..." style="padding-left:36px;">
             </div>
         </div>
 
         <!-- Suppliers List -->
-        <div id="suppliers-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:16px;">
+        <div id="suppliers-list" class="grid grid-cols-auto gap-4">
             <div class="loading-state" style="grid-column:1/-1;">
                 <div class="spinner"></div>
                 <p>Cargando proveedores...</p>
@@ -56,9 +56,9 @@ async function renderSuppliers(filterText = '') {
 
         if (filtered.length === 0) {
             list.innerHTML = `
-                <div style="grid-column: 1/-1; text-align:center; padding:40px; background:rgba(0,0,0,0.02); border-radius:12px; border:1px dashed var(--border);">
-                    <i class="ph ph-package" style="font-size:3rem; color:var(--text-muted); margin-bottom:12px;"></i>
-                    <h3 style="color:var(--text-muted);">No se encontraron proveedores</h3>
+                <div class="p-6 text-center" style="grid-column: 1/-1; background:rgba(0,0,0,0.02); border-radius:12px; border:1px dashed var(--border);">
+                    <i class="ph ph-package mb-3 text-muted" style="font-size:3rem;"></i>
+                    <h3 class="text-muted">No se encontraron proveedores</h3>
                 </div>
             `;
             return;
@@ -68,21 +68,21 @@ async function renderSuppliers(filterText = '') {
         filtered.sort((a, b) => a.name.localeCompare(b.name));
 
         list.innerHTML = filtered.map(s => `
-            <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:16px;">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <div style="width:40px; height:40px; background:var(--bg-input); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; color:var(--primary);">
+            <div class="card flex justify-between items-center p-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center justify-center font-bold text-primary" style="width:40px; height:40px; background:var(--bg-input); border-radius:50%;">
                         ${s.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <div style="font-weight:600; font-size:1.05rem;">${s.name}</div>
-                        ${s.contact ? `<div style="font-size:0.85rem; color:var(--text-muted);"><i class="ph ph-phone"></i> ${s.contact}</div>` : ''}
+                        <div class="font-bold text-primary" style="font-size:1.05rem;">${s.name}</div>
+                        ${s.contact ? `<div class="text-muted" style="font-size:0.85rem;"><i class="ph ph-phone"></i> ${s.contact}</div>` : ''}
                     </div>
                 </div>
-                <div style="display:flex; gap:8px;">
+                <div class="flex gap-2">
                      <button class="btn btn-icon btn-edit-supplier" data-id="${s.id}" title="Editar">
                         <i class="ph ph-pencil-simple"></i>
                     </button>
-                    <button class="btn btn-icon btn-delete-supplier" data-id="${s.id}" title="Eliminar" style="color:var(--error);">
+                    <button class="btn btn-icon btn-delete-supplier text-danger" data-id="${s.id}" title="Eliminar">
                         <i class="ph ph-trash"></i>
                     </button>
                 </div>
@@ -107,13 +107,8 @@ async function renderSuppliers(filterText = '') {
 async function handleDeleteSupplier(id) {
     if (confirm('¿Eliminar este proveedor?')) {
         try {
-            await window.db.suppliers.update(id, { deleted: true });
+            await window.DataManager.deleteAndSync('suppliers', id);
             renderSuppliers(document.getElementById('supplier-search').value);
-
-            // Sync if available
-            if (window.Sync?.client) {
-                await window.Sync.client.from('suppliers').update({ deleted: true }).eq('id', id);
-            }
         } catch (e) { alert('Error: ' + e.message); }
     }
 }
@@ -134,38 +129,37 @@ function showSupplierModal(supplierToEdit = null) {
                 <h3 class="modal-title">${isEdit ? 'Editar Proveedor' : 'Nuevo Proveedor'}</h3>
                 <button class="modal-close" onclick="document.getElementById('modal-container').classList.add('hidden')"><i class="ph ph-x"></i></button>
             </div>
-            <div class="modal-body">
-                <form id="supplier-form">
+            <div class="p-6">
+                <div class="form-group mb-4">
+                    <label class="form-label">Nombre de Empresa *</label>
+                    <input type="text" id="sup-name" class="form-input" required value="${isEdit ? supplierToEdit.name : ''}">
+                </div>
+                <div class="grid grid-2 gap-3 mb-4">
                     <div class="form-group">
-                        <label class="form-label">Nombre de Empresa *</label>
-                        <input type="text" id="sup-name" class="form-input" required value="${isEdit ? supplierToEdit.name : ''}">
-                    </div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
-                        <div class="form-group">
-                            <label class="form-label">RUT</label>
-                            <input type="text" id="sup-rut" class="form-input" placeholder="12.345.678-9" value="${isEdit ? (supplierToEdit.rut || '') : ''}">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Giro</label>
-                            <input type="text" id="sup-giro" class="form-input" placeholder="Venta de..." value="${isEdit ? (supplierToEdit.giro || '') : ''}">
-                        </div>
+                        <label class="form-label">RUT</label>
+                        <input type="text" id="sup-rut" class="form-input" placeholder="12.345.678-9" value="${isEdit ? (supplierToEdit.rut || '') : ''}">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Dirección</label>
-                        <input type="text" id="sup-address" class="form-input" placeholder="Calle #123, Comuna" value="${isEdit ? (supplierToEdit.address || '') : ''}">
+                        <label class="form-label">Giro</label>
+                        <input type="text" id="sup-giro" class="form-input" placeholder="Venta de..." value="${isEdit ? (supplierToEdit.giro || '') : ''}">
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Contacto / Teléfono</label>
-                        <input type="text" id="sup-contact" class="form-input" value="${isEdit ? (supplierToEdit.contact || '') : ''}">
-                    </div>
-                </form>
+                </div>
+                <div class="form-group mb-4">
+                    <label class="form-label">Dirección</label>
+                    <input type="text" id="sup-address" class="form-input" placeholder="Calle #123, Comuna" value="${isEdit ? (supplierToEdit.address || '') : ''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Contacto / Teléfono</label>
+                    <input type="text" id="sup-contact" class="form-input" value="${isEdit ? (supplierToEdit.contact || '') : ''}">
+                </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" id="btn-save-supplier" style="width:100%;">
-                    ${isEdit ? 'Actualizar' : 'Guardar'}
+            <div class="modal-footer p-6">
+                <button class="btn btn-primary w-full" id="btn-save-supplier">
+                    <i class="ph ph-floppy-disk"></i> ${isEdit ? 'Actualizar Proveedor' : 'Guardar Proveedor'}
                 </button>
             </div>
-        </div>
+        </div >
+        `;
     `;
 
     modal.classList.remove('hidden');
@@ -180,25 +174,11 @@ function showSupplierModal(supplierToEdit = null) {
         if (!name) { alert('El nombre es obligatorio'); return; }
 
         try {
-            if (isEdit) {
-                const updatedData = { name, rut, giro, address, contact };
-                await window.db.suppliers.update(supplierToEdit.id, updatedData);
-                // Cloud Sync
-                if (window.Sync?.client) {
-                    await window.Sync.client.from('suppliers').update(updatedData).eq('id', supplierToEdit.id);
-                }
-            } else {
-                const newSup = {
-                    id: Date.now() + Math.floor(Math.random() * 1000),
-                    name, rut, giro, address, contact,
-                    deleted: false
-                };
-                await window.db.suppliers.add(newSup);
-                // Cloud Sync
-                if (window.Sync?.client) {
-                    await window.Sync.client.from('suppliers').insert([newSup]);
-                }
-            }
+            const supplierData = { name, rut, giro, address, contact, deleted: false };
+            if (isEdit) supplierData.id = supplierToEdit.id;
+
+            await window.DataManager.saveAndSync('suppliers', supplierData);
+
             modal.classList.add('hidden');
             renderSuppliers();
         } catch (e) { alert('Error: ' + e.message); }

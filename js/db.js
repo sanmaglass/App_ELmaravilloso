@@ -107,5 +107,50 @@ async function seedSuppliersIfNeeded() {
 
 // Expose to window
 window.db = db;
+// --- CENTRALIZED DATA MANAGER (Centralización de Lógica) ---
+window.DataManager = {
+    /**
+     * Guarda o actualiza una entidad y sincroniza con Supabase automáticamente
+     */
+    async saveAndSync(tableName, data) {
+        const isUpdate = !!data.id && (await window.db[tableName].get(data.id));
+
+        try {
+            if (isUpdate) {
+                await window.db[tableName].update(data.id, data);
+                if (window.Sync?.client) {
+                    await window.Sync.client.from(tableName).update(data).eq('id', data.id);
+                }
+            } else {
+                if (!data.id) data.id = Date.now();
+                await window.db[tableName].add(data);
+                if (window.Sync?.client) {
+                    await window.Sync.client.from(tableName).insert([data]);
+                }
+            }
+            return { success: true, id: data.id };
+        } catch (e) {
+            console.error(`Error saving ${tableName}:`, e);
+            throw e;
+        }
+    },
+
+    /**
+     * Elimina (soft delete) una entidad y sincroniza
+     */
+    async deleteAndSync(tableName, id) {
+        try {
+            await window.db[tableName].update(id, { deleted: true });
+            if (window.Sync?.client) {
+                await window.Sync.client.from(tableName).update({ deleted: true }).eq('id', id);
+            }
+            return { success: true };
+        } catch (e) {
+            console.error(`Error deleting ${tableName}:`, e);
+            throw e;
+        }
+    }
+};
+
 window.seedDatabase = seedDatabase;
 window.seedSuppliersIfNeeded = seedSuppliersIfNeeded;

@@ -3,32 +3,32 @@ window.Views = window.Views || {};
 
 window.Views.electronic_invoices = async (container) => {
     container.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <div class="flex justify-between items-center mb-6">
             <div>
-                <h1 style="margin-bottom:8px; color:var(--text-primary); display:flex; align-items:center; gap:10px;">
-                    <i class="ph ph-file-arrow-up" style="color:var(--primary);"></i> Facturas Electrónicas SII
+                <h1 class="mb-2 text-primary flex items-center gap-2">
+                    <i class="ph ph-file-arrow-up"></i> Facturas Electrónicas SII
                 </h1>
-                <p style="color:var(--text-muted);">Emisión automática de DTE a proveedores/clientes</p>
+                <p class="text-muted">Emisión automática de DTE a proveedores/clientes</p>
             </div>
             <button class="btn btn-primary" id="btn-new-dte">
                 <i class="ph ph-plus-circle"></i> Nueva Factura (DTE)
             </button>
         </div>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:24px;">
-            <div class="card" style="padding:16px;">
-                <h3 style="font-size:1rem; margin-bottom:12px;">Estado API SII</h3>
-                <div id="api-status" style="display:flex; align-items:center; gap:8px; color:var(--text-muted);">
+        <div class="grid grid-2 gap-4 mb-6">
+            <div class="card p-4">
+                <h3 class="font-bold mb-3 text-sm flex items-center gap-2"><i class="ph ph-broadcast"></i> ESTADO API SII</h3>
+                <div id="api-status" class="flex items-center gap-2 text-muted">
                     <i class="ph ph-circle-fill" style="color:#fbbf24;"></i> Configurando...
                 </div>
             </div>
-            <div class="card" style="padding:16px;">
-                <h3 style="font-size:1rem; margin-bottom:12px;">Resumen Mes</h3>
-                <div style="font-size:1.5rem; font-weight:bold; color:var(--primary);" id="total-month-dte">$0</div>
+            <div class="card p-4">
+                <h3 class="font-bold mb-3 text-sm flex items-center gap-2"><i class="ph ph-chart-pie"></i> RESUMEN MES</h3>
+                <div class="text-2xl font-bold text-primary" id="total-month-dte">$0</div>
             </div>
         </div>
 
-        <div id="dte-list" style="display:flex; flex-direction:column; gap:12px;">
+        <div id="dte-list" class="flex-col gap-3">
             <div class="loading-state">
                 <div class="spinner"></div>
                 <p>Cargando registros...</p>
@@ -49,30 +49,31 @@ async function renderDTEs() {
         const dtes = await window.db.electronic_invoices.toArray();
         if (dtes.length === 0) {
             list.innerHTML = `
-                <div style="text-align:center; padding:40px; background:rgba(0,0,0,0.02); border-radius:12px; border:1px dashed var(--border);">
-                    <i class="ph ph-file-text" style="font-size:3rem; color:var(--text-muted); margin-bottom:12px;"></i>
-                    <h3 style="color:var(--text-muted);">No hay facturas emitidas</h3>
-                    <p style="color:var(--text-muted); font-size:0.9rem;">Las facturas enviadas al SII aparecerán aquí.</p>
+                <div class="p-8 text-center" style="background:rgba(0,0,0,0.02); border-radius:12px; border:1px dashed var(--border);">
+                    <i class="ph ph-file-text mb-3 text-muted" style="font-size:3rem;"></i>
+                    <h3 class="text-muted">No hay facturas emitidas</h3>
+                    <p class="text-muted text-sm">Las facturas enviadas al SII aparecerán aquí.</p>
                 </div>
             `;
             return;
         }
 
         list.innerHTML = dtes.reverse().map(dte => `
-            <div class="card" style="padding:16px; display:grid; grid-template-columns: 1fr 1fr auto auto; align-items:center; gap:16px;">
+            <div class="card p-4 grid gap-4 items-center" style="grid-template-columns: 1fr 1fr auto auto;">
                 <div>
-                    <div style="font-weight:600;">${dte.receiverName}</div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">${dte.receiverRut} • ${dte.date}</div>
+                    <div class="font-bold text-primary">${dte.receiverName}</div>
+                    <div class="text-xs text-muted">${dte.receiverRut} • ${dte.date}</div>
                 </div>
-                <div style="text-align:right;">
-                    <div style="font-weight:bold; color:var(--primary);">${window.Utils.formatCurrency(dte.total)}</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted);">Folio: ${dte.folio || 'Pendiente'}</div>
+                <div class="text-right">
+                    <div class="font-bold text-primary">${window.Utils.formatCurrency(dte.total)}</div>
+                    <div class="text-xs text-muted">Folio: ${dte.folio || 'Pendiente'}</div>
                 </div>
-                <div style="padding:4px 8px; border-radius:6px; font-size:0.75rem; font-weight:bold; background:${dte.status === 'Enviado' ? '#dcfce7' : '#fee2e2'}; color:${dte.status === 'Enviado' ? '#166534' : '#991b1b'};">
+                <div class="badge ${dte.status === 'Enviado' ? 'badge-up' : 'badge-down'}" style="padding:4px 10px;">
                     ${dte.status}
                 </div>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn btn-icon" title="Ver PDF" onclick="window.open('${dte.pdfUrl}', '_blank')"><i class="ph ph-file-pdf"></i></button>
+                <div class="flex gap-2">
+                    <button class="btn btn-icon btn-secondary" title="Ver PDF" onclick="window.open('${dte.pdfUrl}', '_blank')"><i class="ph ph-file-pdf"></i></button>
+                    ${dte.status !== 'Enviado' ? `<button class="btn btn-icon btn-primary" title="Reintentar"> <i class="ph ph-arrows-clockwise"></i> </button>` : ''}
                 </div>
             </div>
         `).join('');
@@ -93,20 +94,20 @@ async function showDTEModal() {
                 <h3 class="modal-title">Emisión de Factura SII</h3>
                 <button class="modal-close" onclick="document.getElementById('modal-container').classList.add('hidden')"><i class="ph ph-x"></i></button>
             </div>
-            <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+            <div class="p-6 flex-col gap-4">
                 
-                <div class="card" style="background:#f8fafc; padding:12px;">
-                    <label class="form-label">Seleccionar Empresa / Proveedor</label>
+                <div class="card p-3" style="background:var(--bg-input);">
+                    <label class="form-label font-bold mb-1">Empresa / Proveedor Destino</label>
                     <select id="dte-supplier-select" class="form-input">
                         <option value="">-- Nuevo o Seleccionar --</option>
                         ${activeSuppliers.map(s => `<option value="${s.id}" data-rut="${s.rut || ''}" data-giro="${s.giro || ''}" data-address="${s.address || ''}">${s.name}</option>`).join('')}
                     </select>
                 </div>
 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                <div class="grid grid-2 gap-3">
                     <div class="form-group">
                         <label class="form-label">Razón Social Receptora</label>
-                        <input type="text" id="dte-name" class="form-input" placeholder="Nombre de la empresa">
+                        <input type="text" id="dte-name" class="form-input" placeholder="Nombre completo">
                     </div>
                     <div class="form-group">
                         <label class="form-label">RUT Receptora</label>
@@ -114,7 +115,7 @@ async function showDTEModal() {
                     </div>
                 </div>
 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                <div class="grid grid-2 gap-3">
                     <div class="form-group">
                         <label class="form-label">Giro</label>
                         <input type="text" id="dte-giro" class="form-input" placeholder="Giro Comercial">
@@ -125,41 +126,41 @@ async function showDTEModal() {
                     </div>
                 </div>
 
-                <hr style="border:none; border-top:1px solid var(--border);">
+                <div class="divider"></div>
 
-                <div style="background:var(--bg-input); padding:16px; border-radius:8px;">
-                    <h4 style="margin-bottom:12px; font-size:0.9rem;">Detalle de Factura</h4>
-                    <div style="display:flex; gap:8px; margin-bottom:12px;">
-                        <input type="text" id="item-name" class="form-input" placeholder="Descripción del producto" style="flex:2;">
-                        <input type="number" id="item-price" class="form-input" placeholder="Precio Neto" style="flex:1;">
-                        <button class="btn btn-secondary" id="btn-add-dte-item"><i class="ph ph-plus"></i></button>
+                <div class="p-4 rounded-lg" style="background:rgba(0,0,0,0.02); border:1px solid var(--border);">
+                    <h4 class="mb-3 font-bold text-sm">DETALLE DE FACTURA</h4>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="item-name" class="form-input" placeholder="Descripción..." style="flex:2;">
+                        <input type="number" id="item-price" class="form-input" placeholder="Neto $" style="flex:1;">
+                        <button class="btn btn-primary" id="btn-add-dte-item"><i class="ph ph-plus"></i></button>
                     </div>
-                    <table style="width:100%; font-size:0.85rem;" id="dte-items-table">
+                    <table class="w-full text-sm" id="dte-items-table">
                         <tbody id="dte-items-body"></tbody>
-                        <tfoot>
+                        <tfoot class="font-bold">
                             <tr>
-                                <td style="padding-top:12px; font-weight:bold;">TOTAL NETO:</td>
-                                <td id="dte-neto" style="padding-top:12px; text-align:right;">$0</td>
+                                <td class="pt-3">TOTAL NETO:</td>
+                                <td id="dte-neto" class="pt-3 text-right">$0</td>
                             </tr>
-                            <tr>
-                                <td style="color:var(--text-muted);">IVA (19%):</td>
-                                <td id="dte-iva" style="text-align:right; color:var(--text-muted);">$0</td>
+                            <tr class="text-muted">
+                                <td>IVA (19%):</td>
+                                <td id="dte-iva" class="text-right">$0</td>
                             </tr>
-                            <tr style="font-size:1.1rem; font-weight:bold; color:var(--primary);">
-                                <td>TOTAL:</td>
-                                <td id="dte-total">$0</td>
+                            <tr class="text-xl text-primary font-bold">
+                                <td class="pt-2">TOTAL BRUTO:</td>
+                                <td id="dte-total" class="pt-2 text-right">$0</td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
 
             </div>
-            <div class="modal-footer" style="gap:12px;">
-                <button class="btn btn-secondary" id="btn-copy-dte-data" title="Copia datos para el SII manual">
+            <div class="modal-footer p-6 gap-3">
+                <button class="btn btn-secondary flex-1" id="btn-copy-dte-data">
                     <i class="ph ph-copy"></i> Copiar Datos
                 </button>
-                <button class="btn btn-primary" id="btn-emit-dte" style="flex:1;">
-                    <i class="ph ph-paper-plane-tilt"></i> EMITIR FACTURA (SII)
+                <button class="btn btn-primary" id="btn-emit-dte" style="flex:2;">
+                    <i class="ph ph-paper-plane-tilt"></i> EMITIR FACTURA ELECTRÓNICA
                 </button>
             </div>
         </div>
@@ -210,7 +211,6 @@ async function showDTEModal() {
         }
     });
 
-    // Logic: Copy to clipboard
     document.getElementById('btn-copy-dte-data').addEventListener('click', () => {
         const text = `FACTURA PARA: ${document.getElementById('dte-name').value}\nRUT: ${document.getElementById('dte-rut').value}\nGIRO: ${document.getElementById('dte-giro').value}\nTOTAL: ${document.getElementById('dte-total').textContent}`;
         navigator.clipboard.writeText(text);
@@ -234,15 +234,14 @@ async function showDTEModal() {
         btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Emitiendo...';
 
         try {
-            // 1. Guardar proveedor si es nuevo o ha cambiado
+            // 1. Guardar proveedor si es nuevo o ha cambiado (Usando DataManager)
             const suppliers = await window.db.suppliers.toArray();
             const existing = suppliers.find(s => s.rut === rut);
             if (!existing) {
-                const newSup = { id: Date.now(), name, rut, giro, address, deleted: false };
-                await window.db.suppliers.add(newSup);
+                await window.DataManager.saveAndSync('suppliers', { name, rut, giro, address, deleted: false });
                 console.log("Nuevo proveedor guardado automáticamente");
             } else if (existing.giro !== giro || existing.address !== address) {
-                await window.db.suppliers.update(existing.id, { giro, address });
+                await window.DataManager.saveAndSync('suppliers', { id: existing.id, giro, address });
             }
 
             // 2. Envío Real usando SII_API
@@ -257,7 +256,6 @@ async function showDTEModal() {
 
                 if (result.success) {
                     const dteEntry = {
-                        id: Date.now(),
                         date: today,
                         receiverName: name,
                         receiverRut: rut,
@@ -266,7 +264,7 @@ async function showDTEModal() {
                         folio: result.folio,
                         pdfUrl: result.pdfUrl
                     };
-                    await window.db.electronic_invoices.add(dteEntry);
+                    await window.DataManager.saveAndSync('electronic_invoices', dteEntry);
 
                     alert(`¡Factura Folio ${result.folio} emitida con éxito!`);
                     modal.classList.add('hidden');
@@ -275,7 +273,7 @@ async function showDTEModal() {
             } catch (err) {
                 alert('Error al emitir: ' + err.message);
                 btn.disabled = false;
-                btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> EMITIR FACTURA (SII)';
+                btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> EMITIR FACTURA ELECTRÓNICA';
             }
 
         } catch (e) {
