@@ -464,14 +464,27 @@ window.Utils = {
         }
 
         return {
-            totalPaid: Math.round(totalEarned), // What's been EARNED up to today
-            totalProjected: Math.round(totalProjected), // What will be paid by end of month
+            totalPaid: Math.round(totalEarned),
+            totalProjected: Math.round(totalProjected),
             breakdown: {
                 manual: Math.round(manualPayments),
                 salaryEarned: Math.round(salaryEarned),
                 salaryProjected: Math.round(salaryProjected)
             },
-            pending: Math.round(totalProjected - totalEarned) // What's still to be earned
+            pending: Math.round(totalProjected - totalEarned)
         };
+    },
+
+    animateNumber: (el, start, end, duration = 1000, isCurrency = false) => {
+        if (!el) return;
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            const value = Math.floor(progress * (end - start) + start);
+            el.innerHTML = isCurrency ? window.Utils.formatCurrency(value) : value.toLocaleString();
+            if (progress < 1) window.requestAnimationFrame(step);
+        };
+        window.requestAnimationFrame(step);
     }
 };

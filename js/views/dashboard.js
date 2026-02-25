@@ -14,35 +14,24 @@ window.Views.dashboard = async (container) => {
         body.dark-mode .dash-tab.active { background:#21262d; color:#e6edf3; }
         body.dark-mode .dash-tabs { background:rgba(255,255,255,0.05); }
 
-        /* ---- KPI Card Animated ---- */
-        .kpi-card { position:relative; overflow:hidden; transition:transform 0.2s, box-shadow 0.2s; }
-        .kpi-card:hover { transform:translateY(-3px); box-shadow:0 8px 30px rgba(230,0,0,0.08); }
-        .kpi-card .kpi-glow { position:absolute; top:-30px; right:-30px; width:100px; height:100px; border-radius:50%; opacity:0.1; }
+        /* ---- Glassmorphism & Premium UI ---- */
+        .card { backdrop-filter:blur(8px); background:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.3); box-shadow:0 8px 32px rgba(0,0,0,0.05); }
+        body.dark-mode .card { background:rgba(30, 41, 59, 0.7); border:1px solid rgba(255,255,255,0.1); }
         
-        /* Sparkline container */
-        .spark-container { height:40px; margin-top:10px; opacity:0.8; }
+        .bg-glass { backdrop-filter:blur(10px); background:rgba(255,255,255,0.4); border:1px solid rgba(255,255,255,0.2); }
+        body.dark-mode .bg-glass { background:rgba(255,255,255,0.05); }
 
-        /* ---- Health Indicator ---- */
-        .health-bar-wrap { height:8px; background:rgba(0,0,0,0.05); border-radius:10px; overflow:hidden; }
-        .health-bar { height:100%; border-radius:10px; transition:width 1.2s cubic-bezier(.4,0,.2,1); }
-
-        /* ---- Tab content ---- */
-        .dash-tab-content { display:none; }
-        .dash-tab-content.active { display:block; animation: fadeInTab 0.3s ease; }
-        @keyframes fadeInTab { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-
-        /* ---- Forecast timeline ---- */
-        .forecast-item { display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--border); }
-        .forecast-item:last-child { border-bottom:none; }
-        .forecast-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; box-shadow: 0 0 10px currentColor; }
-
-        /* ---- Top supplier bar ---- */
-        .supplier-bar-bg { height:6px; background:rgba(0,0,0,0.05); border-radius:6px; margin-top:6px; overflow:hidden; }
-        .supplier-bar-fill { height:100%; border-radius:6px; transition:width 1s ease; }
-
+        /* KPI Card Animated */
+        .kpi-card { position:relative; overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .kpi-card:hover { transform:translateY(-5px) scale(1.02); box-shadow:0 12px 40px rgba(0,0,0,0.1); }
+        .kpi-card .kpi-glow { position:absolute; top:-50%; right:-50%; width:200%; height:200%; background:radial-gradient(circle, currentColor 0%, transparent 70%); opacity:0.05; pointer-events:none; }
+        
         /* Card animation */
-        @keyframes slideUp { from { opacity:0; transform:translateY(15px); } to { opacity:1; transform:translateY(0); } }
-        .card-anim { animation: slideUp 0.4s ease both; }
+        @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        .card-anim { animation: slideUp 0.5s ease backwards; }
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
     </style>
 
     <!-- Header -->
@@ -255,17 +244,17 @@ window.Views.dashboard = async (container) => {
 
         <!-- Business Insights Row [NEW] -->
         <div class="grid grid-3 gap-4 mb-6">
-            <div class="card card-anim p-4" style="border-top:3px solid var(--primary); background:rgba(var(--primary-rgb), 0.02);">
+            <div class="card card-anim delay-1 p-4" style="border-top:3px solid var(--primary);">
                 <div class="text-muted font-bold text-xs uppercase mb-2">Ticket Promedio</div>
                 <div id="insight-avg-ticket" class="text-2xl font-bold text-primary">$0</div>
                 <div class="text-xs text-muted mt-1">Ventas diarias / Clientes</div>
             </div>
-            <div class="card card-anim p-4" style="border-top:3px solid #8b5cf6; background:rgba(139, 92, 246, 0.02);">
+            <div class="card card-anim delay-2 p-4" style="border-top:3px solid #8b5cf6;">
                 <div class="text-muted font-bold text-xs uppercase mb-2">Día de Mayor Venta</div>
                 <div id="insight-best-day" class="text-2xl font-bold" style="color:#7c3aed;">—</div>
                 <div class="text-xs text-muted mt-1">Histórico del período</div>
             </div>
-            <div class="card card-anim p-4" style="border-top:3px solid #ec4899; background:rgba(236, 72, 153, 0.02);">
+            <div class="card card-anim delay-3 p-4" style="border-top:3px solid #ec4899;">
                 <div class="text-muted font-bold text-xs uppercase mb-2">Crecimiento Ventas</div>
                 <div id="insight-growth" class="text-2xl font-bold" style="color:#db2777;">0%</div>
                 <div id="insight-growth-detail" class="text-xs text-muted mt-1">vs Período Anterior</div>
@@ -274,17 +263,17 @@ window.Views.dashboard = async (container) => {
 
         <!-- KPI Financieros -->
         <div class="grid grid-3 gap-4 mb-6">
-            <div class="card card-anim p-4" style="border-left:4px solid #10b981;">
+            <div class="card card-anim delay-1 p-4" style="border-left:4px solid #10b981;">
                 <div class="text-muted font-bold text-xs uppercase mb-1">Ventas Diarias (Cierres)</div>
                 <div id="kpi-sales" class="text-2xl font-bold text-primary">$0</div>
                 <div id="kpi-sales-b2b" class="text-xs text-muted mt-1">Facturas: $0</div>
             </div>
-            <div class="card card-anim p-4" style="border-left:4px solid #f59e0b;">
+            <div class="card card-anim delay-2 p-4" style="border-left:4px solid #f59e0b;">
                 <div class="text-muted font-bold text-xs uppercase mb-1">Total Egresos</div>
                 <div id="kpi-expenses" class="text-2xl font-bold text-primary">$0</div>
                 <div id="kpi-expenses-detail" class="text-xs text-muted mt-1">Compras + Gastos + Sueldos</div>
             </div>
-            <div class="card card-anim p-4" style="border-left:4px solid #8b5cf6;">
+            <div class="card card-anim delay-3 p-4" style="border-left:4px solid #8b5cf6;">
                 <div class="text-muted font-bold text-xs uppercase mb-1">Ganancia Estimada</div>
                 <div id="kpi-profit" class="text-2xl font-bold" style="color:#10b981;">$0</div>
                 <div id="kpi-profit-margin" class="text-xs text-muted mt-1">Margen: 0%</div>
@@ -827,6 +816,24 @@ async function renderReportsTab() {
         const fDailySales = activeDailySales.filter(d => filterDate(d.date));
         const fExpenses = activeExpenses.filter(e => filterDate(e.date));
 
+        // ---- Previous Month Comparison Data ----
+        const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const filterPrev = dStr => {
+            if (!dStr) return false;
+            const d = new Date(dStr);
+            return d.getMonth() === prevMonth.getMonth() && d.getFullYear() === prevMonth.getFullYear();
+        };
+
+        const prevSales = activeDailySales.filter(d => filterPrev(d.date)).reduce((s, x) => s + (parseFloat(x.total) || 0), 0) +
+            activeSales.filter(s => filterPrev(s.date)).reduce((s, x) => s + (parseFloat(x.total) || 0), 0);
+
+        const prevPurchases = activePurchases.filter(p => filterPrev(p.date)).reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
+        const prevGenExp = activeExpenses.filter(e => filterPrev(e.date)).reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
+
+        // For salaries in prev month, simple log sum is enough for comparison
+        let prevSalaries = activeLogs.filter(l => filterPrev(l.date)).reduce((s, l) => s + (l.payAmount || 0), 0);
+        const prevCosts = prevPurchases + prevGenExp + prevSalaries;
+
         const totalDailySales = fDailySales.reduce((s, x) => s + (parseFloat(x.total) || 0), 0);
         const totalSalesInv = fSalesInv.reduce((s, x) => s + (parseFloat(x.total) || 0), 0);
         const totalSales = totalDailySales + totalSalesInv;
@@ -847,21 +854,26 @@ async function renderReportsTab() {
         const fmt = v => window.Utils.formatCurrency(v);
 
         // Update KPIs
+        // Update KPIs with count-up animation
         const elSales = document.getElementById('kpi-sales');
-        if (elSales) elSales.innerHTML = fmt(totalDailySales);
+        if (elSales) window.Utils.animateNumber(elSales, 0, totalDailySales, 1000, true);
+
+        const elCosts = document.getElementById('kpi-expenses');
+        if (elCosts) window.Utils.animateNumber(elCosts, 0, totalCosts, 1000, true);
 
         const elSalesB2B = document.getElementById('kpi-sales-b2b');
         if (elSalesB2B) elSalesB2B.innerHTML = `Facturas: <b>${fmt(totalSalesInv)}</b>`;
 
-        const elCosts = document.getElementById('kpi-expenses');
-        if (elCosts) elCosts.innerHTML = fmt(totalCosts);
-
         const elCostsDetail = document.getElementById('kpi-expenses-detail');
         if (elCostsDetail) elCostsDetail.innerHTML = `Compras: <b>${fmt(totalPurchases)}</b> · Gastos: <b>${fmt(totalGenExp)}</b> · Sueldos: <b>${fmt(totalSalaries)}</b>`;
 
+        // Update Badges
+        renderBadge('kpi-sales-badge', totalSales, prevSales, false);
+        renderBadge('kpi-expenses-badge', totalCosts, prevCosts, true);
+
         const profEl = document.getElementById('kpi-profit');
         if (profEl) {
-            profEl.innerHTML = fmt(profit);
+            window.Utils.animateNumber(profEl, 0, profit, 1000, true);
             profEl.style.color = profit >= 0 ? '#10b981' : '#ef4444';
         }
 
@@ -877,7 +889,7 @@ async function renderReportsTab() {
         if (insightTicket) {
             const dailyCount = fDailySales.length;
             const avg = dailyCount > 0 ? totalDailySales / dailyCount : 0;
-            insightTicket.textContent = fmt(avg);
+            window.Utils.animateNumber(insightTicket, 0, avg, 1200, true);
         }
 
         // 2. Best Day
