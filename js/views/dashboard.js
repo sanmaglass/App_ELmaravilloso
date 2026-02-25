@@ -901,42 +901,46 @@ async function renderReportsTab() {
 
             if (prevTotal > 0) {
                 const growth = ((totalDailySales - prevTotal) / prevTotal * 100).toFixed(1);
-                insightGrowth.textContent = growth + '%';
+                insightGrowth.textContent = (growth >= 0 ? '+' : '') + growth + '%';
                 insightGrowth.style.color = growth >= 0 ? '#10b981' : '#ef4444';
             } else {
                 insightGrowth.textContent = '—';
             }
         }
 
-        // ---- Bar chart: Sales by Weekday (Cierres Diarios focus) ----
-        const weekdaySalesByDay = [0, 0, 0, 0, 0, 0, 0]; // Sun-Sat
-        const weekdayNamesForChart = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        // ---- CHART: DAILY SALES TREND (PRO EDITION) ----
+        // This replaces the Weekday Aggregation to show ACTUAL data points that match the user's list
+        const sortedDailySales = [...fDailySales].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        // Focus ONLY on Daily Sales as requested
-        fDailySales.forEach(s => {
-            const day = new Date(s.date + 'T12:00:00').getDay();
-            weekdaySalesByDay[day] += (parseFloat(s.total) || 0);
+        const trendLabels = sortedDailySales.map(s => {
+            const d = new Date(s.date + 'T12:00:00');
+            return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
         });
+        const trendData = sortedDailySales.map(s => parseFloat(s.total) || 0);
 
-        const wkCtxForDayView = document.getElementById('chart-weekday').getContext('2d');
-        const wkGradientEmerald = wkCtxForDayView.createLinearGradient(0, 0, 0, 300);
-        wkGradientEmerald.addColorStop(0, 'rgba(16, 185, 129, 0.9)');
-        wkGradientEmerald.addColorStop(1, 'rgba(16, 185, 129, 0.05)');
+        const trendCtx = document.getElementById('chart-weekday').getContext('2d');
+        const trendGradient = trendCtx.createLinearGradient(0, 0, 0, 300);
+        trendGradient.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
+        trendGradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
 
-        const existWkChart = Chart.getChart('chart-weekday');
-        if (existWkChart) existWkChart.destroy();
-        new Chart(wkCtxForDayView, {
-            type: 'bar',
+        const existTrend = Chart.getChart('chart-weekday');
+        if (existTrend) existTrend.destroy();
+
+        new Chart(trendCtx, {
+            type: 'line',
             data: {
-                labels: weekdayNamesForChart,
+                labels: trendLabels,
                 datasets: [{
-                    label: 'Cierres Diarios',
-                    data: weekdaySalesByDay,
-                    backgroundColor: wkGradientEmerald,
-                    borderColor: '#059669',
-                    borderWidth: 1.5,
-                    borderRadius: 8,
-                    hoverBackgroundColor: '#10b981'
+                    label: 'Venta Diaria',
+                    data: trendData,
+                    backgroundColor: trendGradient,
+                    borderColor: '#10b981',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#10b981',
+                    pointRadius: 3,
+                    pointHoverRadius: 6
                 }]
             },
             options: {
@@ -944,10 +948,12 @@ async function renderReportsTab() {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        backgroundColor: 'rgba(31, 41, 55, 0.95)',
+                        titleFont: { size: 13, weight: 'bold' },
                         padding: 12,
+                        cornerRadius: 8,
                         callbacks: {
-                            label: (ctx) => ` Venta: ${window.Utils.formatCurrency(ctx.raw)}`
+                            label: (ctx) => ` Venta: ${window.Utils.formatCurrency(ctx.raw, true)}`
                         }
                     }
                 },
@@ -955,9 +961,12 @@ async function renderReportsTab() {
                     y: {
                         beginAtZero: true,
                         grid: { color: 'rgba(0,0,0,0.03)' },
-                        ticks: { display: false }
+                        ticks: {
+                            callback: (v) => '$' + (v / 1000).toFixed(0) + 'k',
+                            font: { size: 10 }
+                        }
                     },
-                    x: { grid: { display: false }, ticks: { font: { weight: '600' } } }
+                    x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }
                 }
             }
         });
@@ -985,9 +994,9 @@ async function renderReportsTab() {
 
         // ---- Area chart: Trend (Balance) ----
         const barCtx = document.getElementById('chart-trend').getContext('2d');
-        const trendGradient = barCtx.createLinearGradient(0, 0, 0, 250);
-        trendGradient.addColorStop(0, 'rgba(99, 102, 241, 0.5)');
-        trendGradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+        const balanceGradient = barCtx.createLinearGradient(0, 0, 0, 250);
+        balanceGradient.addColorStop(0, 'rgba(99, 102, 241, 0.5)');
+        balanceGradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
 
         const existBar = Chart.getChart('chart-trend');
         if (existBar) existBar.destroy();
@@ -998,7 +1007,7 @@ async function renderReportsTab() {
                 datasets: [{
                     label: 'Monto',
                     data: [totalDailySales, totalSalesInv, totalCosts, profit],
-                    backgroundColor: trendGradient,
+                    backgroundColor: balanceGradient,
                     borderColor: '#6366f1',
                     borderWidth: 3,
                     fill: true,
@@ -1013,11 +1022,18 @@ async function renderReportsTab() {
                     legend: { display: false },
                     tooltip: {
                         backgroundColor: '#1f2937',
-                        bodyFont: { size: 13 }
+                        bodyFont: { size: 13 },
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.dataset.label}: ${window.Utils.formatCurrency(ctx.raw, true)}`
+                        }
                     }
                 },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)' } },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.03)' },
+                        ticks: { callback: (v) => '$' + (v / 1000).toFixed(0) + 'k' }
+                    },
                     x: { grid: { display: false } }
                 }
             }
