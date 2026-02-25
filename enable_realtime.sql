@@ -2,25 +2,35 @@
 -- ENABLE SUPABASE REALTIME FOR WEBSOCKET SYNC
 -- ================================================
 -- Run this in Supabase SQL Editor to enable real-time
--- synchronization for all tables.
---
--- This allows WebSocket connections to receive instant
--- updates when data changes (INSERT/UPDATE/DELETE)
---
--- IMPORTANT: You must run this BEFORE testing real-time sync
--- ================================================
+-- synchronization for all tables safely.
 
--- Enable Realtime for employees table
-ALTER PUBLICATION supabase_realtime ADD TABLE employees;
-
--- Enable Realtime for worklogs table
-ALTER PUBLICATION supabase_realtime ADD TABLE worklogs;
-
--- Enable Realtime for products table  
-ALTER PUBLICATION supabase_realtime ADD TABLE products;
-
--- Enable Realtime for promotions table
-ALTER PUBLICATION supabase_realtime ADD TABLE promotions;
+DO $$
+DECLARE
+    tbl_name TEXT;
+    -- Usamos minúsculas ya que Postgres las guarda así por defecto
+    tables_to_add TEXT[] := ARRAY[
+        'employees', 'worklogs', 'products', 'promotions', 
+        'suppliers', 'purchase_invoices', 'expenses', 
+        'daily_sales', 'sales_invoices', 'electronic_invoices'
+    ];
+BEGIN
+    FOR tbl_name IN SELECT unnest(tables_to_add) LOOP
+        -- Verificamos si la tabla ya está en la publicación
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_publication_tables 
+            WHERE pubname = 'supabase_realtime' 
+            AND schemaname = 'public' 
+            AND tablename = tbl_name
+        ) THEN
+            -- Intentamos agregarla
+            BEGIN
+                EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', tbl_name);
+            EXCEPTION WHEN OTHERS THEN
+                RAISE NOTICE 'Saltando tabla %: %', tbl_name, SQLERRM;
+            END;
+        END IF;
+    END LOOP;
+END $$;
 
 -- ================================================
 -- VERIFICATION QUERY
