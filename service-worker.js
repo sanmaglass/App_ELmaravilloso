@@ -1,5 +1,5 @@
 // Service Worker for PWA - Enhanced Version
-const CACHE_NAME = 'el-maravilloso-v3.00-auto-update'; // Increment version
+const CACHE_NAME = 'el-maravilloso-v3.01-fix-nav'; // Increment version
 const urlsToCache = [
     './index.html',
     './css/style.css',
