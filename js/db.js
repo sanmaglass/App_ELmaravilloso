@@ -13,7 +13,8 @@ db.version(10).stores({
     purchase_invoices: 'id',
     sales_invoices: 'id',
     expenses: 'id',
-    daily_sales: 'id'
+    daily_sales: 'id',
+    electronic_invoices: 'id'
 });
 
 // Initial check and auto-migration fix

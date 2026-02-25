@@ -20,6 +20,7 @@ const views = {
     expenses: () => window.Views.expenses(document.getElementById('view-container')),
     daily_sales: () => window.Views.daily_sales(document.getElementById('view-container')),
     sales_invoices: () => window.Views.sales_invoices(document.getElementById('view-container')),
+    electronic_invoices: () => window.Views.electronic_invoices(document.getElementById('view-container')),
     reports: () => window.Views.reports(document.getElementById('view-container')),
     settings: () => window.Views.settings(document.getElementById('view-container'))
 };

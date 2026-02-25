@@ -140,6 +140,20 @@ function showSupplierModal(supplierToEdit = null) {
                         <label class="form-label">Nombre de Empresa *</label>
                         <input type="text" id="sup-name" class="form-input" required value="${isEdit ? supplierToEdit.name : ''}">
                     </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                        <div class="form-group">
+                            <label class="form-label">RUT</label>
+                            <input type="text" id="sup-rut" class="form-input" placeholder="12.345.678-9" value="${isEdit ? (supplierToEdit.rut || '') : ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Giro</label>
+                            <input type="text" id="sup-giro" class="form-input" placeholder="Venta de..." value="${isEdit ? (supplierToEdit.giro || '') : ''}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Dirección</label>
+                        <input type="text" id="sup-address" class="form-input" placeholder="Calle #123, Comuna" value="${isEdit ? (supplierToEdit.address || '') : ''}">
+                    </div>
                     <div class="form-group">
                         <label class="form-label">Contacto / Teléfono</label>
                         <input type="text" id="sup-contact" class="form-input" value="${isEdit ? (supplierToEdit.contact || '') : ''}">
@@ -158,22 +172,25 @@ function showSupplierModal(supplierToEdit = null) {
 
     document.getElementById('btn-save-supplier').addEventListener('click', async () => {
         const name = document.getElementById('sup-name').value.trim();
+        const rut = document.getElementById('sup-rut').value.trim();
+        const giro = document.getElementById('sup-giro').value.trim();
+        const address = document.getElementById('sup-address').value.trim();
         const contact = document.getElementById('sup-contact').value.trim();
 
         if (!name) { alert('El nombre es obligatorio'); return; }
 
         try {
             if (isEdit) {
-                await window.db.suppliers.update(supplierToEdit.id, { name, contact });
+                const updatedData = { name, rut, giro, address, contact };
+                await window.db.suppliers.update(supplierToEdit.id, updatedData);
                 // Cloud Sync
                 if (window.Sync?.client) {
-                    await window.Sync.client.from('suppliers').update({ name, contact }).eq('id', supplierToEdit.id);
+                    await window.Sync.client.from('suppliers').update(updatedData).eq('id', supplierToEdit.id);
                 }
             } else {
                 const newSup = {
                     id: Date.now() + Math.floor(Math.random() * 1000),
-                    name,
-                    contact,
+                    name, rut, giro, address, contact,
                     deleted: false
                 };
                 await window.db.suppliers.add(newSup);

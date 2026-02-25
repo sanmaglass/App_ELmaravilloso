@@ -13,6 +13,37 @@ window.Views.settings = async (container) => {
 
         <div class="responsive-grid-2-1">
             <div style="display:flex; flex-direction:column; gap:24px;">
+                <!-- COMPANY INFO SECTION -->
+                <div class="card">
+                    <h3 style="margin-bottom:16px; display:flex; align-items:center; gap:8px; color:var(--text-primary);">
+                        <i class="ph ph-buildings" style="color:var(--primary);"></i>
+                        Datos de la Empresa
+                    </h3>
+                    <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:16px;">
+                        Configuración oficial para facturas y documentos legales.
+                    </p>
+                    
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label class="form-label">Razón Social</label>
+                        <input type="text" id="company-name" class="form-input" placeholder="Nombre o Razón Social">
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                        <div class="form-group">
+                            <label class="form-label">RUT Empresa</label>
+                            <input type="text" id="company-rut" class="form-input" placeholder="12.345.678-9">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Giro</label>
+                            <input type="text" id="company-giro" class="form-input" placeholder="Giro Comercial">
+                        </div>
+                    </div>
+
+                    <button id="btn-save-company" class="btn btn-primary" style="width:100%;">
+                        <i class="ph ph-floppy-disk"></i> Guardar Configuración
+                    </button>
+                </div>
+
                 <!-- BACKUP SECTION -->
                 <div class="card">
                     <h3 style="margin-bottom:16px; display:flex; align-items:center; gap:8px; color:var(--text-primary);">
@@ -327,10 +358,41 @@ window.Views.settings = async (container) => {
             }
         });
 
+        // --- COMPANY INFO HANDLER ---
+        const companyName = document.getElementById('company-name');
+        const companyRut = document.getElementById('company-rut');
+        const companyGiro = document.getElementById('company-giro');
+        const btnSaveCompany = document.getElementById('btn-save-company');
+
+        if (btnSaveCompany) {
+            btnSaveCompany.addEventListener('click', async () => {
+                const data = {
+                    name: companyName.value.trim(),
+                    rut: companyRut.value.trim(),
+                    giro: companyGiro.value.trim()
+                };
+
+                if (!data.name || !data.rut) {
+                    alert('La Razón Social y el RUT son obligatorios.');
+                    return;
+                }
+
+                localStorage.setItem('company_name', data.name);
+                localStorage.setItem('company_rut', data.rut);
+                localStorage.setItem('company_giro', data.giro);
+
+                alert('Configuración de empresa guardada con éxito.');
+            });
+        }
+
         // --- INIT STATE ---
         // Load saved values
         supaUrl.value = localStorage.getItem('supabase_url') || '';
         supaKey.value = localStorage.getItem('supabase_key') || '';
+
+        if (companyName) companyName.value = localStorage.getItem('company_name') || 'NELSON RODRIGO ARROYO NOVOA';
+        if (companyRut) companyRut.value = localStorage.getItem('company_rut') || '14.061.423-8';
+        if (companyGiro) companyGiro.value = localStorage.getItem('company_giro') || 'MINIMARKET, PROVISIONES Y BAZAR';
 
         // PRO MODE OVERRIDE
         if (window.AppConfig && window.AppConfig.supabaseUrl) {

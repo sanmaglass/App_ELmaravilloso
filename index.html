@@ -111,9 +111,13 @@
                     <i class="ph ph-package"></i>
                     <span>Proveedores</span>
                 </button>
-                <button class="nav-item" data-view="purchase_invoices">
+                <button class="nav-item" data-view="purchase_invoices" style="display:none;">
                     <i class="ph ph-receipt"></i>
                     <span>Facturas Compra</span>
+                </button>
+                <button class="nav-item" data-view="electronic_invoices">
+                    <i class="ph ph-file-arrow-up"></i>
+                    <span>Facturas SII</span>
                 </button>
                 <button class="nav-item" data-view="expenses">
                     <i class="ph ph-coin"></i>
@@ -194,6 +198,7 @@
     <script src="js/utils.js?v=89"></script>
     <script src="js/db.js?v=89"></script>
     <script src="js/sync.js?v=89"></script>
+    <script src="js/sii_api.js?v=89"></script>
     <!-- Views -->
     <script src="js/views/auth.js?v=89"></script>
     <script src="js/views/dashboard.js?v=89"></script>
@@ -206,8 +211,9 @@
     <script src="js/views/suppliers.js?v=89"></script>
     <script src="js/views/purchase_invoices.js?v=89"></script>
     <script src="js/views/expenses.js?v=89"></script>
-    <script src="js/views/daily_sales.js?v=89"></script>
+    <script copy src="js/views/daily_sales.js?v=89"></script>
     <script src="js/views/sales_invoices.js?v=89"></script>
+    <script src="js/views/electronic_invoices.js?v=89"></script>
     <script src="js/views/reports.js?v=89"></script>
     <script src="js/views/settings.js?v=89"></script>
     <script src="js/app.js?v=89"></script>
@@ -231,10 +237,13 @@
                         newWorker.addEventListener('statechange', () => {
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                 // New version available!
-                                if (confirm('🎉 Nueva versión disponible! ¿Actualizar ahora?')) {
-                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                    window.location.reload();
-                                }
+                                console.log('🔄 Nueva versión detectada. Actualizando...');
+                                newWorker.postMessage({ type: 'SKIP_WAITING' });
+
+                                // Opcional: Avisar al usuario o recargar directo
+                                setTimeout(() => {
+                                    window.location.reload(true); // Force reload
+                                }, 500);
                             }
                         });
                     });
