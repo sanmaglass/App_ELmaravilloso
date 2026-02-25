@@ -739,7 +739,12 @@ async function showInvoiceModal(invoiceToEdit = null) {
 
                     <div class="form-group">
                         <label class="form-label">N° Factura / Documento</label>
-                        <input type="text" id="inv-number" class="form-input" placeholder="Ej. 12345" value="${isEdit ? invoiceToEdit.invoiceNumber : ''}">
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" id="inv-number" class="form-input" placeholder="Ej. 12345" value="${isEdit ? invoiceToEdit.invoiceNumber : ''}">
+                            <button type="button" class="btn btn-secondary" id="btn-pending-number" title="Marcar como Pendiente" style="white-space:nowrap; padding:0 10px; font-size:0.75rem;">
+                                <i class="ph ph-clock"></i> Pendiente
+                            </button>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -894,6 +899,13 @@ async function showInvoiceModal(invoiceToEdit = null) {
         calcDueDate();
     }
 
+    // Event for "Pending" invoice number
+    document.getElementById('btn-pending-number').addEventListener('click', () => {
+        const input = document.getElementById('inv-number');
+        input.value = 'PENDIENTE';
+        input.dispatchEvent(new Event('blur')); // Trigger validation check
+    });
+
     // Quick Add Supplier Event
     document.getElementById('btn-quick-supplier').addEventListener('click', async () => {
         const newName = prompt('Nombre del nuevo proveedor:');
@@ -919,11 +931,19 @@ async function showInvoiceModal(invoiceToEdit = null) {
     // --- VALIDATION LOGIC ---
     async function isDuplicate(invoiceNumber) {
         if (!invoiceNumber) return false;
+
+        // EXCEPTION: "PENDIENTE" or "S/N" can be repeated
+        const normalized = invoiceNumber.trim().toUpperCase();
+        if (normalized === 'PENDIENTE' || normalized === 'S/N' || normalized === '') {
+            return false;
+        }
+
         const allInvoices = await window.db.purchase_invoices.toArray();
         const activeInvoices = allInvoices.filter(i => !i.deleted);
 
         // If editing, ignore the current invoice
         return activeInvoices.some(inv =>
+            inv.invoiceNumber &&
             inv.invoiceNumber.toLowerCase() === invoiceNumber.toLowerCase() &&
             (!isEdit || inv.id !== invoiceToEdit.id)
         );
