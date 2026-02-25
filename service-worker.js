@@ -1,5 +1,5 @@
 // Service Worker for PWA - Enhanced Version
-const CACHE_NAME = 'el-maravilloso-v3.06-fix-content'; // Content fix
+const CACHE_NAME = 'el-maravilloso-v3.07-clean-dash'; // Clean dashboard
 const urlsToCache = [
     './index.html',
     './css/style.css',

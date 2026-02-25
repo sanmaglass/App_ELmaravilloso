@@ -36,13 +36,10 @@ window.Views.dashboard = async (container) => {
 
     <!-- Header -->
     <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
-        <div class="dash-tabs">
-            <button class="dash-tab active" id="tab-btn-resumen">
-                <i class="ph ph-squares-four"></i> Resumen
-            </button>
-            <button class="dash-tab" id="tab-btn-financiero">
-                <i class="ph ph-chart-line-up"></i> Análisis Financiero
-            </button>
+        <div>
+            <h1 class="text-primary font-bold flex items-center gap-2" style="font-size:1.5rem;">
+                <i class="ph ph-squares-four"></i> Resumen de Negocio
+            </h1>
         </div>
         <div class="flex gap-2">
             <button id="btn-export-excel" class="btn" style="background:#10b981; color:white;">
@@ -223,128 +220,10 @@ window.Views.dashboard = async (container) => {
         </div>
     </div>
 
-    <!-- ===================== TAB 2: ANÁLISIS FINANCIERO ===================== -->
-    <div id="tab-financiero" class="dash-tab-content">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-            <div>
-                <h2 style="margin:0;color:var(--text-primary);font-size:1.1rem;">Análisis Financiero</h2>
-                <p style="color:var(--text-muted);font-size:0.85rem;margin:4px 0 0;">Ventas, egresos y rentabilidad del período</p>
-            </div>
-            <div style="display:flex;gap:10px;align-items:center;">
-                <select id="report-period" class="form-input" style="width:auto;">
-                    <option value="month">Este Mes</option>
-                    <option value="year">Este Año</option>
-                    <option value="all">Todo el Historial</option>
-                </select>
-                <button class="btn btn-secondary" id="btn-refresh-report">
-                    <i class="ph ph-arrow-clockwise"></i> Actualizar
-                </button>
-            </div>
-        </div>
-
-        <!-- Business Insights Row [NEW] -->
-        <div class="grid grid-3 gap-4 mb-6">
-            <div class="card card-anim delay-1 p-4" style="border-top:3px solid var(--primary);">
-                <div class="text-muted font-bold text-xs uppercase mb-2">Ticket Promedio</div>
-                <div id="insight-avg-ticket" class="text-2xl font-bold text-primary">$0</div>
-                <div class="text-xs text-muted mt-1">Ventas diarias / Clientes</div>
-            </div>
-            <div class="card card-anim delay-2 p-4" style="border-top:3px solid #8b5cf6;">
-                <div class="text-muted font-bold text-xs uppercase mb-2">Día de Mayor Venta</div>
-                <div id="insight-best-day" class="text-2xl font-bold" style="color:#7c3aed;">—</div>
-                <div class="text-xs text-muted mt-1">Histórico del período</div>
-            </div>
-            <div class="card card-anim delay-3 p-4" style="border-top:3px solid #ec4899;">
-                <div class="text-muted font-bold text-xs uppercase mb-2">Crecimiento Ventas</div>
-                <div id="insight-growth" class="text-2xl font-bold" style="color:#db2777;">0%</div>
-                <div id="insight-growth-detail" class="text-xs text-muted mt-1">vs Período Anterior</div>
-            </div>
-        </div>
-
-        <!-- KPI Financieros -->
-        <div class="grid grid-3 gap-4 mb-6">
-            <div class="card card-anim delay-1 p-4" style="border-left:4px solid #10b981;">
-                <div class="text-muted font-bold text-xs uppercase mb-1">Ventas Diarias (Cierres)</div>
-                <div id="kpi-sales" class="text-2xl font-bold text-primary">$0</div>
-                <div id="kpi-sales-b2b" class="text-xs text-muted mt-1">Facturas: $0</div>
-            </div>
-            <div class="card card-anim delay-2 p-4" style="border-left:4px solid #f59e0b;">
-                <div class="text-muted font-bold text-xs uppercase mb-1">Total Egresos</div>
-                <div id="kpi-expenses" class="text-2xl font-bold text-primary">$0</div>
-                <div id="kpi-expenses-detail" class="text-xs text-muted mt-1">Compras + Gastos + Sueldos</div>
-            </div>
-            <div class="card card-anim delay-3 p-4" style="border-left:4px solid #8b5cf6;">
-                <div class="text-muted font-bold text-xs uppercase mb-1">Ganancia Estimada</div>
-                <div id="kpi-profit" class="text-2xl font-bold" style="color:#10b981;">$0</div>
-                <div id="kpi-profit-margin" class="text-xs text-muted mt-1">Margen: 0%</div>
-            </div>
-        </div>
-
-        <!-- Charts row -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;">
-            <div class="card card-anim" style="padding:20px;">
-                <h3 style="margin-bottom:16px;font-size:0.95rem;font-weight:700;">Ventas por Día de Semana</h3>
-                <div style="height:260px;position:relative;"><canvas id="chart-weekday"></canvas></div>
-            </div>
-            <div class="card card-anim" style="padding:20px;">
-                <h3 style="margin-bottom:16px;font-size:0.95rem;font-weight:700;">Desglose de Costos</h3>
-                <div style="height:260px;position:relative;"><canvas id="chart-suppliers"></canvas></div>
-            </div>
-            <div class="card card-anim" style="padding:20px;">
-                <h3 style="margin-bottom:16px;font-size:0.95rem;font-weight:700;">Balance del Período</h3>
-                <div style="height:260px;position:relative;"><canvas id="chart-trend"></canvas></div>
-            </div>
-        </div>
-
-        <!-- Forecast 14 días + Pagos Pendientes -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
-            <!-- Forecast -->
-            <div class="card card-anim" style="padding:20px;">
-                <h3 style="margin-bottom:16px;font-size:0.95rem;font-weight:700;display:flex;align-items:center;gap:8px;">
-                    <i class="ph ph-calendar-dots" style="color:#6366f1;"></i> Forecast 14 Días
-                </h3>
-                <div id="forecast-list" style="max-height:280px;overflow-y:auto;">
-                    <div class="spinner" style="margin:auto;display:block;"></div>
-                </div>
-            </div>
-            <!-- Pagos pendientes -->
-            <div class="card card-anim" style="padding:0;overflow:hidden;">
-                <div style="padding:14px 20px;border-bottom:1px solid var(--border);background:var(--bg-input);display:flex;justify-content:space-between;align-items:center;">
-                    <h3 style="font-size:0.95rem;margin:0;color:#d97706;display:flex;align-items:center;gap:6px;">
-                        <i class="ph ph-warning-circle"></i> Pagos Pendientes a Proveedores
-                    </h3>
-                </div>
-                <div id="pending-list" style="max-height:300px;overflow-y:auto;">
-                    <div class="loading-state"><div class="spinner"></div></div>
-                </div>
-            </div>
-        </div>
     </div>
     `;
 
-    // ---- TAB SWITCHING ----
-    const tabResumen = document.getElementById('tab-resumen');
-    const tabFinanciero = document.getElementById('tab-financiero');
-    const btnResumen = document.getElementById('tab-btn-resumen');
-    const btnFinanciero = document.getElementById('tab-btn-financiero');
-
-    let financieroLoaded = false;
-
-    btnResumen.addEventListener('click', () => {
-        btnResumen.classList.add('active'); btnFinanciero.classList.remove('active');
-        tabResumen.classList.add('active'); tabFinanciero.classList.remove('active');
-    });
-    btnFinanciero.addEventListener('click', () => {
-        btnFinanciero.classList.add('active'); btnResumen.classList.remove('active');
-        tabFinanciero.classList.add('active'); tabResumen.classList.remove('active');
-        if (!financieroLoaded) { renderReportsTab(); financieroLoaded = true; }
-    });
-    document.getElementById('btn-refresh-report')?.addEventListener('click', () => {
-        financieroLoaded = false; renderReportsTab(); financieroLoaded = true;
-    });
-    document.getElementById('report-period')?.addEventListener('change', () => {
-        renderReportsTab();
-    });
+    // (Tab switching removed as only Resumen exists now)
 
     // ===================== LOAD RESUMEN DATA =====================
     try {
