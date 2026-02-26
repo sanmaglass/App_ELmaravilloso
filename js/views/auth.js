@@ -185,7 +185,7 @@ window.Views.login = (container) => {
         const errorMsg = document.getElementById('login-error');
 
         // Credentials Check
-        if (user === 'admin' && pass === 'sanma123') {
+        if (user === 'claudia' && pass === 'claudia123') {
             // Success
             // Animation out
             const card = document.querySelector('.login-card');
@@ -196,7 +196,7 @@ window.Views.login = (container) => {
             setTimeout(() => {
                 // Save Session (Persistent on this device)
                 localStorage.setItem('wm_auth', 'true');
-                localStorage.setItem('wm_user', 'Admin');
+                localStorage.setItem('wm_user', 'Claudia');
 
                 // Reload or Re-init App
                 window.location.reload();
