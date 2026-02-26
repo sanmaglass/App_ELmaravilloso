@@ -16,8 +16,8 @@ window.Views.expenses = async (container) => {
         </div>
 
         <!-- Filters -->
-        <div style="display:grid; grid-template-columns: 1fr auto auto; gap:12px; margin-bottom:24px; align-items:center;">
-             <div style="position:relative;">
+        <div class="filters-bar">
+             <div style="position:relative; flex: 1 1 200px;">
                 <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
                 <input type="text" id="expense-search" class="form-input" placeholder="Buscar por título..." style="padding-left:36px; width:100%;">
             </div>
@@ -38,12 +38,12 @@ window.Views.expenses = async (container) => {
         </div>
 
         <!-- Summary Cards -->
-         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;">
-            <div class="card" style="padding:16px; border-left:4px solid var(--primary);">
+         <div class="grid-cols-auto gap-4 mb-6">
+            <div class="premium-card" style="padding:16px; border-left:4px solid var(--primary);">
                 <div style="font-size:0.9rem; color:var(--text-muted);">Total Gastos (Filtrado)</div>
                 <div style="font-size:1.5rem; font-weight:700; color:var(--text-primary);" id="total-expenses-amount">$0</div>
             </div>
-             <div class="card" style="padding:16px; border-left:4px solid #f59e0b;">
+             <div class="premium-card" style="padding:16px; border-left:4px solid #f59e0b;">
                 <div style="font-size:0.9rem; color:var(--text-muted);">Categoría Principal</div>
                 <div style="font-size:1.2rem; font-weight:600; color:var(--text-primary);" id="top-category">-</div>
             </div>

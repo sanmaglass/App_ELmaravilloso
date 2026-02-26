@@ -16,27 +16,27 @@ window.Views.daily_sales = async (container) => {
         </div>
 
         <!-- Filters -->
-        <div style="display:grid; grid-template-columns: 1fr auto auto; gap:12px; margin-bottom:16px; align-items:center;">
-            <div style="position:relative;">
+        <div class="filters-bar">
+            <div style="position:relative; flex: 1 1 200px;">
                 <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
-                <input type="text" id="daily-search" class="form-input" placeholder="Buscar por fecha (YYYY-MM-DD)..." style="padding-left:36px; width:100%;">
+                <input type="text" id="daily-search" class="form-input" placeholder="Buscar por fecha..." style="padding-left:36px; width:100%;">
             </div>
             <select id="daily-filter-month" class="form-input">
                 <option value="all">Todo el Historial</option>
                 <!-- Dynamic Months -->
             </select>
-            <button class="btn btn-secondary" id="btn-export-daily">
+            <button class="btn btn-secondary" id="btn-export-daily" style="flex: 0 1 auto; min-width: 120px;">
                 <i class="ph ph-file-xls"></i> Exportar
             </button>
         </div>
 
         <!-- Summary Card -->
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px;">
-            <div class="card" style="padding:14px; border-left:4px solid var(--primary);">
+        <div class="grid-cols-auto gap-4 mb-6">
+            <div class="premium-card" style="padding:14px; border-left:4px solid var(--primary);">
                 <div style="font-size:0.85rem; color:var(--text-muted);">Total Ventas (Filtrado)</div>
                 <div style="font-size:1.4rem; font-weight:700; color:var(--text-primary);" id="daily-total-amount">$0</div>
             </div>
-            <div class="card" style="padding:14px; border-left:4px solid #10b981;">
+            <div class="premium-card" style="padding:14px; border-left:4px solid #10b981;">
                 <div style="font-size:0.85rem; color:var(--text-muted);">Cierres registrados</div>
                 <div style="font-size:1.4rem; font-weight:700; color:#10b981;" id="daily-count">0</div>
             </div>
