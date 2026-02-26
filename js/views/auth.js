@@ -194,9 +194,9 @@ window.Views.login = (container) => {
             card.style.transition = 'all 0.5s ease';
 
             setTimeout(() => {
-                // Save Session
-                sessionStorage.setItem('wm_auth', 'true');
-                sessionStorage.setItem('wm_user', 'Admin');
+                // Save Session (Persistent on this device)
+                localStorage.setItem('wm_auth', 'true');
+                localStorage.setItem('wm_user', 'Admin');
 
                 // Reload or Re-init App
                 window.location.reload();

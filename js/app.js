@@ -73,7 +73,7 @@ async function init() {
                 // Logout Check
                 if (btn.dataset.view === 'logout') {
                     if (confirm('¿Cerrar sesión?')) {
-                        sessionStorage.removeItem('wm_auth');
+                        localStorage.removeItem('wm_auth');
                         window.location.reload();
                     }
                     return;
@@ -180,18 +180,18 @@ if (syncInd) {
     });
 }
 
-// --- AUTO-LOCK SYSTEM (5 Minutes) ---
+// --- AUTO-LOCK SYSTEM (7 Days for Admin) ---
 let inactivityTimer;
-const INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 minutes in ms
+const INACTIVITY_LIMIT = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
 function resetInactivityTimer() {
     clearTimeout(inactivityTimer);
 
     // Only set timer if user is authenticated
-    if (sessionStorage.getItem('wm_auth')) {
+    if (localStorage.getItem('wm_auth')) {
         inactivityTimer = setTimeout(() => {
             console.log("Inactivity detected. Locking session...");
-            sessionStorage.removeItem('wm_auth');
+            localStorage.removeItem('wm_auth');
             window.location.reload();
         }, INACTIVITY_LIMIT);
     }
