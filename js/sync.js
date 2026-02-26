@@ -373,29 +373,23 @@ window.Sync = {
             const record = payload.new || payload.old;
             if (!record) return;
 
-            // Ensure ID is a number for Dexie consistency
+            // --- FORZAR CONSISTENCIA DE ID (Número) ---
+            // Supabase puede devolver IDs como string o Number dependiendo de la config.
+            // Dexie necesita consistencia total para no crear duplicados "fantasma".
             const id = Number(record.id || record.key);
             if (isNaN(id)) return;
+
+            // Re-insuflar el ID numérico en el objeto
+            record.id = id;
 
             console.log(`📡 Realtime ${payload.eventType} on ${localTableName}:`, id);
 
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                // Ensure the incoming record has the correct types
-                const cleanRecord = { ...record, id: id };
-                if (cleanRecord.deleted === undefined) cleanRecord.deleted = false;
-
-                await window.db[localTableName].put(cleanRecord);
-
-                // Notificación visual (opcional/debounced)
-                if (payload.eventType === 'INSERT' && !window.Sync._isSyncingAll) {
-                    const labelMap = {
-                        'expenses': 'Gasto',
-                        'daily_sales': 'Venta Diaria',
-                        'purchase_invoices': 'Factura',
-                        'reminders': 'Tarea/Recordatorio'
-                    };
-                    const label = labelMap[localTableName] || localTableName;
-                    window.Sync.showToast(`Actualizado: ${label}`, 'success');
+                // Si el registro viene marcado como borrado desde la nube, lo quitamos localmente
+                if (record.deleted === true || record.deleted === 1) {
+                    await window.db[localTableName].delete(id);
+                } else {
+                    await window.db[localTableName].put(record);
                 }
             } else if (payload.eventType === 'DELETE') {
                 await window.db[localTableName].delete(id);

@@ -105,6 +105,16 @@ async function renderDailySales() {
 
     try {
         const dailySales = await window.db.daily_sales.toArray();
+
+        // --- SANITY CHECK: Limpiar basura local (ej. montos imposibles) ---
+        const anomalousIds = dailySales.filter(s => parseFloat(s.cash) > 1000000000).map(s => s.id);
+        if (anomalousIds.length > 0) {
+            console.warn("🧹 Limpiando registros anómalos detectados:", anomalousIds);
+            await window.db.daily_sales.bulkDelete(anomalousIds);
+            // Re-fetch clean data
+            return renderDailySales();
+        }
+
         const activeSales = dailySales.filter(s => !s.deleted);
 
         // Filter by month and search
