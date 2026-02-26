@@ -217,11 +217,8 @@ async function renderExpenses() {
 async function handleDeleteExpense(id) {
     if (confirm('¿Eliminar este gasto?')) {
         try {
-            await window.db.expenses.update(id, { deleted: true });
+            await window.DataManager.deleteAndSync('expenses', id);
             renderExpenses();
-            if (window.Sync?.client) {
-                await window.Sync.client.from('expenses').update({ deleted: true }).eq('id', id);
-            }
         } catch (e) { alert('Error: ' + e.message); }
     }
 }
@@ -307,16 +304,9 @@ function showExpenseModal(expenseToEdit = null) {
             };
 
             if (isEdit) {
-                await window.db.expenses.update(expenseToEdit.id, expenseData);
-                if (window.Sync?.client) {
-                    await window.Sync.client.from('expenses').update(expenseData).eq('id', expenseToEdit.id);
-                }
+                await window.DataManager.saveAndSync('expenses', { id: expenseToEdit.id, ...expenseData });
             } else {
-                expenseData.id = Date.now();
-                await window.db.expenses.add(expenseData);
-                if (window.Sync?.client) {
-                    await window.Sync.client.from('expenses').insert([expenseData]);
-                }
+                await window.DataManager.saveAndSync('expenses', expenseData);
             }
 
             modal.classList.add('hidden');

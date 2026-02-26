@@ -450,10 +450,7 @@ async function renderCreditAlerts() {
                 const id = Number(e.currentTarget.dataset.id);
                 if (confirm('¿Confirmar que esta factura fue pagada?')) {
                     try {
-                        await window.db.purchase_invoices.update(id, { paymentStatus: 'Pagado' });
-                        if (window.Sync?.client) {
-                            await window.Sync.client.from('purchase_invoices').update({ paymentStatus: 'Pagado' }).eq('id', id);
-                        }
+                        await window.DataManager.saveAndSync('purchase_invoices', { id, paymentStatus: 'Pagado' });
                         await renderCreditAlerts();
                         await renderAnalytics();
                         renderInvoices();
@@ -678,12 +675,8 @@ async function renderInvoices() {
 async function handleDeleteInvoice(id) {
     if (confirm('¿Eliminar esta factura?')) {
         try {
-            await window.db.purchase_invoices.update(id, { deleted: true });
+            await window.DataManager.deleteAndSync('purchase_invoices', id);
             renderInvoices();
-            // Cloud Sync
-            if (window.Sync?.client) {
-                await window.Sync.client.from('purchase_invoices').update({ deleted: true }).eq('id', id);
-            }
         } catch (e) { alert('Error: ' + e.message); }
     }
 }
@@ -1020,16 +1013,9 @@ async function showInvoiceModal(invoiceToEdit = null) {
             };
 
             if (isEdit) {
-                await window.db.purchase_invoices.update(invoiceToEdit.id, invoiceData);
-                if (window.Sync?.client) {
-                    await window.Sync.client.from('purchase_invoices').update(invoiceData).eq('id', invoiceToEdit.id);
-                }
+                await window.DataManager.saveAndSync('purchase_invoices', { id: invoiceToEdit.id, ...invoiceData });
             } else {
-                invoiceData.id = Date.now();
-                await window.db.purchase_invoices.add(invoiceData);
-                if (window.Sync?.client) {
-                    await window.Sync.client.from('purchase_invoices').insert([invoiceData]);
-                }
+                await window.DataManager.saveAndSync('purchase_invoices', invoiceData);
             }
 
             modal.classList.add('hidden');

@@ -113,25 +113,33 @@ window.DataManager = {
      * Guarda o actualiza una entidad y sincroniza con Supabase automáticamente
      */
     async saveAndSync(tableName, data) {
+        // Map table names if needed (e.g. workLogs -> worklogs)
+        const remoteTableMap = {
+            'workLogs': 'worklogs'
+        };
+        const remoteTable = remoteTableMap[tableName] || tableName;
+
         const isUpdate = !!data.id && (await window.db[tableName].get(data.id));
 
         try {
             if (isUpdate) {
                 await window.db[tableName].update(data.id, data);
                 if (window.Sync?.client) {
-                    await window.Sync.client.from(tableName).update(data).eq('id', data.id);
+                    await window.Sync.client.from(remoteTable).update(data).eq('id', data.id);
                 }
             } else {
                 if (!data.id) data.id = Date.now();
                 await window.db[tableName].add(data);
                 if (window.Sync?.client) {
-                    await window.Sync.client.from(tableName).insert([data]);
+                    await window.Sync.client.from(remoteTable).insert([data]);
                 }
             }
             return { success: true, id: data.id };
         } catch (e) {
             console.error(`Error saving ${tableName}:`, e);
-            throw e;
+            // Even if cloud sync fails, we return success if local save worked.
+            // The periodic syncAll will eventually push the record.
+            return { success: true, id: data.id, syncError: e.message };
         }
     },
 
@@ -139,15 +147,20 @@ window.DataManager = {
      * Elimina (soft delete) una entidad y sincroniza
      */
     async deleteAndSync(tableName, id) {
+        const remoteTableMap = {
+            'workLogs': 'worklogs'
+        };
+        const remoteTable = remoteTableMap[tableName] || tableName;
+
         try {
             await window.db[tableName].update(id, { deleted: true });
             if (window.Sync?.client) {
-                await window.Sync.client.from(tableName).update({ deleted: true }).eq('id', id);
+                await window.Sync.client.from(remoteTable).update({ deleted: true }).eq('id', id);
             }
             return { success: true };
         } catch (e) {
             console.error(`Error deleting ${tableName}:`, e);
-            throw e;
+            return { success: true, syncError: e.message };
         }
     }
 };

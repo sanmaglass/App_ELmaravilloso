@@ -183,11 +183,8 @@ async function renderDailySales() {
 async function handleDeleteDailySale(id) {
     if (confirm('¿Eliminar este registro diario?')) {
         try {
-            await window.db.daily_sales.update(id, { deleted: true });
+            await window.DataManager.deleteAndSync('daily_sales', id);
             renderDailySales();
-            if (window.Sync?.client) {
-                await window.Sync.client.from('daily_sales').update({ deleted: true }).eq('id', id);
-            }
         } catch (e) { alert('Error: ' + e.message); }
     }
 }
@@ -313,16 +310,9 @@ function showDailySaleModal(saleToEdit = null) {
             };
 
             if (isEdit) {
-                await window.db.daily_sales.update(saleToEdit.id, dailyData);
-                if (window.Sync?.client) {
-                    await window.Sync.client.from('daily_sales').update(dailyData).eq('id', saleToEdit.id);
-                }
+                await window.DataManager.saveAndSync('daily_sales', { id: saleToEdit.id, ...dailyData });
             } else {
-                dailyData.id = Date.now();
-                await window.db.daily_sales.add(dailyData);
-                if (window.Sync?.client) {
-                    await window.Sync.client.from('daily_sales').insert([dailyData]);
-                }
+                await window.DataManager.saveAndSync('daily_sales', dailyData);
             }
 
             modal.classList.add('hidden');

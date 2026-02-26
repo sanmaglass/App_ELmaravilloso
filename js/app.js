@@ -139,19 +139,20 @@ async function init() {
             console.log("♻️ Data sync detected - Refreshing view...");
             const current = window.state.currentView;
             if (views[current]) {
-                // Save scroll position if possible? (Optional refinement)
                 views[current]();
             }
         });
 
-        // Escuchar cambios de datos en segundo plano
-        // RE-ENABLED for WebSocket real-time sync
-        window.addEventListener('sync-data-updated', () => {
-            console.log("Datos nuevos recibidos. Refrescando vista:", window.state.currentView);
-            if (views[window.state.currentView]) {
-                views[window.state.currentView]();
-            }
-        });
+        // Habilitar clic en el indicador para forzar sincronización
+        const syncIndicator = document.getElementById('sync-indicator');
+        if (syncIndicator) {
+            syncIndicator.addEventListener('click', () => {
+                if (window.Sync) {
+                    window.Sync.showToast('Sincronizando datos...', 'info');
+                    window.dispatchEvent(new CustomEvent('request-sync-all'));
+                }
+            });
+        }
     } catch (err) {
         console.error("Critical Init Error:", err);
         document.body.innerHTML = `<div style="color:white; padding:50px; text-align:center;"><h1>Error de Carga</h1><p>${err.message}</p></div>`;

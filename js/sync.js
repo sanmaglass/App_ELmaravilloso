@@ -8,6 +8,9 @@ window.Sync = {
 
     // Inicializar cliente
     init: async () => {
+        // Listener global para forzar sincronización
+        window.addEventListener('request-sync-all', () => window.Sync.syncAll());
+
         // 1. Try Config File (Pro Mode)
         let url = window.AppConfig ? window.AppConfig.supabaseUrl : null;
         let key = window.AppConfig ? window.AppConfig.supabaseKey : null;
@@ -63,7 +66,6 @@ window.Sync = {
         return { success: false, error: 'Faltan credenciales.' };
     },
 
-
     // Sincronización Completa
     syncAll: async () => {
         // Auto-reconnect try
@@ -83,11 +85,8 @@ window.Sync = {
 
         try {
             console.log("Iniciando sincronización...");
-            // Debug para el usuario
-            // alert("Iniciando sincronización..."); 
 
             // Tablas a sincronizar (Mapeo Local -> Remoto)
-            // Postgres suele usar minúsculas, Dexie usa CamelCase
             const tableMap = [
                 { local: 'employees', remote: 'employees', orderBy: 'id' },
                 { local: 'workLogs', remote: 'worklogs', orderBy: 'id' },
@@ -98,7 +97,7 @@ window.Sync = {
                 { local: 'sales_invoices', remote: 'sales_invoices', orderBy: 'date' },
                 { local: 'expenses', remote: 'expenses', orderBy: 'date' },
                 { local: 'daily_sales', remote: 'daily_sales', orderBy: 'date' },
-                { local: 'settings', remote: 'settings', orderBy: 'key' } // Settings usa 'key', no 'id'
+                { local: 'settings', remote: 'settings', orderBy: 'key' }
             ];
 
             let dataChanged = false;
@@ -108,14 +107,9 @@ window.Sync = {
                 const remoteName = map.remote;
                 const orderKey = map.orderBy || 'id';
 
-                // 1. Push: Enviar lo local a la nube primero (UPSERT)
-                // FILTER OUT deleted records - don't upload them to cloud
                 const localData = await window.db[localName].toArray();
-                // Push ALL records including deleted so Supabase reflects true state
-                // This ensures soft-deleted records stay deleted on cloud
                 let activeLocalData = localData;
 
-                // For suppliers: deduplicate by name before pushing to avoid unique constraint errors
                 if (localName === 'suppliers') {
                     const seen = new Map();
                     const deduped = [];
@@ -134,7 +128,6 @@ window.Sync = {
                         .from(remoteName)
                         .upsert(activeLocalData);
                     if (pushError) {
-                        // If it's a unique constraint violation, just log and continue (don't break sync)
                         if (pushError.code === '23505') {
                             console.warn(`[Sync] Constraint violation on ${remoteName} push (ignorado):`, pushError.message);
                         } else {
@@ -143,34 +136,23 @@ window.Sync = {
                     }
                 }
 
-
-                // 2. Pull: Traer TODO lo de la nube y actualizar localmente
-                // FILTER OUT deleted records - don't download old deleted data
                 const { data: cloudData, error } = await window.Sync.client
                     .from(remoteName)
                     .select('*')
-                    .order(orderKey, { ascending: true }); // Ordenar dinámico
+                    .order(orderKey, { ascending: true });
 
                 if (error) throw error;
 
-                // Filter out deleted records from cloud data (except settings table)
-                // FIXED: We MUST download delete records too, otherwise local DB keeps them as active!
-                const activeCloudData = cloudData;
-
-                // 3. Put into Dexie (sobrescribe si existe el ID, añade si no)
-                if (activeCloudData && activeCloudData.length > 0) {
-                    await window.db[localName].bulkPut(activeCloudData);
+                if (cloudData && cloudData.length > 0) {
+                    await window.db[localName].bulkPut(cloudData);
                     dataChanged = true;
                 }
-                // NOTE: If cloud is empty for a table, we keep local data intact.
-                // Never clear local data during sync — cloud empty ≠ data deleted.
             }
 
             if (dataChanged) {
                 window.dispatchEvent(new CustomEvent('sync-data-updated'));
             }
 
-            // Calculate total ACTIVE records (excluding deleted)
             const tables = ['employees', 'workLogs', 'products', 'promotions'];
             let totalLocal = 0;
             for (const tableName of tables) {
@@ -182,7 +164,7 @@ window.Sync = {
             if (window.Sync.client) {
                 window.Sync.updateIndicator('connected', `Registros: ${totalLocal}`);
             } else {
-                window.Sync.updateIndicator('off', `Registros: ${totalLocal}`); // Changed 'disconnected' to 'off' as per existing cases
+                window.Sync.updateIndicator('off', `Registros: ${totalLocal}`);
             }
             return { success: true };
         } catch (e) {
@@ -190,15 +172,34 @@ window.Sync = {
             const isNetworkError = e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Failed') || e.message?.includes('NetworkError');
             if (isNetworkError) {
                 window.Sync.updateIndicator('off', 'Sin internet');
-                console.warn('Sync falló por red — reintentará en el próximo ciclo.');
             } else {
                 window.Sync.updateIndicator('error', e.message || 'Error desconocido');
-                console.error('Error de sincronización no-red:', e.message);
             }
             return { success: false, error: e.message };
         } finally {
             window.Sync.isSyncing = false;
         }
+    },
+
+    /**
+     * Muestra una notificación rápida en pantalla
+     */
+    showToast: function (message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `sync-toast toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-content" style="display:flex; align-items:center; gap:8px;">
+                <i class="ph ${type === 'success' ? 'ph-check-circle' : 'ph-info'}" style="font-size:1.2rem;"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+
+        // Auto-remove
+        setTimeout(() => {
+            toast.classList.add('fading');
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
     },
 
     // UI Helper
@@ -207,30 +208,34 @@ window.Sync = {
         const text = document.getElementById('sync-text');
         if (!el || !text) return;
 
+        el.style.cursor = 'pointer';
+
         switch (status) {
             case 'syncing':
                 el.style.color = 'var(--accent)';
                 el.innerHTML = '<i class="ph ph-arrows-clockwise ph-spin"></i> <span id="sync-text">Sincronizando...</span>';
+                el.title = 'Buscando cambios en la red...';
                 break;
             case 'realtime':
                 el.style.color = '#8b5cf6';
                 el.innerHTML = '<i class="ph ph-broadcast"></i> <span id="sync-text">Tiempo Real</span>';
-                el.title = errorMsg || 'WebSocket conectado - Sincronización instantánea';
+                el.title = 'Conectado instantáneamente con otros dispositivos. Haz clic para refrescar todo.';
                 break;
             case 'connected':
                 el.style.color = '#10b981';
                 el.innerHTML = `<i class="ph ph-cloud-check"></i> <span id="sync-text">${errorMsg || 'En Línea'}</span>`;
-                el.title = "Última sincronización: " + new Date().toLocaleTimeString();
+                el.title = "Conectado. Haz clic para forzar sincronización manual.";
                 break;
             case 'error':
                 el.style.color = '#ef4444';
                 el.innerHTML = '<i class="ph ph-cloud-slash"></i> <span id="sync-text">Error Nube</span>';
-                el.title = errorMsg;
+                el.title = errorMsg + " - Haz clic para intentar reconectar.";
                 break;
             case 'off':
             default:
                 el.style.color = 'var(--text-muted)';
                 el.innerHTML = '<i class="ph ph-cloud-slash"></i> <span id="sync-text">Sin Nube</span>';
+                el.title = "Trabajando en modo local. Haz clic para intentar conectar.";
                 break;
         }
     },
@@ -241,7 +246,6 @@ window.Sync = {
 
         console.log(`Polling fallback activado (cada ${intervalMs / 1000}s)`);
         window.Sync.syncInterval = setInterval(() => {
-            // Only poll if WebSocket is NOT active
             if (!window.Sync.isRealtimeActive) {
                 window.Sync.syncAll();
             }
@@ -258,54 +262,23 @@ window.Sync = {
         try {
             console.log('🔌 Initializing Supabase Realtime...');
 
-            // Create a single channel for all table changes
             window.Sync.realtimeChannel = window.Sync.client
                 .channel('db-changes')
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'employees' },
-                    (payload) => window.Sync.handleRealtimeChange('employees', payload)
-                )
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'worklogs' },
-                    (payload) => window.Sync.handleRealtimeChange('workLogs', payload)
-                )
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'products' },
-                    (payload) => window.Sync.handleRealtimeChange('products', payload)
-                )
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'promotions' },
-                    (payload) => window.Sync.handleRealtimeChange('promotions', payload)
-                )
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'suppliers' },
-                    (payload) => window.Sync.handleRealtimeChange('suppliers', payload)
-                )
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'purchase_invoices' },
-                    (payload) => window.Sync.handleRealtimeChange('purchase_invoices', payload)
-                )
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'sales_invoices' },
-                    (payload) => window.Sync.handleRealtimeChange('sales_invoices', payload)
-                )
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'daily_sales' },
-                    (payload) => window.Sync.handleRealtimeChange('daily_sales', payload)
-                )
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'expenses' },
-                    (payload) => window.Sync.handleRealtimeChange('expenses', payload)
-                )
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'electronic_invoices' },
-                    (payload) => window.Sync.handleRealtimeChange('electronic_invoices', payload)
-                )
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, (payload) => window.Sync.handleRealtimeChange('employees', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'worklogs' }, (payload) => window.Sync.handleRealtimeChange('workLogs', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => window.Sync.handleRealtimeChange('products', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'promotions' }, (payload) => window.Sync.handleRealtimeChange('promotions', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, (payload) => window.Sync.handleRealtimeChange('suppliers', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_invoices' }, (payload) => window.Sync.handleRealtimeChange('purchase_invoices', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'sales_invoices' }, (payload) => window.Sync.handleRealtimeChange('sales_invoices', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_sales' }, (payload) => window.Sync.handleRealtimeChange('daily_sales', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, (payload) => window.Sync.handleRealtimeChange('expenses', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'electronic_invoices' }, (payload) => window.Sync.handleRealtimeChange('electronic_invoices', payload))
                 .subscribe((status) => {
                     if (status === 'SUBSCRIBED') {
                         console.log('✅ Realtime connected!');
                         window.Sync.isRealtimeActive = true;
-                        window.Sync.updateIndicator('realtime', 'Sincronización en Tiempo Real');
+                        window.Sync.updateIndicator('realtime');
                     } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
                         console.warn('❌ Realtime disconnected, using polling fallback');
                         window.Sync.isRealtimeActive = false;
@@ -326,23 +299,24 @@ window.Sync = {
         try {
             const record = payload.new || payload.old;
 
-            // FIXED: Do NOT skip deleted records. We need to process them 
-            // so the local DB also marks them as deleted.
-            // if (record && record.deleted && localTableName !== 'settings') { ... }
-
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                // Upsert into local DB
                 await window.db[localTableName].put(record);
+
+                // Notificación visual
+                const labelMap = {
+                    'expenses': 'Gasto',
+                    'daily_sales': 'Venta Diaria',
+                    'purchase_invoices': 'Factura',
+                    'suppliers': 'Proveedor'
+                };
+                const label = labelMap[localTableName] || localTableName;
+                window.Sync.showToast(`Actualizado: ${label}`, 'success');
             } else if (payload.eventType === 'DELETE') {
-                // Remove from local DB (hard delete from cloud = hard delete locally)
                 await window.db[localTableName].delete(record.id);
             }
 
-            // Trigger view refresh
             window.dispatchEvent(new CustomEvent('sync-data-updated'));
-
-            // Update indicator
-            window.Sync.updateIndicator('realtime', 'Sincronización en Tiempo Real');
+            window.Sync.updateIndicator('realtime');
 
         } catch (error) {
             console.error('Error handling realtime change:', error);
@@ -351,26 +325,12 @@ window.Sync = {
 
     // DELETE ALL DATA FROM CLOUD (DANGER)
     nukeCloud: async function () {
-        if (!window.Sync.client) {
-            throw new Error('No cloud connection');
-        }
-
+        if (!window.Sync.client) throw new Error('No cloud connection');
         const tables = ['employees', 'worklogs', 'products', 'promotions'];
-
         for (const table of tables) {
-            // Delete all rows from the table
-            // Using .gte('id', 0) to select all rows (id >= 0)
-            const { error } = await window.Sync.client
-                .from(table)
-                .delete()
-                .gte('id', 0);
-
-            if (error) {
-                console.error(`Error deleting from ${table}:`, error);
-                throw error;
-            }
+            const { error } = await window.Sync.client.from(table).delete().gte('id', 0);
+            if (error) throw error;
         }
-
         console.log('All cloud data deleted successfully');
     }
 };
