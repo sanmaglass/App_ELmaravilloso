@@ -363,38 +363,36 @@ window.Sync = {
 
     // Handle incoming real-time changes
     handleRealtimeChange: async function (localTableName, payload) {
-        console.log(`📡 Realtime ${payload.eventType} on ${localTableName}:`, payload.new || payload.old);
-
         try {
             const record = payload.new || payload.old;
+            if (!record) return;
+
+            // Ensure ID is a number for Dexie consistency
+            const id = Number(record.id || record.key);
+            if (isNaN(id)) return;
+
+            console.log(`📡 Realtime ${payload.eventType} on ${localTableName}:`, id);
 
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                await window.db[localTableName].put(record);
+                // Ensure the incoming record has the correct types
+                const cleanRecord = { ...record, id: id };
+                if (cleanRecord.deleted === undefined) cleanRecord.deleted = false;
 
-                // Notificación visual
-                const labelMap = {
-                    'expenses': 'Gasto',
-                    'daily_sales': 'Venta Diaria',
-                    'purchase_invoices': 'Factura',
-                    'electronic_invoices': 'Doc. Electrónico',
-                    'suppliers': 'Proveedor',
-                    'reminders': 'Recordatorio'
-                };
-                const label = labelMap[localTableName] || localTableName;
-                window.Sync.showToast(`Actualizado: ${label}`, 'success');
+                await window.db[localTableName].put(cleanRecord);
 
-                // --- NOTIFICACIÓN MÓVIL (Push-like) ---
-                // Solo mostrar si el documento no tiene el foco (está en segundo plano)
-                // Y NO estamos en medio de un full sync manual (para evitar spam)
-                if (document.visibilityState !== 'visible' && !window.Sync._isSyncingAll) {
-                    window.Utils.NotificationManager.debouncedShow(
-                        `Actualización: ${label}`,
-                        `Se ha recibido un nuevo cambio en ${label.toLowerCase()}.`,
-                        `./index.html`
-                    );
+                // Notificación visual (opcional/debounced)
+                if (payload.eventType === 'INSERT' && !window.Sync._isSyncingAll) {
+                    const labelMap = {
+                        'expenses': 'Gasto',
+                        'daily_sales': 'Venta Diaria',
+                        'purchase_invoices': 'Factura',
+                        'reminders': 'Tarea/Recordatorio'
+                    };
+                    const label = labelMap[localTableName] || localTableName;
+                    window.Sync.showToast(`Actualizado: ${label}`, 'success');
                 }
             } else if (payload.eventType === 'DELETE') {
-                await window.db[localTableName].delete(record.id);
+                await window.db[localTableName].delete(id);
             }
 
             window.dispatchEvent(new CustomEvent('sync-data-updated'));

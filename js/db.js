@@ -150,19 +150,26 @@ window.DataManager = {
      * Elimina (soft delete) una entidad y sincroniza
      */
     async deleteAndSync(tableName, id) {
-        const remoteTableMap = {
-            'workLogs': 'worklogs'
-        };
+        const remoteTableMap = { 'workLogs': 'worklogs' };
         const remoteTable = remoteTableMap[tableName] || tableName;
 
         try {
+            // 1. Borrado local inmediato (Soft delete)
             await window.db[tableName].update(id, { deleted: true });
+
+            // 2. Intentar borrar en la nube
             if (window.Sync?.client) {
-                await window.Sync.client.from(remoteTable).update({ deleted: true }).eq('id', id);
+                const { error } = await window.Sync.client
+                    .from(remoteTable)
+                    .update({ deleted: true })
+                    .eq('id', id);
+
+                if (error) throw error;
             }
             return { success: true };
         } catch (e) {
             console.error(`Error deleting ${tableName}:`, e);
+            // Avisar pero permitir continuar localmente
             return { success: true, syncError: e.message };
         }
     }
