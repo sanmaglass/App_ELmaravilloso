@@ -560,4 +560,7 @@ window.Utils = {
     }
 };
 
-
+// --- GLOBAL SHORTCUTS ---
+window.formatCurrency = (amount, plain = false) => window.Utils.formatCurrency(amount, plain);
+window.formatDate = (dateString, options = {}) => window.Utils.formatDate(dateString, options);
+window.generateId = () => window.Utils.generateId();

@@ -107,7 +107,8 @@ async function renderDailySales() {
         const dailySales = await window.db.daily_sales.toArray();
 
         // --- SANITY CHECK: Limpiar basura local y sincronizar borrado ---
-        const anomalous = dailySales.filter(s => (parseFloat(s.total) || 0) > 1000000000);
+        // Buscamos registros irreales (ej. $8 Billones de prueba) que NO estén ya borrados
+        const anomalous = dailySales.filter(s => !s.deleted && (parseFloat(s.total) || 0) > 1000000000);
         if (anomalous.length > 0) {
             console.warn("🧹 Limpiando registros anómalos y sincronizando:", anomalous);
             for (const s of anomalous) {
