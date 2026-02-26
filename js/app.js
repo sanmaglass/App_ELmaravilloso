@@ -28,26 +28,27 @@ const views = {
 // Initialize App
 async function init() {
     try {
-        // --- AUTH CHECK (DISABLED for faster loading) ---
-        /* 
-        const isAuth = sessionStorage.getItem('wm_auth');
+        // --- AUTH CHECK ---
+        const isAuth = localStorage.getItem('wm_auth');
         if (!isAuth) {
             // Show Login View, bypass standard app load
             document.querySelector('.app-container').style.display = 'none'; // Hide main layout
+
             // Create a dedicated container for login if needed or use body
-            const loginContainer = document.createElement('div');
-            loginContainer.id = 'login-wrapper';
-            document.body.appendChild(loginContainer);
+            let loginContainer = document.getElementById('login-wrapper');
+            if (!loginContainer) {
+                loginContainer = document.createElement('div');
+                loginContainer.id = 'login-wrapper';
+                document.body.appendChild(loginContainer);
+            }
 
             window.Views.login(loginContainer);
             return; // Stop initialization
         }
-        */
-
-        // Auto-authenticate for faster loading
-        sessionStorage.setItem('wm_auth', 'true');
 
         // If Auth passed, ensure main layout is visible
+        const loginWrapper = document.getElementById('login-wrapper');
+        if (loginWrapper) loginWrapper.remove();
         document.querySelector('.app-container').style.display = 'flex';
 
         await window.seedDatabase();
