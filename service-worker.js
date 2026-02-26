@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v211-logo-fix';
+const CACHE_NAME = 'el-maravilloso-v212-data-fix';
 const urlsToCache = [
     './index.html',
     './css/style.css',

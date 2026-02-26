@@ -234,7 +234,15 @@ window.Views.dashboard = async (container) => {
         const logs = allLogs.filter(l => !l.deleted);
         const invoices = allInvoices.filter(i => !i.deleted);
         const suppliers = allSuppliers.filter(s => !s.deleted);
-        const dailySales = allDailySales.filter(d => !d.deleted);
+
+        // --- FILTRADO ESTRICTO Y GUARDIA DE NEGOCIO ---
+        // Excluimos registros marcados como borrados y aquellos con montos absurdos (TESTS)
+        const dailySales = allDailySales.filter(d => {
+            if (d.deleted === true) return false;
+            const val = parseFloat(d.total) || 0;
+            return val < 1000000000; // Máximo 1 Billon CLP (Guardia contra basura)
+        });
+
         const products = allProducts.filter(p => !p.deleted);
 
         const supplierMap = {};

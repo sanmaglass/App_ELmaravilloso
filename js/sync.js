@@ -130,9 +130,18 @@ window.Sync = {
                     if (cloudData) {
                         // NORMALIZAR IDs de la nube a Números para prevenir "fantasmas"
                         const normalizedCloudData = cloudData.map(item => ({
+                            deleted: false, // Default to NOT deleted
                             ...item,
                             id: Number(item.id || item.key)
-                        }));
+                        })).filter(item => {
+                            // FILTRO DE BASURA: Ignorar registros con valores imposibles (ej. $8 Trillones)
+                            const total = parseFloat(item.total || item.cash || 0);
+                            if (total > 1000000000000) { // > 1 Trillon CLP
+                                console.warn(`[Sync] Ignorando registro basura detectado en ${remoteName}:`, item.id);
+                                return false;
+                            }
+                            return true;
+                        });
 
                         const cloudIds = new Set(normalizedCloudData.map(item => item.id));
                         const localData = await window.db[localName].toArray();

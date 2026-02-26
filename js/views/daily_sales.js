@@ -106,12 +106,14 @@ async function renderDailySales() {
     try {
         const dailySales = await window.db.daily_sales.toArray();
 
-        // --- SANITY CHECK: Limpiar basura local (ej. montos imposibles) ---
-        const anomalousIds = dailySales.filter(s => parseFloat(s.cash) > 1000000000).map(s => s.id);
-        if (anomalousIds.length > 0) {
-            console.warn("🧹 Limpiando registros anómalos detectados:", anomalousIds);
-            await window.db.daily_sales.bulkDelete(anomalousIds);
-            // Re-fetch clean data
+        // --- SANITY CHECK: Limpiar basura local y sincronizar borrado ---
+        const anomalous = dailySales.filter(s => (parseFloat(s.total) || 0) > 1000000000);
+        if (anomalous.length > 0) {
+            console.warn("🧹 Limpiando registros anómalos y sincronizando:", anomalous);
+            for (const s of anomalous) {
+                await window.DataManager.deleteAndSync('daily_sales', s.id);
+            }
+            // Re-fetch clean data and return
             return renderDailySales();
         }
 
