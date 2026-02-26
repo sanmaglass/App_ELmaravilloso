@@ -99,13 +99,17 @@ window.Views.dashboard = async (container) => {
                     <div class="p-3 rounded-2xl" style="background:rgba(132,204,22,0.1); color:#84cc16;">
                         <i class="ph ph-target text-2xl"></i>
                     </div>
-                    <div id="kpi-margen-badge" class="status-badge" style="background:rgba(132,204,22,0.1); color:#65a30d;">Salud</div>
+                    <div id="health-label" class="status-badge" style="background:rgba(132,204,22,0.1); color:#65a30d; font-weight:700;">Salud</div>
                 </div>
-                <div class="text-muted font-bold text-xs uppercase letter-spacing-1">Margen Neto</div>
-                <div id="kpi-margen-neto" class="font-bold text-3xl mt-1" style="color:#65a30d;">...</div>
+                <div class="text-muted font-bold text-xs uppercase letter-spacing-1">Margen Neto Estimado</div>
+                <div class="flex items-baseline gap-2">
+                    <div id="kpi-margen-neto" class="font-bold text-3xl mt-1" style="color:#65a30d;">...</div>
+                    <div id="health-ratio-pct" class="text-xs font-bold text-muted">0%</div>
+                </div>
                 <div id="health-bar-wrap" class="w-full h-2 rounded-full overflow-hidden mt-4" style="background:rgba(0,0,0,0.05);">
                     <div id="health-bar" class="h-full" style="width:0%; background:var(--grad-success); transition:width 1s ease;"></div>
                 </div>
+                <div id="health-detail" class="text-xs text-muted mt-3 italic">Calculando métricas de salud...</div>
             </div>
         </div>
 
