@@ -486,5 +486,50 @@ window.Utils = {
             if (progress < 1) window.requestAnimationFrame(step);
         };
         window.requestAnimationFrame(step);
+    },
+
+    // --- NOTIFICATION MANAGER ---
+    NotificationManager: {
+        async requestPermission() {
+            if (!('Notification' in window)) {
+                console.warn('Este navegador no soporta notificaciones.');
+                return false;
+            }
+
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                console.log('✅ Permiso de notificaciones concedido.');
+                return true;
+            }
+            return false;
+        },
+
+        async show(title, body, url = './index.html') {
+            // Verificar si la app tiene permiso
+            if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+            // Si la aplicación está enfocada (en primer plano), opcionalmente NO mostrar notificación
+            // para no duplicar con los Toasts internos. Pero para iPhone, a veces es mejor mostrarla.
+            const registration = await navigator.serviceWorker.ready;
+
+            const options = {
+                body: body,
+                icon: './assets/logo.png',
+                badge: './assets/logo.png',
+                vibrate: [100, 50, 100],
+                data: { url }
+            };
+
+            registration.showNotification(title, options);
+        },
+
+        isSupported() {
+            return 'Notification' in window;
+        },
+
+        getPermissionState() {
+            return window.Notification ? Notification.permission : 'not-supported';
+        }
     }
 };
+

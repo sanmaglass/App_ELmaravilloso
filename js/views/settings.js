@@ -115,7 +115,31 @@ window.Views.settings = async (container) => {
                     </div>
                 </div>
 
+                <!-- NOTIFICATIONS SECTION -->
+                <div class="card" style="border: 1px solid var(--primary); background: rgba(59, 130, 246, 0.02);">
+                    <h3 style="margin-bottom:16px; display:flex; align-items:center; gap:8px; color:var(--text-primary);">
+                        <i class="ph ph-bell-ringing" style="color:var(--primary);"></i>
+                        Notificaciones Móviles
+                    </h3>
+                    <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:16px;">
+                        Recibe avisos en tu iPhone/Android sobre ventas y facturas en tiempo real.
+                    </p>
+                    
+                    <div id="notif-status-box" style="padding:12px; border-radius:10px; margin-bottom:16px; font-size:0.85rem; display:flex; align-items:center; gap:10px;">
+                        <i class="ph ph-circle-fill" id="notif-indicator"></i>
+                        <span id="notif-status-text">Cargando estado...</span>
+                    </div>
+
+                    <button id="btn-request-notif" class="btn btn-primary" style="width:100%;">
+                        <i class="ph ph-hand-pointing"></i> Activar Notificaciones
+                    </button>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:10px; font-style:italic;">
+                        *Recuerda que la app debe estar "Agregada a la pantalla de inicio" para que funcionen bien en iPhone.
+                    </p>
+                </div>
+
                 <!-- STORAGE MONITOR -->
+
                 <div class="card" style="border: 1px solid var(--accent); background: linear-gradient(to bottom, rgba(99,102,241,0.05), transparent);">
                     <h3 style="margin-bottom:16px; display:flex; align-items:center; gap:8px; color:var(--text-primary);">
                         <i class="ph ph-database" style="color:var(--accent);"></i>
@@ -417,6 +441,52 @@ window.Views.settings = async (container) => {
             }
         }
 
+        // --- NOTIFICATIONS LOGIC ---
+        const btnNotif = document.getElementById('btn-request-notif');
+        const notifBox = document.getElementById('notif-status-box');
+        const notifInd = document.getElementById('notif-indicator');
+        const notifText = document.getElementById('notif-status-text');
+
+        const updateNotifUI = () => {
+            if (!window.Utils.NotificationManager.isSupported()) {
+                notifBox.style.background = 'rgba(239, 68, 68, 0.1)';
+                notifInd.style.color = '#ef4444';
+                notifText.textContent = 'No soportado en este navegador';
+                btnNotif.disabled = true;
+                return;
+            }
+
+            const state = window.Utils.NotificationManager.getPermissionState();
+            if (state === 'granted') {
+                notifBox.style.background = 'rgba(16, 185, 129, 0.1)';
+                notifInd.style.color = '#10b981';
+                notifText.textContent = 'Notificaciones Activas ✅';
+                btnNotif.innerHTML = '<i class="ph ph-check"></i> Ya están activas';
+                btnNotif.classList.replace('btn-primary', 'btn-secondary');
+                // btnNotif.disabled = true; // Let them click to re-test if they want
+            } else if (state === 'denied') {
+                notifBox.style.background = 'rgba(239, 68, 68, 0.1)';
+                notifInd.style.color = '#ef4444';
+                notifText.textContent = 'Permiso denegado (Revisa ajustes del celular)';
+                btnNotif.innerHTML = '<i class="ph ph-warning"></i> Permiso Bloqueado';
+            } else {
+                notifBox.style.background = 'rgba(0,0,0,0.05)';
+                notifInd.style.color = '#9ca3af';
+                notifText.textContent = 'Pendiente de activación';
+            }
+        };
+
+        if (btnNotif) {
+            btnNotif.addEventListener('click', async () => {
+                const granted = await window.Utils.NotificationManager.requestPermission();
+                if (granted) {
+                    window.Utils.NotificationManager.show('¡Suscrito!', 'Ahora recibirás avisos de El Maravilloso en este dispositivo.');
+                }
+                updateNotifUI();
+            });
+            updateNotifUI();
+        }
+
         // --- STORAGE STATS ---
         const updateStorageStats = async () => {
             const statsContainer = document.getElementById('storage-stats');
@@ -430,9 +500,9 @@ window.Views.settings = async (container) => {
                 const total = employees + logs + products;
 
                 statsContainer.innerHTML = `
-                    <div style="padding:10px; background:#f0f9ff; border-radius:8px; text-align:center;">
-                        <h2>${total}</h2>
-                        <span style="font-size:0.8rem; color:#666;">Total Registros</span>
+                    <div style="padding:10px; background:rgba(59,130,246,0.05); border-radius:8px; text-align:center;">
+                        <h2 style="color:var(--primary);">${total}</h2>
+                        <span style="font-size:0.8rem; color:var(--text-muted);">Total Registros</span>
                     </div>
                 `;
             } catch (e) {
@@ -454,6 +524,7 @@ window.Views.settings = async (container) => {
         });
 
     } catch (err) {
+
         console.error("Critical Settings Error:", err);
         container.innerHTML += `<div style="padding:20px; color:red;">Error cargando scripts de ajustes: ${err.message}</div>`;
     }

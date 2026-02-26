@@ -157,14 +157,14 @@ window.Sync = {
                     if (toDeleteLocal.length > 0) {
                         await window.db[localName].bulkDelete(toDeleteLocal);
                         console.log(`[Sync] Reconciliación: Borrados ${toDeleteLocal.length} registros huérfanos en ${localName}`);
-                        this._syncSummary.deletes += toDeleteLocal.length;
+                        window.Sync._syncSummary.deletes += toDeleteLocal.length;
                         dataChanged = true;
                     }
 
                     // Actualizar/Insertar lo que viene de la nube
                     if (cloudData.length > 0) {
                         await window.db[localName].bulkPut(cloudData);
-                        this._syncSummary.updates += cloudData.length;
+                        window.Sync._syncSummary.updates += cloudData.length;
                         dataChanged = true;
                     }
                 }
@@ -173,16 +173,16 @@ window.Sync = {
             if (dataChanged) {
                 window.dispatchEvent(new CustomEvent('sync-data-updated'));
                 // Mostrar resumen si hubo muchos cambios
-                if (this._syncSummary.updates > 5 || this._syncSummary.deletes > 0) {
+                if (window.Sync._syncSummary.updates > 5 || window.Sync._syncSummary.deletes > 0) {
                     const msg = [];
-                    if (this._syncSummary.updates > 0) msg.push(`${this._syncSummary.updates} cambios`);
-                    if (this._syncSummary.deletes > 0) msg.push(`${this._syncSummary.deletes} eliminados`);
-                    this.showToast(`Sincronización: ${msg.join(', ')}`, 'success');
+                    if (window.Sync._syncSummary.updates > 0) msg.push(`${window.Sync._syncSummary.updates} cambios`);
+                    if (window.Sync._syncSummary.deletes > 0) msg.push(`${window.Sync._syncSummary.deletes} eliminados`);
+                    window.Sync.showToast(`Sincronización: ${msg.join(', ')}`, 'success');
                 }
             }
 
             // Reiniciar resumen
-            this._syncSummary = { updates: 0, deletes: 0 };
+            window.Sync._syncSummary = { updates: 0, deletes: 0 };
 
             // Count ALL active records across ALL tables
             const allTables = tableMap.map(m => m.local);
@@ -370,6 +370,16 @@ window.Sync = {
                 };
                 const label = labelMap[localTableName] || localTableName;
                 window.Sync.showToast(`Actualizado: ${label}`, 'success');
+
+                // --- NOTIFICACIÓN MÓVIL (Push-like) ---
+                // Solo mostrar si el documento no tiene el foco (está en segundo plano)
+                if (document.visibilityState !== 'visible') {
+                    window.Utils.NotificationManager.show(
+                        `Actualización: ${label}`,
+                        `Se ha recibido un nuevo cambio en ${label.toLowerCase()}.`,
+                        `./index.html`
+                    );
+                }
             } else if (payload.eventType === 'DELETE') {
                 await window.db[localTableName].delete(record.id);
             }

@@ -96,7 +96,50 @@ self.addEventListener('fetch', (event) => {
 // Listen for messages from the main app (for manual updates)
 self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
-        console.log('[SW] Received skip waiting message');
+        console.log('[ServiceWorker] Received skip waiting message');
         self.skipWaiting();
     }
 });
+
+// Notifications Support
+self.addEventListener('push', (event) => {
+    let data = { title: 'El Maravilloso', body: 'Nueva actualización recibida.' };
+    if (event.data) {
+        try {
+            data = event.data.json();
+        } catch (e) {
+            data.body = event.data.text();
+        }
+    }
+
+    const options = {
+        body: data.body,
+        icon: './assets/logo.png',
+        badge: './assets/logo.png',
+        vibrate: [100, 50, 100],
+        data: {
+            url: data.url || './index.html'
+        }
+    };
+
+    event.waitUntil(
+        self.registration.showNotification(data.title, options)
+    );
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    event.waitUntil(
+        clients.matchAll({ type: 'window' }).then((clientList) => {
+            for (const client of clientList) {
+                if (client.url === '/' && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(event.notification.data.url);
+            }
+        })
+    );
+});
+
