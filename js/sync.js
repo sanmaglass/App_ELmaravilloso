@@ -289,6 +289,18 @@ window.Sync = {
                     { event: '*', schema: 'public', table: 'sales_invoices' },
                     (payload) => window.Sync.handleRealtimeChange('sales_invoices', payload)
                 )
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'daily_sales' },
+                    (payload) => window.Sync.handleRealtimeChange('daily_sales', payload)
+                )
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'expenses' },
+                    (payload) => window.Sync.handleRealtimeChange('expenses', payload)
+                )
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'electronic_invoices' },
+                    (payload) => window.Sync.handleRealtimeChange('electronic_invoices', payload)
+                )
                 .subscribe((status) => {
                     if (status === 'SUBSCRIBED') {
                         console.log('✅ Realtime connected!');
