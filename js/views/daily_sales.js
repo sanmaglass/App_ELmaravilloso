@@ -62,8 +62,12 @@ window.Views.daily_sales = async (container) => {
 
     // --- REALTIME REFRESH ---
     const syncHandler = () => {
-        console.log("🔄 Sync update detected: refreshing daily sales...");
-        renderDailySales();
+        if (document.getElementById('daily-sales-list')) {
+            console.log("🔄 Sync update detected: refreshing daily sales...");
+            renderDailySales();
+        } else {
+            window.removeEventListener('sync-data-updated', syncHandler);
+        }
     };
     window.addEventListener('sync-data-updated', syncHandler);
 };

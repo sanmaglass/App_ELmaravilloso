@@ -70,8 +70,12 @@ window.Views.expenses = async (container) => {
 
     // --- REALTIME REFRESH ---
     const syncHandler = () => {
-        console.log("🔄 Sync update detected: refreshing expenses...");
-        renderExpenses();
+        if (document.getElementById('expenses-list')) {
+            console.log("🔄 Sync update detected: refreshing expenses...");
+            renderExpenses();
+        } else {
+            window.removeEventListener('sync-data-updated', syncHandler);
+        }
     };
     window.addEventListener('sync-data-updated', syncHandler);
 };

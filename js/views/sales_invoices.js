@@ -44,8 +44,12 @@ window.Views.sales_invoices = async (container) => {
 
     // --- REALTIME REFRESH ---
     const syncHandler = () => {
-        console.log("🔄 Sync update detected: refreshing sales...");
-        renderSales();
+        if (document.getElementById('sales-list')) {
+            console.log("🔄 Sync update detected: refreshing sales...");
+            renderSales();
+        } else {
+            window.removeEventListener('sync-data-updated', syncHandler);
+        }
     };
     window.addEventListener('sync-data-updated', syncHandler);
 };

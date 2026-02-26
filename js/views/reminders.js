@@ -351,8 +351,12 @@ window.Views.reminders = async (container) => {
 
     // --- REALTIME REFRESH ---
     const syncHandler = () => {
-        console.log("🔄 Sync update detected: refreshing tasks...");
-        loadTasks();
+        if (document.getElementById('tasks-list-container') || document.getElementById('reminders-list')) {
+            console.log("🔄 Sync update detected: refreshing tasks...");
+            loadTasks();
+        } else {
+            window.removeEventListener('sync-data-updated', syncHandler);
+        }
     };
     window.addEventListener('sync-data-updated', syncHandler);
 };

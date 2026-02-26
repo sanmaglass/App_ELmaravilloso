@@ -93,6 +93,19 @@ window.Views.purchase_invoices = async (container) => {
     document.getElementById('filter-date').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('filter-supplier').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('btn-export-excel').addEventListener('click', exportInvoicesToExcel);
+
+    // --- REALTIME REFRESH ---
+    const syncHandler = () => {
+        if (document.getElementById('invoices-list')) {
+            console.log("🔄 Sync update detected: refreshing invoices...");
+            renderInvoices();
+            renderCreditAlerts();
+            populateSupplierFilter();
+        } else {
+            window.removeEventListener('sync-data-updated', syncHandler);
+        }
+    };
+    window.addEventListener('sync-data-updated', syncHandler);
 };
 
 // --- INIT FILTERS ---
@@ -1029,20 +1042,6 @@ async function showInvoiceModal(invoiceToEdit = null) {
         } catch (e) { alert('Error: ' + e.message); }
     });
 }
-
-// Final Init
-await initDateFilter();
-renderInvoices();
-renderCreditAlerts();
-
-// --- REALTIME REFRESH ---
-const syncHandler = () => {
-    console.log("🔄 Sync update detected: refreshing invoices...");
-    renderInvoices();
-    renderCreditAlerts();
-    populateSupplierFilter();
-};
-window.addEventListener('sync-data-updated', syncHandler);
 
 // --- EXPORT TO EXCEL ---
 async function exportInvoicesToExcel() {
