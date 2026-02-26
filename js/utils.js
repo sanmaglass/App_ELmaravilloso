@@ -529,7 +529,35 @@ window.Utils = {
 
         getPermissionState() {
             return window.Notification ? Notification.permission : 'not-supported';
+        },
+
+        // --- DEBOUNCED NOTIFICATIONS (Anti-Spam) ---
+        _notifQueue: [],
+        _notifTimeout: null,
+
+        debouncedShow(title, body, url = './index.html') {
+            if (document.visibilityState === 'visible') return; // Silence if app open
+
+            this._notifQueue.push({ body });
+
+            if (this._notifTimeout) clearTimeout(this._notifTimeout);
+
+            this._notifTimeout = setTimeout(async () => {
+                const count = this._notifQueue.length;
+                let finalTitle = title;
+                let finalBody = body;
+
+                if (count > 1) {
+                    finalTitle = 'El Maravilloso';
+                    finalBody = `Tienes ${count} nuevas actualizaciones pendientes.`;
+                }
+
+                await this.show(finalTitle, finalBody, url);
+                this._notifQueue = [];
+                this._notifTimeout = null;
+            }, 2000); // Wait 2 seconds of silence before firing
         }
     }
 };
+
 

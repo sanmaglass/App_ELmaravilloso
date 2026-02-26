@@ -84,6 +84,7 @@ window.Sync = {
         if (window.Sync.isSyncing) return { success: false, error: "Sincronización en curso..." };
 
         window.Sync.isSyncing = true;
+        window.Sync._isSyncingAll = true;
         window.Sync.updateIndicator('syncing');
 
         try {
@@ -208,6 +209,7 @@ window.Sync = {
             }
             return { success: false, error: e.message };
         } finally {
+            window.Sync._isSyncingAll = false;
             window.Sync.isSyncing = false;
         }
     },
@@ -373,8 +375,9 @@ window.Sync = {
 
                 // --- NOTIFICACIÓN MÓVIL (Push-like) ---
                 // Solo mostrar si el documento no tiene el foco (está en segundo plano)
-                if (document.visibilityState !== 'visible') {
-                    window.Utils.NotificationManager.show(
+                // Y NO estamos en medio de un full sync manual (para evitar spam)
+                if (document.visibilityState !== 'visible' && !window.Sync._isSyncingAll) {
+                    window.Utils.NotificationManager.debouncedShow(
                         `Actualización: ${label}`,
                         `Se ha recibido un nuevo cambio en ${label.toLowerCase()}.`,
                         `./index.html`
