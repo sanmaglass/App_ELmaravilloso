@@ -135,7 +135,8 @@ window.DataManager = {
                     else await window.Sync.client.from(remoteTable).insert([data]);
                 } catch (syncErr) {
                     console.warn(`Sync failed for ${tableName}:`, syncErr);
-                    return { success: true, id: data.id, syncError: syncErr.message };
+                    // IMPORTANTE: Devolvemos éxito local pero avisamos del fallo de red
+                    return { success: true, id: data.id, syncError: syncErr.message || 'Error de conexión con la nube' };
                 }
             }
             return { success: true, id: data.id };

@@ -113,6 +113,7 @@ async function init() {
                 }
 
                 updateSplash(100, 'SISTEMA LISTO');
+                console.log("System Initialized: v210.0.1 (Digital Master Fix)");
 
                 setTimeout(() => {
                     splash.classList.add('hidden');
@@ -170,6 +171,13 @@ async function init() {
             const current = window.state.currentView;
             if (views[current]) {
                 views[current]();
+            }
+        });
+
+        // Evento para forzar sincronización total desde cualquier parte
+        window.addEventListener('request-sync-all', async () => {
+            if (window.Sync) {
+                await window.Sync.syncAll();
             }
         });
 

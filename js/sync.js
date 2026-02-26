@@ -119,9 +119,11 @@ window.Sync = {
                     const remoteName = map.remote;
                     const orderKey = map.orderBy || 'id';
 
+                    // 1. PUSH PHASE: Sync local changes to cloud (including local deletions)
                     const localData = await window.db[localName].toArray();
-                    let activeLocalData = localData;
 
+                    // Suppliers need special handling for de-duplication
+                    let activeLocalData = localData;
                     if (localName === 'suppliers') {
                         const seen = new Map();
                         const deduped = [];
@@ -136,9 +138,11 @@ window.Sync = {
                     }
 
                     if (activeLocalData.length > 0) {
+                        // Upsert will handle both new records and updates (including those with deleted: true)
                         const { error: pushError } = await window.Sync.client
                             .from(remoteName)
                             .upsert(activeLocalData);
+
                         if (pushError) {
                             if (pushError.code === '23505') {
                                 console.warn(`[Sync] Constraint violation on ${remoteName} push (ignorado):`, pushError.message);
@@ -148,6 +152,7 @@ window.Sync = {
                         }
                     }
 
+                    // 2. PULL PHASE: Get latest data from cloud
                     const { data: cloudData, error } = await window.Sync.client
                         .from(remoteName)
                         .select('*')
@@ -160,6 +165,7 @@ window.Sync = {
                         const cloudIds = new Set(cloudData.map(item => item.id || item.key));
                         const localIds = localData.map(item => item.id || item.key);
 
+                        // If it's not in cloud anymore, and it wasn't just deleted locally, remove it locally
                         const toDeleteLocal = localIds.filter(id => !cloudIds.has(id));
                         if (toDeleteLocal.length > 0) {
                             await window.db[localName].bulkDelete(toDeleteLocal);
@@ -167,6 +173,7 @@ window.Sync = {
                             dataChanged = true;
                         }
 
+                        // Update local DB with cloud data
                         if (cloudData.length > 0) {
                             await window.db[localName].bulkPut(cloudData);
                             window.Sync._syncSummary.updates += cloudData.length;
@@ -175,17 +182,16 @@ window.Sync = {
                     }
                 } catch (tableErr) {
                     console.error(`[Sync] Error en tabla ${map.remote}:`, tableErr.message);
-                    // No cortamos el bucle, permitimos que otras tablas sincronicen
                 }
             }
 
             if (dataChanged) {
                 window.dispatchEvent(new CustomEvent('sync-data-updated'));
-                // Mostrar resumen si hubo muchos cambios
-                if (window.Sync._syncSummary.updates > 5 || window.Sync._syncSummary.deletes > 0) {
+                const stats = window.Sync._syncSummary;
+                if (stats.updates > 5 || stats.deletes > 0) {
                     const msg = [];
-                    if (window.Sync._syncSummary.updates > 0) msg.push(`${window.Sync._syncSummary.updates} cambios`);
-                    if (window.Sync._syncSummary.deletes > 0) msg.push(`${window.Sync._syncSummary.deletes} eliminados`);
+                    if (stats.updates > 0) msg.push(`${stats.updates} cambios`);
+                    if (stats.deletes > 0) msg.push(`${stats.deletes} eliminados`);
                     window.Sync.showToast(`Sincronización: ${msg.join(', ')}`, 'success');
                 }
             }
