@@ -75,6 +75,8 @@ async function init() {
             };
 
             try {
+                const APP_VERSION = '200.0.1';
+                addLog(`APP_VERSION: ${APP_VERSION}`, 'success');
                 updateSplash(10, 'Iniciando Kernel El Maravilloso...');
 
                 updateSplash(20, 'Cargando Base de Datos Local...');
@@ -83,7 +85,7 @@ async function init() {
                 updateSplash(40, 'Estableciendo enlace con la Nube...');
                 const syncRes = await window.Sync.init();
 
-                if (syncRes.success) {
+                if (syncRes.success && window.Sync.client) {
                     updateSplash(50, 'Verificando Sesión...');
                     const { data: { session } } = await window.Sync.client.auth.getSession();
 
@@ -95,27 +97,23 @@ async function init() {
 
                     updateSplash(60, 'Conexión Segura Establecida', 'success');
 
-                    // CRITICAL: Non-blocking sync start
-                    // We show the dashboard with local data first
-                    views.dashboard(); // Render dashboard with local data
+                    // Render Dashboard immediately with local data
+                    views.dashboard();
 
                     updateSplash(90, 'Desbloqueando Interfaz...');
 
-                    // Trigger sync in background
+                    // Background sync
                     window.Sync.syncAll().then(() => {
                         console.log('Background Sync Completed');
-                        // After background sync, refresh the current view to show updated data
                         const current = window.state.currentView;
-                        if (views[current]) {
-                            views[current]();
-                        }
+                        if (views[current]) views[current]();
                     });
 
                     // Initialize WebSocket real-time sync (enterprise-grade)
                     await window.Sync.initRealtimeSync();
 
                     // Start polling as fallback (60s instead of 5s)
-                    window.Sync.startAutoSync(60000); // 1 minute
+                    window.Sync.startAutoSync(60000);
 
                 } else {
                     updateSplash(60, 'Modo Debug / Offline Activo', 'error');

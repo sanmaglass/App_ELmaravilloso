@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-cache-v12'; // Added Reminders support
+const CACHE_NAME = 'el-maravilloso-v200-ultimate';
 const urlsToCache = [
     './index.html',
     './css/style.css',
