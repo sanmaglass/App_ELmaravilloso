@@ -15,23 +15,17 @@
     --bg-glass: rgba(255, 255, 255, 0.82);
     --bg-glass-hover: rgba(255, 255, 255, 0.95);
 
-    --text-primary: #0a0a0a;
-    /* Casi negro absoluto */
-    --text-secondary: #333333;
-    --text-muted: #666666;
-
-    --success: #00c853;
-    /* Verde Neón para acciones positivas */
-    --danger: #ff1744;
-
-    --border: rgba(255, 255, 255, 0.6);
-    /* Bordes sutiles para glass */
-
-    --radius-sm: 12px;
-    --radius-md: 20px;
-    --radius-lg: 30px;
-
     --font-main: 'Outfit', sans-serif;
+
+    /* Fluid Typography Scale */
+    --step--2: clamp(0.69rem, calc(0.66rem + 0.18vw), 0.80rem);
+    --step--1: clamp(0.78rem, calc(0.72rem + 0.31vw), 0.94rem);
+    --step-0: clamp(0.88rem, calc(0.78rem + 0.47vw), 1.13rem);
+    --step-1: clamp(0.98rem, calc(0.85rem + 0.68vw), 1.35rem);
+    --step-2: clamp(1.1rem, calc(0.91rem + 0.94vw), 1.62rem);
+    --step-3: clamp(1.24rem, calc(0.99rem + 1.28vw), 1.94rem);
+    --step-4: clamp(1.4rem, calc(1.06rem + 1.71vw), 2.33rem);
+    --step-5: clamp(1.58rem, calc(1.13rem + 2.25vw), 2.80rem);
 
     /* Animation Speeds */
     --ease-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
