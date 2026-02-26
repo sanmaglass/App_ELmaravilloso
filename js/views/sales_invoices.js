@@ -74,24 +74,31 @@ async function renderSales() {
         }
 
         list.innerHTML = filtered.map(sale => `
-            <div class="card" style="padding:16px; display:grid; grid-template-columns: 1fr 1fr auto; align-items:center; gap:16px;">
-                <div>
-                    <div style="font-weight:600; font-size:1.05rem;">${sale.clientName}</div>
-                    <div style="font-size:0.85rem; color:var(--text-muted);">
-                        <i class="ph ph-hash"></i> ${sale.invoiceNumber} • ${formatDate(sale.date)}
+            <div class="premium-card p-4 flex flex-col gap-4">
+                <div class="flex justify-between items-start gap-3">
+                    <div style="flex:1;">
+                        <div class="font-bold text-primary" style="font-size:1.1rem;">${sale.clientName}</div>
+                        <div class="text-xs text-muted mt-1">
+                            <i class="ph ph-hash"></i> ${sale.invoiceNumber} 
+                            <span style="margin:0 6px;">•</span> 
+                            <i class="ph ph-calendar-blank"></i> ${formatDate(sale.date)}
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <div style="font-weight:700; font-size:1.1rem; color:var(--primary);">${formatCurrency(sale.total)}</div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">Items: ${sale.items.length}</div>
-                </div>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn btn-secondary btn-pdf-sale" data-id="${sale.id}" title="Descargar PDF" style="font-size:0.8rem;">
-                        <i class="ph ph-file-pdf"></i> PDF
-                    </button>
-                    <button class="btn btn-icon btn-delete-sale" data-id="${sale.id}" title="Eliminar" style="color:var(--error);">
-                        <i class="ph ph-trash"></i>
-                    </button>
+
+                <div class="flex justify-between items-center pt-3" style="border-top: 1px dashed var(--border);">
+                    <div>
+                        <div class="text-xs text-muted font-bold uppercase letter-spacing-1">Items: ${sale.items.length}</div>
+                        <div class="text-xl font-bold text-primary mt-1">${formatCurrency(sale.total)}</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn btn-icon btn-secondary btn-pdf-sale" data-id="${sale.id}" style="width:40px; height:40px;" title="Ver PDF">
+                            <i class="ph ph-file-pdf"></i>
+                        </button>
+                        <button class="btn btn-icon btn-delete-sale" data-id="${sale.id}" style="width:40px; height:40px; color:var(--error);" title="Eliminar">
+                            <i class="ph ph-trash"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         `).join('');

@@ -59,21 +59,30 @@ async function renderDTEs() {
         }
 
         list.innerHTML = dtes.reverse().map(dte => `
-            <div class="card p-4 grid gap-4 items-center" style="grid-template-columns: 1fr 1fr auto auto;">
-                <div>
-                    <div class="font-bold text-primary">${dte.receiverName}</div>
-                    <div class="text-xs text-muted">${dte.receiverRut} • ${dte.date}</div>
+            <div class="card p-4 flex flex-col gap-4">
+                <div class="flex justify-between items-start gap-3">
+                    <div style="flex:1;">
+                        <div class="font-bold text-primary" style="font-size:1.1rem;">${dte.receiverName}</div>
+                        <div class="text-xs text-muted mt-1">
+                            <i class="ph ph-identification-card"></i> ${dte.receiverRut} 
+                            <span style="margin:0 6px;">•</span> 
+                            <i class="ph ph-calendar-blank"></i> ${dte.date}
+                        </div>
+                    </div>
+                    <div class="badge ${dte.status === 'Enviado' ? 'badge-up' : 'badge-down'}" style="padding:4px 10px; font-weight:700;">
+                        ${dte.status}
+                    </div>
                 </div>
-                <div class="text-right">
-                    <div class="font-bold text-primary">${window.Utils.formatCurrency(dte.total)}</div>
-                    <div class="text-xs text-muted">Folio: ${dte.folio || 'Pendiente'}</div>
-                </div>
-                <div class="badge ${dte.status === 'Enviado' ? 'badge-up' : 'badge-down'}" style="padding:4px 10px;">
-                    ${dte.status}
-                </div>
-                <div class="flex gap-2">
-                    <button class="btn btn-icon btn-secondary" title="Ver PDF" onclick="window.open('${dte.pdfUrl}', '_blank')"><i class="ph ph-file-pdf"></i></button>
-                    ${dte.status !== 'Enviado' ? `<button class="btn btn-icon btn-primary" title="Reintentar"> <i class="ph ph-arrows-clockwise"></i> </button>` : ''}
+
+                <div class="flex justify-between items-center pt-3" style="border-top: 1px dashed var(--border);">
+                    <div>
+                        <div class="text-xs text-muted uppercase font-bold letter-spacing-1">Folio: ${dte.folio || 'Pendiente'}</div>
+                        <div class="text-xl font-bold text-primary mt-1">${window.Utils.formatCurrency(dte.total)}</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn btn-icon btn-secondary" style="width:40px; height:40px;" title="Ver PDF" onclick="window.open('${dte.pdfUrl}', '_blank')"><i class="ph ph-file-pdf"></i></button>
+                        ${dte.status !== 'Enviado' ? `<button class="btn btn-icon btn-primary" style="width:40px; height:40px;" title="Reintentar"> <i class="ph ph-arrows-clockwise"></i> </button>` : ''}
+                    </div>
                 </div>
             </div>
         `).join('');
