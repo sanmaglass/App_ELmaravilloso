@@ -114,66 +114,68 @@ window.Sync = {
             let dataChanged = false;
 
             for (const map of tableMap) {
-                const localName = map.local;
-                const remoteName = map.remote;
-                const orderKey = map.orderBy || 'id';
+                try {
+                    const localName = map.local;
+                    const remoteName = map.remote;
+                    const orderKey = map.orderBy || 'id';
 
-                const localData = await window.db[localName].toArray();
-                let activeLocalData = localData;
+                    const localData = await window.db[localName].toArray();
+                    let activeLocalData = localData;
 
-                if (localName === 'suppliers') {
-                    const seen = new Map();
-                    const deduped = [];
-                    for (const item of activeLocalData) {
-                        const key = (item.name || '').toLowerCase().trim();
-                        if (!seen.has(key)) {
-                            seen.set(key, item.id);
-                            deduped.push(item);
+                    if (localName === 'suppliers') {
+                        const seen = new Map();
+                        const deduped = [];
+                        for (const item of activeLocalData) {
+                            const key = (item.name || '').toLowerCase().trim();
+                            if (!seen.has(key)) {
+                                seen.set(key, item.id);
+                                deduped.push(item);
+                            }
+                        }
+                        activeLocalData = deduped;
+                    }
+
+                    if (activeLocalData.length > 0) {
+                        const { error: pushError } = await window.Sync.client
+                            .from(remoteName)
+                            .upsert(activeLocalData);
+                        if (pushError) {
+                            if (pushError.code === '23505') {
+                                console.warn(`[Sync] Constraint violation on ${remoteName} push (ignorado):`, pushError.message);
+                            } else {
+                                throw pushError;
+                            }
                         }
                     }
-                    activeLocalData = deduped;
-                }
 
-                if (activeLocalData.length > 0) {
-                    const { error: pushError } = await window.Sync.client
+                    const { data: cloudData, error } = await window.Sync.client
                         .from(remoteName)
-                        .upsert(activeLocalData);
-                    if (pushError) {
-                        if (pushError.code === '23505') {
-                            console.warn(`[Sync] Constraint violation on ${remoteName} push (ignorado):`, pushError.message);
-                        } else {
-                            throw pushError;
+                        .select('*')
+                        .order(orderKey, { ascending: true });
+
+                    if (error) throw error;
+
+                    if (cloudData) {
+                        // --- RECONCILIATION LOGIC ---
+                        const cloudIds = new Set(cloudData.map(item => item.id || item.key));
+                        const localIds = localData.map(item => item.id || item.key);
+
+                        const toDeleteLocal = localIds.filter(id => !cloudIds.has(id));
+                        if (toDeleteLocal.length > 0) {
+                            await window.db[localName].bulkDelete(toDeleteLocal);
+                            window.Sync._syncSummary.deletes += toDeleteLocal.length;
+                            dataChanged = true;
+                        }
+
+                        if (cloudData.length > 0) {
+                            await window.db[localName].bulkPut(cloudData);
+                            window.Sync._syncSummary.updates += cloudData.length;
+                            dataChanged = true;
                         }
                     }
-                }
-
-                const { data: cloudData, error } = await window.Sync.client
-                    .from(remoteName)
-                    .select('*')
-                    .order(orderKey, { ascending: true });
-
-                if (error) throw error;
-
-                if (cloudData) {
-                    // --- RECONCILIATION LOGIC ---
-                    // Borrar localmente lo que ya no existe en la nube (hard deletes)
-                    const cloudIds = new Set(cloudData.map(item => item.id || item.key));
-                    const localIds = localData.map(item => item.id || item.key);
-
-                    const toDeleteLocal = localIds.filter(id => !cloudIds.has(id));
-                    if (toDeleteLocal.length > 0) {
-                        await window.db[localName].bulkDelete(toDeleteLocal);
-                        console.log(`[Sync] Reconciliación: Borrados ${toDeleteLocal.length} registros huérfanos en ${localName}`);
-                        window.Sync._syncSummary.deletes += toDeleteLocal.length;
-                        dataChanged = true;
-                    }
-
-                    // Actualizar/Insertar lo que viene de la nube
-                    if (cloudData.length > 0) {
-                        await window.db[localName].bulkPut(cloudData);
-                        window.Sync._syncSummary.updates += cloudData.length;
-                        dataChanged = true;
-                    }
+                } catch (tableErr) {
+                    console.error(`[Sync] Error en tabla ${map.remote}:`, tableErr.message);
+                    // No cortamos el bucle, permitimos que otras tablas sincronicen
                 }
             }
 
