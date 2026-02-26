@@ -33,6 +33,7 @@ window.Sync = {
                 }
 
                 window.Sync.client = supabase.createClient(url.trim(), key.trim());
+                console.log('Cliente Supabase creado. Testeando conexión...');
 
                 // Prueba de conexión: usamos employees (tabla segura que siempre existe)
                 const { error } = await window.Sync.client
@@ -41,26 +42,30 @@ window.Sync = {
                     .limit(1);
 
                 if (error) {
-                    // Error de tabla no existente — problema de configuración real
-                    if (error.code === 'PGRST301') throw new Error('API Key inválida.');
-                    if (error.code === '42P01') throw new Error('Las tablas no existen. Ejecuta el script SQL.');
-                    // Otros errores de Supabase — log pero continuar
-                    console.warn('Supabase warning en init:', error.message);
+                    console.error('Test de conexión fallido:', error);
+                    // Error de tabla no existente o API key mal configurada
+                    if (error.code === 'PGRST301' || error.message?.includes('JWT')) {
+                        throw new Error('API Key de Supabase inválida o mal formateada.');
+                    }
+                    if (error.code === '42P01') {
+                        throw new Error('Tablas no encontradas. ¿Ejecutaste el script SQL en Supabase?');
+                    }
+                    throw new Error(`Conexión fallida: ${error.message}`);
                 }
 
-                console.log('Supabase conectado.');
+                console.log('Supabase conectado correctamente.');
                 window.Sync._retryCount = 0;
                 window.Sync.updateIndicator('connected');
                 return { success: true };
 
             } catch (e) {
                 window.Sync.client = null;
+                console.error('Error detallado de Sync.init:', e);
                 const isNetworkError = e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Failed');
+
                 if (isNetworkError) {
-                    console.warn('Sin conexión a Supabase (red no disponible).');
-                    window.Sync.updateIndicator('off', 'Sin internet');
+                    window.Sync.updateIndicator('off', 'Error de red');
                 } else {
-                    console.error('Error de configuración Supabase:', e.message);
                     window.Sync.updateIndicator('error', e.message);
                 }
                 return { success: false, error: e.message };
