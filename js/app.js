@@ -200,16 +200,8 @@ if (localStorage.getItem('wm_privacy') === 'true') {
     document.getElementById('btn-toggle-privacy').innerHTML = '<i class="ph ph-eye-slash"></i>';
 }
 
-// Sync Indicator Click -> Settings
-const syncInd = document.getElementById('sync-indicator');
-if (syncInd) {
-    syncInd.style.cursor = 'pointer';
-    syncInd.addEventListener('click', () => {
-        // Find settings button and click it to navigate
-        const settingsBtn = document.querySelector('.nav-item[data-view="settings"]');
-        if (settingsBtn) settingsBtn.click();
-    });
-}
+// El listener de sincronización ahora se maneja arriba en init()
+
 
 // --- AUTO-LOCK SYSTEM (7 Days for Admin) ---
 let inactivityTimer;

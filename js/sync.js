@@ -5,6 +5,9 @@ window.Sync = {
     realtimeChannel: null,
     isRealtimeActive: false,
     _retryCount: 0,
+    _toastQueue: [],
+    _isProcessingToasts: false,
+    _syncSummary: { updates: 0, deletes: 0 },
 
     // Inicializar cliente
     init: async () => {
@@ -97,7 +100,8 @@ window.Sync = {
                 { local: 'sales_invoices', remote: 'sales_invoices', orderBy: 'date' },
                 { local: 'expenses', remote: 'expenses', orderBy: 'date' },
                 { local: 'daily_sales', remote: 'daily_sales', orderBy: 'date' },
-                { local: 'settings', remote: 'settings', orderBy: 'key' }
+                { local: 'settings', remote: 'settings', orderBy: 'key' },
+                { local: 'electronic_invoices', remote: 'electronic_invoices', orderBy: 'date' }
             ];
 
             let dataChanged = false;
@@ -143,22 +147,49 @@ window.Sync = {
 
                 if (error) throw error;
 
-                if (cloudData && cloudData.length > 0) {
-                    await window.db[localName].bulkPut(cloudData);
-                    dataChanged = true;
+                if (cloudData) {
+                    // --- RECONCILIATION LOGIC ---
+                    // Borrar localmente lo que ya no existe en la nube (hard deletes)
+                    const cloudIds = new Set(cloudData.map(item => item.id || item.key));
+                    const localIds = localData.map(item => item.id || item.key);
+
+                    const toDeleteLocal = localIds.filter(id => !cloudIds.has(id));
+                    if (toDeleteLocal.length > 0) {
+                        await window.db[localName].bulkDelete(toDeleteLocal);
+                        console.log(`[Sync] Reconciliación: Borrados ${toDeleteLocal.length} registros huérfanos en ${localName}`);
+                        this._syncSummary.deletes += toDeleteLocal.length;
+                        dataChanged = true;
+                    }
+
+                    // Actualizar/Insertar lo que viene de la nube
+                    if (cloudData.length > 0) {
+                        await window.db[localName].bulkPut(cloudData);
+                        this._syncSummary.updates += cloudData.length;
+                        dataChanged = true;
+                    }
                 }
             }
 
             if (dataChanged) {
                 window.dispatchEvent(new CustomEvent('sync-data-updated'));
+                // Mostrar resumen si hubo muchos cambios
+                if (this._syncSummary.updates > 5 || this._syncSummary.deletes > 0) {
+                    const msg = [];
+                    if (this._syncSummary.updates > 0) msg.push(`${this._syncSummary.updates} cambios`);
+                    if (this._syncSummary.deletes > 0) msg.push(`${this._syncSummary.deletes} eliminados`);
+                    this.showToast(`Sincronización: ${msg.join(', ')}`, 'success');
+                }
             }
 
-            const tables = ['employees', 'workLogs', 'products', 'promotions'];
+            // Reiniciar resumen
+            this._syncSummary = { updates: 0, deletes: 0 };
+
+            // Count ALL active records across ALL tables
+            const allTables = tableMap.map(m => m.local);
             let totalLocal = 0;
-            for (const tableName of tables) {
-                const records = await window.db[tableName].toArray();
-                const activeRecords = records.filter(r => !r.deleted);
-                totalLocal += activeRecords.length;
+            for (const tableName of allTables) {
+                const count = await window.db[tableName].filter(r => !r.deleted).count();
+                totalLocal += count;
             }
 
             if (window.Sync.client) {
@@ -185,6 +216,30 @@ window.Sync = {
      * Muestra una notificación rápida en pantalla
      */
     showToast: function (message, type = 'info') {
+        this._toastQueue.push({ message, type });
+        if (!this._isProcessingToasts) {
+            this._processToastQueue();
+        }
+    },
+
+    _processToastQueue: async function () {
+        if (this._toastQueue.length === 0) {
+            this._isProcessingToasts = false;
+            return;
+        }
+
+        this._isProcessingToasts = true;
+
+        // Si hay muchas notificaciones, agruparlas
+        if (this._toastQueue.length > 3) {
+            const types = new Set(this._toastQueue.map(t => t.type));
+            const primaryType = types.has('success') ? 'success' : 'info';
+            const count = this._toastQueue.length;
+            this._toastQueue = [{ message: `${count} actualizaciones de red`, type: primaryType }];
+        }
+
+        const { message, type } = this._toastQueue.shift();
+
         const toast = document.createElement('div');
         toast.className = `sync-toast toast-${type}`;
         toast.innerHTML = `
@@ -195,11 +250,14 @@ window.Sync = {
         `;
         document.body.appendChild(toast);
 
-        // Auto-remove
-        setTimeout(() => {
-            toast.classList.add('fading');
-            setTimeout(() => toast.remove(), 500);
-        }, 3000);
+        // Wait before showing next or removing
+        await new Promise(r => setTimeout(r, 3000));
+
+        toast.classList.add('fading');
+        setTimeout(() => toast.remove(), 500);
+
+        // Next one
+        setTimeout(() => this._processToastQueue(), 200);
     },
 
     // UI Helper
@@ -307,6 +365,7 @@ window.Sync = {
                     'expenses': 'Gasto',
                     'daily_sales': 'Venta Diaria',
                     'purchase_invoices': 'Factura',
+                    'electronic_invoices': 'Doc. Electrónico',
                     'suppliers': 'Proveedor'
                 };
                 const label = labelMap[localTableName] || localTableName;
