@@ -1,5 +1,5 @@
 // Service Worker for PWA - Enhanced Version
-const CACHE_NAME = 'el-maravilloso-v3.10-fix-sync'; // Repair daily_sales realtime sync
+const CACHE_NAME = 'el-maravilloso-v3.11-fix-responsive'; // Better layout for PC/Mobile
 const urlsToCache = [
     './index.html',
     './css/style.css',
