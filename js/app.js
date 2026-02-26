@@ -215,8 +215,8 @@ window.ReminderEngine = {
         try {
             const now = new Date();
             const dueReminders = await window.db.reminders
-                .where('completed').equals(0)
-                .and(r => r.deleted === 0 && new Date(r.next_run) <= now)
+                .where('[completed+deleted]').equals([0, 0])
+                .and(r => new Date(r.next_run) <= now)
                 .toArray();
 
             for (const reminder of dueReminders) {

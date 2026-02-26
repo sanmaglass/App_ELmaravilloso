@@ -2,20 +2,20 @@
 
 const db = new Dexie('WorkMasterDB');
 
-// Version 11: Add reminders table
-db.version(11).stores({
-    employees: 'id',
-    workLogs: 'id',
+// Version 13: Add more functional indices (date, employeeId)
+db.version(13).stores({
+    employees: 'id, deleted',
+    workLogs: 'id, deleted, date, employeeId',
     settings: 'key',
-    products: 'id',
-    promotions: 'id',
-    suppliers: 'id',
-    purchase_invoices: 'id',
-    sales_invoices: 'id',
-    expenses: 'id',
-    daily_sales: 'id',
-    electronic_invoices: 'id',
-    reminders: 'id'
+    products: 'id, deleted',
+    promotions: 'id, deleted',
+    suppliers: 'id, deleted',
+    purchase_invoices: 'id, deleted, supplierId, date',
+    sales_invoices: 'id, deleted, date',
+    expenses: 'id, deleted, date',
+    daily_sales: 'id, deleted, date',
+    electronic_invoices: 'id, deleted, date',
+    reminders: 'id, deleted, completed, [completed+deleted]'
 });
 
 

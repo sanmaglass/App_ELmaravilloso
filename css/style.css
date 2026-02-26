@@ -133,6 +133,12 @@ body {
     /* Optimizar scroll táctil */
 }
 
+.sidebar-logo-img:hover {
+    opacity: 1 !important;
+    filter: drop-shadow(0 8px 16px rgba(220, 38, 38, 0.2)) brightness(1.1) !important;
+    transform: scale(1.02);
+}
+
 /* Sidebar Responsive */
 @media (max-width: 768px) {
     .sidebar {
