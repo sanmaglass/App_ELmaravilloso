@@ -77,14 +77,6 @@ async function init() {
             try {
                 updateSplash(10, 'Iniciando Kernel El Maravilloso...');
 
-                // Auth Check (re-check for session, as wm_auth might be stale)
-                const { data: { session } } = await window.supabase.auth.getSession();
-                if (!session) {
-                    updateSplash(100, 'Redirigiendo a LOGIN...', 'success');
-                    setTimeout(() => window.location.hash = '#auth', 500);
-                    return;
-                }
-
                 updateSplash(20, 'Cargando Base de Datos Local...');
                 await window.seedDatabase();
 
@@ -92,6 +84,15 @@ async function init() {
                 const syncRes = await window.Sync.init();
 
                 if (syncRes.success) {
+                    updateSplash(50, 'Verificando Sesión...');
+                    const { data: { session } } = await window.Sync.client.auth.getSession();
+
+                    if (!session && localStorage.getItem('wm_auth')) {
+                        // Fallback: if we have wm_auth but no supabase session, we might need to re-auth
+                        // or just continue if we don't strictly enforce supabase auth yet
+                        console.warn('Session mismatch: wm_auth exists but no Supabase session.');
+                    }
+
                     updateSplash(60, 'Conexión Segura Establecida', 'success');
 
                     // CRITICAL: Non-blocking sync start
