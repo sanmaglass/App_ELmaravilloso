@@ -35,17 +35,18 @@ window.Views.dashboard = async (container) => {
     </style>
 
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+    <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
         <div>
-            <h1 class="text-primary font-bold flex items-center gap-2" style="font-size:1.5rem;">
+            <h1 class="text-primary font-bold flex items-center gap-3 text-2xl">
                 <i class="ph ph-squares-four"></i> Resumen de Negocio
             </h1>
+            <p class="text-muted text-sm mt-1">Sincronización en tiempo real activa 🛰️</p>
         </div>
-        <div class="flex gap-2">
-            <button id="btn-export-excel" class="btn" style="background:#10b981; color:white;">
+        <div class="flex gap-3">
+            <button id="btn-export-excel" class="btn btn-premium" style="background:var(--grad-success); box-shadow: 0 10px 20px rgba(0, 200, 83, 0.2);">
                 <i class="ph ph-file-xls"></i> <span class="hide-mobile">Excel</span>
             </button>
-            <button id="btn-whatsapp-report" class="btn" style="background:#25D366; color:white;">
+            <button id="btn-whatsapp-report" class="btn btn-premium" style="background:#25D366; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.2);">
                 <i class="ph ph-whatsapp-logo"></i> <span class="hide-mobile">WhatsApp</span>
             </button>
         </div>
@@ -55,104 +56,85 @@ window.Views.dashboard = async (container) => {
     <div id="tab-resumen" class="dash-tab-content active">
 
         <!-- Alertas semanales -->
-        <div id="weekly-summary-container" class="hidden" style="margin-bottom:16px;">
-            <div class="card" style="border-left:5px solid #d97706;background:rgba(251,191,36,0.05);padding:16px;">
-                <h3 style="color:#92400e;display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:1rem;">
-                    <i class="ph ph-calendar-check"></i> Vencimientos Esta Semana
+        <div id="weekly-summary-container" class="hidden" style="margin-bottom:24px;">
+            <div class="premium-card" style="border-left:6px solid #f59e0b; background:rgba(245,158,11,0.05);">
+                <h3 class="text-warning font-bold flex items-center gap-2 mb-4 text-base">
+                    <i class="ph ph-calendar-check text-xl"></i> Vencimientos Esta Semana
                 </h3>
-                <div id="weekly-summary-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+                <div id="weekly-summary-list" class="flex-col gap-3"></div>
             </div>
         </div>
 
-        <!-- Alertas de vencimiento de productos -->
-        <div id="expiry-alerts-container" class="hidden" style="margin-bottom:20px;">
-            <div class="card" style="border-left:5px solid var(--danger);background:rgba(255,23,68,0.05);padding:16px;">
-                <h3 style="color:var(--danger);display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-                    <i class="ph ph-warning-octagon"></i> Vencimiento de Productos
-                </h3>
-                <div id="expiry-alerts-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;"></div>
-            </div>
-        </div>
-
-        <!-- KPI Cards con Sparklines -->
-        <div class="grid grid-cols-auto gap-4 mb-4">
+        <!-- KPI Cards con Estética Premium -->
+        <div class="grid grid-cols-auto gap-6 mb-8">
             <!-- Ventas mes -->
-            <div class="card kpi-card card-anim p-4" style="border-left:4px solid #10b981;">
-                <div class="kpi-glow" style="background:#10b981;"></div>
-                <div class="text-muted font-bold mb-1" style="font-size:0.75rem; text-transform:uppercase;">Ventas del Mes</div>
-                <div id="kpi-ventas-mes" class="text-primary font-bold" style="font-size:1.6rem;">...</div>
-                <div id="kpi-ventas-mes-badge" class="badge badge-neutral mt-2">— vs mes anterior</div>
-                <div class="spark-container"><canvas id="spark-ventas"></canvas></div>
-            </div>
-            <!-- Proyección Cierre -->
-            <div class="card kpi-card card-anim p-4" style="border-left:4px solid #06b6d4;">
-                <div class="kpi-glow" style="background:#06b6d4;"></div>
-                <div class="text-muted font-bold mb-1" style="font-size:0.75rem; text-transform:uppercase;">Proyección Cierre</div>
-                <div id="kpi-proyeccion-cierre" class="font-bold" style="font-size:1.6rem; color:#0891b2;">...</div>
-                <div class="text-muted mt-2" style="font-size:0.7rem;">Basado en ritmo actual</div>
-                <div class="spark-container" style="display:flex; align-items:center; justify-content:center;">
-                    <i class="ph ph-chart-line-up text-info" style="font-size:2.5rem; opacity:0.3;"></i>
+            <div class="premium-card card-anim" style="border-top:5px solid #10b981;">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 rounded-2xl" style="background:rgba(16,185,129,0.1); color:#10b981;">
+                        <i class="ph ph-trend-up text-2xl"></i>
+                    </div>
+                    <div id="kpi-ventas-mes-badge" class="status-badge status-paid">Calculando...</div>
                 </div>
+                <div class="text-muted font-bold text-xs uppercase letter-spacing-1">Ventas del Mes</div>
+                <div id="kpi-ventas-mes" class="text-primary font-bold text-3xl mt-1">...</div>
+                <div class="spark-container mt-4"><canvas id="spark-ventas"></canvas></div>
             </div>
-             <!-- Gasto mes -->
-            <div class="card kpi-card card-anim p-4" style="border-left:4px solid var(--primary);">
-                <div class="kpi-glow" style="background:var(--primary);"></div>
-                <div class="text-muted font-bold mb-1" style="font-size:0.75rem; text-transform:uppercase;">Gasto Total</div>
-                <div id="kpi-gasto-mes" class="text-primary font-bold" style="font-size:1.6rem;">...</div>
-                <div id="kpi-gasto-mes-badge" class="badge badge-neutral mt-2">— vs mes anterior</div>
-                <div class="spark-container"><canvas id="spark-gastos"></canvas></div>
+
+            <!-- Gasto mes -->
+            <div class="premium-card card-anim" style="border-top:5px solid var(--primary); background: linear-gradient(180deg, rgba(230,0,0,0.03) 0%, white 100%);">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 rounded-2xl" style="background:rgba(230,0,0,0.1); color:var(--primary);">
+                        <i class="ph ph-receipt text-2xl"></i>
+                    </div>
+                    <div id="kpi-gasto-mes-badge" class="status-badge status-overdue">Gastos Mes</div>
+                </div>
+                <div class="text-muted font-bold text-xs uppercase letter-spacing-1">Gasto Total</div>
+                <div id="kpi-gasto-mes" class="text-primary font-bold text-3xl mt-1">...</div>
+                <div class="spark-container mt-4"><canvas id="spark-gastos"></canvas></div>
             </div>
-            <!-- Margen Neto -->
-            <div class="card kpi-card card-anim p-4" style="border-left:4px solid #84cc16;">
-                <div class="kpi-glow" style="background:#84cc16;"></div>
-                <div class="text-muted font-bold mb-1" style="font-size:0.75rem; text-transform:uppercase;">Margen Neto</div>
-                <div id="kpi-margen-neto" class="font-bold" style="font-size:1.6rem; color:#65a30d;">...</div>
-                <div id="kpi-margen-badge" class="badge badge-neutral mt-2">Calculando...</div>
-                <div class="spark-container" style="display:flex; align-items:center; justify-content:center;">
-                    <i class="ph ph-target text-success" style="font-size:2.5rem; opacity:0.3;"></i>
+
+            <!-- Margen Neto / Salud -->
+            <div class="premium-card card-anim" style="border-top:5px solid #84cc16;">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 rounded-2xl" style="background:rgba(132,204,22,0.1); color:#84cc16;">
+                        <i class="ph ph-target text-2xl"></i>
+                    </div>
+                    <div id="kpi-margen-badge" class="status-badge" style="background:rgba(132,204,22,0.1); color:#65a30d;">Salud</div>
+                </div>
+                <div class="text-muted font-bold text-xs uppercase letter-spacing-1">Margen Neto</div>
+                <div id="kpi-margen-neto" class="font-bold text-3xl mt-1" style="color:#65a30d;">...</div>
+                <div id="health-bar-wrap" class="w-full h-2 rounded-full overflow-hidden mt-4" style="background:rgba(0,0,0,0.05);">
+                    <div id="health-bar" class="h-full" style="width:0%; background:var(--grad-success); transition:width 1s ease;"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Mini Stats Operativas -->
-        <div class="grid grid-3 gap-3 mb-6">
-            <div class="p-3 bg-glass rounded-lg flex justify-between items-center" style="background:rgba(0,0,0,0.02);">
-                <span class="text-muted font-bold" style="font-size:0.75rem;"><i class="ph ph-timer"></i> HORAS MES</span>
-                <span id="dashboard-total-hours" class="text-primary font-bold">...</span>
-            </div>
-            <div class="p-3 bg-glass rounded-lg flex justify-between items-center" style="background:rgba(0,0,0,0.02);">
-                <span class="text-muted font-bold" style="font-size:0.75rem;"><i class="ph ph-users"></i> EMPLEADOS</span>
-                <span id="dashboard-active-employees" class="text-primary font-bold">...</span>
-            </div>
-             <div class="p-3 bg-glass rounded-lg flex justify-between items-center" style="background:rgba(0,0,0,0.02);">
-                <span class="text-muted font-bold" style="font-size:0.75rem;"><i class="ph ph-calendar"></i> PERÍODO</span>
-                <span id="stat-month-label" class="text-primary font-bold" style="font-size:0.75rem;">...</span>
-            </div>
-        </div>
-
-        <!-- Salud del negocio + Resumen de Hoy -->
-        <div class="grid grid-2 gap-4 mb-6">
-            <!-- Salud financiera -->
-            <div class="card card-anim p-4">
-                <h3 class="text-primary font-bold mb-3 flex items-center gap-2" style="font-size:0.95rem;">
-                    <i class="ph ph-activity"></i> Salud Financiera
+        <!-- Resumen de Hoy y Operativa -->
+        <div class="grid grid-2 gap-6 mb-8 stack-on-mobile">
+            <!-- Operativa -->
+            <div class="premium-card">
+                 <h3 class="text-primary font-bold mb-4 flex items-center gap-2 text-base">
+                    <i class="ph ph-lightning"></i> Resumen Operativo
                 </h3>
-                <div id="health-label" class="font-bold mb-2" style="font-size:1.1rem;">Calculando...</div>
-                <div class="health-bar-wrap mb-2"><div id="health-bar" class="health-bar" style="width:0%; background:#10b981;"></div></div>
-                <div id="health-detail" class="text-muted" style="font-size:0.75rem;">—</div>
-                <div class="divider"></div>
-                <div class="flex justify-between items-center">
-                    <span class="text-muted" style="font-size:0.8rem;">Burn Rate (Gasto/Venta)</span>
-                    <span id="health-ratio-pct" class="font-bold">—</span>
+                <div class="flex-col gap-4">
+                    <div class="flex justify-between items-center p-3 rounded-xl bg-glass" style="border: 1px solid rgba(0,0,0,0.03);">
+                        <span class="text-muted text-sm"><i class="ph ph-timer"></i> Horas del Mes</span>
+                        <span id="dashboard-total-hours" class="font-bold text-primary">...</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 rounded-xl bg-glass" style="border: 1px solid rgba(0,0,0,0.03);">
+                        <span class="text-muted text-sm"><i class="ph ph-users"></i> Equipo Activo</span>
+                        <span id="dashboard-active-employees" class="font-bold text-primary">...</span>
+                    </div>
                 </div>
             </div>
+
             <!-- Resumen de hoy -->
-            <div class="card card-anim p-4">
-                <h3 class="font-bold mb-3 flex items-center gap-2" style="font-size:0.95rem; color:#f59e0b;">
-                    <i class="ph ph-sun-horizon"></i> Resumen de Hoy
+            <div class="premium-card" style="background: var(--grad-warning); color:white; border:none;">
+                <h3 class="font-bold mb-4 flex items-center gap-2 text-base" style="color:white;">
+                    <i class="ph ph-sun-horizon text-xl"></i> Movimientos de Hoy
                 </h3>
-                <div id="today-summary" class="flex-col gap-2">
-                    <div class="spinner m-auto"></div>
+                <div id="today-summary" class="flex-col gap-3">
+                    <div class="spinner border-white m-auto"></div>
                 </div>
             </div>
         </div>

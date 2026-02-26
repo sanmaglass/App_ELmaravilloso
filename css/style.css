@@ -12,8 +12,17 @@
     --accent: #0044ff;
     /* Azul Eléctrico (Contraste Logo) */
 
-    --bg-glass: rgba(255, 255, 255, 0.82);
-    --bg-glass-hover: rgba(255, 255, 255, 0.95);
+    --bg-glass: rgba(255, 255, 255, 0.75);
+    --bg-glass-hover: rgba(255, 255, 255, 0.9);
+    --bg-glass-dark: rgba(30, 41, 59, 0.7);
+
+    /* Vibrant Gradients Palette */
+    --grad-primary: linear-gradient(135deg, #ff0000 0%, #990000 100%);
+    --grad-success: linear-gradient(135deg, #00c853 0%, #007e33 100%);
+    --grad-info: linear-gradient(135deg, #0044ff 0%, #002288 100%);
+    --grad-warning: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+    --grad-danger: linear-gradient(135deg, #ff1744 0%, #b2102f 100%);
+    --grad-purple: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
 
     --font-main: 'Outfit', sans-serif;
 
@@ -113,7 +122,7 @@ body {
     padding: 30px 24px;
     box-shadow: 10px 0 40px rgba(230, 0, 0, 0.05);
     z-index: 2000;
-    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
     /* SCROLL FIXES */
     overflow-y: auto;
