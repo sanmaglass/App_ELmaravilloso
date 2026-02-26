@@ -23,7 +23,7 @@ window.Views.employees = async (container) => {
             </button>
         </div>
         
-        <div class="grid-employees" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:24px;">
+        <div class="grid-employees grid-cols-auto gap-4">
             ${activeEmployees.length === 0 ? '<p style="grid-column:1/-1; text-align:center; padding:40px;">No hay empleados registrados.</p>' : ''}
         </div>
     `;

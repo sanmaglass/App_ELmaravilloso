@@ -31,8 +31,8 @@ window.Views.purchase_invoices = async (container) => {
         </div>
 
         <!-- Filters -->
-        <div style="display:grid; grid-template-columns: 1fr auto auto auto auto; gap:12px; margin-bottom:16px; align-items:center;">
-             <div style="position:relative;">
+        <div class="filters-bar">
+             <div style="position:relative; flex: 2 1 300px;">
                 <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
                 <input type="text" id="invoice-search" class="form-input" placeholder="Buscar por proveedor o N° factura..." style="padding-left:36px; width:100%;">
             </div>
@@ -50,7 +50,7 @@ window.Views.purchase_invoices = async (container) => {
                 <option value="Pagado">Pagado</option>
                 <option value="Crédito">Crédito Pendiente</option>
             </select>
-             <button class="btn btn-secondary" id="btn-export-excel">
+             <button class="btn btn-secondary" id="btn-export-excel" style="flex: 0 1 auto; min-width: 120px;">
                 <i class="ph ph-file-xls"></i> Exportar
             </button>
         </div>
@@ -59,10 +59,12 @@ window.Views.purchase_invoices = async (container) => {
         <div id="supplier-history-panel" style="display:none; margin-bottom:20px;"></div>
 
         <!-- Invoices List -->
-        <div id="invoices-list" style="display:flex; flex-direction:column; gap:12px; min-height: 200px;">
-            <div class="loading-state">
-                <div class="spinner"></div>
-                <p>Cargando facturas...</p>
+        <div class="table-container">
+            <div id="invoices-list" style="display:flex; flex-direction:column; gap:12px; min-height: 200px;">
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Cargando facturas...</p>
+                </div>
             </div>
         </div>
 

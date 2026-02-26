@@ -24,7 +24,7 @@ window.Views.suppliers = async (container) => {
         </div>
 
         <!-- Suppliers List -->
-        <div id="suppliers-list" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:16px;">
+        <div id="suppliers-list" class="grid-cols-auto gap-4">
             <div class="loading-state" style="grid-column:1/-1;">
                 <div class="spinner"></div>
                 <p>Cargando proveedores...</p>
