@@ -67,18 +67,30 @@
 
 <body>
     <!-- SPLASH SCREEN ELITE -->
+    <!-- SPLASH SCREEN PRO (Terminal Style) -->
     <div id="splash-screen">
-        <div class="splash-logo-container">
-            <div class="splash-glow"></div>
-            <img src="assets/logo.png" alt="Logo" class="splash-logo" id="splash-logo-img">
-        </div>
-        <div class="splash-loader-wrap">
-            <div class="splash-progress-bg">
-                <div class="splash-progress-bar" id="splash-bar"></div>
+        <div class="terminal-loader">
+            <div class="terminal-header">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+                <span class="terminal-title">MARAVILLOSO_OS_V4.0_INIT</span>
             </div>
-            <div class="splash-status" id="splash-status-text">Iniciando sistemas...</div>
+            <div id="terminal-logs" class="terminal-body">
+                <div class="log-line">> AWAKENING SYSTEM...</span></div>
+            </div>
+            <div class="splash-loader-wrap" style="padding: 10px 20px;">
+                <div class="splash-progress-bg" style="height: 4px; background: rgba(0,0,0,0.3);">
+                    <div class="splash-progress-bar" id="splash-bar"
+                        style="background: var(--primary); box-shadow: 0 0 10px var(--primary);"></div>
+                </div>
+                <div class="splash-status" id="splash-status-text"
+                    style="font-family: 'Courier New', Courier, monospace; font-size: 0.7rem; color: #555; margin-top: 5px;">
+                    CARGANDO PROTOCOLOS...</div>
+            </div>
         </div>
     </div>
+
 
     <div class="app-container">
         <!-- Sidebar Overlay for mobile -->
@@ -96,10 +108,6 @@
                     <i class="ph ph-squares-four"></i>
                     <span>Dashboard</span>
                 </button>
-                <button class="nav-item" data-view="sales_invoices" style="border: 2px solid var(--primary);">
-                    <i class="ph ph-file-text"></i>
-                    <span>Facturas Emitidas</span>
-                </button>
                 <button class="nav-item" data-view="employees">
                     <i class="ph ph-users"></i>
                     <span>Personal</span>
@@ -109,8 +117,8 @@
                     <span>Calendario</span>
                 </button>
                 <button class="nav-item" data-view="reminders">
-                    <i class="ph ph-bell-ringing"></i>
-                    <span>Recordatorios</span>
+                    <i class="ph ph-list-checks"></i>
+                    <span>Tareas</span>
                 </button>
                 <button class="nav-item" data-view="calculator">
                     <i class="ph ph-calculator"></i>
@@ -226,30 +234,31 @@
     </div>
 
     <!-- App Logic (Loaded in order) -->
-    <script src="js/config.js?v=110"></script>
-    <script src="js/utils.js?v=110"></script>
-    <script src="js/db.js?v=110"></script>
-    <script src="js/sync.js?v=110"></script>
-    <script src="js/sii_api.js?v=110"></script>
+    <script src="js/config.js?v=111"></script>
+    <script src="js/utils.js?v=111"></script>
+    <script src="js/db.js?v=111"></script>
+    <script src="js/sync.js?v=111"></script>
+    <script src="js/sii_api.js?v=111"></script>
     <!-- Views -->
-    <script src="js/views/auth.js?v=110"></script>
-    <script src="js/views/dashboard.js?v=110"></script>
-    <script src="js/views/employees.js?v=110"></script>
-    <script src="js/views/calendar.js?v=110"></script>
-    <script src="js/views/calculator.js?v=110"></script>
-    <script src="js/views/marketing.js?v=110"></script>
-    <script src="js/views/payments.js?v=110"></script>
-    <script src="js/views/security.js?v=110"></script>
-    <script src="js/views/suppliers.js?v=110"></script>
-    <script src="js/views/purchase_invoices.js?v=110"></script>
-    <script src="js/views/expenses.js?v=110"></script>
-    <script src="js/views/daily_sales.js?v=110"></script>
-    <script src="js/views/sales_invoices.js?v=110"></script>
-    <script src="js/views/electronic_invoices.js?v=110"></script>
-    <script src="js/views/reminders.js?v=110"></script>
-    <script src="js/views/reports.js?v=110"></script>
-    <script src="js/views/settings.js?v=110"></script>
-    <script src="js/app.js?v=110"></script>
+    <script src="js/views/auth.js?v=111"></script>
+    <script src="js/views/dashboard.js?v=111"></script>
+    <script src="js/views/employees.js?v=111"></script>
+    <script src="js/views/calendar.js?v=111"></script>
+    <script src="js/views/calculator.js?v=111"></script>
+    <script src="js/views/marketing.js?v=111"></script>
+    <script src="js/views/payments.js?v=111"></script>
+    <script src="js/views/security.js?v=111"></script>
+    <script src="js/views/suppliers.js?v=111"></script>
+    <script src="js/views/purchase_invoices.js?v=111"></script>
+    <script src="js/views/expenses.js?v=111"></script>
+    <script src="js/views/daily_sales.js?v=111"></script>
+    <script src="js/views/sales_invoices.js?v=111"></script>
+    <script src="js/views/electronic_invoices.js?v=111"></script>
+    <script src="js/views/reminders.js?v=111"></script>
+    <script src="js/views/reports.js?v=111"></script>
+    <script src="js/views/settings.js?v=111"></script>
+    <script src="js/app.js?v=111"></script>
+
 
 
 

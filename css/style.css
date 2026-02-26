@@ -54,8 +54,7 @@ body {
     padding: 0;
     overflow: hidden;
     /* Prohibir scroll al body */
-    position: fixed;
-    /* Clavar el body al fondo */
+    /* position: fixed; -- Removido para evitar bugs de scroll en iOS */
     font-family: var(--font-main);
     color: var(--text-primary);
     line-height: 1.5;
@@ -130,6 +129,8 @@ body {
     /* Suavidad en iOS */
     height: 100vh;
     /* Asegurar altura completa */
+    touch-action: pan-y;
+    /* Optimizar scroll táctil */
 }
 
 /* Sidebar Responsive */
@@ -253,6 +254,15 @@ body {
     background: rgba(255, 255, 255, 0.8);
     transform: translateX(8px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+}
+
+/* Fix for iOS double-tap (hover) */
+@media (hover: none) {
+    .nav-item:hover {
+        background: transparent;
+        transform: none;
+        box-shadow: none;
+    }
 }
 
 .nav-item:hover i {

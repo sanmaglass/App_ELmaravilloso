@@ -52,50 +52,89 @@ async function init() {
         if (loginWrapper) loginWrapper.remove();
         document.querySelector('.app-container').style.display = 'flex';
 
-        // --- SPLASH SCREEN START ---
-        const splash = document.getElementById('splash-screen');
-        const splashBar = document.getElementById('splash-bar');
-        const splashStatus = document.getElementById('splash-status-text');
+        // 2. Initialization Flow
+        const initFlow = async () => { // Renamed to avoid conflict with outer init
+            const splash = document.getElementById('splash-screen');
+            const progressBar = document.getElementById('splash-bar');
+            const statusText = document.getElementById('splash-status-text');
+            const terminalLogs = document.getElementById('terminal-logs');
 
-        const updateSplash = (pct, text) => {
-            if (splashBar) splashBar.style.width = pct + '%';
-            if (splashStatus) splashStatus.textContent = text;
+            const addLog = (text, type = 'info') => {
+                if (!terminalLogs) return;
+                const line = document.createElement('div');
+                line.className = `log-line ${type}`;
+                line.innerHTML = `<span style="color:#666;">[${new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span> > ${text}`;
+                terminalLogs.appendChild(line);
+                terminalLogs.scrollTop = terminalLogs.scrollHeight;
+            };
+
+            const updateSplash = (percent, status, logType = 'info') => {
+                if (progressBar) progressBar.style.width = `${percent}%`;
+                if (statusText) statusText.textContent = status;
+                addLog(status.toUpperCase(), logType);
+            };
+
+            try {
+                updateSplash(10, 'Iniciando Kernel El Maravilloso...');
+
+                // Auth Check (re-check for session, as wm_auth might be stale)
+                const { data: { session } } = await window.supabase.auth.getSession();
+                if (!session) {
+                    updateSplash(100, 'Redirigiendo a LOGIN...', 'success');
+                    setTimeout(() => window.location.hash = '#auth', 500);
+                    return;
+                }
+
+                updateSplash(20, 'Cargando Base de Datos Local...');
+                await window.seedDatabase();
+
+                updateSplash(40, 'Estableciendo enlace con la Nube...');
+                const syncRes = await window.Sync.init();
+
+                if (syncRes.success) {
+                    updateSplash(60, 'Conexión Segura Establecida', 'success');
+
+                    // CRITICAL: Non-blocking sync start
+                    // We show the dashboard with local data first
+                    views.dashboard(); // Render dashboard with local data
+
+                    updateSplash(90, 'Desbloqueando Interfaz...');
+
+                    // Trigger sync in background
+                    window.Sync.syncAll().then(() => {
+                        console.log('Background Sync Completed');
+                        // After background sync, refresh the current view to show updated data
+                        const current = window.state.currentView;
+                        if (views[current]) {
+                            views[current]();
+                        }
+                    });
+
+                    // Initialize WebSocket real-time sync (enterprise-grade)
+                    await window.Sync.initRealtimeSync();
+
+                    // Start polling as fallback (60s instead of 5s)
+                    window.Sync.startAutoSync(60000); // 1 minute
+
+                } else {
+                    updateSplash(60, 'Modo Debug / Offline Activo', 'error');
+                    views.dashboard(); // Render dashboard even in offline mode
+                }
+
+                updateSplash(100, 'SISTEMA LISTO', 'success');
+
+                setTimeout(() => {
+                    splash.classList.add('hidden');
+                }, 500);
+
+            } catch (error) {
+                console.error('Fatal Initialization Error:', error);
+                updateSplash(100, 'FALLO CRÍTICO EN EL ARRANQUE', 'error');
+                addLog(`ERROR: ${error.message}`, 'error');
+            }
         };
-
-        // Trigger logo intro
-        setTimeout(() => splash.classList.add('loaded'), 100);
-
-        updateSplash(20, 'Cargando protocolos...');
-        await new Promise(r => setTimeout(r, 400)); // Aesthetic pause
-
-        await window.seedDatabase();
-        updateSplash(40, 'Sincronizando base de datos...');
-
-        const syncRes = await window.Sync.init();
-
-        if (syncRes.success) {
-            console.log('☁️ Supabase conectado — descargando datos de la nube...');
-            updateSplash(60, 'Estableciendo conexión segura...');
-
-            // Sync first before rendering so the view has fresh data
-            await window.Sync.syncAll();
-            updateSplash(80, 'Actualizando registros locales...');
-
-            // Initialize WebSocket real-time sync (enterprise-grade)
-            await window.Sync.initRealtimeSync();
-
-            // Start polling as fallback (60s instead of 5s)
-            window.Sync.startAutoSync(60000); // 1 minute
-            updateSplash(100, 'Sistema listo.');
-        } else {
-            updateSplash(100, 'Modo offline activado.');
-        }
-
-        // Final transition
-        setTimeout(() => {
-            splash.classList.add('hidden');
-            // Enable scrolling and interactions that might have been blocked
-        }, 800);
+        // Trigger the new initialization flow
+        await initFlow();
 
         // Navigation Logic
         const navItems = document.querySelectorAll('.nav-item');

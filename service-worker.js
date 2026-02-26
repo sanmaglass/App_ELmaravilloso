@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v3.50-reminders'; // Added Reminders support
+const CACHE_NAME = 'el-maravilloso-cache-v12'; // Added Reminders support
 const urlsToCache = [
     './index.html',
     './css/style.css',
