@@ -51,21 +51,50 @@ async function init() {
         if (loginWrapper) loginWrapper.remove();
         document.querySelector('.app-container').style.display = 'flex';
 
+        // --- SPLASH SCREEN START ---
+        const splash = document.getElementById('splash-screen');
+        const splashBar = document.getElementById('splash-bar');
+        const splashStatus = document.getElementById('splash-status-text');
+
+        const updateSplash = (pct, text) => {
+            if (splashBar) splashBar.style.width = pct + '%';
+            if (splashStatus) splashStatus.textContent = text;
+        };
+
+        // Trigger logo intro
+        setTimeout(() => splash.classList.add('loaded'), 100);
+
+        updateSplash(20, 'Cargando protocolos...');
+        await new Promise(r => setTimeout(r, 400)); // Aesthetic pause
+
         await window.seedDatabase();
+        updateSplash(40, 'Sincronizando base de datos...');
+
         const syncRes = await window.Sync.init();
 
         if (syncRes.success) {
             console.log('☁️ Supabase conectado — descargando datos de la nube...');
+            updateSplash(60, 'Estableciendo conexión segura...');
 
             // Sync first before rendering so the view has fresh data
             await window.Sync.syncAll();
+            updateSplash(80, 'Actualizando registros locales...');
 
             // Initialize WebSocket real-time sync (enterprise-grade)
             await window.Sync.initRealtimeSync();
 
             // Start polling as fallback (60s instead of 5s)
             window.Sync.startAutoSync(60000); // 1 minute
+            updateSplash(100, 'Sistema listo.');
+        } else {
+            updateSplash(100, 'Modo offline activado.');
         }
+
+        // Final transition
+        setTimeout(() => {
+            splash.classList.add('hidden');
+            // Enable scrolling and interactions that might have been blocked
+        }, 800);
 
         // Navigation Logic
         const navItems = document.querySelectorAll('.nav-item');
