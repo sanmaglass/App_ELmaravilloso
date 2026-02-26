@@ -67,26 +67,22 @@
 
 <body>
     <!-- SPLASH SCREEN ELITE -->
-    <!-- SPLASH SCREEN PRO (Terminal Style) -->
+    <!-- SPLASH SCREEN PREMIUM -->
     <div id="splash-screen">
-        <div class="terminal-loader">
-            <div class="terminal-header">
-                <span class="dot red"></span>
-                <span class="dot yellow"></span>
-                <span class="dot green"></span>
-                <span class="terminal-title">MARAVILLOSO_OS_V4.0_INIT</span>
+        <div class="splash-content">
+            <div class="logo-container">
+                <img src="assets/logo.png" alt="Logo El Maravilloso" class="splash-logo">
+                <div class="logo-glow"></div>
             </div>
-            <div id="terminal-logs" class="terminal-body">
-                <div class="log-line">> AWAKENING SYSTEM...</span></div>
-            </div>
-            <div class="splash-loader-wrap" style="padding: 10px 20px;">
-                <div class="splash-progress-bg" style="height: 4px; background: rgba(0,0,0,0.3);">
-                    <div class="splash-progress-bar" id="splash-bar"
-                        style="background: var(--primary); box-shadow: 0 0 10px var(--primary);"></div>
+
+            <div class="splash-loading-container">
+                <div class="progress-info">
+                    <span id="splash-status-text">INICIANDO SISTEMA</span>
+                    <span id="splash-percent">0%</span>
                 </div>
-                <div class="splash-status" id="splash-status-text"
-                    style="font-family: 'Courier New', Courier, monospace; font-size: 0.7rem; color: #555; margin-top: 5px;">
-                    CARGANDO PROTOCOLOS...</div>
+                <div class="splash-progress-bg">
+                    <div id="splash-bar" class="splash-progress-bar"></div>
+                </div>
             </div>
         </div>
     </div>

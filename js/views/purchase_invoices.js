@@ -1030,6 +1030,20 @@ async function showInvoiceModal(invoiceToEdit = null) {
     });
 }
 
+// Final Init
+await initDateFilter();
+renderInvoices();
+renderCreditAlerts();
+
+// --- REALTIME REFRESH ---
+const syncHandler = () => {
+    console.log("🔄 Sync update detected: refreshing invoices...");
+    renderInvoices();
+    renderCreditAlerts();
+    populateSupplierFilter();
+};
+window.addEventListener('sync-data-updated', syncHandler);
+
 // --- EXPORT TO EXCEL ---
 async function exportInvoicesToExcel() {
     try {

@@ -67,6 +67,13 @@ window.Views.expenses = async (container) => {
     document.getElementById('expense-search').addEventListener('input', () => renderExpenses());
     document.getElementById('filter-date').addEventListener('change', () => renderExpenses());
     document.getElementById('filter-category').addEventListener('change', () => renderExpenses());
+
+    // --- REALTIME REFRESH ---
+    const syncHandler = () => {
+        console.log("🔄 Sync update detected: refreshing expenses...");
+        renderExpenses();
+    };
+    window.addEventListener('sync-data-updated', syncHandler);
 };
 
 // --- INIT DATE FILTER (Reused logic) ---

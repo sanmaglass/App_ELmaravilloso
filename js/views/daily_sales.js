@@ -59,6 +59,13 @@ window.Views.daily_sales = async (container) => {
     document.getElementById('daily-search').addEventListener('input', () => renderDailySales());
     document.getElementById('daily-filter-month').addEventListener('change', () => renderDailySales());
     document.getElementById('btn-export-daily').addEventListener('click', exportDailySalesToExcel);
+
+    // --- REALTIME REFRESH ---
+    const syncHandler = () => {
+        console.log("🔄 Sync update detected: refreshing daily sales...");
+        renderDailySales();
+    };
+    window.addEventListener('sync-data-updated', syncHandler);
 };
 
 // --- INIT MONTH FILTER ---

@@ -41,6 +41,13 @@ window.Views.sales_invoices = async (container) => {
     document.getElementById('btn-new-sale').addEventListener('click', () => showSaleModal());
     document.getElementById('sale-search').addEventListener('input', () => renderSales());
     document.getElementById('btn-export-sales').addEventListener('click', exportSalesToExcel);
+
+    // --- REALTIME REFRESH ---
+    const syncHandler = () => {
+        console.log("🔄 Sync update detected: refreshing sales...");
+        renderSales();
+    };
+    window.addEventListener('sync-data-updated', syncHandler);
 };
 
 // --- RENDER LOGIC ---
