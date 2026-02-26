@@ -21,6 +21,7 @@ const views = {
     daily_sales: () => window.Views.daily_sales(document.getElementById('view-container')),
     sales_invoices: () => window.Views.sales_invoices(document.getElementById('view-container')),
     electronic_invoices: () => window.Views.electronic_invoices(document.getElementById('view-container')),
+    reminders: () => window.Views.reminders(document.getElementById('view-container')),
     reports: () => window.Views.reports(document.getElementById('view-container')),
     settings: () => window.Views.settings(document.getElementById('view-container'))
 };
@@ -153,11 +154,92 @@ async function init() {
                 }
             });
         }
+        // --- REMINDER ENGINE START ---
+        if (window.ReminderEngine) window.ReminderEngine.start();
+
     } catch (err) {
         console.error("Critical Init Error:", err);
         document.body.innerHTML = `<div style="color:white; padding:50px; text-align:center;"><h1>Error de Carga</h1><p>${err.message}</p></div>`;
     }
 }
+
+// --- REMINDER ENGINE (Background Checker) ---
+window.ReminderEngine = {
+    _interval: null,
+
+    start() {
+        if (this._interval) return;
+        console.log("🔔 Reminder Engine Started");
+        this.check(); // Check immediately on start
+        this._interval = setInterval(() => this.check(), 60000); // Every minute
+    },
+
+    async check() {
+        try {
+            const now = new Date();
+            const dueReminders = await window.db.reminders
+                .where('completed').equals(0)
+                .and(r => r.deleted === 0 && new Date(r.next_run) <= now)
+                .toArray();
+
+            for (const reminder of dueReminders) {
+                await this.trigger(reminder);
+            }
+        } catch (e) {
+            console.error('ReminderEngine Check Error:', e);
+        }
+    },
+
+    async trigger(reminder) {
+        console.log(`🚀 Triggering Reminder: ${reminder.title}`);
+
+        // 1. Show Notification (Only if hidden)
+        if (document.visibilityState !== 'visible') {
+            window.Utils.NotificationManager.show(
+                'Recordatorio: ' + reminder.title,
+                'Es momento de realizar esta tarea pendiente.',
+                './index.html'
+            );
+        } else {
+            // If visible, just show a Toast
+            window.Sync.showToast('Recordatorio: ' + reminder.title, 'info');
+        }
+
+        // 2. Handle Recurrence or Completion
+        if (reminder.type === 'periodic') {
+            const next = new Date(reminder.next_run);
+            if (reminder.frequency_unit === 'hours') {
+                next.setHours(next.getHours() + (reminder.frequency_value || 1));
+            } else if (reminder.frequency_unit === 'days') {
+                next.setDate(next.getDate() + (reminder.frequency_value || 1));
+            }
+
+            // Si por alguna razón la app estuvo cerrada mucho tiempo y el "next" sigue siendo en el pasado,
+            // lo adelantamos hasta el futuro para evitar bucle de notificaciones.
+            const now = new Date();
+            while (next <= now) {
+                if (reminder.frequency_unit === 'hours') next.setHours(next.getHours() + (reminder.frequency_value || 1));
+                else next.setDate(next.getDate() + (reminder.frequency_value || 1));
+            }
+
+            await window.DataManager.saveAndSync('reminders', {
+                ...reminder,
+                next_run: next.toISOString()
+            });
+        } else {
+            // One-time reminder
+            await window.DataManager.saveAndSync('reminders', {
+                ...reminder,
+                completed: 1
+            });
+        }
+
+        // Trigger view refresh if we are in reminders view
+        if (window.state.currentView === 'reminders') {
+            window.dispatchEvent(new CustomEvent('sync-data-updated'));
+        }
+    }
+};
 
 // Mobile Menu Toggle Logic
 const sidebar = document.querySelector('.sidebar');

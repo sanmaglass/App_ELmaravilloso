@@ -1,5 +1,4 @@
-// Service Worker for PWA - Enhanced Version
-const CACHE_NAME = 'el-maravilloso-v3.11-fix-responsive'; // Better layout for PC/Mobile
+const CACHE_NAME = 'el-maravilloso-v3.50-reminders'; // Added Reminders support
 const urlsToCache = [
     './index.html',
     './css/style.css',
@@ -24,6 +23,7 @@ const urlsToCache = [
     './js/views/reports.js',
     './js/views/sales_invoices.js',
     './js/views/electronic_invoices.js',
+    './js/views/reminders.js',
     './js/views/security.js',
     './js/views/settings.js',
     './js/views/suppliers.js',
@@ -31,6 +31,7 @@ const urlsToCache = [
     './assets/logo.png',
     './manifest.json'
 ];
+
 
 // Install event - cache resources
 self.addEventListener('install', (event) => {

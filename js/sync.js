@@ -102,7 +102,8 @@ window.Sync = {
                 { local: 'expenses', remote: 'expenses', orderBy: 'date' },
                 { local: 'daily_sales', remote: 'daily_sales', orderBy: 'date' },
                 { local: 'settings', remote: 'settings', orderBy: 'key' },
-                { local: 'electronic_invoices', remote: 'electronic_invoices', orderBy: 'date' }
+                { local: 'electronic_invoices', remote: 'electronic_invoices', orderBy: 'date' },
+                { local: 'reminders', remote: 'reminders', orderBy: 'id' }
             ];
 
             let dataChanged = false;
@@ -334,6 +335,7 @@ window.Sync = {
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_sales' }, (payload) => window.Sync.handleRealtimeChange('daily_sales', payload))
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, (payload) => window.Sync.handleRealtimeChange('expenses', payload))
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'electronic_invoices' }, (payload) => window.Sync.handleRealtimeChange('electronic_invoices', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'reminders' }, (payload) => window.Sync.handleRealtimeChange('reminders', payload))
                 .subscribe((status) => {
                     if (status === 'SUBSCRIBED') {
                         console.log('✅ Realtime connected!');
@@ -368,7 +370,8 @@ window.Sync = {
                     'daily_sales': 'Venta Diaria',
                     'purchase_invoices': 'Factura',
                     'electronic_invoices': 'Doc. Electrónico',
-                    'suppliers': 'Proveedor'
+                    'suppliers': 'Proveedor',
+                    'reminders': 'Recordatorio'
                 };
                 const label = labelMap[localTableName] || localTableName;
                 window.Sync.showToast(`Actualizado: ${label}`, 'success');

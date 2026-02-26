@@ -2,8 +2,8 @@
 
 const db = new Dexie('WorkMasterDB');
 
-// Version 10: Fix suppliers schema (remove indexed fields, use only id)
-db.version(10).stores({
+// Version 11: Add reminders table
+db.version(11).stores({
     employees: 'id',
     workLogs: 'id',
     settings: 'key',
@@ -14,8 +14,10 @@ db.version(10).stores({
     sales_invoices: 'id',
     expenses: 'id',
     daily_sales: 'id',
-    electronic_invoices: 'id'
+    electronic_invoices: 'id',
+    reminders: 'id'
 });
+
 
 // Initial check and auto-migration fix
 db.open().catch(async (err) => {
