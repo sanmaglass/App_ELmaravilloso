@@ -133,6 +133,15 @@ body {
     /* Optimizar scroll táctil */
 }
 
+.sidebar-logo-img {
+    max-width: 85%;
+    height: auto;
+    max-height: 80px;
+    opacity: 0.95;
+    filter: drop-shadow(0 4px 12px rgba(220, 38, 38, 0.1));
+    transition: all 0.3s ease;
+}
+
 .sidebar-logo-img:hover {
     opacity: 1 !important;
     filter: drop-shadow(0 8px 16px rgba(220, 38, 38, 0.2)) brightness(1.1) !important;

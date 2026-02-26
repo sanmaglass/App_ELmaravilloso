@@ -661,9 +661,10 @@
     height: auto;
     object-fit: contain;
     z-index: 2;
-    opacity: 0.4;
-    filter: blur(1px) brightness(0.8) grayscale(0.3);
-    mix-blend-mode: lighten;
+    opacity: 0.7;
+    /* Increased from 0.4 */
+    filter: brightness(0.9);
+    /* Removed blur and grayscale for more punch */
     animation: digitalPulse 4s infinite ease-in-out;
 }
 
@@ -672,14 +673,14 @@
     0%,
     100% {
         transform: scale(1);
-        opacity: 0.3;
-        filter: blur(2px) brightness(0.6);
+        opacity: 0.6;
+        filter: brightness(0.8);
     }
 
     50% {
         transform: scale(1.02);
-        opacity: 0.5;
-        filter: blur(0px) brightness(0.9);
+        opacity: 0.8;
+        filter: brightness(1.1);
     }
 }
 
