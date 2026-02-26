@@ -130,9 +130,14 @@ window.Views.settings = async (container) => {
                         <span id="notif-status-text">Cargando estado...</span>
                     </div>
 
-                    <button id="btn-request-notif" class="btn btn-primary" style="width:100%;">
-                        <i class="ph ph-hand-pointing"></i> Activar Notificaciones
-                    </button>
+                    <div style="display:flex; gap:10px;">
+                        <button id="btn-request-notif" class="btn btn-primary" style="flex:1;">
+                            <i class="ph ph-hand-pointing"></i> Activar
+                        </button>
+                        <button id="btn-test-notif" class="btn btn-secondary" style="flex:1;">
+                            <i class="ph ph-bell"></i> Probar (5s)
+                        </button>
+                    </div>
                     <p style="font-size:0.75rem; color:var(--text-muted); margin-top:10px; font-style:italic;">
                         *Recuerda que la app debe estar "Agregada a la pantalla de inicio" para que funcionen bien en iPhone.
                     </p>
@@ -484,6 +489,29 @@ window.Views.settings = async (container) => {
                 }
                 updateNotifUI();
             });
+
+            // --- TEST NOTIFICATION LOGIC ---
+            const btnTest = document.getElementById('btn-test-notif');
+            if (btnTest) {
+                btnTest.addEventListener('click', () => {
+                    const state = window.Utils.NotificationManager.getPermissionState();
+                    if (state !== 'granted') {
+                        alert('Primero debes activar las notificaciones.');
+                        return;
+                    }
+
+                    alert('En 5 segundos llegará la prueba. BLOQUEA TU CELULAR AHORA o salte de la app.');
+
+                    setTimeout(() => {
+                        window.Utils.NotificationManager.show(
+                            'Prueba Maravillosa 🚀',
+                            'Esta es una notificación de prueba. ¡Suena y funciona!',
+                            './index.html'
+                        );
+                    }, 5000);
+                });
+            }
+
             updateNotifUI();
         }
 
