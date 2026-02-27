@@ -610,39 +610,84 @@
     gap: 12px;
 }
 
-/* --- APPLE-STYLE SPLASH SCREEN --- */
+/* ============================================================
+   APPLE-STYLE SPLASH SCREEN
+   Philosophy: pure black, logo only, elegant motion
+   ============================================================ */
+
 #splash-screen {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     background: #000;
     z-index: 9999;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    transition: opacity 0.5s ease-out, visibility 0.5s;
+    /* Exit transition — smooth fade + very subtle zoom */
+    transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+        visibility 0.6s,
+        transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #splash-screen.hidden {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
+    transform: scale(1.04);
+    /* subtle zoom-in feels like the app opening */
 }
 
-.splash-content {
+/* ── Logo wrapper ─────────────────────────────────────────── */
+#splash-logo-wrap {
+    position: relative;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 0;
-    animation: splashFadeIn 0.6s ease-out both;
+    justify-content: center;
+    /* Entrance: fade in + gentle scale */
+    animation: splashLogoIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-@keyframes splashFadeIn {
+#splash-logo-img {
+    width: 160px;
+    height: 160px;
+    object-fit: contain;
+    border-radius: 36px;
+    /* Float animation after entering — starts after 0.8s */
+    animation:
+        splashLogoIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+        splashFloat 4s ease-in-out 0.8s infinite,
+        splashGlow 4s ease-in-out 0.8s infinite;
+}
+
+/* ── Progress bar (barely visible — 2px whisper) ──────────── */
+#splash-bar-wrap {
+    position: absolute;
+    bottom: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+#splash-bar {
+    width: 0%;
+    height: 100%;
+    background: rgba(220, 38, 38, 0.6);
+    border-radius: 99px;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Keyframes ────────────────────────────────────────────── */
+
+/* Entrance: fade in + spring scale */
+@keyframes splashLogoIn {
     from {
         opacity: 0;
-        transform: scale(0.92);
+        transform: scale(0.88);
     }
 
     to {
@@ -651,28 +696,42 @@
     }
 }
 
-.logo-container {
-    position: relative;
-    width: 120px;
-    height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+/* Gentle float — barely perceptible, graceful */
+@keyframes splashFloat {
+
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
 }
 
-.splash-logo {
-    width: 100%;
-    height: auto;
-    object-fit: contain;
-    border-radius: 24px;
-    box-shadow: 0 0 40px rgba(220, 38, 38, 0.25);
+/* Breathing glow — red halo pulses softly */
+@keyframes splashGlow {
+
+    0%,
+    100% {
+        filter: drop-shadow(0 0 12px rgba(220, 38, 38, 0.20));
+    }
+
+    50% {
+        filter: drop-shadow(0 0 28px rgba(220, 38, 38, 0.45));
+    }
 }
 
-.logo-glow {
-    display: none;
-}
-
-/* Hide progress bar — Apple style has no progress bars */
+/* ── Legacy classes (kept to avoid breaking anything) ─────── */
+.splash-content,
+.splash-inner,
+.splash-fullscreen-img,
+.splash-bar-wrap,
+.splash-bar-track,
+.splash-bar-fill,
+.logo-container,
+.splash-logo,
+.logo-glow,
 .splash-loading-container,
 .progress-info,
 .splash-progress-bg,
@@ -682,63 +741,6 @@
     display: none !important;
 }
 
-/* Full-screen splash image - properly contained, nothing cropped */
-.splash-inner {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    padding: 20px 0;
-    overflow: hidden;
-}
-
-.splash-fullscreen-img {
-    width: 100%;
-    height: 100%;
-    max-width: 420px;
-    max-height: calc(100vh - 60px);
-    object-fit: contain;
-    object-position: center;
-    animation: splashFadeIn 0.6s ease-out both;
-}
-
-/* Discreet loading bar — bottom of splash */
-.splash-bar-wrap {
-    width: 100%;
-    padding: 0 0 40px 0;
-    display: flex;
-    justify-content: center;
-}
-
-.splash-bar-track {
-    width: 120px;
-    height: 3px;
-    background: rgba(255, 255, 255, 0.06);
-    border-radius: 99px;
-    overflow: hidden;
-}
-
-.splash-bar-fill {
-    width: 0%;
-    height: 100%;
-    background: rgba(220, 38, 38, 0.7);
-    border-radius: 99px;
-    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 0 8px rgba(220, 38, 38, 0.5);
-}
-
-/* Splash screen flex layout */
-#splash-screen {
-    flex-direction: column !important;
-}
-
-#splash-screen.hidden {
-    opacity: 0;
-    visibility: hidden;
-    transform: scale(1.05);
-    filter: blur(20px);
-}
 
 
 /* --- SYNC TOASTS --- */

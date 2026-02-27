@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v220-auth-secure';
+const CACHE_NAME = 'el-maravilloso-v221-apple-anim';
 const urlsToCache = [
     './index.html',
     './css/style.css',
