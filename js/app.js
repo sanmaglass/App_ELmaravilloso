@@ -179,42 +179,48 @@ async function init() {
         if (window.ReminderEngine) window.ReminderEngine.start();
 
         // --- SPLASH ON RESUME (como app nativa iOS) ---
-        // Muestra el splash brevemente cada vez que el usuario vuelve a la app
         let _lastHidden = null;
+        let _splashTimer = null;
+
         document.addEventListener('visibilitychange', () => {
             const splash = document.getElementById('splash-screen');
             if (!splash) return;
 
             if (document.hidden) {
-                // App fue al fondo — registrar el momento
+                // App va al fondo — guardar momento
                 _lastHidden = Date.now();
             } else {
-                // App vuelve al frente — mostrar splash si estuvo en fondo > 3 segundos
+                // App vuelve — mostrar splash solo si estuvo fuera > 3s
                 const awayTime = Date.now() - (_lastHidden || 0);
                 if (_lastHidden && awayTime > 3000) {
-                    // Mostrar splash
-                    const bar = document.getElementById('splash-bar');
+
+                    // Cancelar timer anterior si existe
+                    if (_splashTimer) clearTimeout(_splashTimer);
+
+                    // IMPORTANTE: Limpiar estilos inline antes de mostrar
+                    splash.removeAttribute('style');
                     splash.classList.remove('hidden');
-                    splash.style.opacity = '1';
-                    splash.style.visibility = 'visible';
 
                     // Animar barra de carga
+                    const bar = document.getElementById('splash-bar');
                     if (bar) {
                         bar.style.transition = 'none';
                         bar.style.width = '0%';
-                        setTimeout(() => {
-                            bar.style.transition = 'width 1s ease-out';
+                        requestAnimationFrame(() => {
+                            bar.style.transition = 'width 1.1s ease-out';
                             bar.style.width = '100%';
-                        }, 50);
+                        });
                     }
 
-                    // Ocultar tras 1.2 segundos (como iOS)
-                    setTimeout(() => {
+                    // Ocultar tras 1.4s — solo con clase, sin estilos inline
+                    _splashTimer = setTimeout(() => {
                         splash.classList.add('hidden');
-                    }, 1200);
+                        _splashTimer = null;
+                    }, 1400);
                 }
             }
         });
+
 
     } catch (err) {
         console.error("Critical Init Error:", err);
