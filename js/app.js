@@ -178,6 +178,44 @@ async function init() {
         // --- REMINDER ENGINE START ---
         if (window.ReminderEngine) window.ReminderEngine.start();
 
+        // --- SPLASH ON RESUME (como app nativa iOS) ---
+        // Muestra el splash brevemente cada vez que el usuario vuelve a la app
+        let _lastHidden = null;
+        document.addEventListener('visibilitychange', () => {
+            const splash = document.getElementById('splash-screen');
+            if (!splash) return;
+
+            if (document.hidden) {
+                // App fue al fondo — registrar el momento
+                _lastHidden = Date.now();
+            } else {
+                // App vuelve al frente — mostrar splash si estuvo en fondo > 3 segundos
+                const awayTime = Date.now() - (_lastHidden || 0);
+                if (_lastHidden && awayTime > 3000) {
+                    // Mostrar splash
+                    const bar = document.getElementById('splash-bar');
+                    splash.classList.remove('hidden');
+                    splash.style.opacity = '1';
+                    splash.style.visibility = 'visible';
+
+                    // Animar barra de carga
+                    if (bar) {
+                        bar.style.transition = 'none';
+                        bar.style.width = '0%';
+                        setTimeout(() => {
+                            bar.style.transition = 'width 1s ease-out';
+                            bar.style.width = '100%';
+                        }, 50);
+                    }
+
+                    // Ocultar tras 1.2 segundos (como iOS)
+                    setTimeout(() => {
+                        splash.classList.add('hidden');
+                    }, 1200);
+                }
+            }
+        });
+
     } catch (err) {
         console.error("Critical Init Error:", err);
         document.body.innerHTML = `<div style="color:white; padding:50px; text-align:center;"><h1>Error de Carga</h1><p>${err.message}</p></div>`;
