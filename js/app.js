@@ -29,28 +29,53 @@ const views = {
 // Initialize App
 async function init() {
     try {
-        // --- AUTH CHECK ---
-        const isAuth = localStorage.getItem('wm_auth');
-        if (!isAuth) {
-            // Show Login View, bypass standard app load
-            document.querySelector('.app-container').style.display = 'none'; // Hide main layout
+        // --- AUTH CHECK (Supabase Session) ---
+        // First initialize Supabase so we can check session
+        await window.Sync.init();
 
-            // Create a dedicated container for login if needed or use body
+        let isAuthenticated = false;
+
+        if (window.Sync?.client) {
+            // Validate real Supabase session
+            const { data: { session } } = await window.Sync.client.auth.getSession();
+            if (session) {
+                isAuthenticated = true;
+                localStorage.setItem('wm_user', session.user?.email || 'Usuario');
+            }
+        } else {
+            // Offline fallback: trust localStorage temporarily
+            isAuthenticated = localStorage.getItem('wm_auth') === 'true';
+        }
+
+        if (!isAuthenticated) {
+            localStorage.removeItem('wm_auth');
+            document.querySelector('.app-container').style.display = 'none';
             let loginContainer = document.getElementById('login-wrapper');
             if (!loginContainer) {
                 loginContainer = document.createElement('div');
                 loginContainer.id = 'login-wrapper';
                 document.body.appendChild(loginContainer);
             }
-
             window.Views.login(loginContainer);
-            return; // Stop initialization
+            return;
         }
 
-        // If Auth passed, ensure main layout is visible
+        // Auth passed — mark session and show app
+        localStorage.setItem('wm_auth', 'true');
         const loginWrapper = document.getElementById('login-wrapper');
         if (loginWrapper) loginWrapper.remove();
         document.querySelector('.app-container').style.display = 'flex';
+
+        // Global logout function
+        window.AppSignOut = async () => {
+            if (window.Sync?.client) {
+                await window.Sync.client.auth.signOut();
+            }
+            localStorage.removeItem('wm_auth');
+            localStorage.removeItem('wm_user');
+            window.location.reload();
+        };
+
 
         // 2. Initialization Flow
         const initFlow = async () => {
@@ -71,12 +96,10 @@ async function init() {
                 await window.seedDatabase();
 
                 updateSplash(60, 'CONECTANDO CON LA NUBE...');
-                const syncRes = await window.Sync.init();
+                // Sync.init() already ran during auth check — reuse existing client
+                const syncReady = !!window.Sync.client;
 
-                if (syncRes.success && window.Sync.client) {
-                    updateSplash(80, 'VERIFICANDO SESIÓN...');
-                    await window.Sync.client.auth.getSession();
-
+                if (syncReady) {
                     // Render Dashboard immediately
                     views.dashboard();
 

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sin Conexión — El Maravilloso</title>
+    <link rel="icon" href="assets/logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            font-family: 'Outfit', sans-serif;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            text-align: center;
+            padding: 24px;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 40%, rgba(220, 38, 38, 0.12) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        img {
+            width: 80px;
+            border-radius: 18px;
+            opacity: 0.9;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        p {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.95rem;
+            max-width: 280px;
+            line-height: 1.6;
+        }
+
+        .icon {
+            font-size: 3rem;
+            margin-bottom: 8px;
+        }
+
+        button {
+            margin-top: 8px;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            filter: brightness(1.15);
+            transform: translateY(-2px);
+        }
+
+        .hint {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.25);
+            margin-top: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <img src="assets/logo.png" alt="El Maravilloso">
+    <div class="icon">📡</div>
+    <h1>Sin Conexión</h1>
+    <p>La app necesita internet para cargar. Conéctate a WiFi o a datos móviles e intenta nuevamente.</p>
+    <button onclick="window.location.reload()">🔄 Reintentar</button>
+    <p class="hint">El Maravilloso — Sistema de Gestión Comercial</p>
+</body>
+
+</html>

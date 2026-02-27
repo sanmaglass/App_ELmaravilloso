@@ -1,8 +1,7 @@
-// Auth View
+// Auth View — Supabase Auth (Real Login)
 window.Views = window.Views || {};
 
 window.Views.login = (container) => {
-    // Premium animated background specifically for Login
     container.innerHTML = `
         <div class="login-container" style="
             position: fixed; top:0; left:0; width:100%; height:100vh;
@@ -66,10 +65,10 @@ window.Views.login = (container) => {
 
                 <form id="login-form">
                     <div class="form-group" style="margin-bottom:20px; text-align: left;">
-                        <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700; text-transform:uppercase; margin-bottom:10px; display:block; padding-left:5px;">Identidad</label>
+                        <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700; text-transform:uppercase; margin-bottom:10px; display:block; padding-left:5px;">Correo</label>
                         <div style="position:relative;">
-                            <i class="ph ph-user-focus" style="position:absolute; left:18px; top:50%; transform:translateY(-50%); color:var(--primary); font-size:1.2rem;"></i>
-                            <input type="text" id="inp-user" class="form-input-premium" placeholder="ID Administrador" autocomplete="off" style="
+                            <i class="ph ph-envelope" style="position:absolute; left:18px; top:50%; transform:translateY(-50%); color:var(--primary); font-size:1.2rem;"></i>
+                            <input type="email" id="inp-user" class="form-input-premium" placeholder="correo@ejemplo.com" autocomplete="email" style="
                                 background: rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.05); 
                                 color:white; padding: 16px 16px 16px 50px; width:100%; border-radius: 16px;
                                 font-size: 1rem; transition: 0.3s; outline: none;
@@ -78,79 +77,69 @@ window.Views.login = (container) => {
                     </div>
 
                     <div class="form-group" style="margin-bottom:30px; text-align: left;">
-                        <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700; text-transform:uppercase; margin-bottom:10px; display:block; padding-left:5px;">Clave Maestra</label>
+                        <label style="color:rgba(255,255,255,0.4); font-size:0.75rem; font-weight:700; text-transform:uppercase; margin-bottom:10px; display:block; padding-left:5px;">Contraseña</label>
                         <div style="position:relative;">
-                            <i class="ph ph-key" style="position:absolute; left:18px; top:50%; transform:translateY(-50%); color:var(--primary); font-size:1.2rem;"></i>
-                            <input type="password" id="inp-pass" class="form-input-premium" placeholder="••••••••" style="
-                                background: rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.05); 
+                            <i class="ph ph-lock-key" style="position:absolute; left:18px; top:50%; transform:translateY(-50%); color:var(--primary); font-size:1.2rem;"></i>
+                            <input type="password" id="inp-pass" class="form-input-premium" placeholder="••••••••" autocomplete="current-password" style="
+                                background: rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.05);
                                 color:white; padding: 16px 16px 16px 50px; width:100%; border-radius: 16px;
                                 font-size: 1rem; transition: 0.3s; outline: none;
                             ">
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-login-pro">
-                        <span>ACCEDER</span>
-                        <i class="ph ph-lightning"></i>
+                    <!-- Error Message -->
+                    <div id="login-error" style="
+                        color: #f87171; font-size: 0.85rem; margin-bottom: 20px; 
+                        opacity: 0; transition: opacity 0.3s; min-height: 20px;
+                        background: rgba(220,38,38,0.1); border-radius: 8px; padding: 8px 12px;
+                    "></div>
+
+                    <button type="submit" id="btn-login" class="btn-login-pro" style="
+                        width: 100%; padding: 18px;
+                        background: linear-gradient(135deg, #dc2626, #b91c1c);
+                        color: white; font-weight: 700; font-size: 1rem;
+                        border: none; border-radius: 16px; cursor: pointer;
+                        letter-spacing: 1px; text-transform: uppercase;
+                        transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                        box-shadow: 0 15px 30px rgba(230, 0, 0, 0.4);
+                        display: flex; align-items: center; justify-content: center; gap: 10px;
+                    ">
+                        <i class="ph ph-sign-in"></i>
+                        <span id="btn-login-text">Ingresar</span>
                     </button>
                 </form>
 
-                <div id="login-error" style="
-                    margin-top:20px; text-align:center; color:#ff4d4d; font-size:0.85rem; 
-                    font-weight:600; background:rgba(255,0,0,0.1); padding:10px; border-radius:10px;
-                    opacity:0; transition:0.3s;
-                ">
-                    <i class="ph ph-warning-circle"></i> ACCESO DENEGADO
-                </div>
+                <style>
+                    @keyframes meshMove {
+                        0% { transform: scale(1) rotate(0deg); }
+                        100% { transform: scale(1.2) rotate(15deg); }
+                    }
+                    @keyframes logoPulse {
+                        0%, 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.5; }
+                        50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
+                    }
+                    @keyframes logoFloat {
+                        0%, 100% { transform: translateY(0px); }
+                        50% { transform: translateY(-8px); }
+                    }
+                    .form-input-premium:focus {
+                        border-color: rgba(220, 38, 38, 0.5) !important;
+                        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+                    }
+                    .btn-login-pro:hover {
+                        transform: translateY(-3px) scale(1.02);
+                        box-shadow: 0 20px 40px rgba(230, 0, 0, 0.6);
+                        filter: brightness(1.1);
+                    }
+                    .btn-login-pro:active { transform: scale(0.98); }
+                    .btn-login-pro:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+                </style>
             </div>
-            
-            <style>
-                @keyframes meshMove {
-                    0% { transform: scale(1) rotate(0deg); }
-                    100% { transform: scale(1.2) rotate(5deg); }
-                }
-                @keyframes logoFloat {
-                    0%, 100% { transform: translateY(0); }
-                    50% { transform: translateY(-12px); }
-                }
-                @keyframes logoPulse {
-                    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.4; }
-                    50% { transform: translate(-50%, -50%) scale(1.3); opacity: 0.8; }
-                }
-                .form-input-premium:focus {
-                    background: rgba(220, 38, 38, 0.05) !important;
-                    border-color: rgba(220, 38, 38, 0.4) !important;
-                    box-shadow: 0 0 20px rgba(220, 38, 38, 0.2);
-                }
-                .btn-login-pro {
-                    width: 100%;
-                    padding: 18px;
-                    border-radius: 16px;
-                    background: linear-gradient(90deg, #880000, #e60000);
-                    color: white;
-                    border: none;
-                    font-weight: 800;
-                    font-size: 0.9rem;
-                    letter-spacing: 2px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 12px;
-                    transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                    box-shadow: 0 15px 30px rgba(230, 0, 0, 0.4);
-                }
-                .btn-login-pro:hover {
-                    transform: translateY(-3px) scale(1.02);
-                    box-shadow: 0 20px 40px rgba(230, 0, 0, 0.6);
-                    filter: brightness(1.1);
-                }
-                .btn-login-pro:active { transform: scale(0.98); }
-            </style>
         </div>
     `;
 
-    // Particles Effect (Simple CSS/JS simulation)
+    // Particles Effect
     const particleContainer = document.getElementById('particles');
     for (let i = 0; i < 30; i++) {
         const p = document.createElement('div');
@@ -166,7 +155,6 @@ window.Views.login = (container) => {
         `;
         particleContainer.appendChild(p);
     }
-
     const style = document.createElement('style');
     style.innerHTML = `
         @keyframes moveParticle {
@@ -177,33 +165,76 @@ window.Views.login = (container) => {
     `;
     document.head.appendChild(style);
 
-    // Login Logic
-    document.getElementById('login-form').addEventListener('submit', (e) => {
+    // --- LOGIN LOGIC (Supabase Auth) ---
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const user = document.getElementById('inp-user').value.trim();
+
+        const email = document.getElementById('inp-user').value.trim();
         const pass = document.getElementById('inp-pass').value.trim();
         const errorMsg = document.getElementById('login-error');
+        const btn = document.getElementById('btn-login');
+        const btnText = document.getElementById('btn-login-text');
 
-        // Credentials Check
-        if (user === 'claudia' && pass === 'claudia123') {
-            // Success
-            // Animation out
+        // Basic client-side validation
+        if (!email || !pass) {
+            errorMsg.textContent = 'Completa todos los campos.';
+            errorMsg.style.opacity = '1';
+            return;
+        }
+        if (!email.includes('@')) {
+            errorMsg.textContent = 'Ingresa un correo válido.';
+            errorMsg.style.opacity = '1';
+            return;
+        }
+
+        // Loading state
+        btn.disabled = true;
+        btnText.textContent = 'Verificando...';
+        errorMsg.style.opacity = '0';
+
+        try {
+            // Make sure Supabase client is ready
+            if (!window.Sync?.client) {
+                await window.Sync.init();
+            }
+
+            if (!window.Sync?.client) {
+                throw new Error('Sin conexión a la nube. Verifica tu internet.');
+            }
+
+            const { data, error } = await window.Sync.client.auth.signInWithPassword({
+                email,
+                password: pass
+            });
+
+            if (error) throw error;
+
+            // Success — save minimal session info
+            localStorage.setItem('wm_auth', 'true');
+            localStorage.setItem('wm_user', data.user?.email || 'Usuario');
+
+            // Animate out
             const card = document.querySelector('.login-card');
             card.style.transform = 'scale(0.9) translateY(20px)';
             card.style.opacity = '0';
             card.style.transition = 'all 0.5s ease';
 
-            setTimeout(() => {
-                // Save Session (Persistent on this device)
-                localStorage.setItem('wm_auth', 'true');
-                localStorage.setItem('wm_user', 'Claudia');
+            setTimeout(() => window.location.reload(), 500);
 
-                // Reload or Re-init App
-                window.location.reload();
-            }, 500);
-        } else {
-            // Error
+        } catch (err) {
+            btn.disabled = false;
+            btnText.textContent = 'Ingresar';
+
+            // Friendly error messages
+            let msg = 'Credenciales incorrectas.';
+            if (err.message?.includes('Invalid login')) msg = 'Correo o contraseña incorrectos.';
+            else if (err.message?.includes('Email not confirmed')) msg = 'Debes confirmar tu correo primero.';
+            else if (err.message?.includes('fetch') || err.message?.includes('network')) msg = 'Sin conexión. Verifica tu internet.';
+            else if (err.message?.includes('cloud')) msg = err.message;
+
+            errorMsg.textContent = msg;
             errorMsg.style.opacity = '1';
+
             // Shake animation
             const card = document.querySelector('.login-card');
             card.style.transform = 'translateX(10px)';

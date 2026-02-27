@@ -13,7 +13,23 @@ window.Views.settings = async (container) => {
 
         <div class="responsive-grid-2-1">
             <div style="display:flex; flex-direction:column; gap:24px;">
+
+                <!-- SESSION CARD -->
+                <div class="card" style="border: 1px solid rgba(220,38,38,0.3); background: linear-gradient(to bottom, rgba(220,38,38,0.05), transparent);">
+                    <h3 style="margin-bottom:12px; display:flex; align-items:center; gap:8px; color:var(--text-primary);">
+                        <i class="ph ph-shield-check" style="color:var(--primary);"></i>
+                        Sesión Activa
+                    </h3>
+                    <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:16px;">
+                        Conectado como <strong style="color:var(--text-primary);" id="session-user-label">—</strong>
+                    </p>
+                    <button id="btn-logout" class="btn btn-secondary" style="width:100%; color:#f87171; border-color:#f8717140;">
+                        <i class="ph ph-sign-out"></i> Cerrar Sesión
+                    </button>
+                </div>
+
                 <!-- COMPANY INFO SECTION -->
+
                 <div class="card">
                     <h3 style="margin-bottom:16px; display:flex; align-items:center; gap:8px; color:var(--text-primary);">
                         <i class="ph ph-buildings" style="color:var(--primary);"></i>
@@ -204,6 +220,26 @@ window.Views.settings = async (container) => {
 
     // 2. Add Logic
     try {
+        // --- SESSION DISPLAY & LOGOUT ---
+        const userLabel = document.getElementById('session-user-label');
+        if (userLabel) {
+            userLabel.textContent = localStorage.getItem('wm_user') || 'Administrador';
+        }
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) {
+            btnLogout.addEventListener('click', async () => {
+                if (confirm('¿Cerrar sesión en este dispositivo?')) {
+                    if (typeof window.AppSignOut === 'function') {
+                        await window.AppSignOut();
+                    } else {
+                        localStorage.removeItem('wm_auth');
+                        localStorage.removeItem('wm_user');
+                        window.location.reload();
+                    }
+                }
+            });
+        }
+
         // --- ELEMENTS ---
         const supaUrl = document.getElementById('supa-url');
         const supaKey = document.getElementById('supa-key');

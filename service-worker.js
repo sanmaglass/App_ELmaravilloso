@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v218-splash-bugfix';
+const CACHE_NAME = 'el-maravilloso-v220-auth-secure';
 const urlsToCache = [
     './index.html',
     './css/style.css',
@@ -29,8 +29,11 @@ const urlsToCache = [
     './js/views/suppliers.js',
     // Assets
     './assets/logo.png',
-    './manifest.json'
+    './assets/splash.png',
+    './manifest.json',
+    './offline.html'
 ];
+
 
 
 // Install event - cache resources
@@ -83,11 +86,9 @@ self.addEventListener('fetch', (event) => {
                 return caches.match(event.request)
                     .then((cachedResponse) => {
                         if (cachedResponse) return cachedResponse;
-                        // Final fallback for HTML
-                        if (event.request.headers.get('accept').includes('text/html')) {
-                            return new Response('<h1>Sin Conexión</h1><p>Esta página no está disponible offline.</p>', {
-                                headers: { 'Content-Type': 'text/html' }
-                            });
+                        // Styled offline fallback page
+                        if (event.request.headers.get('accept')?.includes('text/html')) {
+                            return caches.match('./offline.html');
                         }
                     });
             })
