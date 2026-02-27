@@ -198,7 +198,8 @@
                             class="ph ph-eye"></i></button>
                     <button class="btn btn-icon" id="btn-toggle-dark" title="Modo Oscuro"><i
                             class="ph ph-moon"></i></button>
-                    <button class="btn btn-icon"><i class="ph ph-bell"></i></button>
+                    <button class="btn btn-icon" id="btn-header-bell" title="Mis alertas y tareas"><i
+                            class="ph ph-bell"></i></button>
                     <button class="btn btn-primary" id="global-add-btn">
                         <i class="ph ph-plus"></i>
                         <span class="hide-mobile">Nuevo Registro</span>
@@ -297,6 +298,24 @@
             const icon = document.querySelector('#btn-toggle-dark i');
             if (icon) icon.className = 'ph ph-sun';
         }
+    </script>
+
+    <!-- Bell Button Logic -->
+    <script>
+        document.getElementById('btn-header-bell').addEventListener('click', async () => {
+            // Navigate to Mis Tareas
+            const remindersBtn = document.querySelector('[data-view="reminders"]');
+            if (remindersBtn) remindersBtn.click();
+
+            // If notifications not granted, request permission
+            if ('Notification' in window && Notification.permission === 'default') {
+                const granted = await window.AppNotify?.requestPermission();
+                if (granted) {
+                    window.AppNotify?.playChime('success');
+                    window.Sync?.showToast('✅ Alertas activadas — El Maravilloso', 'success');
+                }
+            }
+        });
     </script>
 
 </body>
