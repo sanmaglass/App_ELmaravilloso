@@ -70,7 +70,7 @@ window.Views.reminders = async (container) => {
             }
         });
 
-        document.getElementById('btn-add-alert').addEventListener('click', showAddModal);
+        document.getElementById('btn-add-alert').addEventListener('click', () => showAddModal());
 
         document.querySelectorAll('[data-filter]').forEach(btn => {
             btn.addEventListener('click', () => {

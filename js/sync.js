@@ -174,12 +174,15 @@ window.Sync = {
                     }
 
                     // 2. PUSH PHASE: Subir cambios locales al cloud (incluyendo recién creados)
-                    const finalLocalData = await window.db[localName].toArray();
-                    if (finalLocalData.length > 0) {
-                        const { error: pushErr } = await window.Sync.client
-                            .from(remoteName)
-                            .upsert(finalLocalData, { onConflict: 'id' });
-                        if (pushErr) console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
+                    // Settings se omite del push — no tiene columna 'deleted'
+                    if (remoteName !== 'settings') {
+                        const finalLocalData = await window.db[localName].toArray();
+                        if (finalLocalData.length > 0) {
+                            const { error: pushErr } = await window.Sync.client
+                                .from(remoteName)
+                                .upsert(finalLocalData, { onConflict: 'id' });
+                            if (pushErr) console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
+                        }
                     }
                 } catch (tableErr) {
                     console.error(`[Sync] Error en tabla ${map.remote}:`, tableErr.message);
