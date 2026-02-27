@@ -87,11 +87,15 @@ window.Views.reminders = async (container) => {
     // 3. Logic Functions
     const loadTasks = async () => {
         try {
-            tasks = await window.db.reminders.where('deleted').equals(0).toArray();
+            // Use filter() instead of where().equals() — Dexie index comparisons
+            // fail with booleans (Supabase returns `false`, not `0`)
+            tasks = await window.db.reminders.filter(r => !r.deleted).toArray();
             updateListView();
             updateStats();
         } catch (e) {
             console.error('Error loading tasks:', e);
+            tasks = [];
+            updateListView();
         }
     };
 
@@ -241,10 +245,13 @@ window.Views.reminders = async (container) => {
             frequency_value: freqVal,
             next_run: nextRun.toISOString(),
             completed: 0,
-            deleted: 0,
+            deleted: false,
             created_at: new Date().toISOString()
         };
-        await window.DataManager.saveAndSync('reminders', newTask);
+        const res = await window.DataManager.saveAndSync('reminders', newTask);
+        if (res.syncError) {
+            console.warn('[Reminders] Sync error on quick save:', res.syncError);
+        }
         await loadTasks();
     };
 
