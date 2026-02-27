@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v224-reminders-boolean';
+const CACHE_NAME = 'el-maravilloso-v225-sync-race-fix';
 const urlsToCache = [
     './index.html',
     './css/style.css',

@@ -146,10 +146,16 @@ window.Sync = {
                         const cloudIds = new Set(normalizedCloudData.map(item => item.id));
                         const localData = await window.db[localName].toArray();
 
-                        // --- RECONCILIACIÓN AGRESIVA ---
-                        // Si no está en la nube, se borra localmente al instante
+                        // --- RECONCILIACIÓN AGRESIVA (con protección de registros recientes) ---
+                        // Proteger registros creados en los últimos 10 minutos
+                        const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
                         const toDeleteLocal = localData
-                            .filter(item => !cloudIds.has(Number(item.id || item.key)))
+                            .filter(item => {
+                                if (cloudIds.has(Number(item.id || item.key))) return false;
+                                const createdAt = item.created_at ? new Date(item.created_at).getTime() : 0;
+                                if (createdAt > tenMinutesAgo) return false; // recién creado, proteger
+                                return true;
+                            })
                             .map(item => item.id);
 
                         if (toDeleteLocal.length > 0) {
@@ -167,10 +173,13 @@ window.Sync = {
                         }
                     }
 
-                    // 2. PUSH PHASE: Subir cambios locales remanentes
+                    // 2. PUSH PHASE: Subir cambios locales al cloud (incluyendo recién creados)
                     const finalLocalData = await window.db[localName].toArray();
                     if (finalLocalData.length > 0) {
-                        await window.Sync.client.from(remoteName).upsert(finalLocalData);
+                        const { error: pushErr } = await window.Sync.client
+                            .from(remoteName)
+                            .upsert(finalLocalData, { onConflict: 'id' });
+                        if (pushErr) console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
                     }
                 } catch (tableErr) {
                     console.error(`[Sync] Error en tabla ${map.remote}:`, tableErr.message);
