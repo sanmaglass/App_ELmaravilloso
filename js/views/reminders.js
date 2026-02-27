@@ -387,8 +387,14 @@ window.Views.reminders = async (container) => {
                 await loadTasks();
                 window.AppNotify?.playChime('success');
                 window.AppNotify?.updateBadge();
-                const msg = res.syncError ? '⚠️ Guardado local (sin sync)' : '✅ Alerta guardada';
-                window.Sync?.showToast(msg, res.syncError ? 'info' : 'success');
+
+                if (!res.syncError) {
+                    window.Sync?.showToast('✅ Alerta guardada y sincronizada', 'success');
+                } else if (res.syncError === 'missing_columns') {
+                    window.Sync?.showToast('✅ Guardada (ejecuta el SQL de migración para sincronizar priority/notes)', 'info');
+                } else {
+                    window.Sync?.showToast('⚠️ Guardada local. Error nube: ' + res.syncError.substring(0, 60), 'info');
+                }
             } else {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="ph ph-check-circle"></i> GUARDAR ALERTA';

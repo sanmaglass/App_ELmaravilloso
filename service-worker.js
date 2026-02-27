@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v227-pro-reminders';
+const CACHE_NAME = 'el-maravilloso-v228-sync-fallback';
 const urlsToCache = [
     './index.html',
     './css/style.css',

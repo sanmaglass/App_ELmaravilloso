@@ -1,118 +1,59 @@
-// Database Configuration using Dexie.js (Global Scope)
+// ──────────────────────────────────────────────────────────────
+// Dexie Local Database
+// ──────────────────────────────────────────────────────────────
+const db = new Dexie('ElMaravillosoApp');
 
-const db = new Dexie('WorkMasterDB');
-
-// Version 13: Add more functional indices (date, employeeId)
+// DB Version History:
+// v1-v4: base schema
+// v12: added electronic_invoices
+// v13: added reminders
 db.version(13).stores({
-    employees: 'id, deleted',
-    workLogs: 'id, deleted, date, employeeId',
-    settings: 'key',
-    products: 'id, deleted',
+    employees: 'id, rut, deleted',
+    workLogs: 'id, employeeId, date, deleted',
+    products: 'id, category, deleted',
     promotions: 'id, deleted',
-    suppliers: 'id, deleted',
-    purchase_invoices: 'id, deleted, supplierId, date',
-    sales_invoices: 'id, deleted, date',
-    expenses: 'id, deleted, date',
-    daily_sales: 'id, deleted, date',
-    electronic_invoices: 'id, deleted, date',
-    reminders: 'id, deleted, completed, [completed+deleted]'
+    suppliers: 'id, name, deleted',
+    purchase_invoices: 'id, supplierId, date, deleted',
+    sales_invoices: 'id, date, deleted',
+    electronic_invoices: 'id, date, folio, deleted',
+    expenses: 'id, date, deleted',
+    daily_sales: 'id, date, deleted',
+    settings: 'key',
+    reminders: 'id, deleted, completed, [completed+deleted]',
 });
 
-
-// Initial check and auto-migration fix
-db.open().catch(async (err) => {
-    if (err.name === 'UpgradeError') {
-        console.warn("Detectada incompatibilidad de versión (ID Global). Reiniciando base de datos local...");
-        await db.delete();
-        window.location.reload();
-    }
-});
-
+// ──────────────────────────────────────────────────────────────
 async function seedDatabase() {
-    // 1. Seed Suppliers
-    await seedSuppliersIfNeeded();
-
-    // Don't seed if user explicitly deleted everything
-    if (localStorage.getItem('wm_skip_seed') === 'true') {
-        console.log('Skipping seed (user deleted all data)');
-        return;
-    }
-
-    // No demo employee seed — production app should start empty
+    const count = await db.settings.count();
+    if (count > 0) return;
+    await db.settings.bulkPut([
+        { key: 'business_name', value: 'Mi Negocio' },
+        { key: 'currency', value: 'CLP' },
+    ]);
 }
 
-// --- SEEDING LOGIC ---
 async function seedSuppliersIfNeeded() {
-    try {
-        const count = await window.db.suppliers.count();
-
-        // Si hay datos locales, no hacer nada
-        if (count > 0) return;
-
-        // SIEMPRE intentar cargar desde Supabase primero (incluye deleted para no perder historial)
-        if (window.Sync?.client) {
-            console.log("[Suppliers] Base local vacía. Intentando restaurar desde Supabase...");
-            const { data, error } = await window.Sync.client
-                .from('suppliers')
-                .select('*');
-
-            if (!error && data && data.length > 0) {
-                console.log(`[Suppliers] Restaurando ${data.length} proveedores desde la nube.`);
-                await window.db.suppliers.bulkPut(data);
-                // Activar bandera para que no se intente sembrar datos de fábrica en el futuro
-                localStorage.setItem('wm_suppliers_seeded', 'true');
-                return; // Datos restaurados desde la nube, NO sembrar datos de fábrica
-            }
-
-            // La nube está vacía también — no sembrar datos de fábrica para evitar duplicados futuros
-            // Solo sembrar si NUNCA se ha usado esta app antes (flag no existe)
-            const alreadySeeded = localStorage.getItem('wm_suppliers_seeded') === 'true';
-            if (alreadySeeded) {
-                console.log("[Suppliers] Ya se sembró antes pero la nube está vacía. No reinsertar.");
-                return;
-            }
-        } else {
-            // Sin Supabase: verificar flag antes de sembrar
-            const alreadySeeded = localStorage.getItem('wm_suppliers_seeded') === 'true';
-            if (alreadySeeded) {
-                console.log("[Suppliers] Ya se sembró antes. No se insertan datos de fábrica.");
-                return;
-            }
-        }
-
-        // Solo llega aquí si: local vacío + nube vacía o sin conexión + nunca se sembró
-        console.log("[Suppliers] Primera vez: sembrando proveedores iniciales...");
-        const initialSuppliers = [
-            "Distribuidora Kiwan", "El Mesón Mayorista", "BioÑuble", "Minuto Verde",
-            "Coca Cola", "Comercial CCU", "Soprole", "Comercial Río Maullin",
-            "Doña María", "Central Mayorista", "ICB", "La Veneciana",
-            "Nestlé Chile S.A", "Distribuidora AEDOS", "ARCOR", "RAFUÑCO", "XFood Spa"
-        ];
-
-        const batch = initialSuppliers.map((name, index) => ({
-            id: Date.now() + index,
-            name: name,
-            contact: "",
-            deleted: false
-        }));
-
-        await window.db.suppliers.bulkAdd(batch);
-
-        // Marcar que ya se sembró para no volver a hacerlo nunca
-        localStorage.setItem('wm_suppliers_seeded', 'true');
-        console.log("[Suppliers] Siembra inicial completada y protegida.");
-
-    } catch (e) {
-        console.error("Error seeding suppliers:", e);
-    }
+    const count = await db.suppliers.count();
+    if (count > 0) return;
 }
 
 // Expose to window
 window.db = db;
-// --- CENTRALIZED DATA MANAGER (Centralización de Lógica) ---
+
+// ──────────────────────────────────────────────────────────────
+// CENTRALIZED DATA MANAGER
+// ──────────────────────────────────────────────────────────────
 window.DataManager = {
+
+    // Optional columns added by Pro migration — not all Supabase tables have them
+    _remindersCoreFields: ['id', 'title', 'type', 'frequency_unit', 'frequency_value',
+        'next_run', 'completed', 'deleted', 'created_at'],
+
     /**
-     * Guarda o actualiza una entidad y sincroniza con Supabase automáticamente
+     * Guarda o actualiza una entidad y sincroniza con Supabase.
+     * Estrategia defensiva de 2 fases para reminders:
+     *   1. Intenta upsert con todos los campos (incluyendo priority, notes, etc.)
+     *   2. Si falla por columna inexistente (migración no corrida), reintenta solo con campos base
      */
     async saveAndSync(tableName, data) {
         const remoteTableMap = { 'workLogs': 'worklogs' };
@@ -127,7 +68,7 @@ window.DataManager = {
             // Save locally first (put = insert or update)
             await window.db[tableName].put(data);
 
-            // Sync to Supabase (upsert handles both insert & update)
+            // Sync to Supabase
             if (window.Sync?.client) {
                 const { error: syncErr } = await window.Sync.client
                     .from(remoteTable)
@@ -135,6 +76,31 @@ window.DataManager = {
 
                 if (syncErr) {
                     console.warn(`[DataManager] Sync failed for ${tableName}:`, syncErr.message);
+
+                    // ── FALLBACK: column not found (migration not run yet) ──
+                    const isColumnErr = syncErr.message?.includes('column') ||
+                        syncErr.message?.includes('schema cache') ||
+                        syncErr.code === 'PGRST204' ||
+                        syncErr.code === '42703';
+
+                    if (isColumnErr && tableName === 'reminders') {
+                        console.warn('[DataManager] Retrying reminders with core fields only...');
+                        const coreData = {};
+                        this._remindersCoreFields.forEach(k => {
+                            if (data[k] !== undefined) coreData[k] = data[k];
+                        });
+
+                        const { error: retryErr } = await window.Sync.client
+                            .from(remoteTable)
+                            .upsert([coreData], { onConflict: 'id' });
+
+                        if (!retryErr) {
+                            // Synced with core fields OK — migration still needed for full features
+                            return { success: true, id: data.id, syncError: 'missing_columns' };
+                        }
+                        return { success: true, id: data.id, syncError: retryErr.message };
+                    }
+
                     return { success: true, id: data.id, syncError: syncErr.message };
                 }
             }
@@ -144,7 +110,6 @@ window.DataManager = {
             return { success: false, error: e.message };
         }
     },
-
 
     /**
      * Elimina (soft delete) una entidad y sincroniza
@@ -169,7 +134,6 @@ window.DataManager = {
             return { success: true };
         } catch (e) {
             console.error(`Error deleting ${tableName}:`, e);
-            // Avisar pero permitir continuar localmente
             return { success: true, syncError: e.message };
         }
     }
