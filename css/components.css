@@ -644,8 +644,37 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Entrance: fade in + gentle scale */
+    perspective: 800px;
     animation: splashLogoIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Inner orbit ring */
+#splash-logo-wrap::before {
+    content: '';
+    position: absolute;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    border: 1.5px solid transparent;
+    border-top-color: rgba(220, 38, 38, 0.7);
+    border-right-color: rgba(100, 180, 255, 0.35);
+    border-bottom-color: rgba(220, 38, 38, 0.15);
+    animation: splashOrbit 3s linear 0.8s infinite, splashFadeRing 1.2s ease both;
+    pointer-events: none;
+}
+
+/* Outer orbit ring — slower, counter */
+#splash-logo-wrap::after {
+    content: '';
+    position: absolute;
+    width: 268px;
+    height: 268px;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    border-bottom-color: rgba(220, 38, 38, 0.35);
+    border-left-color: rgba(100, 180, 255, 0.15);
+    animation: splashOrbitReverse 5s linear 0.8s infinite, splashFadeRing 1.5s ease both;
+    pointer-events: none;
 }
 
 #splash-logo-img {
@@ -653,10 +682,9 @@
     height: 160px;
     object-fit: contain;
     border-radius: 36px;
-    /* Float animation after entering — starts after 0.8s */
     animation:
         splashLogoIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both,
-        splashFloat 4s ease-in-out 0.8s infinite,
+        splashSpin 8s ease-in-out 0.8s infinite,
         splashGlow 4s ease-in-out 0.8s infinite;
 }
 
@@ -696,29 +724,65 @@
     }
 }
 
-/* Gentle float — barely perceptible, graceful */
-@keyframes splashFloat {
+/* 3D globe spin + float combined */
+@keyframes splashSpin {
+    0% {
+        transform: translateY(0px) rotateY(0deg);
+    }
 
-    0%,
-    100% {
-        transform: translateY(0px);
+    25% {
+        transform: translateY(-4px) rotateY(90deg);
     }
 
     50% {
-        transform: translateY(-8px);
+        transform: translateY(-8px) rotateY(180deg);
+    }
+
+    75% {
+        transform: translateY(-4px) rotateY(270deg);
+    }
+
+    100% {
+        transform: translateY(0px) rotateY(360deg);
     }
 }
 
-/* Breathing glow — red halo pulses softly */
+/* Orbit rings */
+@keyframes splashOrbit {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes splashOrbitReverse {
+    to {
+        transform: rotate(-360deg);
+    }
+}
+
+/* Ring fade-in */
+@keyframes splashFadeRing {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Dual-color breathing glow */
 @keyframes splashGlow {
 
     0%,
     100% {
-        filter: drop-shadow(0 0 12px rgba(220, 38, 38, 0.20));
+        filter:
+            drop-shadow(0 0 14px rgba(220, 38, 38, 0.25)) drop-shadow(0 0 4px rgba(100, 180, 255, 0.10));
     }
 
     50% {
-        filter: drop-shadow(0 0 28px rgba(220, 38, 38, 0.45));
+        filter:
+            drop-shadow(0 0 36px rgba(220, 38, 38, 0.55)) drop-shadow(0 0 18px rgba(100, 180, 255, 0.22));
     }
 }
 

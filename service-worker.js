@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v221-apple-anim';
+const CACHE_NAME = 'el-maravilloso-v222-logo-dark';
 const urlsToCache = [
     './index.html',
     './css/style.css',
@@ -30,6 +30,7 @@ const urlsToCache = [
     // Assets
     './assets/logo.png',
     './assets/splash.png',
+    './assets/logo-dark.png',
     './manifest.json',
     './offline.html'
 ];
@@ -144,4 +145,5 @@ self.addEventListener('notificationclick', (event) => {
         })
     );
 });
+
 
