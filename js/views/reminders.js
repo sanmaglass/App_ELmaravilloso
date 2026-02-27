@@ -323,21 +323,50 @@ window.Views.reminders = async (container) => {
 
         document.getElementById('form-full-task').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const submitBtn = e.target.querySelector('[type="submit"]');
+            const originalBtnHtml = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Guardando...';
+
+            // Remove any previous error
+            document.getElementById('modal-task-error')?.remove();
+
             const task = {
-                title: document.getElementById('ft-title').value,
+                title: document.getElementById('ft-title').value.trim(),
                 type: typeSelect.value === 'once' ? 'once' : 'periodic',
                 frequency_unit: typeSelect.value,
                 frequency_value: parseInt(document.getElementById('ft-value').value) || 0,
                 next_run: new Date(document.getElementById('ft-start').value).toISOString(),
                 completed: 0,
-                deleted: 0,
+                deleted: false,
                 created_at: new Date().toISOString()
             };
+
+            if (!task.title) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHtml;
+                return;
+            }
+
             const res = await window.DataManager.saveAndSync('reminders', task);
+
             if (res.success) {
                 modalContainer.classList.add('hidden');
-                loadTasks();
-                window.Sync.showToast('Tarea guardada', 'success');
+                await loadTasks();
+                if (res.syncError) {
+                    window.Sync.showToast('Tarea guardada localmente (sin nube: ' + res.syncError + ')', 'info');
+                } else {
+                    window.Sync.showToast('✅ Tarea guardada y sincronizada', 'success');
+                }
+            } else {
+                // Show error inside modal
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHtml;
+                const errDiv = document.createElement('div');
+                errDiv.id = 'modal-task-error';
+                errDiv.style.cssText = 'color:#f87171; background:rgba(248,113,113,0.1); border-radius:8px; padding:10px 14px; margin-top:12px; font-size:0.85rem;';
+                errDiv.innerHTML = `<i class="ph ph-warning"></i> Error al guardar: ${res.error || 'Error desconocido'}`;
+                e.target.appendChild(errDiv);
             }
         });
 

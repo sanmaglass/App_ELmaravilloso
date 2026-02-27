@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v222-logo-dark';
+const CACHE_NAME = 'el-maravilloso-v223-reminders-fix';
 const urlsToCache = [
     './index.html',
     './css/style.css',

@@ -117,31 +117,30 @@ window.DataManager = {
     async saveAndSync(tableName, data) {
         const remoteTableMap = { 'workLogs': 'worklogs' };
         const remoteTable = remoteTableMap[tableName] || tableName;
-        const isUpdate = !!data.id && (await window.db[tableName].get(data.id));
 
         try {
-            if (isUpdate) {
-                await window.db[tableName].update(data.id, data);
-            } else {
-                if (!data.id) {
-                    data.id = Date.now() + Math.floor(Math.random() * 999);
-                }
-                await window.db[tableName].add(data);
+            // Assign ID if new record
+            if (!data.id) {
+                data.id = Date.now() + Math.floor(Math.random() * 999);
             }
 
+            // Save locally first (put = insert or update)
+            await window.db[tableName].put(data);
+
+            // Sync to Supabase (upsert handles both insert & update)
             if (window.Sync?.client) {
-                try {
-                    if (isUpdate) await window.Sync.client.from(remoteTable).update(data).eq('id', data.id);
-                    else await window.Sync.client.from(remoteTable).insert([data]);
-                } catch (syncErr) {
-                    console.warn(`Sync failed for ${tableName}:`, syncErr);
-                    // IMPORTANTE: Devolvemos éxito local pero avisamos del fallo de red
-                    return { success: true, id: data.id, syncError: syncErr.message || 'Error de conexión con la nube' };
+                const { error: syncErr } = await window.Sync.client
+                    .from(remoteTable)
+                    .upsert([data], { onConflict: 'id' });
+
+                if (syncErr) {
+                    console.warn(`[DataManager] Sync failed for ${tableName}:`, syncErr.message);
+                    return { success: true, id: data.id, syncError: syncErr.message };
                 }
             }
             return { success: true, id: data.id };
         } catch (e) {
-            console.error(`Local save failed for ${tableName}:`, e);
+            console.error(`[DataManager] Local save failed for ${tableName}:`, e);
             return { success: false, error: e.message };
         }
     },
