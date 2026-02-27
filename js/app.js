@@ -105,6 +105,9 @@ async function init() {
 
                     updateSplash(90, 'DESBLOQUEANDO INTERFAZ...');
 
+                    // Init notification system
+                    window.AppNotify?.init();
+
                     // Background sync (async skip waiting)
                     window.Sync.syncAll().then(() => {
                         console.log('Background Sync Completed');
@@ -117,6 +120,7 @@ async function init() {
                 } else {
                     updateSplash(80, 'MODO LOCAL ACTIVO');
                     views.dashboard();
+                    window.AppNotify?.init();
                 }
 
                 updateSplash(100, 'SISTEMA LISTO');
@@ -265,14 +269,17 @@ window.ReminderEngine = {
     async check() {
         try {
             const now = new Date();
+            // Use filter() — compound index fails with boolean deleted values from Supabase
             const dueReminders = await window.db.reminders
-                .where('[completed+deleted]').equals([0, 0])
-                .and(r => new Date(r.next_run) <= now)
+                .filter(r => !r.deleted && !r.completed && new Date(r.next_run) <= now)
                 .toArray();
 
             for (const reminder of dueReminders) {
                 await this.trigger(reminder);
             }
+
+            // Always update badge count
+            window.AppNotify?.updateBadge();
         } catch (e) {
             console.error('ReminderEngine Check Error:', e);
         }
@@ -281,17 +288,8 @@ window.ReminderEngine = {
     async trigger(reminder) {
         console.log(`🚀 Triggering Reminder: ${reminder.title}`);
 
-        // 1. Show Notification (Only if hidden)
-        if (document.visibilityState !== 'visible') {
-            window.Utils.NotificationManager.show(
-                'Recordatorio: ' + reminder.title,
-                'Es momento de realizar esta tarea pendiente.',
-                './index.html'
-            );
-        } else {
-            // If visible, just show a Toast
-            window.Sync.showToast('Recordatorio: ' + reminder.title, 'info');
-        }
+        // Fire AppNotify (sound + notification + toast)
+        window.AppNotify?.fire(reminder);
 
         // 2. Handle Recurrence or Completion
         if (reminder.type === 'periodic') {

@@ -102,9 +102,11 @@
                     <i class="ph ph-calendar-check"></i>
                     <span>Calendario</span>
                 </button>
-                <button class="nav-item" data-view="reminders">
+                <button class="nav-item" data-view="reminders" style="position:relative;">
                     <i class="ph ph-list-checks"></i>
                     <span>Tareas</span>
+                    <span id="tasks-nav-badge"
+                        style="display:none; position:absolute; top:6px; right:10px; min-width:18px; height:18px; background:#dc2626; color:white; border-radius:99px; font-size:0.65rem; font-weight:700; align-items:center; justify-content:center; padding:0 5px; line-height:1;"></span>
                 </button>
                 <button class="nav-item" data-view="calculator">
                     <i class="ph ph-calculator"></i>
@@ -243,7 +245,8 @@
     <script src="js/views/reminders.js?v=214"></script>
     <script src="js/views/reports.js?v=214"></script>
     <script src="js/views/settings.js?v=214"></script>
-    <script src="js/app.js?v=214"></script>
+    <script src="js/notifications.js?v=227"></script>
+    <script src="js/app.js?v=227"></script>
 
 
 
