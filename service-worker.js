@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v215-splash-3d';
+const CACHE_NAME = 'el-maravilloso-v216-splash-fix';
 const urlsToCache = [
     './index.html',
     './css/style.css',

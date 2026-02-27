@@ -60,24 +60,8 @@ async function init() {
             const percentText = document.getElementById('splash-percent');
 
             const updateSplash = (percent, status) => {
+                // Animate the discreet loading bar
                 if (progressBar) progressBar.style.width = `${percent}%`;
-                if (statusText) statusText.textContent = status;
-                if (percentText) {
-                    // Smooth counter effect
-                    let start = parseInt(percentText.textContent) || 0;
-                    let end = percent;
-                    let duration = 400;
-                    let startTime = null;
-
-                    const animate = (currentTime) => {
-                        if (!startTime) startTime = currentTime;
-                        const progress = Math.min((currentTime - startTime) / duration, 1);
-                        const current = Math.floor(progress * (end - start) + start);
-                        percentText.textContent = `${current}%`;
-                        if (progress < 1) requestAnimationFrame(animate);
-                    };
-                    requestAnimationFrame(animate);
-                }
             };
 
             try {
