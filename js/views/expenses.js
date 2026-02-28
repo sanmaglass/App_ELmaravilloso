@@ -3,7 +3,7 @@ window.Views = window.Views || {};
 
 window.Views.expenses = async (container) => {
     container.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
             <div>
                 <h1 style="margin-bottom:8px; color:var(--text-primary); display:flex; align-items:center; gap:10px;">
                     <i class="ph ph-coin" style="color:var(--primary);"></i> Gastos Generales
@@ -187,16 +187,16 @@ async function renderExpenses() {
         }
 
         list.innerHTML = filtered.map(exp => `
-            <div class="card" style="padding:16px; display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary);">${exp.title}</div>
-                    <div style="font-size:0.85rem; color:var(--text-muted); display:flex; gap:8px;">
+            <div class="card" style="padding:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div style="flex: 1 1 180px; min-width:0;">
+                    <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${exp.title}</div>
+                    <div style="font-size:0.85rem; color:var(--text-muted); display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:4px;">
                         <span><i class="ph ph-calendar-blank"></i> ${formatDate(exp.date)}</span>
                         <span>•</span>
                         <span style="color:var(--primary); background:rgba(255,0,0,0.05); padding:2px 8px; border-radius:4px;">${exp.category}</span>
                     </div>
                 </div>
-                <div style="text-align:right;">
+                <div style="text-align:right; flex: 0 0 auto;">
                     <div style="font-weight:700; font-size:1.1rem; color:var(--text-primary); margin-bottom:4px;">${formatCurrency(exp.amount)}</div>
                     <div style="display:flex; gap:8px; justify-content:flex-end;">
                         <button class="btn btn-icon btn-edit-expense" data-id="${exp.id}" title="Editar" style="width:32px; height:32px; font-size:1rem;">

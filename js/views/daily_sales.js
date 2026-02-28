@@ -3,7 +3,7 @@ window.Views = window.Views || {};
 
 window.Views.daily_sales = async (container) => {
     container.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
             <div>
                 <h1 style="margin-bottom:8px; color:var(--text-primary); display:flex; align-items:center; gap:10px;">
                     <i class="ph ph-currency-dollar" style="color:var(--primary);"></i> Ventas Diarias
@@ -148,18 +148,18 @@ async function renderDailySales() {
         }
 
         list.innerHTML = filtered.map(sale => `
-            <div class="card" style="padding:16px; display:grid; grid-template-columns: 1fr 2fr 1fr auto; align-items:center; gap:16px;">
+            <div class="card" style="padding:16px; display:flex; flex-wrap:wrap; align-items:center; gap:12px;">
                 
                 <!-- Date -->
-                <div>
-                     <div style="font-weight:600; font-size:1.1rem; color:var(--text-primary); text-transform:capitalize;">
+                <div style="flex: 1 1 150px; min-width:0;">
+                     <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary); text-transform:capitalize;">
                         ${new Date(sale.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}
                      </div>
                      <div style="font-size:0.85rem; color:var(--text-muted);">${sale.date}</div>
                 </div>
 
                 <!-- Breakdown -->
-                <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:0.85rem;">
+                <div style="display:flex; flex-wrap:wrap; gap:8px; font-size:0.85rem; flex: 2 1 200px; min-width:0;">
                     <div style="background:rgba(16, 185, 129, 0.1); padding:4px 8px; border-radius:6px; color:#065f46;">
                         <i class="ph ph-money"></i> Efec: ${formatCurrency(sale.cash || 0)}
                     </div>
@@ -172,13 +172,13 @@ async function renderDailySales() {
                 </div>
 
                 <!-- Total -->
-                <div>
+                <div style="flex: 1 1 100px; min-width:0;">
                     <div style="font-size:0.8rem; color:var(--text-muted);">Total Día</div>
                     <div style="font-weight:700; font-size:1.2rem; color:var(--primary);">${formatCurrency(sale.total)}</div>
                 </div>
 
                 <!-- Actions -->
-                <div style="display:flex; gap:8px;">
+                <div style="display:flex; gap:8px; flex: 0 0 auto; margin-left:auto;">
                      <button class="btn btn-icon btn-edit-daily" data-id="${sale.id}" title="Editar">
                         <i class="ph ph-pencil-simple"></i>
                     </button>
