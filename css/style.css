@@ -175,11 +175,14 @@ body {
     flex: 1;
     height: 100vh;
     overflow-y: auto;
+    overflow-x: hidden;
     /* El contenido se desplaza aquí */
     padding: 40px;
     position: relative;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
+    /* Asegurar que nada se desborde horizontalmente */
+    max-width: 100%;
 }
 
 @media (max-width: 768px) {

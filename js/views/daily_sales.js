@@ -148,42 +148,44 @@ async function renderDailySales() {
         }
 
         list.innerHTML = filtered.map(sale => `
-            <div class="card" style="padding:16px; display:flex; flex-direction:column; gap:10px;">
-
-                <!-- Fila 1: Fecha | Total | Botones -->
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="flex:1 1 0; min-width:0;">
-                        <div style="font-weight:700; font-size:0.95rem; color:var(--text-primary); text-transform:capitalize;">
+            <div class="card" style="padding:16px;">
+                <!-- Fila principal: igual que expenses -->
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <!-- Izquierda: fecha -->
+                    <div style="flex:1 1 160px; min-width:0;">
+                        <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary); text-transform:capitalize; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                             ${new Date(sale.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}
                         </div>
-                        <div style="font-size:0.8rem; color:var(--text-muted);">${sale.date}</div>
+                        <div style="font-size:0.82rem; color:var(--text-muted); margin-top:2px;">${sale.date}</div>
                     </div>
-                    <div style="text-align:right; flex:0 0 auto;">
-                        <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Total Día</div>
-                        <div style="font-weight:800; font-size:1.2rem; color:var(--primary);">${formatCurrency(sale.total)}</div>
-                    </div>
-                    <div style="display:flex; gap:6px; flex:0 0 auto;">
-                        <button class="btn btn-icon btn-edit-daily" data-id="${sale.id}" title="Editar" style="width:34px; height:34px; font-size:0.95rem;">
-                            <i class="ph ph-pencil-simple"></i>
-                        </button>
-                        <button class="btn btn-icon btn-delete-daily" data-id="${sale.id}" title="Eliminar" style="width:34px; height:34px; font-size:0.95rem; color:var(--error);">
-                            <i class="ph ph-trash"></i>
-                        </button>
+                    <!-- Derecha: total + botones -->
+                    <div style="text-align:right; flex:0 0 auto; display:flex; align-items:center; gap:12px;">
+                        <div>
+                            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Total Día</div>
+                            <div style="font-weight:700; font-size:1.1rem; color:var(--primary);">${formatCurrency(sale.total)}</div>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn btn-icon btn-edit-daily" data-id="${sale.id}" title="Editar" style="width:32px; height:32px; font-size:1rem;">
+                                <i class="ph ph-pencil-simple"></i>
+                            </button>
+                            <button class="btn btn-icon btn-delete-daily" data-id="${sale.id}" title="Eliminar" style="width:32px; height:32px; font-size:1rem; color:var(--error);">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
-
-                <!-- Fila 2: Badges de desglose -->
-                <div style="display:flex; flex-wrap:wrap; gap:6px; padding-top:8px; border-top:1px solid rgba(0,0,0,0.06); font-size:0.8rem;">
-                    <span style="background:rgba(16,185,129,0.1); padding:3px 9px; border-radius:20px; color:#065f46; white-space:nowrap;">
+                <!-- Fila de badges (desglose) -->
+                <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid rgba(0,0,0,0.06); font-size:0.8rem;">
+                    <span style="background:rgba(16,185,129,0.1); padding:3px 10px; border-radius:20px; color:#065f46; white-space:nowrap;">
                         <i class="ph ph-money"></i> Efec: ${formatCurrency(sale.cash || 0)}
                     </span>
-                    <span style="background:rgba(59,130,246,0.1); padding:3px 9px; border-radius:20px; color:#1e3a8a; white-space:nowrap;">
+                    <span style="background:rgba(59,130,246,0.1); padding:3px 10px; border-radius:20px; color:#1e3a8a; white-space:nowrap;">
                         <i class="ph ph-bank"></i> Trans: ${formatCurrency(sale.transfer || 0)}
                     </span>
-                    <span style="background:rgba(245,158,11,0.1); padding:3px 9px; border-radius:20px; color:#92400e; white-space:nowrap;">
+                    <span style="background:rgba(245,158,11,0.1); padding:3px 10px; border-radius:20px; color:#92400e; white-space:nowrap;">
                         <i class="ph ph-credit-card"></i> Déb: ${formatCurrency(sale.debit || 0)}
                     </span>
-                    ${sale.credit ? `<span style="background:rgba(139,92,246,0.1); padding:3px 9px; border-radius:20px; color:#5b21b6; white-space:nowrap;">
+                    ${sale.credit ? `<span style="background:rgba(139,92,246,0.1); padding:3px 10px; border-radius:20px; color:#5b21b6; white-space:nowrap;">
                         <i class="ph ph-star"></i> Créd: ${formatCurrency(sale.credit)}
                     </span>` : ''}
                 </div>
