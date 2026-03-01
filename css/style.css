@@ -509,6 +509,12 @@ body {
     gap: 20px;
 }
 
+.responsive-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
 @media (max-width: 768px) {
     .stack-on-mobile {
         flex-direction: column;
@@ -516,7 +522,8 @@ body {
     }
 
     .responsive-grid-2-1,
-    .responsive-grid-2 {
+    .responsive-grid-2,
+    .responsive-grid-3 {
         grid-template-columns: 1fr;
         gap: 16px;
     }

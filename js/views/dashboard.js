@@ -32,17 +32,56 @@ window.Views.dashboard = async (container) => {
         .delay-1 { animation-delay: 0.1s; }
         .delay-2 { animation-delay: 0.2s; }
         .delay-3 { animation-delay: 0.3s; }
+
+        /* ---- Dash Header responsive ---- */
+        .dash-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; flex-wrap:wrap; gap:1rem; }
+        .dash-header-btns { display:flex; gap:0.75rem; }
+
+        /* ---- PL Chart container ---- */
+        .pl-chart-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* ---- Bottom 3-widget row ---- */
+        .bottom-widgets-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* ---- MOBILE OVERRIDES ---- */
+        @media (max-width: 768px) {
+            .pl-chart-grid {
+                grid-template-columns: 1fr;
+            }
+            .bottom-widgets-grid {
+                grid-template-columns: 1fr;
+            }
+            .dash-header {
+                margin-bottom: 1rem;
+            }
+            .premium-card, .card {
+                padding: 16px !important;
+            }
+            .text-3xl {
+                font-size: 1.5rem !important;
+            }
+        }
     </style>
 
     <!-- Header -->
-    <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
+    <div class="dash-header">
         <div>
             <h1 class="text-primary font-bold flex items-center gap-3 text-2xl">
                 <i class="ph ph-squares-four"></i> Resumen de Negocio
             </h1>
             <p class="text-muted text-sm mt-1">Sincronización en tiempo real activa 🛰️</p>
         </div>
-        <div class="flex gap-3">
+        <div class="dash-header-btns">
             <button id="btn-export-excel" class="btn btn-premium" style="background:var(--grad-success); box-shadow: 0 10px 20px rgba(0, 200, 83, 0.2);">
                 <i class="ph ph-file-xls"></i> <span class="hide-mobile">Excel</span>
             </button>
@@ -144,7 +183,7 @@ window.Views.dashboard = async (container) => {
         </div>
 
         <!-- Gráfico P&L + Top Proveedores -->
-        <div class="grid grid-cols-auto gap-4 mb-6" style="grid-template-columns: 2fr 1fr;">
+        <div class="pl-chart-grid">
             <!-- Gráfico P&L 6 meses -->
             <div class="card card-anim p-4">
                 <div class="card-header">
@@ -175,7 +214,7 @@ window.Views.dashboard = async (container) => {
         </div>
 
         <!-- Widgets fila inferior -->
-        <div class="grid grid-3 gap-4 mb-6">
+        <div class="bottom-widgets-grid">
             <!-- Próximos pagos empleados -->
             <div class="card card-anim p-4" style="background:linear-gradient(135deg,#fff0f0,#fff); border-bottom:3px solid #ffcccc;">
                 <h3 class="mb-2 font-bold flex items-center gap-2" style="color:#b91c1c; font-size:0.9rem;">

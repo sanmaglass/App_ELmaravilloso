@@ -590,10 +590,10 @@ async function renderInvoices() {
             const amount = parseFloat(inv.amount) || 0;
 
             return `
-            <div class="card" style="padding:16px; display:grid; grid-template-columns: 1fr 1fr 1fr auto; align-items:center; gap:16px; border-left: 4px solid ${isPending ? (inv.paymentMethod === 'Crédito' ? '#d97706' : '#f59e0b') : '#10b981'};">
+            <div class="card" style="padding:16px; display:flex; flex-wrap:wrap; align-items:center; gap:12px; border-left: 4px solid ${isPending ? (inv.paymentMethod === 'Crédito' ? '#d97706' : '#f59e0b') : '#10b981'};">
                 
                 <!-- Supplier & Invoice No -->
-                <div>
+                <div style="flex:1 1 200px; min-width:0;">
                     <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary);">${supplierName}</div>
                     <div style="font-size:0.85rem; color:var(--text-muted); display:flex; gap:8px; flex-wrap:wrap;">
                         <span><i class="ph ph-hash"></i> ${inv.invoiceNumber}</span>
@@ -621,13 +621,13 @@ async function renderInvoices() {
                 </div>
 
                 <!-- Amount & Period -->
-                <div>
+                <div style="flex:1 1 120px;">
                     <div style="font-weight:700; font-size:1.1rem; color:var(--text-primary);">${formatCurrency(amount)}</div>
                     <div style="font-size:0.8rem; color:var(--text-muted);">${inv.period || 'Sin período'}</div>
                 </div>
 
                 <!-- Status -->
-                <div>
+                <div style="flex:1 1 100px;">
                     <span style="padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:${isPending ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)'}; color:${isPending ? '#d97706' : '#059669'};">
                         ${inv.paymentStatus}
                     </span>
