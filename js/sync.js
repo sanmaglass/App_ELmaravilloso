@@ -8,6 +8,16 @@ window.Sync = {
     _toastQueue: [],
     _isProcessingToasts: false,
     _syncSummary: { updates: 0, deletes: 0 },
+    _dispatchTimer: null,
+
+    // Dispara 'sync-data-updated' con debounce para evitar loops de refrescos
+    _scheduleSyncEvent() {
+        if (this._dispatchTimer) clearTimeout(this._dispatchTimer);
+        this._dispatchTimer = setTimeout(() => {
+            this._dispatchTimer = null;
+            window.dispatchEvent(new CustomEvent('sync-data-updated'));
+        }, 800);
+    },
 
     // Inicializar cliente
     init: async () => {
@@ -165,11 +175,17 @@ window.Sync = {
                             dataChanged = true;
                         }
 
-                        // Actualizar local con datos oficiales de la nube
+                        // Actualizar local con datos oficiales de la nube — solo si algo cambió
                         if (normalizedCloudData.length > 0) {
-                            await window.db[localName].bulkPut(normalizedCloudData);
-                            window.Sync._syncSummary.updates += normalizedCloudData.length;
-                            dataChanged = true;
+                            // Comparar con lo que ya está en local para evitar refrescos innecesarios
+                            const localMap = {};
+                            localData.forEach(r => { localMap[r.id] = JSON.stringify(r); });
+                            const hasRealChanges = normalizedCloudData.some(r => localMap[r.id] !== JSON.stringify(r));
+                            if (hasRealChanges) {
+                                await window.db[localName].bulkPut(normalizedCloudData);
+                                window.Sync._syncSummary.updates += normalizedCloudData.length;
+                                dataChanged = true;
+                            }
                         }
                     }
 
@@ -190,7 +206,7 @@ window.Sync = {
             }
 
             if (dataChanged) {
-                window.dispatchEvent(new CustomEvent('sync-data-updated'));
+                window.Sync._scheduleSyncEvent();
                 const stats = window.Sync._syncSummary;
                 if (stats.updates > 5 || stats.deletes > 0) {
                     const msg = [];
@@ -399,7 +415,7 @@ window.Sync = {
                 await window.db[localTableName].delete(id);
             }
 
-            window.dispatchEvent(new CustomEvent('sync-data-updated'));
+            window.Sync._scheduleSyncEvent();
             window.Sync.updateIndicator('realtime');
 
         } catch (error) {
