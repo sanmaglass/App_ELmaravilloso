@@ -40,7 +40,7 @@ BEGIN
   END IF;
 END $$;
 
--- 4. Habilitar Realtime
+
 DO $$
 BEGIN
   BEGIN

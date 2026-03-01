@@ -155,8 +155,8 @@ body {
         left: -320px;
         top: 0;
         bottom: 0;
-        width: 280px;
-        padding: 20px 16px;
+        width: 260px;
+        padding: 12px 10px;
         box-shadow: none;
     }
 
@@ -165,9 +165,38 @@ body {
         box-shadow: 20px 0 50px rgba(0, 0, 0, 0.3);
     }
 
+    .sidebar .brand {
+        margin-bottom: 12px !important;
+        padding: 8px 0 !important;
+    }
+
+    .sidebar-logo-img {
+        max-height: 50px !important;
+    }
+
+    .nav-menu {
+        gap: 2px !important;
+    }
+
     .nav-item {
-        padding: 14px 20px;
-        font-size: 1rem;
+        padding: 9px 14px;
+        font-size: 0.88rem;
+        gap: 10px;
+    }
+
+    .nav-item i {
+        font-size: 1.15rem;
+    }
+
+    .user-profile {
+        padding: 10px !important;
+        gap: 10px !important;
+    }
+
+    .avatar {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 0.8rem !important;
     }
 }
 
@@ -187,12 +216,17 @@ body {
 
 @media (max-width: 768px) {
     .main-content {
-        padding: 16px;
-        padding-top: 10px;
+        padding: 14px;
+        padding-top: 8px;
         height: 100%;
-        /* Asegurar que ocupe todo el espacio en móvil */
         overscroll-behavior-y: contain;
-        /* Evita que el navegador arrastre el fondo */
+    }
+}
+
+@media (max-width: 480px) {
+    .main-content {
+        padding: 10px;
+        padding-top: 6px;
     }
 }
 
@@ -410,8 +444,39 @@ body {
     }
 
     .top-bar {
-        margin-bottom: 24px;
-        gap: 10px;
+        margin-bottom: 20px;
+        gap: 8px;
+    }
+}
+
+/* Extra small screens (iPhone SE, ~375px) */
+@media (max-width: 480px) {
+    .top-bar {
+        margin-bottom: 12px;
+    }
+
+    #page-title {
+        font-size: 1.2rem !important;
+        max-width: 120px;
+    }
+
+    .btn-icon {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 1.1rem !important;
+    }
+
+    #sync-indicator {
+        display: none !important;
+    }
+
+    .actions {
+        gap: 6px !important;
+    }
+
+    .btn-primary {
+        padding: 9px 14px !important;
+        font-size: 0.78rem !important;
     }
 }
 
