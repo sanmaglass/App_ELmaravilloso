@@ -175,16 +175,19 @@ window.Sync = {
                             dataChanged = true;
                         }
 
-                        // Actualizar local con datos oficiales de la nube — solo si algo cambió
+                        // Actualizar local con datos oficiales de la nube
                         if (normalizedCloudData.length > 0) {
-                            // Comparar con lo que ya está en local para evitar refrescos innecesarios
-                            const localMap = {};
-                            localData.forEach(r => { localMap[r.id] = JSON.stringify(r); });
-                            const hasRealChanges = normalizedCloudData.some(r => localMap[r.id] !== JSON.stringify(r));
-                            if (hasRealChanges) {
+                            // Solo marcar como cambiado si el conteo o algún ID difiere
+                            const localIds = new Set(localData.map(r => r.id));
+                            const cloudHasNew = normalizedCloudData.some(r => !localIds.has(r.id));
+                            const countDiffers = normalizedCloudData.length !== localData.length;
+                            if (cloudHasNew || countDiffers || toDeleteLocal.length > 0) {
                                 await window.db[localName].bulkPut(normalizedCloudData);
                                 window.Sync._syncSummary.updates += normalizedCloudData.length;
                                 dataChanged = true;
+                            } else {
+                                // Mismo conteo e IDs — igual hacemos bulkPut silencioso para actualizar campos
+                                await window.db[localName].bulkPut(normalizedCloudData);
                             }
                         }
                     }

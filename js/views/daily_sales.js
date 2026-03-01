@@ -92,7 +92,12 @@ async function initDailyMonthFilter() {
             filter.appendChild(option);
         });
         const currentMonth = new Date().toISOString().substring(0, 7);
-        if (months.has(currentMonth)) filter.value = currentMonth;
+        if (months.has(currentMonth)) {
+            filter.value = currentMonth;
+        } else if (sortedMonths.length > 0) {
+            // Mes actual sin datos: usar el mes más reciente con datos
+            filter.value = sortedMonths[0];
+        }
     } catch (e) { console.error('Error init daily month filter', e); }
 }
 

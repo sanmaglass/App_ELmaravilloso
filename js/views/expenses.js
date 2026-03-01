@@ -112,8 +112,9 @@ async function initDateFilter() {
         const currentMonth = new Date().toISOString().substring(0, 7);
         if (months.has(currentMonth)) {
             filter.value = currentMonth;
-        } else {
-            filter.value = 'all';
+        } else if (sortedMonths.length > 0) {
+            // Mes actual sin datos: usar el mes más reciente con datos
+            filter.value = sortedMonths[0];
         }
 
     } catch (e) { console.error("Error init date filter", e); }
