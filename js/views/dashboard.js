@@ -515,7 +515,12 @@ window.Views.dashboard = async (container) => {
 
         // ---- Sparklines for KPIs ----
         const createSpark = (id, data, color) => {
-            const ctx = document.getElementById(id).getContext('2d');
+            const canvas = document.getElementById(id);
+            if (!canvas) return;
+            // Destroy any existing chart on this canvas before recreating
+            const existing = Chart.getChart(canvas);
+            if (existing) existing.destroy();
+            const ctx = canvas.getContext('2d');
             new Chart(ctx, {
                 type: 'line',
                 data: {
