@@ -663,182 +663,402 @@ body.privacy-mode .money-sensitive:hover {
 }
 
 /* ============================================
-   🌙 DARK MODE — MODO PROGRAMADOR
+   🌙 DARK MODE — MODO OSCURO PREMIUM
    ============================================ */
 
+/* Paleta de variables dark */
 body.dark-mode {
-    background-color: #0d1117 !important;
+    --text-primary: #f0f6fc;
+    --text-secondary: #c9d1d9;
+    --text-muted: #8b949e;
+    --border: rgba(240, 246, 252, 0.07);
+    --bg-card: #161b22;
+    --bg-input: #0d1117;
+    --bg-app: #0d1117;
+    --bg-glass: rgba(22, 27, 34, 0.92);
+    --bg-glass-hover: rgba(30, 38, 50, 0.98);
+    --radius-sm: 12px;
+    --radius-md: 20px;
+
+    /* Fondo profundo animado — muy sutil glow rojo en esquinas */
+    background-color: #090d13 !important;
     background-image:
-        radial-gradient(circle at 10% 20%, rgba(220, 38, 38, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(220, 38, 38, 0.05) 0%, transparent 40%),
-        linear-gradient(135deg, #0d1117 0%, #161b22 100%) !important;
+        radial-gradient(ellipse at 8% 12%, rgba(220, 38, 38, 0.10) 0%, transparent 45%),
+        radial-gradient(ellipse at 92% 85%, rgba(180, 28, 28, 0.07) 0%, transparent 45%),
+        radial-gradient(ellipse at 50% 50%, rgba(30, 41, 59, 0.50) 0%, transparent 70%),
+        linear-gradient(160deg, #0d1117 0%, #0a0f18 50%, #0d1117 100%) !important;
+    animation: darkAtmosphere 25s ease-in-out infinite alternate !important;
 }
 
+@keyframes darkAtmosphere {
+    0% {
+        background-position: 0% 0%;
+    }
+
+    100% {
+        background-position: 100% 100%;
+    }
+}
+
+/* ── Sidebar ── */
 body.dark-mode .sidebar {
-    background: rgba(22, 27, 34, 0.97) !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
-    box-shadow: 10px 0 40px rgba(0, 0, 0, 0.5) !important;
+    background: rgba(13, 17, 23, 0.85) !important;
+    backdrop-filter: blur(30px) saturate(1.8) !important;
+    -webkit-backdrop-filter: blur(30px) saturate(1.8) !important;
+    border-right: 1px solid rgba(240, 246, 252, 0.06) !important;
+    box-shadow:
+        10px 0 40px rgba(0, 0, 0, 0.6),
+        inset -1px 0 0 rgba(255, 255, 255, 0.04) !important;
 }
 
+/* Logo tuning dark */
+body.dark-mode .sidebar-logo-img {
+    filter: drop-shadow(0 4px 16px rgba(220, 38, 38, 0.25)) brightness(1.05) !important;
+}
+
+/* Nav Items */
 body.dark-mode .nav-item {
     color: #8b949e !important;
 }
 
+body.dark-mode .nav-item i {
+    color: #6e7681 !important;
+}
+
 body.dark-mode .nav-item:hover {
-    background: rgba(255, 255, 255, 0.06) !important;
-    color: #e6edf3 !important;
+    background: rgba(240, 246, 252, 0.05) !important;
+    color: #f0f6fc !important;
+    transform: translateX(6px);
+    border-color: rgba(230, 0, 0, 0.15) !important;
+}
+
+body.dark-mode .nav-item:hover i {
+    color: var(--primary) !important;
 }
 
 body.dark-mode .nav-item.active {
-    background: linear-gradient(135deg, var(--primary), #8b0000) !important;
-    color: white !important;
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.9), rgba(139, 0, 0, 0.95)) !important;
+    color: #fff !important;
+    box-shadow:
+        0 8px 24px rgba(220, 38, 38, 0.35),
+        0 0 0 1px rgba(220, 38, 38, 0.2) !important;
 }
 
+body.dark-mode .nav-item.active i {
+    color: #fff !important;
+    filter: drop-shadow(0 2px 4px rgba(255, 100, 100, 0.5));
+}
+
+/* User profile */
 body.dark-mode .user-profile {
-    background: rgba(255, 255, 255, 0.03) !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 16px;
 }
 
-body.dark-mode .name,
+body.dark-mode .name {
+    color: #c9d1d9 !important;
+}
+
 body.dark-mode .role {
-    color: #8b949e !important;
+    color: #6e7681 !important;
 }
 
-/* Main content area */
+/* ── Main Content ── */
 body.dark-mode .main-content {
     background: transparent;
 }
 
-/* Cards */
-body.dark-mode .card,
-body.dark-mode [class*="card"] {
-    background: #161b22 !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    color: #e6edf3 !important;
-}
-
-body.dark-mode .card:hover {
-    border-color: rgba(230, 0, 0, 0.3) !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
-}
-
-/* Text */
-body.dark-mode,
-body.dark-mode * {
-    --text-primary: #e6edf3;
-    --text-secondary: #b1bac4;
-    --text-muted: #8b949e;
-    --border: rgba(255, 255, 255, 0.08);
-    --bg-card: #161b22;
-    --bg-input: #0d1117;
-    --bg-glass: rgba(22, 27, 34, 0.95);
-}
-
+/* ── Typography ── */
 body.dark-mode h1,
 body.dark-mode h2,
 body.dark-mode h3,
 body.dark-mode h4 {
-    color: #e6edf3;
+    color: #f0f6fc !important;
 }
 
-/* Inputs & Selects */
+body.dark-mode p,
+body.dark-mode span,
+body.dark-mode label,
+body.dark-mode div {
+    color: inherit;
+}
+
+body.dark-mode #page-title {
+    background: -webkit-linear-gradient(45deg, #f0f6fc 0%, #8b949e 100%) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+/* ── Cards ── */
+body.dark-mode .card {
+    background: rgba(22, 27, 34, 0.80) !important;
+    backdrop-filter: blur(20px) saturate(1.5) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(1.5) !important;
+    border: 1px solid rgba(240, 246, 252, 0.07) !important;
+    box-shadow:
+        0 4px 24px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    color: #c9d1d9 !important;
+}
+
+body.dark-mode .card:hover {
+    background: rgba(30, 38, 52, 0.92) !important;
+    border-color: rgba(220, 38, 38, 0.25) !important;
+    box-shadow:
+        0 8px 40px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(220, 38, 38, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+}
+
+body.dark-mode .premium-card {
+    background: rgba(22, 27, 34, 0.85) !important;
+    backdrop-filter: blur(24px) saturate(1.6) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(1.6) !important;
+    border: 1px solid rgba(240, 246, 252, 0.07) !important;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+    color: #c9d1d9 !important;
+}
+
+body.dark-mode .premium-card:hover {
+    background: rgba(30, 38, 52, 0.95) !important;
+    border-color: rgba(220, 38, 38, 0.22) !important;
+    box-shadow:
+        0 16px 48px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(220, 38, 38, 0.10),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ── Inputs, Selects, Textareas ── */
 body.dark-mode .form-input,
-body.dark-mode input,
+body.dark-mode input[type="text"],
+body.dark-mode input[type="number"],
+body.dark-mode input[type="date"],
+body.dark-mode input[type="email"],
+body.dark-mode input[type="password"],
 body.dark-mode select,
 body.dark-mode textarea {
-    background: #0d1117 !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    color: #e6edf3 !important;
+    background: rgba(13, 17, 23, 0.9) !important;
+    border: 1px solid rgba(240, 246, 252, 0.10) !important;
+    color: #f0f6fc !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+body.dark-mode .form-input::placeholder,
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+    color: #484f58 !important;
 }
 
 body.dark-mode .form-input:focus,
 body.dark-mode input:focus,
-body.dark-mode select:focus {
-    border-color: var(--primary) !important;
-    box-shadow: 0 0 0 3px rgba(230, 0, 0, 0.2) !important;
+body.dark-mode select:focus,
+body.dark-mode textarea:focus {
+    border-color: rgba(220, 38, 38, 0.6) !important;
+    box-shadow:
+        0 0 0 3px rgba(220, 38, 38, 0.15),
+        inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+    outline: none !important;
 }
 
-/* Buttons */
+/* Select options */
+body.dark-mode select option {
+    background: #161b22 !important;
+    color: #f0f6fc !important;
+}
+
+/* ── Buttons ── */
 body.dark-mode .btn-secondary {
-    background: #21262d !important;
-    border-color: rgba(255, 255, 255, 0.12) !important;
-    color: #e6edf3 !important;
+    background: rgba(33, 38, 45, 0.9) !important;
+    border: 1px solid rgba(240, 246, 252, 0.10) !important;
+    color: #c9d1d9 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
 }
 
 body.dark-mode .btn-secondary:hover {
-    background: #30363d !important;
+    background: rgba(48, 54, 61, 0.95) !important;
+    border-color: rgba(220, 38, 38, 0.3) !important;
+    color: #f0f6fc !important;
 }
 
 body.dark-mode .btn-icon {
-    background: #21262d !important;
-    border-color: rgba(255, 255, 255, 0.08) !important;
+    background: rgba(22, 27, 34, 0.9) !important;
+    border: 1px solid rgba(240, 246, 252, 0.08) !important;
     color: #8b949e !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
 }
 
 body.dark-mode .btn-icon:hover {
-    color: #e6edf3 !important;
-    border-color: var(--primary) !important;
+    background: rgba(33, 38, 45, 1) !important;
+    color: #f0f6fc !important;
+    border-color: rgba(220, 38, 38, 0.4) !important;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15) !important;
 }
 
-/* Top bar */
+body.dark-mode .btn-danger {
+    background: rgba(139, 0, 0, 0.15) !important;
+    color: #ff6b6b !important;
+    border: 1px solid rgba(220, 38, 38, 0.25) !important;
+}
+
+body.dark-mode .btn-danger:hover {
+    background: rgba(220, 38, 38, 0.85) !important;
+    color: white !important;
+}
+
+/* ── Modal ── */
+body.dark-mode .modal-backdrop {
+    background: rgba(0, 0, 0, 0.75) !important;
+    backdrop-filter: blur(10px) !important;
+}
+
+body.dark-mode .modal {
+    background: rgba(22, 27, 34, 0.98) !important;
+    border: 1px solid rgba(240, 246, 252, 0.10) !important;
+    box-shadow:
+        0 32px 80px rgba(0, 0, 0, 0.7),
+        0 0 0 1px rgba(220, 38, 38, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+    color: #c9d1d9 !important;
+}
+
+body.dark-mode .modal-header {
+    background: rgba(13, 17, 23, 0.6) !important;
+    border-bottom: 1px solid rgba(240, 246, 252, 0.07) !important;
+}
+
+body.dark-mode .modal-footer {
+    background: rgba(13, 17, 23, 0.4) !important;
+    border-top: 1px solid rgba(240, 246, 252, 0.07) !important;
+}
+
+body.dark-mode .modal-close {
+    color: #6e7681 !important;
+}
+
+body.dark-mode .modal-close:hover {
+    background: rgba(220, 38, 38, 0.12) !important;
+    color: #ff6b6b !important;
+}
+
+body.dark-mode .form-label {
+    color: #8b949e !important;
+}
+
+/* ── Top bar ── */
 body.dark-mode .top-bar {
     background: transparent;
 }
 
-body.dark-mode #page-title {
-    background: -webkit-linear-gradient(45deg, #e6edf3, #8b949e);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+body.dark-mode #sync-indicator {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    color: #6e7681 !important;
 }
 
-/* Modal */
-body.dark-mode .modal-backdrop {
-    background: rgba(0, 0, 0, 0.7) !important;
-    backdrop-filter: blur(6px);
+/* ── Status Badges en Dark ── */
+body.dark-mode .status-paid {
+    background: rgba(0, 200, 83, 0.12) !important;
+    color: #3dd68c !important;
+    border-color: rgba(0, 200, 83, 0.25) !important;
 }
 
-body.dark-mode .modal {
-    background: #161b22 !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+body.dark-mode .status-pending {
+    background: rgba(245, 158, 11, 0.12) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(245, 158, 11, 0.25) !important;
 }
 
-body.dark-mode .modal-header {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+body.dark-mode .status-overdue {
+    background: rgba(255, 23, 68, 0.12) !important;
+    color: #ff6b6b !important;
+    border-color: rgba(255, 23, 68, 0.25) !important;
 }
 
-body.dark-mode .modal-footer {
-    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+/* ── Scrollbar premium dark ── */
+body.dark-mode ::-webkit-scrollbar {
+    width: 6px;
 }
 
-/* Scrollbar dark */
+body.dark-mode ::-webkit-scrollbar-track {
+    background: transparent;
+}
+
 body.dark-mode ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(220, 38, 38, 0.25);
+    border-radius: 99px;
 }
 
 body.dark-mode ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(220, 38, 38, 0.5);
 }
 
-/* Table rows / borders */
+/* ── Bordes/separadores ── */
 body.dark-mode [style*="border-bottom"] {
-    border-color: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(240, 246, 252, 0.06) !important;
 }
 
-/* Sync indicator */
-body.dark-mode #sync-indicator {
-    background: rgba(255, 255, 255, 0.05) !important;
-    color: #8b949e !important;
+body.dark-mode [style*="border-top"] {
+    border-color: rgba(240, 246, 252, 0.06) !important;
 }
 
-/* Transition suave en todo */
+/* ── Tabla container ── */
+body.dark-mode .table-container {
+    background: rgba(13, 17, 23, 0.5) !important;
+    border: 1px solid rgba(240, 246, 252, 0.06) !important;
+}
+
+/* ── Filters bar ── */
+body.dark-mode .filters-bar {
+    background: transparent;
+}
+
+/* ── Loading spinner dark ── */
+body.dark-mode .spinner {
+    border-color: rgba(220, 38, 38, 0.15) !important;
+    border-top-color: var(--primary) !important;
+}
+
+/* ── Calendar cells dark ── */
+body.dark-mode .calendar-day-btn {
+    background: rgba(22, 27, 34, 0.7) !important;
+    border-color: rgba(240, 246, 252, 0.06) !important;
+    color: #c9d1d9 !important;
+}
+
+body.dark-mode .calendar-day-btn:hover {
+    background: rgba(33, 38, 45, 0.9) !important;
+    border-color: rgba(220, 38, 38, 0.3) !important;
+}
+
+/* ── bg-glass utility ── */
+body.dark-mode .bg-glass {
+    background: rgba(22, 27, 34, 0.6) !important;
+    border-color: rgba(240, 246, 252, 0.05) !important;
+}
+
+/* ── Transición global suave al cambiar modo ── */
 body,
 .sidebar,
 .main-content,
 .card,
+.premium-card,
 .form-input,
+.btn,
 .btn-secondary,
 .btn-icon,
-.modal {
-    transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+.modal,
+.modal-header,
+.modal-footer,
+.nav-item {
+    transition:
+        background 0.35s ease,
+        background-color 0.35s ease,
+        color 0.35s ease,
+        border-color 0.35s ease,
+        box-shadow 0.35s ease !important;
 }
