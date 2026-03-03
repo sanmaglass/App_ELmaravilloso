@@ -98,6 +98,7 @@ window.Views.purchase_invoices = async (container) => {
     const syncHandler = () => {
         if (document.getElementById('invoices-list')) {
             console.log("🔄 Sync update detected: refreshing invoices...");
+            initDateFilter();
             renderInvoices();
             renderCreditAlerts();
             populateSupplierFilter();
@@ -113,11 +114,16 @@ async function initDateFilter() {
     const filter = document.getElementById('filter-date');
     if (!filter) return;
 
+    // Limpiar opciones dinámicas previas (mantener solo la primera: "Todo el Historial")
+    while (filter.options.length > 1) {
+        filter.remove(1);
+    }
+
     try {
         const invoices = await window.db.purchase_invoices.toArray();
         const active = invoices.filter(i => !i.deleted);
 
-        // Extraer meses únicos de la BD (YYYY-MM)
+        // Extraer meses únicos de la BD por campo date (YYYY-MM)
         const monthsFromDB = new Set();
         active.forEach(i => {
             if (i.date && i.date.length >= 7) {
@@ -125,13 +131,11 @@ async function initDateFilter() {
             }
         });
 
-        // Siempre incluir los últimos 12 meses (calculado con fecha LOCAL, no UTC)
+        // Siempre incluir los últimos 12 meses usando hora LOCAL (no UTC)
         const now = new Date();
         const monthsSet = new Set(monthsFromDB);
         for (let i = 0; i < 12; i++) {
-            const y = now.getFullYear();
-            const m = now.getMonth() - i;
-            const d = new Date(y, m, 1); // new Date maneja meses negativos correctamente
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             monthsSet.add(key);
         }
@@ -150,11 +154,11 @@ async function initDateFilter() {
             filter.appendChild(option);
         });
 
-        // Seleccionar el mes actual por defecto (comparación local)
+        // Seleccionar el mes actual por defecto (hora LOCAL)
         const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         filter.value = currentKey;
 
-    } catch (e) { console.error("Error init date filter", e); }
+    } catch (e) { console.error('Error init date filter', e); }
 }
 
 // --- ANALYTICS PANEL ---
@@ -525,7 +529,15 @@ async function renderInvoices() {
 
             let matchesDate = true;
             if (dateFilter !== 'all') {
-                matchesDate = i.date && i.date.startsWith(dateFilter);
+                // Filtrar por fecha (YYYY-MM) O por el campo period escrito manualmente
+                const matchByDate = i.date && i.date.startsWith(dateFilter);
+                // Generar nombre del mes del filtro para comparar con period (ej: "marzo", "febrero")
+                const [fy, fm] = dateFilter.split('-');
+                const filterMonthName = new Date(Number(fy), Number(fm) - 1, 1)
+                    .toLocaleDateString('es-ES', { month: 'long' }).toLowerCase();
+                const matchByPeriod = i.period &&
+                    i.period.toLowerCase().includes(filterMonthName);
+                matchesDate = matchByDate || matchByPeriod;
             }
 
             // Supplier filter
@@ -761,13 +773,13 @@ async function showInvoiceModal(invoiceToEdit = null) {
                         </div>
                     </div>
 
-                    <div class="form-group">
+                     <div class="form-group">
                         <label class="form-label">Fecha de Emisión</label>
                         <input type="date" id="inv-date" class="form-input" value="${isEdit ? invoiceToEdit.date : today}">
                     </div>
 
                      <div class="form-group">
-                        <label class="form-label">Período de Uso</label>
+                        <label class="form-label">Período de Uso <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">(se autocompleta con la fecha)</span></label>
                         <input type="text" id="inv-period" class="form-input" placeholder="Ej. Enero 2026" value="${isEdit ? (invoiceToEdit.period || '') : ''}">
                     </div>
 
@@ -920,6 +932,26 @@ async function showInvoiceModal(invoiceToEdit = null) {
         input.dispatchEvent(new Event('blur')); // Trigger validation check
     });
 
+    // Auto-fill period field when date changes
+    const dateInput = document.getElementById('inv-date');
+    const periodInput = document.getElementById('inv-period');
+    function autoFillPeriod() {
+        const dateVal = dateInput.value;
+        if (!dateVal) return;
+        // Solo auto-rellenar si el campo está vacío o tiene el valor anterior auto-generado
+        const [y, m] = dateVal.split('-');
+        const autoLabel = new Date(Number(y), Number(m) - 1, 1)
+            .toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+        const formatted = autoLabel.charAt(0).toUpperCase() + autoLabel.slice(1);
+        // Rellenar si el campo está vacío
+        if (!periodInput.value.trim()) {
+            periodInput.value = formatted;
+        }
+    }
+    // Auto-fill on load for new invoices
+    if (!isEdit) autoFillPeriod();
+    dateInput.addEventListener('change', autoFillPeriod);
+
     // Quick Add Supplier Event
     document.getElementById('btn-quick-supplier').addEventListener('click', async () => {
         const newName = prompt('Nombre del nuevo proveedor:');
@@ -1038,11 +1070,9 @@ async function showInvoiceModal(invoiceToEdit = null) {
             }
 
             modal.classList.add('hidden');
-            // Reset to page 1 and reload date filter if new invoice added impacts list
-            if (!isEdit) {
-                await initDateFilter();
-                window.state.invoicesPage = 1;
-            }
+            // Siempre refrescar el filtro de fechas (tanto en nueva como en edición)
+            await initDateFilter();
+            window.state.invoicesPage = 1;
             renderInvoices();
             await renderCreditAlerts();
         } catch (e) { alert('Error: ' + e.message); }
