@@ -57,12 +57,12 @@ window.Views.reports = async (container) => {
         .month-toggle-icon.open { transform: rotate(180deg); }
     </style>
 
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+    <div class="flex-between flex-wrap gap-3 mb-24">
         <div>
-            <h1 style="margin-bottom:6px; color:var(--text-primary); display:flex; align-items:center; gap:10px;">
-                <i class="ph ph-calendar-dots" style="color:var(--primary);"></i> Historial Mensual
+            <h1 class="flex items-center gap-2 mb-6-px text-primary">
+                <i class="ph ph-calendar-dots text-primary"></i> Historial Mensual
             </h1>
-            <p style="color:var(--text-muted); font-size:0.88rem;">Resumen de ventas, gastos y utilidad por mes</p>
+            <p class="text-muted text-sm">Resumen de ventas, gastos y utilidad por mes</p>
         </div>
         <button class="btn btn-secondary" id="btn-expand-all">
             <i class="ph ph-caret-double-down"></i> Expandir Todo
@@ -70,18 +70,18 @@ window.Views.reports = async (container) => {
     </div>
 
     <!-- Gráfico comparativo -->
-    <div class="card" style="padding:20px; margin-bottom:24px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
-            <h3 style="font-size:0.95rem; font-weight:700; display:flex; align-items:center; gap:8px;">
-                <i class="ph ph-chart-bar" style="color:#3b82f6;"></i> Comparativo Mensual
+    <div class="card p-4 mb-24">
+        <div class="flex-between flex-wrap gap-2 mb-16">
+            <h3 class="flex items-center gap-2 text-base font-bold">
+                <i class="ph ph-chart-bar text-info"></i> Comparativo Mensual
             </h3>
-            <span style="font-size:0.78rem; color:var(--text-muted);">Últimos 12 meses</span>
+            <span class="text-xs text-muted">Últimos 12 meses</span>
         </div>
         <div style="height:220px; width:100%;"><canvas id="reportBarChart"></canvas></div>
     </div>
 
     <!-- Lista de meses -->
-    <div id="months-list" style="display:flex; flex-direction:column; gap:12px;">
+    <div id="months-list" class="flex flex-col gap-3">
         <div class="loading-state"><div class="spinner"></div><p>Calculando historial...</p></div>
     </div>
     `;
@@ -197,10 +197,10 @@ window.Views.reports = async (container) => {
 
         if (monthData.every(m => m.totalVentas === 0 && m.totalGastos === 0)) {
             monthsList.innerHTML = `
-                <div style="text-align:center; padding:40px; background:rgba(0,0,0,0.02); border-radius:12px; border:1px dashed var(--border);">
-                    <i class="ph ph-calendar-x" style="font-size:3rem; color:var(--text-muted);"></i>
-                    <h3 style="color:var(--text-muted); margin-top:12px;">No hay historial aún</h3>
-                    <p style="color:var(--text-muted); font-size:0.85rem;">Empieza registrando ventas diarias o gastos.</p>
+                <div class="text-center p-6 bg-glass border-dashed border rounded-lg">
+                    <i class="ph ph-calendar-x text-muted text-4xl"></i>
+                    <h3 class="text-muted mt-2">No hay historial aún</h3>
+                    <p class="text-muted text-sm mt-1">Empieza registrando ventas diarias o gastos.</p>
                 </div>`;
             return;
         }
@@ -231,18 +231,18 @@ window.Views.reports = async (container) => {
                         </div>
                     </div>
                     <!-- Resumen compacto -->
-                    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-                        <div style="text-align:right;">
-                            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Ventas</div>
-                            <div style="font-weight:700; font-size:1rem; color:#10b981;">${fmt(m.totalVentas)}</div>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <div class="text-right">
+                            <div class="text-xs text-muted font-bold uppercase tracking-wider">Ventas</div>
+                            <div class="text-base font-bold text-success">${escapeHTML(fmt(m.totalVentas))}</div>
                         </div>
-                        <div style="text-align:right;">
-                            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Gastos</div>
-                            <div style="font-weight:700; font-size:1rem; color:var(--primary);">${fmt(m.totalGastos)}</div>
+                        <div class="text-right">
+                            <div class="text-xs text-muted font-bold uppercase tracking-wider">Gastos</div>
+                            <div class="text-base font-bold text-primary">${escapeHTML(fmt(m.totalGastos))}</div>
                         </div>
                         <div class="profit-pill" style="background:${pillColor}; color:${pillText};">
                             <i class="ph ${pillIcon}"></i>
-                            ${fmt(utilidad)}${margen !== null ? ` <span style="opacity:0.7;font-weight:400;">(${margen}%)</span>` : ''}
+                            ${escapeHTML(fmt(utilidad))}${margen !== null ? ` <span class="opacity-70 font-normal">(${escapeHTML(margen)}%)</span>` : ''}
                         </div>
                         <i class="ph ph-caret-down month-toggle-icon${isCurrentMonth ? ' open' : ''}"></i>
                     </div>

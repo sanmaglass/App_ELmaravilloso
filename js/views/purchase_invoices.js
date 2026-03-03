@@ -301,7 +301,7 @@ async function renderPendingDocuments() {
             return `
                             <div style="background:white; border-left:4px solid ${urgencyColor}; padding:12px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
                                 <div>
-                                    <div style="font-weight:600; color:#1f2937;">${supplierName}</div>
+                                    <div style="font-weight:600; color:#1f2937;">${escapeHTML(supplierName)}</div>
                                     <div style="font-size:0.8rem; color:#6b7280; margin-top:2px;">
                                         <span style="color:#dc2626; font-weight:600;">SIN NÚMERO DE FACTURA</span> • ${formatDate(inv.date)} 
                                         <span style="color:${urgencyColor}; font-weight:600; margin-left:8px;">${urgency} (${daysAgo} días)</span>
@@ -398,14 +398,14 @@ async function renderCreditAlerts() {
                 <div style="background:white; border-left:4px solid ${color}; padding:12px 16px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
                     <div style="flex:1; min-width:0;">
                         <div style="font-weight:700; color:#1f2937; font-size:0.95rem; display:flex; align-items:center; gap:6px;">
-                            ${icon} ${inv._supplierName}
+                            ${icon} ${escapeHTML(inv._supplierName)}
                         </div>
                         <div style="font-size:0.8rem; color:#6b7280; margin-top:3px; display:flex; gap:12px; flex-wrap:wrap;">
                             <span style="font-weight:700; color:${color};">${label}</span>
                             <span>📅 Vence: ${formatDate(inv.dueDate)}</span>
                             <span>💰 ${formatCurrency(inv.amount)}</span>
                         </div>
-                        ${inv.invoiceNumber ? `<div style="font-size:0.75rem; color:#9ca3af; margin-top:2px;">#${inv.invoiceNumber} • ${inv.creditDays || '?'} días crédito</div>` : ''}
+                        ${inv.invoiceNumber ? `<div style="font-size:0.75rem; color:#9ca3af; margin-top:2px;">#${escapeHTML(inv.invoiceNumber)} • ${escapeHTML(inv.creditDays) || '?'} días crédito</div>` : ''}
                     </div>
                     <button class="btn btn-credit-pay" data-id="${inv.id}" style="background:${color}; color:white; border:none; padding:6px 14px; border-radius:8px; font-size:0.8rem; font-weight:600; cursor:pointer; white-space:nowrap; transition:all 0.2s;">
                         💰 Pagada
@@ -594,9 +594,9 @@ async function renderInvoices() {
                 
                 <!-- Supplier & Invoice No -->
                 <div style="flex:1 1 200px; min-width:0;">
-                    <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary);">${supplierName}</div>
+                    <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary);">${escapeHTML(supplierName)}</div>
                     <div style="font-size:0.85rem; color:var(--text-muted); display:flex; gap:8px; flex-wrap:wrap;">
-                        <span><i class="ph ph-hash"></i> ${inv.invoiceNumber}</span>
+                        <span><i class="ph ph-hash"></i> ${escapeHTML(inv.invoiceNumber)}</span>
                         <span>•</span>
                         <span><i class="ph ph-calendar-blank"></i> ${formatDate(inv.date)}</span>
                     </div>
@@ -613,7 +613,7 @@ async function renderInvoices() {
                                 dueSoon ? `🟠 ${diff}d restantes` : `${diff}d restantes`;
                     return `<div style="font-size:0.75rem; margin-top:3px; display:flex; align-items:center; gap:6px;">
                             <span style="background:rgba(217,119,6,0.1); color:${dueColor}; padding:2px 8px; border-radius:10px; font-weight:700;">
-                                ⏰ Crédito ${inv.creditDays || '?'}d • ${dueLabel}
+                                ⏰ Crédito ${escapeHTML(inv.creditDays) || '?'}d • ${dueLabel}
                             </span>
                             <span style="color:#9ca3af;">Vence: ${formatDate(inv.dueDate)}</span>
                         </div>`;
@@ -623,7 +623,7 @@ async function renderInvoices() {
                 <!-- Amount & Period -->
                 <div style="flex:1 1 120px;">
                     <div style="font-weight:700; font-size:1.1rem; color:var(--text-primary);">${formatCurrency(amount)}</div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">${inv.period || 'Sin período'}</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">${escapeHTML(inv.period) || 'Sin período'}</div>
                 </div>
 
                 <!-- Status -->

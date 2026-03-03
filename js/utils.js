@@ -1,6 +1,21 @@
 // Utility Functions (Global Scope)
 
 window.Utils = {
+    // Escape HTML to prevent XSS attacks
+    escapeHTML: (str) => {
+        if (!str) return '';
+        return String(str).replace(/[&<>"']/g, function (match) {
+            const escapeMap = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            };
+            return escapeMap[match];
+        });
+    },
+
     // Cache Intl instances for performance
     _currencyFormatter: new Intl.NumberFormat('es-CL', {
         style: 'currency',
@@ -564,3 +579,4 @@ window.Utils = {
 window.formatCurrency = (amount, plain = false) => window.Utils.formatCurrency(amount, plain);
 window.formatDate = (dateString, options = {}) => window.Utils.formatDate(dateString, options);
 window.generateId = () => window.Utils.generateId();
+window.escapeHTML = (str) => window.Utils.escapeHTML(str);

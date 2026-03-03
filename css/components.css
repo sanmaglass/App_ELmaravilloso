@@ -160,6 +160,46 @@
     width: 100%;
 }
 
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mb-24 {
+    margin-bottom: 24px;
+}
+
+.mb-16 {
+    margin-bottom: 16px;
+}
+
+.mb-12 {
+    margin-bottom: 12px;
+}
+
+.mb-6-px {
+    margin-bottom: 6px;
+}
+
 /* --- Premium Dashboard Cards --- */
 .premium-card {
     background: var(--bg-glass);

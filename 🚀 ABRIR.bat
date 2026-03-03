@@ -1,0 +1,3 @@
+@echo off
+echo Abriendo aplicacion...
+start index.html
