@@ -117,37 +117,42 @@ async function initDateFilter() {
         const invoices = await window.db.purchase_invoices.toArray();
         const active = invoices.filter(i => !i.deleted);
 
-        // Extract unique YYYY-MM
-        const months = new Set();
+        // Extraer meses únicos de la BD (YYYY-MM)
+        const monthsFromDB = new Set();
         active.forEach(i => {
             if (i.date && i.date.length >= 7) {
-                months.add(i.date.substring(0, 7));
+                monthsFromDB.add(i.date.substring(0, 7));
             }
         });
 
-        // Sort DESC
-        const sortedMonths = Array.from(months).sort().reverse();
+        // Siempre incluir los últimos 12 meses (calculado con fecha LOCAL, no UTC)
+        const now = new Date();
+        const monthsSet = new Set(monthsFromDB);
+        for (let i = 0; i < 12; i++) {
+            const y = now.getFullYear();
+            const m = now.getMonth() - i;
+            const d = new Date(y, m, 1); // new Date maneja meses negativos correctamente
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            monthsSet.add(key);
+        }
 
-        // Populate
+        // Ordenar DESC (mes más reciente primero)
+        const sortedMonths = Array.from(monthsSet).sort().reverse();
+
+        // Poblar las opciones del dropdown
         sortedMonths.forEach(m => {
             const [y, monthNum] = m.split('-');
-            const dateObj = new Date(y, monthNum - 1);
+            const dateObj = new Date(Number(y), Number(monthNum) - 1, 1);
             const label = dateObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-
             const option = document.createElement('option');
             option.value = m;
             option.textContent = label.charAt(0).toUpperCase() + label.slice(1);
             filter.appendChild(option);
         });
 
-        // Set Default to Current Month if exists
-        const currentMonth = new Date().toISOString().substring(0, 7);
-        if (months.has(currentMonth)) {
-            filter.value = currentMonth;
-        } else if (sortedMonths.length > 0) {
-            // Mes actual sin datos: usar el mes más reciente con datos
-            filter.value = sortedMonths[0];
-        }
+        // Seleccionar el mes actual por defecto (comparación local)
+        const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        filter.value = currentKey;
 
     } catch (e) { console.error("Error init date filter", e); }
 }
