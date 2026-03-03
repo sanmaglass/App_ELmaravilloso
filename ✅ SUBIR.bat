@@ -1,13 +1,22 @@
 @echo off
 setlocal enabledelayedexpansion
 cls
-echo =========================================
-echo   SINCRONIZANDO CON GITHUB...
-echo =========================================
+
+:: Secuencias de escape de colores ANSI
+set "ESC="
+set "RED=%ESC%[91m"
+set "GREEN=%ESC%[92m"
+set "YELLOW=%ESC%[93m"
+set "BLUE=%ESC%[96m"
+set "RESET=%ESC%[0m"
+
+echo %BLUE%=========================================%RESET%
+echo %GREEN%  SINCRONIZANDO CON GITHUB...%RESET%
+echo %BLUE%=========================================%RESET%
 echo.
 
-:: 1. Traer cambios remotos por si editaste desde otra PC o el celular
-echo [1/4] ACTUALIZANDO DESDE GITHUB (git pull)
+:: 1. Traer cambios remotos
+echo %YELLOW%[1/4] ACTUALIZANDO DESDE GITHUB (git pull)%RESET%
 git pull >nul 2>&1
 echo.
 
@@ -30,23 +39,26 @@ if !errorlevel! equ 0 (
 for /f "tokens=1-3 delims=/" %%a in ("%date%") do (set "HOY=%%a/%%b/%%c")
 set "COMMIT_MSG=CAMBIO !NEXT_NUM! - %HOY%"
 
-echo Preparando: "%COMMIT_MSG%"
+echo %YELLOW%Preparando commit:%RESET% %RED%^"%COMMIT_MSG%^"%RESET%
 echo.
 
 :: 3. Subir cambios
-echo [2/4] GUARDANDO ARCHIVOS (git add)
+echo %YELLOW%[2/4] GUARDANDO ARCHIVOS (git add)%RESET%
 git add .
 echo.
 
-echo [3/4] CREANDO VERSION (git commit)
-git commit -m "%COMMIT_MSG%" >nul 2>&1
+echo %YELLOW%[3/4] CREANDO VERSION (git commit)%RESET%
+git commit -m "!COMMIT_MSG!" >nul 2>&1
 echo.
 
-echo [4/4] SUBIENDO A INTERNET (git push)
+echo %YELLOW%[4/4] SUBIENDO A INTERNET (git push)%RESET%
 git push
 echo.
 
-echo =========================================
-echo   !LISTO! TU APP ESTA RESPALDADA Y ONLINE
-echo =========================================
-timeout /t 5
+echo %GREEN%=========================================%RESET%
+echo %GREEN%  !LISTO! TU APP ESTA RESPALDADA ONLINE%RESET%
+echo %GREEN%  SE GUARDO COMO:%RESET% %RED%!COMMIT_MSG!%RESET%
+echo %GREEN%=========================================%RESET%
+echo.
+echo %BLUE%La ventana se cerrara sola en 10 segundos...%RESET%
+timeout /t 10 >nul
