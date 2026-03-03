@@ -354,9 +354,9 @@ window.Views.employees = async (container) => {
 
                         await window.db.workLogs.bulkAdd(newLogs);
 
-                        // Sync with Supabase
+                        // Sync con Supabase — tabla es 'worklogs' (minúsculas) no 'workLogs'
                         if (window.Sync?.client) {
-                            await window.Sync.client.from('workLogs').insert(newLogs);
+                            await window.Sync.client.from('worklogs').upsert(newLogs, { onConflict: 'id' });
                         }
 
                         alert('¡Éxito! Registros generados. El calendario ahora está completo.');

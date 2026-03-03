@@ -176,13 +176,22 @@ async function init() {
         window.state.currentView = 'dashboard';
         views.dashboard();
 
-        // GLOBAL SYNC LISTENER: Auto-refresh view when data changes
+        // GLOBAL SYNC LISTENER: Solo actúa en vistas sin syncHandler propio
+        // Las vistas con su propio syncHandler (purchase_invoices, expenses, daily_sales, etc.)
+        // se auto-refrescan. Este listener solo cubre el dashboard y vistas sin handler.
+        const VIEWS_WITH_OWN_SYNC = new Set([
+            'purchase_invoices', 'expenses', 'daily_sales', 'employees',
+            'sales_invoices', 'reminders', 'suppliers', 'marketing'
+        ]);
+        let _globalSyncDebounce = null;
         window.addEventListener('sync-data-updated', () => {
-            console.log("♻️ Data sync detected - Refreshing view...");
             const current = window.state.currentView;
-            if (views[current]) {
-                views[current]();
-            }
+            if (VIEWS_WITH_OWN_SYNC.has(current)) return; // Ya tiene su propio handler
+            clearTimeout(_globalSyncDebounce);
+            _globalSyncDebounce = setTimeout(() => {
+                console.log("♻️ Global sync refresh for:", current);
+                if (views[current]) views[current]();
+            }, 600);
         });
 
         // Evento para forzar sincronización total desde cualquier parte

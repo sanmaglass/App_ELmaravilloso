@@ -120,8 +120,12 @@ window.Utils = {
 
         while (current <= end) {
             const dayOfWeek = current.getDay(); // 0 = Sunday
-            if (dayOfWeek !== 0) { // Excluir Domingos (Configurable)
-                dates.push(current.toISOString().split('T')[0]);
+            if (dayOfWeek !== 0) { // Excluir Domingos
+                // Usar hora local en lugar de toISOString() que usa UTC
+                const y = current.getFullYear();
+                const m = String(current.getMonth() + 1).padStart(2, '0');
+                const d = String(current.getDate()).padStart(2, '0');
+                dates.push(`${y}-${m}-${d}`);
             }
             current.setDate(current.getDate() + 1);
         }
@@ -525,17 +529,18 @@ window.Utils = {
 
             // Si la aplicación está enfocada (en primer plano), opcionalmente NO mostrar notificación
             // para no duplicar con los Toasts internos. Pero para iPhone, a veces es mejor mostrarla.
-            const registration = await navigator.serviceWorker.ready;
-
-            const options = {
-                body: body,
-                icon: './assets/logo.png',
-                badge: './assets/logo.png',
-                vibrate: [100, 50, 100],
-                data: { url }
-            };
-
-            registration.showNotification(title, options);
+            try {
+                // serviceWorker.ready puede colgar indefinidamente si la app se abre como file://
+                // Usamos un timeout para caer en la notificación nativa estándar
+                const registration = await Promise.race([
+                    navigator.serviceWorker.ready,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout')), 3000))
+                ]);
+                registration.showNotification(title, options);
+            } catch {
+                // Fallback: notificación nativa sin service worker
+                new Notification(title, options);
+            }
         },
 
         isSupported() {

@@ -7,7 +7,8 @@ const db = new Dexie('ElMaravillosoApp');
 // v1-v4: base schema
 // v12: added electronic_invoices
 // v13: added reminders
-db.version(13).stores({
+// v14: added social_posts para automatizacion de marketing
+db.version(14).stores({
     employees: 'id, rut, deleted',
     workLogs: 'id, employeeId, date, deleted',
     products: 'id, category, deleted',
@@ -20,6 +21,7 @@ db.version(13).stores({
     daily_sales: 'id, date, deleted',
     settings: 'key',
     reminders: 'id, deleted, completed, [completed+deleted]',
+    social_posts: 'id, status, scheduled_for, deleted'
 });
 
 // ──────────────────────────────────────────────────────────────
