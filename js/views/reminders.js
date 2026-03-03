@@ -218,13 +218,17 @@ window.Views.reminders = async (container) => {
                     <span style="font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:99px; background:${pri.bg}; color:${pri.color};">
                         <i class="ph ${pri.icon}"></i> ${pri.label}
                     </span>
-                    ${recurr ? `<span style="font-size:0.7rem; padding:2px 7px; border-radius:99px; background:rgba(99,102,241,0.1); color:#6366f1;"><i class="ph ph-arrows-clockwise"></i> Recurrente</span>` : ''}
+                    ${recurr ? `<span style="font-size:0.65rem; padding:2px 7px; border-radius:99px; background:rgba(99,102,241,0.1); color:#6366f1;"><i class="ph ph-arrows-clockwise"></i> Recurrente (${t.frequency_value} ${t.frequency_unit === 'hours' ? 'hrs' : 'dias'})</span>` : ''}
                 </div>
                 <div style="font-size:0.8rem; color:var(--text-muted); margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                     <i class="ph ${isOver ? 'ph-warning' : 'ph-clock'}" style="${isOver ? 'color:#ef4444;' : ''}"></i>
                     <span style="${isOver ? 'color:#ef4444; font-weight:600;' : ''}">${date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} ${date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</span>
                     ${t.notes ? `· <i class="ph ph-note"></i> ${t.notes.substring(0, 40)}${t.notes.length > 40 ? '…' : ''}` : ''}
                 </div>
+                ${(!t.completed && isOver) ? `
+                <div style="font-size:0.75rem; color:#ef4444; margin-top:4px; font-weight:600;">
+                    ¡Esta tarea está atrasada!
+                </div>` : ''}
                 ${!t.completed ? `
                 <div style="margin-top:8px; display:flex; gap:6px;">
                     <button class="btn btn-secondary btn-sm btn-snooze-1h" data-id="${t.id}" style="font-size:0.72rem; padding:3px 10px; height:auto;">⏸ +1h</button>
@@ -257,8 +261,27 @@ window.Views.reminders = async (container) => {
     const toggleComplete = async (id) => {
         const t = tasks.find(x => x.id === id);
         if (!t) return;
-        await window.DataManager.saveAndSync('reminders', { ...t, completed: t.completed ? 0 : 1 });
-        if (!t.completed) window.AppNotify?.playChime('success');
+
+        if (t.type === 'periodic' && !t.completed) {
+            // Advances `next_run` for periodic instead of permanent completion
+            const next = new Date(t.next_run);
+            const now = new Date();
+            if (t.frequency_unit === 'hours') next.setHours(next.getHours() + (t.frequency_value || 1));
+            else if (t.frequency_unit === 'days') next.setDate(next.getDate() + (t.frequency_value || 1));
+
+            while (next <= now) {
+                if (t.frequency_unit === 'hours') next.setHours(next.getHours() + (t.frequency_value || 1));
+                else next.setDate(next.getDate() + (t.frequency_value || 1));
+            }
+
+            await window.DataManager.saveAndSync('reminders', { ...t, next_run: next.toISOString() });
+            window.AppNotify?.playChime('success');
+            window.Sync?.showToast(`🔄 Tarea recurrente reprogramada para ${next.toLocaleDateString('es-CL')} ${next.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`, 'success');
+        } else {
+            await window.DataManager.saveAndSync('reminders', { ...t, completed: t.completed ? 0 : 1 });
+            if (!t.completed) window.AppNotify?.playChime('success');
+        }
+
         await loadTasks();
         window.AppNotify?.updateBadge();
     };

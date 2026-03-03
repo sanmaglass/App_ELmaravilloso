@@ -138,12 +138,37 @@ window.Sync = {
                     if (error) throw error;
 
                     if (cloudData) {
-                        // NORMALIZAR IDs de la nube a Números para prevenir "fantasmas"
-                        const normalizedCloudData = cloudData.map(item => ({
-                            deleted: false, // Default to NOT deleted
-                            ...item,
-                            id: Number(item.id || item.key)
-                        })).filter(item => {
+                        const cloudIds = new Set();
+                        // Crear mapa local para preservar campos no existentes en nube (por falta de migración)
+                        const localData = await window.db[localName].toArray();
+                        const localDataMap = new Map();
+                        localData.forEach(r => localDataMap.set(Number(r.id || r.key), r));
+
+                        const normalizedCloudData = cloudData.map(item => {
+                            const _id = Number(item.id || item.key);
+                            cloudIds.add(_id);
+                            const localReq = localDataMap.get(_id);
+
+                            // Fusionar datos
+                            const merged = { ...item, id: _id };
+
+                            // Si la nube no envía 'deleted', usar el local o false
+                            if (!('deleted' in item)) {
+                                merged.deleted = localReq && localReq.deleted !== undefined ? localReq.deleted : false;
+                            }
+
+                            // Especial para reminders: preservar properties si la nube no los soporta aún
+                            if (localName === 'reminders' && localReq) {
+                                if (!('completed' in item)) merged.completed = localReq.completed;
+                                if (!('priority' in item)) merged.priority = localReq.priority;
+                                if (!('notes' in item)) merged.notes = localReq.notes;
+                                if (!('type' in item)) merged.type = localReq.type;
+                                if (!('frequency_unit' in item)) merged.frequency_unit = localReq.frequency_unit;
+                                if (!('snoozed_until' in item)) merged.snoozed_until = localReq.snoozed_until;
+                            }
+
+                            return merged;
+                        }).filter(item => {
                             // FILTRO DE BASURA: Ignorar registros con valores imposibles (ej. $8 Trillones)
                             const total = parseFloat(item.total || item.cash || 0);
                             if (total > 1000000000000) { // > 1 Trillon CLP
@@ -152,9 +177,6 @@ window.Sync = {
                             }
                             return true;
                         });
-
-                        const cloudIds = new Set(normalizedCloudData.map(item => item.id));
-                        const localData = await window.db[localName].toArray();
 
                         // --- RECONCILIACIÓN AGRESIVA (con protección de registros recientes) ---
                         // Proteger registros creados en los últimos 10 minutos

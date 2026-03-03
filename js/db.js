@@ -129,7 +129,14 @@ window.DataManager = {
                     .update({ deleted: true })
                     .eq('id', id);
 
-                if (error) throw error;
+                if (error) {
+                    console.warn(`[DataManager] Soft delete falló para ${tableName}, intentando hard delete...`);
+                    const { error: hardDelErr } = await window.Sync.client
+                        .from(remoteTable)
+                        .delete()
+                        .eq('id', id);
+                    if (hardDelErr) throw hardDelErr;
+                }
             }
             return { success: true };
         } catch (e) {
