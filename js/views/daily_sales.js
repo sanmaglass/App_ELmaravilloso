@@ -76,28 +76,39 @@ window.Views.daily_sales = async (container) => {
 async function initDailyMonthFilter() {
     const filter = document.getElementById('daily-filter-month');
     if (!filter) return;
+
+    // Limpiar opciones dinámicas previas (mantener solo "Todo el Historial")
+    while (filter.options.length > 1) filter.remove(1);
+
     try {
         const sales = await window.db.daily_sales.toArray();
         const active = sales.filter(s => !s.deleted);
-        const months = new Set();
-        active.forEach(s => { if (s.date && s.date.length >= 7) months.add(s.date.substring(0, 7)); });
-        const sortedMonths = Array.from(months).sort().reverse();
-        sortedMonths.forEach(m => {
+
+        const monthsFromDB = new Set();
+        active.forEach(s => { if (s.date && s.date.length >= 7) monthsFromDB.add(s.date.substring(0, 7)); });
+
+        // Siempre incluir los últimos 12 meses en hora LOCAL
+        const now = new Date();
+        const monthsSet = new Set(monthsFromDB);
+        for (let i = 0; i < 12; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
+
+        Array.from(monthsSet).sort().reverse().forEach(m => {
             const [y, monthNum] = m.split('-');
-            const dateObj = new Date(y, monthNum - 1);
-            const label = dateObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            const label = new Date(Number(y), Number(monthNum) - 1, 1)
+                .toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
             const option = document.createElement('option');
             option.value = m;
             option.textContent = label.charAt(0).toUpperCase() + label.slice(1);
             filter.appendChild(option);
         });
-        const currentMonth = new Date().toISOString().substring(0, 7);
-        if (months.has(currentMonth)) {
-            filter.value = currentMonth;
-        } else if (sortedMonths.length > 0) {
-            // Mes actual sin datos: usar el mes más reciente con datos
-            filter.value = sortedMonths[0];
-        }
+
+        // Seleccionar mes actual en hora LOCAL
+        const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        filter.value = currentKey;
+
     } catch (e) { console.error('Error init daily month filter', e); }
 }
 

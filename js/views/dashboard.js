@@ -205,14 +205,6 @@ window.Views.dashboard = async (container) => {
             </div>
         </div>
 
-        <!-- Distribución de Ventas por Hora -->
-        <div class="card card-anim p-4 mb-6">
-            <h3 class="font-bold mb-4 flex items-center gap-2" style="font-size:0.95rem;">
-                <i class="ph ph-clock-counter-clockwise text-info"></i> Distribución de Ventas por Hora (Basado en registros)
-            </h3>
-            <div style="height:200px; width:100%;"><canvas id="hourlySalesChart"></canvas></div>
-        </div>
-
         <!-- Widgets fila inferior -->
         <div class="bottom-widgets-grid">
             <!-- Próximos pagos empleados -->
@@ -253,8 +245,9 @@ window.Views.dashboard = async (container) => {
     // ===================== LOAD RESUMEN DATA =====================
     try {
         const now = new Date();
-        const todayStr = now.toISOString().split('T')[0];
-        const currentMonthStr = todayStr.substring(0, 7);
+        // IMPORTANTE: Usar hora LOCAL (no UTC) para evitar desfase en Argentina (UTC-3)
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const prevMonthStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
@@ -510,47 +503,7 @@ window.Views.dashboard = async (container) => {
             }
         });
 
-        // ---- Hourly Sales Distribution Chart ----
-        // We'll simulate hourly data based on existing work logs dates/times if available, 
-        // or just distribute the average if no timestamps. (For now, let's use work log density as proxy)
-        const hourlyData = new Array(24).fill(0);
-        logs.forEach(l => {
-            // Using logic that sales follow work log density during the day
-            const h = (new Date()).getHours(); // Placeholder for actual sales timestamps
-            const randomH = 8 + Math.floor(Math.random() * 12); // Simulated peak hours
-            hourlyData[randomH] += 1;
-        });
-
-        const hrCtx = document.getElementById('hourlySalesChart').getContext('2d');
-        const hGradient = hrCtx.createLinearGradient(0, 0, 0, 200);
-        hGradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)');
-        hGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
-
-        const existHR = Chart.getChart('hourlySalesChart');
-        if (existHR) existHR.destroy();
-
-        new Chart(hrCtx, {
-            type: 'bar',
-            data: {
-                labels: Array.from({ length: 24 }, (_, i) => i + ':00'),
-                datasets: [{
-                    label: 'Registros/Ventas',
-                    data: hourlyData,
-                    backgroundColor: hGradient,
-                    borderColor: '#3b82f6',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { display: false },
-                    x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 0 } }
-                }
-            }
-        });
+        // (Gráfico de Distribución por Hora eliminado — usaba datos aleatorios, no reales)
 
         // ---- Sparklines for KPIs ----
         const createSpark = (id, data, color) => {
@@ -637,8 +590,9 @@ window.Views.dashboard = async (container) => {
             return (new Date(p.expiryDate) - now) / 86400000 <= 30;
         }).sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
 
-        if (expiringSoon.length > 0) {
-            document.getElementById('expiry-alerts-container').classList.remove('hidden');
+        const expiryContainer = document.getElementById('expiry-alerts-container');
+        if (expiryContainer && expiringSoon.length > 0) {
+            expiryContainer.classList.remove('hidden');
             document.getElementById('expiry-alerts-list').innerHTML = expiringSoon.map(p => {
                 const diff = Math.ceil((new Date(p.expiryDate) - now) / 86400000);
                 const col = diff <= 7 ? 'var(--danger)' : '#f59e0b';

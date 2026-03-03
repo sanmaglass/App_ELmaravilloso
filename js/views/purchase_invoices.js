@@ -95,16 +95,21 @@ window.Views.purchase_invoices = async (container) => {
     document.getElementById('btn-export-excel').addEventListener('click', exportInvoicesToExcel);
 
     // --- REALTIME REFRESH ---
+    // Debounce para evitar que múltiples eventos sync simultáneos provoquen renders en cascada
+    let syncDebounceTimer = null;
     const syncHandler = () => {
-        if (document.getElementById('invoices-list')) {
+        if (!document.getElementById('invoices-list')) {
+            window.removeEventListener('sync-data-updated', syncHandler);
+            return;
+        }
+        clearTimeout(syncDebounceTimer);
+        syncDebounceTimer = setTimeout(() => {
             console.log("🔄 Sync update detected: refreshing invoices...");
-            initDateFilter();
+            // NO llamar initDateFilter aquí — los meses solo se actualizan al guardar/cargar
             renderInvoices();
             renderCreditAlerts();
             populateSupplierFilter();
-        } else {
-            window.removeEventListener('sync-data-updated', syncHandler);
-        }
+        }, 500);
     };
     window.addEventListener('sync-data-updated', syncHandler);
 };
@@ -171,8 +176,9 @@ async function renderAnalytics() {
         const active = invoices.filter(i => !i.deleted);
 
         const now = new Date();
-        const currentMonth = now.toISOString().substring(0, 7); // YYYY-MM
-        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().substring(0, 7);
+        // Usar hora LOCAL para evitar desfase UTC en Argentina
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const lastMonth = (() => { const d = new Date(now.getFullYear(), now.getMonth() - 1, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })();
         const currentYear = now.getFullYear().toString();
 
         // Filter by periods

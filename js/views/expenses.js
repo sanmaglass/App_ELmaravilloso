@@ -80,44 +80,46 @@ window.Views.expenses = async (container) => {
     window.addEventListener('sync-data-updated', syncHandler);
 };
 
-// --- INIT DATE FILTER (Reused logic) ---
+// --- INIT DATE FILTER ---
 async function initDateFilter() {
     const filter = document.getElementById('filter-date');
     if (!filter) return;
+
+    // Limpiar opciones dinámicas previas (mantener solo "Todo el Historial")
+    while (filter.options.length > 1) filter.remove(1);
 
     try {
         const expenses = await window.db.expenses.toArray();
         const active = expenses.filter(e => !e.deleted);
 
-        const months = new Set();
+        const monthsFromDB = new Set();
         active.forEach(e => {
-            if (e.date && e.date.length >= 7) {
-                months.add(e.date.substring(0, 7));
-            }
+            if (e.date && e.date.length >= 7) monthsFromDB.add(e.date.substring(0, 7));
         });
 
-        const sortedMonths = Array.from(months).sort().reverse();
+        // Siempre incluir los últimos 12 meses en hora LOCAL
+        const now = new Date();
+        const monthsSet = new Set(monthsFromDB);
+        for (let i = 0; i < 12; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
 
-        sortedMonths.forEach(m => {
+        Array.from(monthsSet).sort().reverse().forEach(m => {
             const [y, monthNum] = m.split('-');
-            const dateObj = new Date(y, monthNum - 1);
-            const label = dateObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-
+            const label = new Date(Number(y), Number(monthNum) - 1, 1)
+                .toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
             const option = document.createElement('option');
             option.value = m;
             option.textContent = label.charAt(0).toUpperCase() + label.slice(1);
             filter.appendChild(option);
         });
 
-        const currentMonth = new Date().toISOString().substring(0, 7);
-        if (months.has(currentMonth)) {
-            filter.value = currentMonth;
-        } else if (sortedMonths.length > 0) {
-            // Mes actual sin datos: usar el mes más reciente con datos
-            filter.value = sortedMonths[0];
-        }
+        // Seleccionar mes actual en hora LOCAL
+        const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        filter.value = currentKey;
 
-    } catch (e) { console.error("Error init date filter", e); }
+    } catch (e) { console.error('Error init date filter', e); }
 }
 
 // --- RENDER LOGIC ---
