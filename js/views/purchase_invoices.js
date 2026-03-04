@@ -782,7 +782,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
                     <div class="form-group">
                         <label class="form-label">N° Factura / Documento</label>
                         <div style="display:flex; gap:8px;">
-                            <input type="text" id="inv-number" class="form-input" placeholder="Ej. 12345" value="${isEdit ? invoiceToEdit.invoiceNumber : ''}">
+                            <input type="text" id="inv-number" class="form-input" placeholder="Ej. 12345" value="${isEdit ? (invoiceToEdit.invoiceNumber || invoiceToEdit.invoice_number || '') : ''}">
                             <button type="button" class="btn btn-secondary" id="btn-pending-number" title="Marcar como Pendiente" style="white-space:nowrap; padding:0 10px; font-size:0.75rem;">
                                 <i class="ph ph-clock"></i> Pendiente
                             </button>

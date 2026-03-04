@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v229-month-filter-fix';
+const CACHE_NAME = 'el-maravilloso-v230-invoice-photo';
 const urlsToCache = [
     './index.html',
     './css/style.css',
