@@ -1362,7 +1362,7 @@ async function scanInvoicePhoto(file) {
                 resolve(applyThresholdOnly(canvas, w, h));
             }
         };
-        img.onerror = reject;
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
         img.src = url;
     });
 }
@@ -1463,10 +1463,16 @@ function showScannerUI(canvas, corners, w, h) {
         btnRow.style.cssText = 'display:flex;gap:12px;width:100%;max-width:' + dw + 'px;';
         const btnSkip = document.createElement('button');
         btnSkip.className = 'btn btn-secondary'; btnSkip.style.flex = '1'; btnSkip.textContent = 'Omitir';
-        btnSkip.onclick = () => { document.body.removeChild(overlay); reject('skipped'); };
+        btnSkip.onclick = () => {
+            btnSkip.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
+            setTimeout(() => { document.body.removeChild(overlay); reject('skipped'); }, 50);
+        };
         const btnOk = document.createElement('button');
         btnOk.className = 'btn btn-primary'; btnOk.style.flex = '2'; btnOk.innerHTML = '<i class="ph ph-check"></i> Aplicar';
-        btnOk.onclick = () => { document.body.removeChild(overlay); resolve(pts.map(([x, y]) => [x / scale, y / scale])); };
+        btnOk.onclick = () => {
+            btnOk.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Transformando...';
+            setTimeout(() => { document.body.removeChild(overlay); resolve(pts.map(([x, y]) => [x / scale, y / scale])); }, 50);
+        };
         btnRow.append(btnSkip, btnOk);
 
         const hint = document.createElement('div');
