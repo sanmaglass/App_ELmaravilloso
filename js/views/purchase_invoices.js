@@ -605,7 +605,7 @@ async function renderInvoices() {
                     window.db.purchase_invoices.update(inv.id, { supplierId: found.id });
                     console.log(`[Fix] Vinculando factura ${inv.invoiceNumber} al proveedor ${found.name} (ID recuperado)`);
                 } else {
-                    supplierName = inv.supplierName + ' (Sin ID)';
+                    supplierName = inv.supplierName;
                 }
             } else if (!supplierName) {
                 supplierName = 'Proveedor Eliminado';
