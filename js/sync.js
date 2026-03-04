@@ -118,8 +118,7 @@ window.Sync = {
                 { local: 'daily_sales', remote: 'daily_sales', orderBy: 'date' },
                 { local: 'settings', remote: 'settings', orderBy: 'key' },
                 { local: 'electronic_invoices', remote: 'electronic_invoices', orderBy: 'date' },
-                { local: 'reminders', remote: 'reminders', orderBy: 'id' },
-                { local: 'social_posts', remote: 'social_posts', orderBy: 'scheduled_for' }
+                { local: 'reminders', remote: 'reminders', orderBy: 'id' }
             ];
 
             let dataChanged = false;
@@ -395,7 +394,6 @@ window.Sync = {
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, (payload) => window.Sync.handleRealtimeChange('expenses', payload))
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'electronic_invoices' }, (payload) => window.Sync.handleRealtimeChange('electronic_invoices', payload))
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'reminders' }, (payload) => window.Sync.handleRealtimeChange('reminders', payload))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'social_posts' }, (payload) => window.Sync.handleRealtimeChange('social_posts', payload))
                 .subscribe((status) => {
                     if (status === 'SUBSCRIBED') {
                         console.log('✅ Realtime connected!');
@@ -448,34 +446,6 @@ window.Sync = {
         } catch (error) {
             console.error('Error handling realtime change:', error);
         }
-    },
-
-    // ===== ALMACENAMIENTO (STORAGE) =====
-    uploadMedia: async function (file, bucketName = 'marketing_media') {
-        if (!window.Sync.client) throw new Error('No hay conexión a la nube para subir archivos.');
-
-        // Generar un nombre único para evitar colisiones
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `${fileName}`;
-
-        console.log(`Subiendo ${fileName} al bucket ${bucketName}...`);
-
-        const { data, error } = await window.Sync.client.storage
-            .from(bucketName)
-            .upload(filePath, file, { cacheControl: '3600', upsert: false });
-
-        if (error) {
-            console.error('Error subiendo a Storage:', error);
-            throw error;
-        }
-
-        // Obtener URL Pública de inmediato
-        const { data: publicData } = window.Sync.client.storage
-            .from(bucketName)
-            .getPublicUrl(filePath);
-
-        return publicData.publicUrl;
     },
 
     // DELETE ALL DATA FROM CLOUD (DANGER)
