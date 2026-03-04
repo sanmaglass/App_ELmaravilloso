@@ -106,6 +106,8 @@ window.Views.purchase_invoices = async (container) => {
         syncDebounceTimer = setTimeout(() => {
             console.log("🔄 Sync update detected: refreshing invoices...");
             // NO llamar initDateFilter aquí — los meses solo se actualizan al guardar/cargar
+            renderAnalytics();
+            renderPendingDocuments();
             renderInvoices();
             renderCreditAlerts();
             populateSupplierFilter();
@@ -657,8 +659,11 @@ async function renderInvoices() {
                     <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">${inv.paymentMethod}</div>
                 </div>
 
-                <!-- Actions -->
-                <div style="display:flex; gap:8px;">
+            <!-- Actions -->
+                <div style="display:flex; gap:8px; align-items:center;">
+                    ${inv.imageData ? `<button class="btn btn-icon btn-view-photo" data-src="${inv.imageData}" title="Ver Foto" style="color:var(--primary);">
+                        <i class="ph ph-scan"></i>
+                    </button>` : ''}
                      <button class="btn btn-icon btn-edit-invoice" data-id="${inv.id}" title="Editar">
                         <i class="ph ph-pencil-simple"></i>
                     </button>
@@ -701,6 +706,9 @@ async function renderInvoices() {
         document.querySelectorAll('.btn-delete-invoice').forEach(btn =>
             btn.addEventListener('click', (e) => handleDeleteInvoice(Number(e.currentTarget.dataset.id)))
         );
+        document.querySelectorAll('.btn-view-photo').forEach(btn =>
+            btn.addEventListener('click', (e) => { e.stopPropagation(); openInvoiceLightbox(e.currentTarget.dataset.src); })
+        );
 
     } catch (e) {
         console.error("Error in renderInvoices:", e);
@@ -713,6 +721,8 @@ async function handleDeleteInvoice(id) {
     if (confirm('¿Eliminar esta factura?')) {
         try {
             await window.DataManager.deleteAndSync('purchase_invoices', id);
+            renderAnalytics();
+            renderPendingDocuments();
             renderInvoices();
         } catch (e) { alert('Error: ' + e.message); }
     }
@@ -844,6 +854,46 @@ async function showInvoiceModal(invoiceToEdit = null) {
                         <textarea id="inv-notes" class="form-input" style="height:60px;">${isEdit && invoiceToEdit.notes ? invoiceToEdit.notes : ''}</textarea>
                     </div>
 
+                    <!-- 📷 FOTO FACTURA -->
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label class="form-label" style="display:flex; align-items:center; gap:6px;">
+                            <i class="ph ph-scan" style="color:var(--primary);"></i>
+                            Foto de la Factura
+                            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">(Opcional — se escanea automáticamente)</span>
+                        </label>
+                        <input type="file" id="inv-photo-input" accept="image/*" style="display:none;">
+                        <input type="file" id="inv-photo-camera" accept="image/*" capture="environment" style="display:none;">
+                        
+                        <div id="inv-photo-dropzone" style="border:2px dashed var(--border); border-radius:12px; padding:20px; text-align:center; transition:all 0.2s; background:var(--bg-input); position:relative; overflow:hidden;">
+                            <div id="inv-photo-placeholder" style="${isEdit && invoiceToEdit.imageData ? 'display:none' : ''}">
+                                <i class="ph ph-scan" style="font-size:2rem; color:var(--primary); margin-bottom:12px;"></i>
+                                <div style="font-weight:600; color:var(--text-primary); margin-bottom:12px;">Adjuntar foto de la factura</div>
+                                <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                                    <button type="button" id="btn-inv-camera" class="btn btn-primary" style="font-size:0.85rem; padding:10px 16px;">
+                                        <i class="ph ph-camera"></i> Tomar Foto
+                                    </button>
+                                    <button type="button" id="btn-inv-gallery" class="btn btn-secondary" style="font-size:0.85rem; padding:10px 16px;">
+                                        <i class="ph ph-images"></i> Elegir Galería
+                                    </button>
+                                </div>
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:10px;">Se aplicará efecto de escaneo B&N automáticamente</div>
+                            </div>
+                            <div id="inv-photo-preview" style="${isEdit && invoiceToEdit.imageData ? '' : 'display:none'}">
+                                <img id="inv-photo-img" src="${isEdit && invoiceToEdit.imageData ? invoiceToEdit.imageData : ''}" style="max-width:100%; max-height:220px; border-radius:8px; object-fit:contain; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                                <div style="margin-top:8px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+                                    <span style="background:var(--primary); color:white; font-size:0.7rem; font-weight:700; padding:3px 8px; border-radius:10px;"><i class="ph ph-check-circle"></i> ESCANEADA</span>
+                                    <button type="button" id="inv-photo-remove" style="background:transparent; border:1px solid var(--border); border-radius:8px; padding:3px 10px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;"><i class="ph ph-trash"></i> Quitar</button>
+                                </div>
+                            </div>
+                            <div id="inv-scan-progress" style="display:none; position:absolute; inset:0; background:rgba(255,255,255,0.95); align-items:center; justify-content:center; flex-direction:column; gap:8px; border-radius:10px;">
+                                <i class="ph ph-spinner ph-spin" style="font-size:2.5rem; color:var(--primary);"></i>
+                                <span style="font-size:0.9rem; font-weight:600; color:var(--primary);">Procesando escaneo...</span>
+                                <span style="font-size:0.75rem; color:var(--text-muted);">Convirtiendo a blanco y negro...</span>
+                            </div>
+                        </div>
+                        <canvas id="inv-scan-canvas" style="display:none;"></canvas>
+                    </div>
+
                 </form>
             </div>
             <div class="modal-footer">
@@ -855,6 +905,46 @@ async function showInvoiceModal(invoiceToEdit = null) {
     `;
 
     modal.classList.remove('hidden');
+    window._invPhotoData = null; // reset para nueva factura
+
+    // --- PHOTO SCAN LOGIC ---
+    const processPhoto = async (file) => {
+        if (!file) return;
+        const progress = document.getElementById('inv-scan-progress');
+        const placeholder = document.getElementById('inv-photo-placeholder');
+        const preview = document.getElementById('inv-photo-preview');
+        const previewImg = document.getElementById('inv-photo-img');
+
+        progress.style.display = 'flex';
+        placeholder.style.display = 'none';
+
+        try {
+            const scanned = await scanInvoicePhoto(file);
+            window._invPhotoData = scanned;
+            previewImg.src = scanned;
+            preview.style.display = 'block';
+        } catch (err) {
+            console.error('Error escaneando:', err);
+            alert('Error al procesar la imagen.');
+            placeholder.style.display = 'block';
+        } finally {
+            progress.style.display = 'none';
+        }
+    };
+
+    document.getElementById('btn-inv-camera').addEventListener('click', () => document.getElementById('inv-photo-camera').click());
+    document.getElementById('btn-inv-gallery').addEventListener('click', () => document.getElementById('inv-photo-input').click());
+    document.getElementById('inv-photo-input').addEventListener('change', (e) => processPhoto(e.target.files[0]));
+    document.getElementById('inv-photo-camera').addEventListener('change', (e) => processPhoto(e.target.files[0]));
+
+    document.getElementById('inv-photo-remove')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        window._invPhotoData = null;
+        document.getElementById('inv-photo-preview').style.display = 'none';
+        document.getElementById('inv-photo-placeholder').style.display = 'block';
+        document.getElementById('inv-photo-input').value = '';
+        document.getElementById('inv-photo-camera').value = '';
+    });
 
     // --- CREDIT FIELDS LOGIC ---
     const creditContainer = document.getElementById('credit-fields-container');
@@ -1042,6 +1132,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
         const paymentMethod = document.getElementById('inv-method').value;
         const paymentStatus = document.getElementById('inv-status').value;
         const notes = document.getElementById('inv-notes').value.trim();
+        const imageData = window._invPhotoData || (isEdit ? invoiceToEdit.imageData : null) || null;
 
         // Credit fields
         const creditDays = paymentMethod === 'Crédito' ? (parseInt(document.getElementById('inv-credit-days').value) || null) : null;
@@ -1066,8 +1157,10 @@ async function showInvoiceModal(invoiceToEdit = null) {
                 creditDays,
                 dueDate,
                 notes,
+                imageData,
                 deleted: false
             };
+            window._invPhotoData = null; // limpiar temp
 
             if (isEdit) {
                 await window.DataManager.saveAndSync('purchase_invoices', { id: invoiceToEdit.id, ...invoiceData });
@@ -1079,6 +1172,8 @@ async function showInvoiceModal(invoiceToEdit = null) {
             // Siempre refrescar el filtro de fechas (tanto en nueva como en edición)
             await initDateFilter();
             window.state.invoicesPage = 1;
+            renderAnalytics();
+            renderPendingDocuments();
             renderInvoices();
             await renderCreditAlerts();
         } catch (e) { alert('Error: ' + e.message); }
@@ -1234,4 +1329,109 @@ async function populateSupplierFilter() {
     const currentValue = select.value;
     select.innerHTML = '<option value="all">Todos los Proveedores</option>' +
         supplierOptions.map(s => `<option value="${s.id}" ${String(s.id) === String(currentValue) ? 'selected' : ''}>${s.name}</option>`).join('');
+}
+
+// --- 📷 SCAN INVOICE PHOTO ---
+// Adaptive local thresholding: cada píxel vs. media local 11x11
+// Resultado: B&N nítido como scanner real, elimina sombras y variaciones de luz
+async function scanInvoicePhoto(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            // 1. Scale down (máx 1600px)
+            const MAX = 1600;
+            let w = img.naturalWidth;
+            let h = img.naturalHeight;
+            if (w > MAX || h > MAX) {
+                if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                else { w = Math.round(w * MAX / h); h = MAX; }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            URL.revokeObjectURL(url);
+
+            const imageData = ctx.getImageData(0, 0, w, h);
+            const data = imageData.data;
+
+            // 2. Convertir a grayscale
+            const gray = new Float32Array(w * h);
+            for (let i = 0; i < w * h; i++) {
+                gray[i] = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
+            }
+
+            // 3. Integral image (tabla sumada) para promedios locales rápidos
+            const integral = new Float64Array((w + 1) * (h + 1));
+            for (let y = 1; y <= h; y++) {
+                for (let x = 1; x <= w; x++) {
+                    integral[y * (w + 1) + x] =
+                        gray[(y - 1) * w + (x - 1)] +
+                        integral[(y - 1) * (w + 1) + x] +
+                        integral[y * (w + 1) + (x - 1)] -
+                        integral[(y - 1) * (w + 1) + (x - 1)];
+                }
+            }
+
+            // 4. Umbral adaptativo local
+            const R = 11;      // radio de ventana
+            const k = -0.2;    // bias: negativo = más sensible a texto oscuro
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    // Boundaries de la ventana
+                    const x1 = Math.max(0, x - R);
+                    const y1 = Math.max(0, y - R);
+                    const x2 = Math.min(w - 1, x + R);
+                    const y2 = Math.min(h - 1, y + R);
+
+                    const count = (x2 - x1 + 1) * (y2 - y1 + 1);
+                    const sum =
+                        integral[(y2 + 1) * (w + 1) + (x2 + 1)] -
+                        integral[y1 * (w + 1) + (x2 + 1)] -
+                        integral[(y2 + 1) * (w + 1) + x1] +
+                        integral[y1 * (w + 1) + x1];
+
+                    const mean = sum / count;
+                    const threshold = mean * (1 + k);
+
+                    const idx = (y * w + x) * 4;
+                    const val = gray[y * w + x] < threshold ? 0 : 255;
+                    data[idx] = data[idx + 1] = data[idx + 2] = val;
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+            resolve(canvas.toDataURL('image/jpeg', 0.90));
+        };
+        img.onerror = reject;
+        img.src = url;
+    });
+}
+
+// --- 🔍 INVOICE PHOTO LIGHTBOX ---
+function openInvoiceLightbox(src) {
+    const existing = document.getElementById('inv-lightbox');
+    if (existing) existing.remove();
+
+    const lb = document.createElement('div');
+    lb.id = 'inv-lightbox';
+    lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:16px;box-sizing:border-box;';
+    lb.innerHTML = `
+        <div style="position:relative; max-width:min(95vw,900px); max-height:90vh; display:flex; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="color:white; font-weight:600; font-size:0.9rem;">📄 Foto de Factura</span>
+                <button onclick="document.getElementById('inv-lightbox').remove()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;border-radius:50%;width:36px;height:36px;font-size:1.2rem;cursor:pointer;">×</button>
+            </div>
+            <img src="${src}" style="max-width:100%; max-height:calc(90vh - 60px); border-radius:8px; box-shadow:0 8px 40px rgba(0,0,0,0.6); object-fit:contain;">
+            <a href="${src}" download="factura.jpg" style="display:flex; align-items:center; gap:6px; justify-content:center; margin-top:12px; color:rgba(255,255,255,0.7); font-size:0.8rem; text-decoration:none;">
+                <i class="ph ph-download-simple"></i> Descargar imagen
+            </a>
+        </div>
+    `;
+    lb.addEventListener('click', (e) => { if (e.target === lb) lb.remove(); });
+    document.body.appendChild(lb);
 }

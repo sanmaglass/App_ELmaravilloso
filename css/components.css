@@ -896,3 +896,72 @@
     background: #2d2d2d;
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
+
+/* ============================================================
+   RESPONSIVE: MODAL FACTURAS DE COMPRA
+   ============================================================ */
+
+/* El form grid colapsa a 1 columna en móvil */
+@media (max-width: 640px) {
+    #invoice-form {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Todos los form-group full width */
+    #invoice-form .form-group {
+        grid-column: 1 / -1 !important;
+    }
+
+    /* Credit fields grid interno también colapsa */
+    #credit-fields-container>div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Zona de foto más alta y táctil */
+    #inv-photo-dropzone {
+        padding: 28px 16px !important;
+        min-height: 120px;
+    }
+
+    /* Botones del modal más grandes para touch */
+    #btn-save-invoice {
+        padding: 16px !important;
+        font-size: 1rem !important;
+    }
+
+    /* Modal header más compacto */
+    .modal-header {
+        padding: 16px 20px !important;
+    }
+
+    .modal-body {
+        padding: 16px !important;
+    }
+
+    .modal-footer {
+        padding: 16px !important;
+    }
+
+    /* Tarjetas de facturas en lista — texto no se corta */
+    #invoices-list .card {
+        padding: 12px !important;
+    }
+
+    /* Botones de acción de la lista más accesibles en touch */
+    .btn-icon {
+        width: 40px !important;
+        height: 40px !important;
+    }
+
+    /* Analytics grid — 2 columnas en móvil */
+    #invoice-analytics {
+        grid-template-columns: 1fr 1fr !important;
+    }
+}
+
+/* Extra tiny phones */
+@media (max-width: 380px) {
+    #invoice-analytics {
+        grid-template-columns: 1fr !important;
+    }
+}
