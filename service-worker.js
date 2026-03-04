@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v230-invoice-photo';
+const CACHE_NAME = 'el-maravilloso-v231-scanner-perspectiva';
 const urlsToCache = [
     './index.html',
     './css/style.css',
