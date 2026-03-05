@@ -451,7 +451,11 @@ window.Sync = {
     // DELETE ALL DATA FROM CLOUD (DANGER)
     nukeCloud: async function () {
         if (!window.Sync.client) throw new Error('No cloud connection');
-        const tables = ['employees', 'worklogs', 'products', 'promotions'];
+        const tables = [
+            'employees', 'worklogs', 'products', 'promotions',
+            'suppliers', 'purchase_invoices', 'sales_invoices',
+            'expenses', 'daily_sales', 'electronic_invoices', 'reminders'
+        ];
         for (const table of tables) {
             const { error } = await window.Sync.client.from(table).delete().gte('id', 0);
             if (error) throw error;

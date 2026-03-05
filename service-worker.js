@@ -9,7 +9,8 @@ const urlsToCache = [
     './js/utils.js',
     './js/config.js',
     './js/sii_api.js',
-    // View files
+    './js/notifications.js',
+    // archivos
     './js/views/auth.js',
     './js/views/calculator.js',
     './js/views/calendar.js',
@@ -27,7 +28,7 @@ const urlsToCache = [
     './js/views/security.js',
     './js/views/settings.js',
     './js/views/suppliers.js',
-    // Assets
+    // assets 
     './assets/logo.png',
     './assets/splash.png',
     './assets/logo-dark.png',
@@ -37,7 +38,7 @@ const urlsToCache = [
 
 
 
-// Install event - cache resources
+// instalaciónes
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
