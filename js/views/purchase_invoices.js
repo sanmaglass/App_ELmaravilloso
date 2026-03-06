@@ -623,7 +623,7 @@ async function renderInvoices() {
                     <div style="font-size:0.85rem; color:var(--text-muted); display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                         <span style="display:flex; align-items:center; gap:4px;">
                             <i class="ph ph-hash"></i> ${escapeHTML(inv.invoiceNumber)}
-                            ${inv.imageData ? `<i class="ph ph-image" style="color:var(--primary); font-size:1rem;" title="Tiene foto adjunta"></i>` : ''}
+                            ${inv.imageData ? `<span style="background:var(--primary); color:white; font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:6px; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:3px;"><i class="ph ph-image"></i> FOTO DISPONIBLE</span>` : ''}
                         </span>
                         <span>•</span>
                         <span><i class="ph ph-calendar-blank"></i> ${formatDate(inv.date)}</span>
