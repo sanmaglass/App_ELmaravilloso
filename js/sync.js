@@ -230,18 +230,9 @@ window.Sync = {
                         const finalLocalData = await window.db[localName].toArray();
                         if (finalLocalData.length > 0) {
 
-                            // Strip unmigrated columns from employees so upsert doesn't fail
-                            let dataToPush = finalLocalData;
-                            if (localName === 'employees') {
-                                dataToPush = finalLocalData.map(emp => {
-                                    const { owedMinutes, recoveryRateMinutes, recoveryStartDate, defaultStartTime, defaultEndTime, workHoursPerDay, breakMinutes, ...rest } = emp;
-                                    return rest;
-                                });
-                            }
-
                             const { error: pushErr } = await window.Sync.client
                                 .from(remoteName)
-                                .upsert(dataToPush, { onConflict: 'id' });
+                                .upsert(finalLocalData, { onConflict: 'id' });
                             if (pushErr) console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
                         }
                     }
