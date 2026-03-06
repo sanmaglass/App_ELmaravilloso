@@ -134,10 +134,10 @@ function showSupplierModal(supplierToEdit = null) {
                     <label class="form-label">Nombre de Empresa *</label>
                     <input type="text" id="sup-name" class="form-input" required value="${isEdit ? supplierToEdit.name : ''}">
                 </div>
-                <div class="grid grid-2 gap-3 mb-4">
+                <div class="responsive-grid-2 gap-3 mb-4">
                     <div class="form-group">
-                        <label class="form-label">RUT</label>
-                        <input type="text" id="sup-rut" class="form-input" placeholder="12.345.678-9" value="${isEdit ? (supplierToEdit.rut || '') : ''}">
+                        <label class="form-label" style="font-size:0.85rem;">Nombre Corto</label>
+                        <input type="text" id="sup-short-name" class="form-input" placeholder="Ej: Coca Cola" value="${isEdit ? (supplierToEdit.shortName || '') : ''}">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Giro</label>

@@ -169,6 +169,42 @@ async function openDayModal(dateStr) {
 
     // --- ACTIONS ---
 
+    // AUTO-FILL TIMES
+    document.getElementById('inp-employee').addEventListener('change', (e) => {
+        const empId = Number(e.target.value);
+        if (!empId) {
+            document.getElementById('inp-start').value = '';
+            document.getElementById('inp-end').value = '';
+            return;
+        }
+
+        const emp = employees.find(em => em.id === empId);
+        if (emp) {
+            document.getElementById('inp-start').value = emp.defaultStartTime || '09:00';
+
+            // Check for recovery plan
+            const plan = window.Utils.calculateRecoveryPlan(emp);
+            if (plan && plan.extendedTime !== 'N/A') {
+                document.getElementById('inp-end').value = plan.extendedTime;
+
+                // Show hint
+                let hint = document.getElementById('recovery-hint');
+                if (!hint) {
+                    hint = document.createElement('div');
+                    hint.id = 'recovery-hint';
+                    hint.style = 'font-size:0.8rem; color:#c2410c; margin-top:4px; grid-column:1/-1;';
+                    document.getElementById('inp-end').parentNode.parentNode.appendChild(hint);
+                }
+                hint.innerHTML = `<i class="ph ph-info"></i> Sugiriendo salida extendida para recuperar deuda. (${emp.owedMinutes}m pendientes)`;
+
+            } else {
+                document.getElementById('inp-end').value = emp.defaultEndTime || '18:00';
+                const hint = document.getElementById('recovery-hint');
+                if (hint) hint.remove();
+            }
+        }
+    });
+
     // DELETE
     window.deleteLog = async (id) => {
         if (confirm('¿Seguro que deseas eliminar este registro?')) {
@@ -246,11 +282,26 @@ async function openDayModal(dateStr) {
 
         let totalHours = 0;
         let payAmount = 0;
+        let debtDeducted = 0;
 
         if (status === 'worked' || status === 'half') {
             totalHours = window.Utils.calculateDuration(start, end);
+
+            // Check for debt recovery
+            let actualMins = totalHours * 60;
+            let normalMins = window.Utils.calculateDuration(employee.defaultStartTime || '09:00', employee.defaultEndTime || '18:00') * 60;
+            let extraMins = actualMins - normalMins;
+
+            if (extraMins > 0 && employee.owedMinutes > 0) {
+                // Determine how much debt we are actually paying off
+                debtDeducted = Math.min(extraMins, employee.owedMinutes);
+            }
+
+            // Calculate Payment
             if (employee.hourlyRate > 0) {
-                payAmount = totalHours * employee.hourlyRate;
+                // If paying debt, those extra hours are unpaid (already covered previously)
+                let paidHours = (actualMins - debtDeducted) / 60;
+                payAmount = paidHours * employee.hourlyRate;
             } else {
                 payAmount = employee.dailyRate;
                 if (status === 'half') payAmount = payAmount / 2;
@@ -275,6 +326,16 @@ async function openDayModal(dateStr) {
                 // Create unique ID
                 logData.id = Date.now() + Math.floor(Math.random() * 1000);
                 await window.db.workLogs.add(logData);
+            }
+
+            // Apply debt deduction if applicable
+            if (debtDeducted > 0) {
+                employee.owedMinutes -= debtDeducted;
+                if (employee.owedMinutes <= 0) {
+                    employee.owedMinutes = 0;
+                    employee.recoveryRateMinutes = 0;
+                }
+                await window.db.employees.update(employee.id, employee);
             }
 
             // Sync Inmediato

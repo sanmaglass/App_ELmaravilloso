@@ -18,9 +18,9 @@ window.Views.payments = async (container) => {
             <div>
                 <h1 style="margin:0; display:flex; align-items:center; gap:12px;">
                     <i class="ph ph-wallet" style="color:var(--primary);"></i>
-                    <span class="hide-mobile">Gestión de</span> Pagos
+                    <span class="hide-mobile">Gestión de</span> Horas y Pagos
                 </h1>
-                <p style="color:var(--text-muted); margin-top:4px;">Control de períodos y planillas</p>
+                <p style="color:var(--text-muted); margin-top:4px;">Control de asistencia, deudas y planillas</p>
             </div>
             <div style="display:flex; gap:12px; align-items:center;">
                 <select id="week-start-selector" class="form-input" style="width:auto; padding:8px 16px;">
@@ -62,6 +62,21 @@ window.Views.payments = async (container) => {
 
             <!-- Payments Summary Section -->
             <div style="display:flex; flex-direction:column; gap:20px;">
+                <!-- Owed Hours Management Card -->
+                <div class="card" style="background:linear-gradient(135deg, #fff7ed, #fff); border:1px solid #fed7aa;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                        <h3 style="margin:0; color:#c2410c; display:flex; align-items:center; gap:8px;">
+                            <i class="ph ph-clock-counter-clockwise"></i> Horas a Recuperar
+                        </h3>
+                        <button id="btn-add-debt" class="btn btn-primary btn-sm" style="padding:4px 8px; font-size:0.8rem;">
+                            <i class="ph ph-plus"></i> Añadir Deuda
+                        </button>
+                    </div>
+                    <div id="owed-hours-list" style="font-size:0.9rem;">
+                        <span class="loader"></span> Cargando...
+                    </div>
+                </div>
+
                 <!-- Next Payments Card -->
                 <div class="card" style="background:linear-gradient(135deg, #fff0f0, #fff); border:1px solid #ffcccc;">
                     <h3 style="margin:0 0 16px 0; color:#b91c1c; display:flex; align-items:center; gap:8px;">
@@ -319,10 +334,125 @@ window.Views.payments = async (container) => {
         }
     };
 
+    // Update Owed Hours display
+    async function renderOwedHours() {
+        const allEmployees = await window.db.employees.toArray();
+        const activeEmployees = allEmployees.filter(e => !e.deleted);
+        const listContainer = document.getElementById('owed-hours-list');
+
+        const debtors = activeEmployees.filter(e => e.owedMinutes > 0);
+
+        if (debtors.length === 0) {
+            listContainer.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:10px;">No hay horas adeudadas registradas.</div>';
+            return;
+        }
+
+        listContainer.innerHTML = debtors.map(emp => {
+            const plan = window.Utils.calculateRecoveryPlan(emp);
+            if (!plan) return '';
+
+            const formatMins = (m) => m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+
+            return `
+                <div style="background:rgba(255,255,255,0.7); border:1px solid rgba(0,0,0,0.05); padding:12px; border-radius:8px; margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+                        <strong>${emp.name}</strong>
+                        <button onclick="window.clearOwedHours(${emp.id})" class="btn-icon" style="color:var(--danger); font-size:1.2rem; width:24px; height:24px;" title="Perdonar Deuda"><i class="ph ph-x-circle"></i></button>
+                    </div>
+                    <div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:4px;">
+                        Debe: <b style="color:#c2410c;">${formatMins(emp.owedMinutes)}</b> (Recupera ${emp.recoveryRateMinutes}m/día)
+                    </div>
+                    <div style="font-size:0.85rem; background:rgba(194, 65, 12, 0.1); color:#9a3412; padding:6px; border-radius:4px;">
+                        <i class="ph ph-info"></i> Sale a las <b>${plan.extendedTime}</b> hasta el <b>${window.Utils.formatDate(plan.targetDateStr)}</b>.
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Modal to Add Debt
+    window.showAddDebtModal = async () => {
+        const allEmployees = await window.db.employees.toArray();
+        const employees = allEmployees.filter(e => !e.deleted);
+        const empOptions = employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+
+        const modalContainer = document.getElementById('modal-container');
+        modalContainer.innerHTML = `
+            <div class="modal" style="max-width:400px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">Añadir Deuda de Horas</h3>
+                    <button class="modal-close" onclick="document.getElementById('modal-container').classList.add('hidden')"><i class="ph ph-x"></i></button>
+                </div>
+                <div class="modal-body">
+                    <form id="debt-form">
+                        <div class="form-group">
+                            <label class="form-label">Empleado</label>
+                            <select name="employeeId" class="form-input" required>
+                                <option value="">Seleccionar...</option>
+                                ${empOptions}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tiempo que Debe (Minutos)</label>
+                            <input type="number" name="owedMinutes" class="form-input" required placeholder="Ej. 120 (para 2 horas)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Taza de Recuperación Diaria</label>
+                            <select name="recoveryRateMinutes" class="form-input" required>
+                                <option value="15">15 minutos extra por día</option>
+                                <option value="30">30 minutos extra por día</option>
+                                <option value="45">45 minutos extra por día</option>
+                                <option value="60">1 hora extra por día</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="document.getElementById('modal-container').classList.add('hidden')">Cancelar</button>
+                    <button class="btn btn-primary" id="save-debt-btn">Guardar</button>
+                </div>
+            </div>
+        `;
+        modalContainer.classList.remove('hidden');
+
+        document.getElementById('save-debt-btn').addEventListener('click', async () => {
+            const form = document.getElementById('debt-form');
+            if (!form.reportValidity()) return;
+
+            const formData = new FormData(form);
+            const empId = Number(formData.get('employeeId'));
+            const owed = Number(formData.get('owedMinutes'));
+            const rate = Number(formData.get('recoveryRateMinutes'));
+
+            const emp = await window.db.employees.get(empId);
+            if (emp) {
+                emp.owedMinutes = (emp.owedMinutes || 0) + owed;
+                emp.recoveryRateMinutes = rate;
+                await window.db.employees.update(empId, emp);
+                window.Sync.syncAll();
+
+                modalContainer.classList.add('hidden');
+                renderOwedHours();
+            }
+        });
+    };
+
+    window.clearOwedHours = async (empId) => {
+        if (confirm('¿Estás seguro de que deseas anular la deuda (perdonar) de este empleado?')) {
+            await window.db.employees.update(empId, { owedMinutes: 0, recoveryRateMinutes: 0 });
+            window.Sync.syncAll();
+            renderOwedHours();
+        }
+    };
+
     // Event Listeners
     document.getElementById('week-start-selector').addEventListener('change', async (e) => {
         await window.Utils.setWeekStartDay(Number(e.target.value));
         await renderCalendar();
+    });
+
+    document.getElementById('btn-add-debt').addEventListener('click', () => {
+        window.showAddDebtModal();
     });
 
     document.getElementById('prev-month').addEventListener('click', async () => {
@@ -346,4 +476,5 @@ window.Views.payments = async (container) => {
     // Initial render
     await renderCalendar();
     await renderUpcomingPayments();
+    await renderOwedHours();
 };

@@ -141,6 +141,14 @@ window.Views.employees = async (container) => {
                                 <label class="form-label" style="color:var(--primary);">Tiempo Colación (Min)</label>
                                 <input type="number" name="breakMinutes" class="form-input" placeholder="Ej. 60" value="${emp?.breakMinutes || 60}">
                             </div>
+                            <div class="form-group">
+                                <label class="form-label" style="color:var(--text-secondary);">Entrada Normal</label>
+                                <input type="time" name="defaultStartTime" class="form-input" value="${emp?.defaultStartTime || '09:00'}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="color:var(--text-secondary);">Salida Normal</label>
+                                <input type="time" name="defaultEndTime" class="form-input" value="${emp?.defaultEndTime || '18:00'}">
+                            </div>
                         </div>
 
                         <h4 style="font-size:0.9rem; margin-bottom:12px; color:var(--text-muted); text-transform:uppercase;">Esquema de Remuneración</h4>
@@ -221,7 +229,13 @@ window.Views.employees = async (container) => {
                 startDate: formData.get('startDate'), // Capture from form
                 workHoursPerDay: Number(formData.get('workHoursPerDay')) || 0,
                 breakMinutes: Number(formData.get('breakMinutes')) || 0,
+                defaultStartTime: formData.get('defaultStartTime') || '09:00',
+                defaultEndTime: formData.get('defaultEndTime') || '18:00',
                 avatar: formData.get('name').substring(0, 2).toUpperCase(),
+
+                // Preserve owed hours
+                owedMinutes: emp?.owedMinutes || 0,
+                recoveryRateMinutes: emp?.recoveryRateMinutes || 0,
 
                 // New Fields
                 paymentMode: mode,
@@ -344,8 +358,8 @@ window.Views.employees = async (container) => {
                             id: Date.now() + idx,
                             employeeId: Number(id),
                             date: date,
-                            startTime: '09:00', // Default start
-                            endTime: '18:00',   // Default end
+                            startTime: emp.defaultStartTime || '09:00', // Default start
+                            endTime: emp.defaultEndTime || '18:00',   // Default end
                             totalHours: effectiveHours,
                             payAmount: dailyPay,
                             status: 'worked-auto',

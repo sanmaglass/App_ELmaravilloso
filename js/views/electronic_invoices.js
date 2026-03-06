@@ -15,7 +15,7 @@ window.Views.electronic_invoices = async (container) => {
             </button>
         </div>
 
-        <div class="grid grid-2 gap-4 mb-6">
+        <div class="responsive-grid-2 gap-4 mb-6">
             <div class="card p-4">
                 <h3 class="font-bold mb-3 text-sm flex items-center gap-2"><i class="ph ph-broadcast"></i> ESTADO API SII</h3>
                 <div id="api-status" class="flex items-center gap-2 text-muted">
@@ -113,7 +113,7 @@ async function showDTEModal() {
                     </select>
                 </div>
 
-                <div class="grid grid-2 gap-3">
+                <div class="responsive-grid-2 gap-3">
                     <div class="form-group">
                         <label class="form-label">Razón Social Receptora</label>
                         <input type="text" id="dte-name" class="form-input" placeholder="Nombre completo">

@@ -153,7 +153,7 @@ window.Views.dashboard = async (container) => {
         </div>
 
         <!-- Resumen de Hoy y Operativa -->
-        <div class="grid grid-2 gap-6 mb-8 stack-on-mobile">
+        <div class="responsive-grid-2 gap-6 mb-8">
             <!-- Operativa -->
             <div class="premium-card">
                  <h3 class="text-primary font-bold mb-4 flex items-center gap-2 text-base">

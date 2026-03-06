@@ -112,24 +112,65 @@ window.Utils = {
 
     // Obtener días hábiles (Lunes a Sábado) entre dos fechas
     // Retorna array de strings 'YYYY-MM-DD'
-    getBusinessDates: (startDateStr, endDateStr) => {
-        const start = new Date(startDateStr);
-        const end = new Date(endDateStr);
+    getBusinessDates(startDateStr, endDateStr) {
         const dates = [];
-        let current = new Date(start);
+        let current = this.parseLocalDate(startDateStr);
+        const end = this.parseLocalDate(endDateStr);
 
         while (current <= end) {
-            const dayOfWeek = current.getDay(); // 0 = Sunday
-            if (dayOfWeek !== 0) { // Excluir Domingos
-                // Usar hora local en lugar de toISOString() que usa UTC
-                const y = current.getFullYear();
-                const m = String(current.getMonth() + 1).padStart(2, '0');
-                const d = String(current.getDate()).padStart(2, '0');
-                dates.push(`${y}-${m}-${d}`);
+            // 0 is Sunday
+            if (current.getDay() !== 0) {
+                dates.push(current.toISOString().split('T')[0]);
             }
             current.setDate(current.getDate() + 1);
         }
         return dates;
+    },
+
+    // --- MANEJO DE DEUDA DE HORAS ---
+    calculateRecoveryPlan: (emp) => {
+        if (!emp || !emp.owedMinutes || emp.owedMinutes <= 0 || !emp.recoveryRateMinutes || emp.recoveryRateMinutes <= 0) {
+            return null;
+        }
+
+        const daysNeeded = Math.ceil(emp.owedMinutes / emp.recoveryRateMinutes);
+        let daysCounted = 0;
+        let currentDate = new Date();
+
+        // Skip today if it's already past their default end time
+        if (emp.defaultEndTime) {
+            const [endH, endM] = emp.defaultEndTime.split(':').map(Number);
+            if (currentDate.getHours() > endH || (currentDate.getHours() === endH && currentDate.getMinutes() >= endM)) {
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+        }
+
+        while (daysCounted < daysNeeded) {
+            if (currentDate.getDay() !== 0) { // Skip sunday
+                daysCounted++;
+            }
+            if (daysCounted < daysNeeded) {
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+        }
+
+        // Calculate the extended time for display
+        let extendedTime = "N/A";
+        if (emp.defaultEndTime) {
+            const [h, m] = emp.defaultEndTime.split(':').map(Number);
+            const totalMins = h * 60 + m + parseInt(emp.recoveryRateMinutes);
+            const newH = Math.floor(totalMins / 60) % 24;
+            const newM = totalMins % 60;
+            extendedTime = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+        }
+
+        return {
+            daysNeeded,
+            targetDate: currentDate,
+            targetDateStr: currentDate.toISOString().split('T')[0],
+            extendedTime,
+            remainingMinutesFinalDay: emp.owedMinutes % emp.recoveryRateMinutes || emp.recoveryRateMinutes
+        };
     },
 
     // Calcular pago diario estándar basado en configuración

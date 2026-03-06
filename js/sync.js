@@ -116,7 +116,6 @@ window.Sync = {
                 { local: 'sales_invoices', remote: 'sales_invoices', orderBy: 'date' },
                 { local: 'expenses', remote: 'expenses', orderBy: 'date' },
                 { local: 'daily_sales', remote: 'daily_sales', orderBy: 'date' },
-                { local: 'settings', remote: 'settings', orderBy: 'key' },
                 { local: 'electronic_invoices', remote: 'electronic_invoices', orderBy: 'date' },
                 { local: 'reminders', remote: 'reminders', orderBy: 'id' }
             ];
