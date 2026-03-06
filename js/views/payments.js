@@ -434,8 +434,7 @@ window.Views.payments = async (container) => {
                 emp.owedMinutes = (emp.owedMinutes || 0) + owed;
                 emp.recoveryRateMinutes = rate;
                 emp.recoveryStartDate = startDate;
-                await window.db.employees.update(empId, emp);
-                window.Sync.syncAll();
+                await window.DataManager.saveAndSync('employees', emp);
 
                 modalContainer.classList.add('hidden');
                 renderOwedHours();
@@ -445,9 +444,13 @@ window.Views.payments = async (container) => {
 
     window.clearOwedHours = async (empId) => {
         if (confirm('¿Estás seguro de que deseas anular la deuda (perdonar) de este empleado?')) {
-            await window.db.employees.update(empId, { owedMinutes: 0, recoveryRateMinutes: 0 });
-            window.Sync.syncAll();
-            renderOwedHours();
+            const emp = await window.db.employees.get(empId);
+            if (emp) {
+                emp.owedMinutes = 0;
+                emp.recoveryRateMinutes = 0;
+                await window.DataManager.saveAndSync('employees', emp);
+                renderOwedHours();
+            }
         }
     };
 
