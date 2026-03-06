@@ -135,10 +135,10 @@ window.Utils = {
 
         const daysNeeded = Math.ceil(emp.owedMinutes / emp.recoveryRateMinutes);
         let daysCounted = 0;
-        let currentDate = new Date();
+        let currentDate = emp.recoveryStartDate ? window.Utils.parseLocalDate(emp.recoveryStartDate) : new Date();
 
-        // Skip today if it's already past their default end time
-        if (emp.defaultEndTime) {
+        // Skip today if it's already past their default end time (only if start date is today)
+        if (emp.defaultEndTime && (!emp.recoveryStartDate || emp.recoveryStartDate === new Date().toISOString().split('T')[0])) {
             const [endH, endM] = emp.defaultEndTime.split(':').map(Number);
             if (currentDate.getHours() > endH || (currentDate.getHours() === endH && currentDate.getMinutes() >= endM)) {
                 currentDate.setDate(currentDate.getDate() + 1);

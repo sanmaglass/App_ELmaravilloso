@@ -405,6 +405,10 @@ window.Views.payments = async (container) => {
                                 <option value="60">1 hora extra por día</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Fecha de Inicio de Recuperación</label>
+                            <input type="date" name="recoveryStartDate" class="form-input" required value="${new Date().toISOString().split('T')[0]}">
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -423,11 +427,13 @@ window.Views.payments = async (container) => {
             const empId = Number(formData.get('employeeId'));
             const owed = Number(formData.get('owedMinutes'));
             const rate = Number(formData.get('recoveryRateMinutes'));
+            const startDate = formData.get('recoveryStartDate');
 
             const emp = await window.db.employees.get(empId);
             if (emp) {
                 emp.owedMinutes = (emp.owedMinutes || 0) + owed;
                 emp.recoveryRateMinutes = rate;
+                emp.recoveryStartDate = startDate;
                 await window.db.employees.update(empId, emp);
                 window.Sync.syncAll();
 
