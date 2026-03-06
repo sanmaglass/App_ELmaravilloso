@@ -166,6 +166,17 @@ window.Sync = {
                                 if (!('snoozed_until' in item)) merged.snoozed_until = localReq.snoozed_until;
                             }
 
+                            // Especial para employees: preservar fields de horas si la nube no los soporta
+                            if (localName === 'employees' && localReq) {
+                                if (!('owedMinutes' in item)) merged.owedMinutes = localReq.owedMinutes;
+                                if (!('recoveryRateMinutes' in item)) merged.recoveryRateMinutes = localReq.recoveryRateMinutes;
+                                if (!('recoveryStartDate' in item)) merged.recoveryStartDate = localReq.recoveryStartDate;
+                                if (!('defaultStartTime' in item)) merged.defaultStartTime = localReq.defaultStartTime;
+                                if (!('defaultEndTime' in item)) merged.defaultEndTime = localReq.defaultEndTime;
+                                if (!('workHoursPerDay' in item)) merged.workHoursPerDay = localReq.workHoursPerDay;
+                                if (!('breakMinutes' in item)) merged.breakMinutes = localReq.breakMinutes;
+                            }
+
                             return merged;
                         }).filter(item => {
                             // FILTRO DE BASURA: Ignorar registros con valores imposibles (ej. $8 Trillones)
@@ -218,9 +229,19 @@ window.Sync = {
                     if (remoteName !== 'settings') {
                         const finalLocalData = await window.db[localName].toArray();
                         if (finalLocalData.length > 0) {
+
+                            // Strip unmigrated columns from employees so upsert doesn't fail
+                            let dataToPush = finalLocalData;
+                            if (localName === 'employees') {
+                                dataToPush = finalLocalData.map(emp => {
+                                    const { owedMinutes, recoveryRateMinutes, recoveryStartDate, defaultStartTime, defaultEndTime, workHoursPerDay, breakMinutes, ...rest } = emp;
+                                    return rest;
+                                });
+                            }
+
                             const { error: pushErr } = await window.Sync.client
                                 .from(remoteName)
-                                .upsert(finalLocalData, { onConflict: 'id' });
+                                .upsert(dataToPush, { onConflict: 'id' });
                             if (pushErr) console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
                         }
                     }
