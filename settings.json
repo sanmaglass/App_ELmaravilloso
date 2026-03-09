@@ -1,0 +1,11 @@
+{
+    "supabase_url_sales": "https://ybonpeapvpdseqbtlysx.supabase.co/rest/v1/eleventa_sales",
+    "supabase_url_daily": "https://ybonpeapvpdseqbtlysx.supabase.co/rest/v1/daily_sales",
+    "supabase_key": "sb_publishable_WPhGxSOnQ4RN1aJBKGnj0g_TnZFPWIB",
+    "db_path": "127.0.0.1:C:\\Program Files (x86)\\AbarrotesPDV\\db\\PDVDATA.FDB",
+    "db_user": "SYSDBA",
+    "db_pass": "masterkey",
+    "isql_path": "C:\\Program Files (x86)\\AbarrotesPDV\\isql.exe",
+    "timezone_offset": "-03:00",
+    "sync_start_date": "2026-03-01 00:00:00"
+}

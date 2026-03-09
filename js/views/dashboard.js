@@ -331,12 +331,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }
 
         // ---- Módulo Ventas en Directo (Eleventa) ----
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
+        const liveSalesTodayStr = new Date().toISOString().split('T')[0];
 
         const todayEleventa = eleventaSales.filter(v => {
-            const d = new Date(v.date);
-            return d >= todayStart;
+            return v.date.startsWith(liveSalesTodayStr);
         }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
         const elFeed = document.getElementById('live-sales-feed');
