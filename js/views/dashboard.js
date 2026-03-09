@@ -338,7 +338,7 @@ window.Views.dashboard = async (container) => {
 
             document.getElementById('live-sales-count').textContent = todayEleventa.length;
             const eleventaTotal = todayEleventa.reduce((sum, v) => sum + (parseFloat(v.total) || 0), 0);
-            document.getElementById('live-sales-total').textContent = window.Utils.formatCurrency(eleventaTotal);
+            document.getElementById('live-sales-total').innerHTML = window.Utils.formatCurrency(eleventaTotal);
         }
 
         // ---- KPI Calculations ----

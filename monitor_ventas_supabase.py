@@ -8,15 +8,15 @@ import sys
 # ==========================================
 # CONFIGURACIÓN SUPABASE
 # ==========================================
-# Reemplaza esto con tu URL de Supabase y tu Anon Key pública
-SUPABASE_URL = "https://ybonpeapvpdseqbtlysx.supabase.co/rest/v1/eleventa_sales"
+SUPABASE_URL_SALES = "https://ybonpeapvpdseqbtlysx.supabase.co/rest/v1/eleventa_sales"
+SUPABASE_URL_DAILY = "https://ybonpeapvpdseqbtlysx.supabase.co/rest/v1/daily_sales"
 SUPABASE_KEY = "sb_publishable_WPhGxSOnQ4RN1aJBKGnj0g_TnZFPWIB"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
     "Content-Type": "application/json",
-    "Prefer": "return=minimal" # No necesitamos que devuelva la data insertada
+    "Prefer": "return=minimal"
 }
 
 # ==========================================
@@ -27,31 +27,30 @@ ISQL_PATH = r"C:\Program Files (x86)\AbarrotesPDV\isql.exe"
 DB_USER = "SYSDBA"
 DB_PASS = "masterkey"
 
-# Archivo local para no perder el estado si se reinicia la PC
-STATE_FILE = "ultimo_ticket.txt"
+# Archivos de estado locales
+STATE_FILE_TICKETS = "ultimo_ticket.txt"
+STATE_FILE_TURNOS = "ultimo_turno.txt"
 
-def get_last_processed_ticket():
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "r") as f:
+def get_last_processed(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "r") as f:
             try:
                 return int(f.read().strip())
             except:
                 return 0
     return 0
 
-def save_last_processed_ticket(ticket_id):
-    with open(STATE_FILE, "w") as f:
-        f.write(str(ticket_id))
+def save_last_processed(file_path, value):
+    with open(file_path, "w") as f:
+        f.write(str(value))
 
 def run_query(sql_query):
-    # Escribir el script SQL en un archivo temporal
     query_file = "temp_query.sql"
     with open(query_file, "w", encoding="utf-8") as f:
         f.write(f"CONNECT '{DB_PATH}' USER '{DB_USER}' PASSWORD '{DB_PASS}';\n")
         f.write(sql_query + "\n")
         f.write("QUIT;\n")
     
-    # Ejecutar isql.exe
     result = subprocess.run([ISQL_PATH, "-in", query_file], capture_output=True, text=True)
     os.remove(query_file)
     
@@ -62,26 +61,18 @@ def run_query(sql_query):
     return result.stdout
 
 def parse_sales(isql_output):
-    """
-    Parsea la tabla rudimentaria que lanza isql.exe
-    """
     sales = []
     lines = isql_output.split("\n")
-    
-    # Encontrar donde empiezan los datos (luego de la linea ======= =======...)
     data_start = False
     for line in lines:
         if line.startswith("======="):
             data_start = True
             continue
-            
         if data_start and line.strip():
-            # Formato esperado: TICKET_ID | FECHA | TOTAL | GANANCIA | ARTICULOS
             parts = [p.strip() for p in line.split() if p.strip()]
             if len(parts) >= 6: 
                 try:
                     ticket_id = int(parts[0])
-                    # Construir fecha: YYYY-MM-DD HH:MM:SS
                     date_str = f"{parts[1]} {parts[2]}" 
                     total = float(parts[3])
                     ganancia = float(parts[4])
@@ -95,15 +86,45 @@ def parse_sales(isql_output):
                         "items_count": articulos
                     })
                 except Exception as e:
-                    print(f"Error parseando linea: {line}. Detalle: {e}")
-                    
+                    print(f"Error parseando linea VENTA: {line}. Detalle: {e}")
     return sales
 
-def push_to_supabase(sale_data):
+def parse_turnos(isql_output):
+    turnos = []
+    lines = isql_output.split("\n")
+    data_start = False
+    for line in lines:
+        if line.startswith("======="):
+            data_start = True
+            continue
+        if data_start and line.strip():
+            parts = [p.strip() for p in line.split() if p.strip()]
+            if len(parts) >= 4:
+                try:
+                    turno_id = int(parts[0])
+                    fecha_str = parts[1] # YYYY-MM-DD
+                    efectivo = float(parts[2])
+                    tarjeta = float(parts[3])
+                    
+                    turnos.append({
+                        "turno_id": turno_id,
+                        "date": fecha_str,
+                        "cash": efectivo,
+                        "transfer": 0,
+                        "debit": tarjeta,
+                        "credit": 0,
+                        "total": efectivo + tarjeta,
+                        "notes": f"Cierre de caja Eleventa (Turno #{turno_id})"
+                    })
+                except Exception as e:
+                    print(f"Error parseando linea TURNO: {line}. Detalle: {e}")
+    return turnos
+
+def push_to_supabase(url, payload, name):
     try:
-        response = requests.post(SUPABASE_URL, headers=HEADERS, json=sale_data)
+        response = requests.post(url, headers=HEADERS, json=payload)
         if response.status_code in (200, 201):
-            print(f"✅ Venta {sale_data['ticket_id']} enviada a la nube (${sale_data['total']})")
+            print(f"✅ {name} sincronizado en la nube.")
             return True
         else:
             print(f"❌ Error Supabase {response.status_code}: {response.text}")
@@ -113,15 +134,18 @@ def push_to_supabase(sale_data):
         return False
 
 def main():
-    print("🚀 Iniciando Monitor de Ventas Supabase (Tiempo Real)...")
-    ultimo_ticket = get_last_processed_ticket()
-    print(f"Último ticket procesado: {ultimo_ticket}")
+    print("🚀 Iniciando Monitor de Eleventa (Ventas y Cierres en Tiempo Real)...")
+    ultimo_ticket = get_last_processed(STATE_FILE_TICKETS)
+    ultimo_turno  = get_last_processed(STATE_FILE_TURNOS)
+    
+    print(f"📌 Último ticket: {ultimo_ticket} | Último turno: {ultimo_turno}")
     
     while True:
         try:
-            # Seleccionar ventas más nuevas que el último ticket procesado
-            # Limitar a 50 para evitar sobrecarga si el script estuvo apagado mucho tiempo
-            query = f"""
+            # ==============================
+            # 1. MONITOREAR VENTAS NUEVAS
+            # ==============================
+            query_ventas = f"""
             SELECT FIRST 50
                 V.TICKET_ID,
                 CAST(V.FECHA_HORA AS VARCHAR(20)),
@@ -133,22 +157,47 @@ def main():
             ORDER BY V.TICKET_ID ASC;
             """
             
-            output = run_query(query)
-            if output:
-                nuevas_ventas = parse_sales(output)
-                
-                for venta in nuevas_ventas:
-                    # Enviar a Supabase (Dashboard El Maravilloso)
-                    success = push_to_supabase(venta)
-                    
-                    if success:
-                        ultimo_ticket = venta["ticket_id"]
-                        save_last_processed_ticket(ultimo_ticket)
+            out_ventas = run_query(query_ventas)
+            if out_ventas:
+                nuevas_ventas = parse_sales(out_ventas)
+                for v in nuevas_ventas:
+                    if push_to_supabase(SUPABASE_URL_SALES, v, f"Venta #{v['ticket_id']} (${v['total']})"):
+                        ultimo_ticket = v["ticket_id"]
+                        save_last_processed(STATE_FILE_TICKETS, ultimo_ticket)
                     else:
-                        print("Pausando sincronización 10 segundos debido a un error temporal.")
-                        time.sleep(10)
-                        break # Romper for loop y reintentar en el siguiente tick normal
+                        print("Pausando 5s tras error en Venta.")
+                        time.sleep(5)
+                        break
+
+            # ==============================
+            # 2. MONITOREAR CORTES DE CAJA (TURNOS) CERRADOS
+            # ==============================
+            query_turnos = f"""
+            SELECT FIRST 10
+                T.ID,
+                CAST(CAST(T.TERMINO_EN AS DATE) AS VARCHAR(10)),
+                T.VENTAS_EFECTIVO,
+                T.VENTAS_TARJETA
+            FROM TURNOS T
+            WHERE T.ID > {ultimo_turno} AND T.TERMINO_EN IS NOT NULL
+            ORDER BY T.ID ASC;
+            """
             
+            out_turnos = run_query(query_turnos)
+            if out_turnos:
+                nuevos_turnos = parse_turnos(out_turnos)
+                for t in nuevos_turnos:
+                    turno_id = t.pop("turno_id")
+                    t["deleted"] = False  # Soft delete flag para El Maravilloso
+                    
+                    if push_to_supabase(SUPABASE_URL_DAILY, t, f"Corte de Caja #{turno_id} (${t['total']})"):
+                        ultimo_turno = turno_id
+                        save_last_processed(STATE_FILE_TURNOS, ultimo_turno)
+                    else:
+                        print("Pausando 5s tras error en Turno.")
+                        time.sleep(5)
+                        break
+
             # Esperar 2 segundos antes de volver a verificar la base de datos local
             time.sleep(2)
             
