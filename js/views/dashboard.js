@@ -340,15 +340,17 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
         const elFeed = document.getElementById('live-sales-feed');
+        const validSales = todayEleventa.filter(v => v.total > 0);
+
         if (elFeed) {
-            if (todayEleventa.length === 0) {
+            if (validSales.length === 0) {
                 elFeed.innerHTML = '<div class="px-4 py-8 text-center text-muted"><i class="ph ph-receipt" style="font-size:2rem; opacity:0.5; margin-bottom:10px;"></i><br>Aún no hay ventas registradas hoy.</div>';
             } else {
-                elFeed.innerHTML = todayEleventa.map(v => {
+                elFeed.innerHTML = validSales.map(v => {
                     const dateObj = new Date(v.date);
                     const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
                     return `
-                    < div class= "flex justify-between items-center p-3 border-b" style = "border-color: rgba(0,0,0,0.03);" >
+                    <div class="flex justify-between items-center p-3 border-b" style="border-color: rgba(0,0,0,0.03);">
                             <div class="flex gap-3 items-center">
                                 <div class="h-8 w-8 rounded-full flex items-center justify-center bg-glass" style="color: #10b981;">
                                     <i class="ph ph-ticket"></i>
@@ -362,7 +364,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                                 <div class="font-bold" style="color:#10b981;">+${window.Utils.formatCurrency(v.total)}</div>
                                 <div class="text-xs text-muted">Ganancia: ${window.Utils.formatCurrency(v.profit)}</div>
                             </div>
-                        </div >
+                        </div>
                     `;
                 }).join('');
             }
