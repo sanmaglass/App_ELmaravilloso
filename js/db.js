@@ -6,8 +6,8 @@ const db = new Dexie('ElMaravillosoApp');
 // DB Version History:
 // v1-v4: base schema
 // v12: added electronic_invoices
-// v13: added reminders
-db.version(13).stores({
+// v14: added eleventa_sales integration
+db.version(14).stores({
     employees: 'id, rut, deleted',
     workLogs: 'id, employeeId, date, deleted',
     products: 'id, category, deleted',
@@ -19,7 +19,8 @@ db.version(13).stores({
     expenses: 'id, date, deleted',
     daily_sales: 'id, date, deleted',
     settings: 'key',
-    reminders: 'id, deleted, completed, [completed+deleted]'
+    reminders: 'id, deleted, completed, [completed+deleted]',
+    eleventa_sales: 'id, ticket_id, date, deleted'
 });
 
 // ──────────────────────────────────────────────────────────────

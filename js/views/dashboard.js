@@ -152,6 +152,22 @@ window.Views.dashboard = async (container) => {
             </div>
         </div>
 
+        <div class="dash-header flex justify-between items-center mb-4 mt-8">
+            <h3 class="text-primary font-bold text-lg flex items-center gap-2">
+                <div class="pulsing-dot" style="width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 10px #ef4444;"></div>
+                Ventas en Directo (Caja)
+            </h3>
+        </div>
+        <div class="card p-0 mb-8 overflow-hidden" style="border: 1px solid rgba(239, 68, 68, 0.2);">
+            <div id="live-sales-feed" style="max-height: 250px; overflow-y: auto; background: var(--bg-app);">
+                <div class="px-4 py-3 text-center text-muted text-sm">Cargando ventas en tiempo real...</div>
+            </div>
+            <div class="p-3 bg-glass border-t flex justify-between items-center text-sm" style="border-color: rgba(0,0,0,0.05);">
+                <span class="text-muted">Tickets de hoy: <b id="live-sales-count" class="text-primary">0</b></span>
+                <span class="text-muted">Total Cajas: <b id="live-sales-total" style="color:#10b981;">$0</b></span>
+            </div>
+        </div>
+
         <!-- Resumen de Hoy y Operativa -->
         <div class="responsive-grid-2 gap-6 mb-8">
             <!-- Operativa -->
@@ -252,14 +268,15 @@ window.Views.dashboard = async (container) => {
         const prevMonthStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
         // Fetch all data in parallel
-        const [allEmployees, allLogs, allInvoices, allSuppliers, allDailySales, allProducts, allExpenses] = await Promise.all([
+        const [allEmployees, allLogs, allInvoices, allSuppliers, allDailySales, allProducts, allExpenses, allEleventaSales] = await Promise.all([
             window.db.employees.toArray(),
             window.db.workLogs.toArray(),
             window.db.purchase_invoices.toArray(),
             window.db.suppliers.toArray(),
             window.db.daily_sales.toArray(),
             window.db.products.toArray(),
-            window.db.expenses.toArray()
+            window.db.expenses.toArray(),
+            window.db.eleventa_sales.toArray()
         ]);
 
         const employees = allEmployees.filter(e => !e.deleted);
@@ -279,6 +296,50 @@ window.Views.dashboard = async (container) => {
 
         const supplierMap = {};
         suppliers.forEach(s => supplierMap[s.id] = s.name);
+
+        const eleventaSales = (allEleventaSales || []).filter(s => !s.deleted);
+
+        // ---- Módulo Ventas en Directo (Eleventa) ----
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
+        const todayEleventa = eleventaSales.filter(v => {
+            const d = new Date(v.date);
+            return d >= todayStart;
+        }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        const elFeed = document.getElementById('live-sales-feed');
+        if (elFeed) {
+            if (todayEleventa.length === 0) {
+                elFeed.innerHTML = '<div class="px-4 py-8 text-center text-muted"><i class="ph ph-receipt" style="font-size:2rem; opacity:0.5; margin-bottom:10px;"></i><br>Aún no hay ventas registradas hoy.</div>';
+            } else {
+                elFeed.innerHTML = todayEleventa.map(v => {
+                    const dateObj = new Date(v.date);
+                    const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                    return `
+                        <div class="flex justify-between items-center p-3 border-b" style="border-color: rgba(0,0,0,0.03);">
+                            <div class="flex gap-3 items-center">
+                                <div class="h-8 w-8 rounded-full flex items-center justify-center bg-glass" style="color: #10b981;">
+                                    <i class="ph ph-ticket"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-sm text-primary">Ticket #${v.ticket_id || v.id}</div>
+                                    <div class="text-xs text-muted flex items-center gap-1"><i class="ph ph-clock"></i> ${timeStr} • ${v.items_count || 1} arts.</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-bold" style="color:#10b981;">+${window.Utils.formatCurrency(v.total)}</div>
+                                <div class="text-xs text-muted">Ganancia: ${window.Utils.formatCurrency(v.profit)}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            document.getElementById('live-sales-count').textContent = todayEleventa.length;
+            const eleventaTotal = todayEleventa.reduce((sum, v) => sum + (parseFloat(v.total) || 0), 0);
+            document.getElementById('live-sales-total').textContent = window.Utils.formatCurrency(eleventaTotal);
+        }
 
         // ---- KPI Calculations ----
         const thisMonthInvoices = invoices.filter(i => i.date && i.date.startsWith(currentMonthStr));

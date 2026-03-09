@@ -117,7 +117,8 @@ window.Sync = {
                 { local: 'expenses', remote: 'expenses', orderBy: 'date' },
                 { local: 'daily_sales', remote: 'daily_sales', orderBy: 'date' },
                 { local: 'electronic_invoices', remote: 'electronic_invoices', orderBy: 'date' },
-                { local: 'reminders', remote: 'reminders', orderBy: 'id' }
+                { local: 'reminders', remote: 'reminders', orderBy: 'id' },
+                { local: 'eleventa_sales', remote: 'eleventa_sales', orderBy: 'date', descending: true }
             ];
 
             let dataChanged = false;
@@ -129,10 +130,25 @@ window.Sync = {
                     const orderKey = map.orderBy || 'id';
 
                     // 1. PULL PHASE (Cloud is Master)
-                    const { data: cloudData, error } = await window.Sync.client
+                    let query = window.Sync.client
                         .from(remoteName)
-                        .select('*')
-                        .order(orderKey, { ascending: true });
+                        .select('*');
+
+                    if (map.descending) {
+                        query = query.order(orderKey, { ascending: false });
+                    } else {
+                        query = query.order(orderKey, { ascending: true });
+                    }
+
+                    // Para eleventa_sales no queremos descargar todo el historial de 10 años, solo limitar a unos 300 recientes si es muy grande, o filtro por fecha futura.
+                    if (remoteName === 'eleventa_sales') {
+                        // Traer solo las ventas del ultimo mes o limit 500 para no reventar la RAM
+                        const thirtyDaysAgo = new Date();
+                        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                        query = query.gte('date', thirtyDaysAgo.toISOString()).limit(500);
+                    }
+
+                    const { data: cloudData, error } = await query;
 
                     if (error) throw error;
 
@@ -405,6 +421,7 @@ window.Sync = {
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, (payload) => window.Sync.handleRealtimeChange('expenses', payload))
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'electronic_invoices' }, (payload) => window.Sync.handleRealtimeChange('electronic_invoices', payload))
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'reminders' }, (payload) => window.Sync.handleRealtimeChange('reminders', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'eleventa_sales' }, (payload) => window.Sync.handleRealtimeChange('eleventa_sales', payload))
                 .subscribe((status) => {
                     if (status === 'SUBSCRIBED') {
                         console.log('✅ Realtime connected!');
@@ -465,7 +482,7 @@ window.Sync = {
         const tables = [
             'employees', 'worklogs', 'products', 'promotions',
             'suppliers', 'purchase_invoices', 'sales_invoices',
-            'expenses', 'daily_sales', 'electronic_invoices', 'reminders'
+            'expenses', 'daily_sales', 'electronic_invoices', 'reminders', 'eleventa_sales'
         ];
         for (const table of tables) {
             const { error } = await window.Sync.client.from(table).delete().gte('id', 0);
