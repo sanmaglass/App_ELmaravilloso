@@ -331,10 +331,22 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }
 
         // ---- Módulo Ventas en Directo (Eleventa) ----
-        const liveSalesTodayStr = new Date().toISOString().split('T')[0];
+        const nowLocal = new Date();
+        const localYear = nowLocal.getFullYear();
+        const localMonth = String(nowLocal.getMonth() + 1).padStart(2, '0');
+        const localDay = String(nowLocal.getDate()).padStart(2, '0');
+        const todayStrLocal = `${localYear}-${localMonth}-${localDay}`; // YYYY-MM-DD local
 
         const todayEleventa = eleventaSales.filter(v => {
-            return v.date.startsWith(liveSalesTodayStr);
+            // v.date puede venir como "2026-03-09T18:00:00Z" (UTC) o con offset.
+            // Al crear new Date(v.date), el navegador lo pasa a su zona local.
+            const saleDate = new Date(v.date);
+            const sYear = saleDate.getFullYear();
+            const sMonth = String(saleDate.getMonth() + 1).padStart(2, '0');
+            const sDay = String(saleDate.getDate()).padStart(2, '0');
+            const saleStrLocal = `${sYear}-${sMonth}-${sDay}`;
+
+            return saleStrLocal === todayStrLocal;
         }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
         const elFeed = document.getElementById('live-sales-feed');

@@ -222,19 +222,24 @@ def main():
     
     while True:
         try:
+            # 1. MONITOREAR VENTAS NUEVAS
+            # Hemos quitado el filtro de > 0 para asegurar que no se pierda nada.
+            # El Dashboard se encargará de ocultar los $0 si es necesario.
             query_ventas = f"""
-            SELECT FIRST 50
+            SELECT FIRST 100
                 V.TICKET_ID, CAST(V.FECHA_HORA AS VARCHAR(20)),
                 V.SUBTOTAL + V.IMPUESTOS AS TOTAL, V.GANANCIA_NETA, V.CANTIDAD_ARTICULOS
             FROM VENTATICKETS V
-            WHERE V.TICKET_ID > {ultimo_ticket} AND V.ESTA_CANCELADO = 'f' AND (V.SUBTOTAL + V.IMPUESTOS) > 0
+            WHERE V.TICKET_ID > {ultimo_ticket} 
+              AND (V.ESTA_CANCELADO IS NULL OR LOWER(V.ESTA_CANCELADO) NOT IN ('t', '1', 'y'))
             ORDER BY V.TICKET_ID ASC;
             """
+            
             out_ventas = run_query(query_ventas)
             if out_ventas:
-                nuevas = parse_sales(out_ventas)
-                for v in nuevas:
-                    if push_to_supabase(SUPABASE_URL_SALES, v, f"Venta #{v['ticket_id']}"):
+                nuevas_ventas = parse_sales(out_ventas)
+                for v in nuevas_ventas:
+                    if push_to_supabase(SUPABASE_URL_SALES, v, f"Venta #{v['ticket_id']} (${v['total']})"):
                         ultimo_ticket = v["ticket_id"]
                         save_last_processed(STATE_FILE_TICKETS, ultimo_ticket)
 
