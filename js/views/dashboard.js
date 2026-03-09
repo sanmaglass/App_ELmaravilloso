@@ -477,10 +477,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const todayTotal = todaySales.reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
 
         document.getElementById('today-summary').innerHTML = `
-                < div style = "display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);" >
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
                 <span style="color:var(--text-muted);font-size:0.85rem;"><i class="ph ph-receipt"></i> Ventas hoy</span>
                 <span style="font-weight:700;color:#10b981;font-size:0.9rem;">${fmt(todayTotal)}</span>
-            </div >
+            </div>
             <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
                 <span style="color:var(--text-muted);font-size:0.85rem;"><i class="ph ph-user-check"></i> Empleados hoy</span>
                 <span style="font-weight:700;color:var(--text-primary);font-size:0.9rem;">${todayLogs.length} registros</span>
@@ -509,7 +509,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         document.getElementById('top-suppliers').innerHTML = topSuppliers.length === 0
             ? '<p style="color:var(--text-muted);font-size:0.85rem;">Sin datos de proveedores</p>'
             : topSuppliers.map(([id, amount], idx) => `
-                    < div >
+                    <div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
                         <span style="font-size:0.83rem;font-weight:600;color:var(--text-primary);">${supplierMap[id] || 'Desconocido'}</span>
                         <span style="font-size:0.8rem;font-weight:700;color:${colors[idx]};">${fmt(amount)}</span>
@@ -517,7 +517,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     <div class="supplier-bar-bg">
                         <div class="supplier-bar-fill" style="width:0%;background:${colors[idx]};" data-width="${(amount / maxSpend * 100).toFixed(1)}"></div>
                     </div>
-                </div >
+                </div>
                     `).join('');
 
         // Animate supplier bars
@@ -647,7 +647,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             creditEl.innerHTML = '<p style="color:#16a34a;font-weight:600;">✅ Sin deudas a crédito</p>';
         } else {
             creditEl.innerHTML = `
-                < div style = "font-size:1.2rem;font-weight:700;color:#92400e;" > ${fmt(totalCredit)}</div >
+                <div style="font-size:1.2rem;font-weight:700;color:#92400e;">${fmt(totalCredit)}</div>
                     <div style="font-size:0.82rem;color:#78350f;">${creditPending.length} factura${creditPending.length > 1 ? 's' : ''} pendiente${creditPending.length > 1 ? 's' : ''}</div>
                 ${overdue.length ? `<div style="color:#dc2626;font-weight:700;font-size:0.82rem;margin-top:4px;">🚨 ${overdue.length} vencida${overdue.length > 1 ? 's' : ''}</div>` : ''}
                 ${dueSoon.length ? `<div style="color:#ea580c;font-size:0.8rem;margin-top:2px;">⏰ ${dueSoon.length} vence esta semana</div>` : ''}
@@ -667,13 +667,13 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 const d = new Date(i.dueDate); d.setHours(0, 0, 0, 0);
                 const dl = Math.ceil((d - today0) / 86400000);
                 const col = dl === 0 ? '#dc2626' : dl <= 2 ? '#ea580c' : '#d97706';
-                return `< div style = "display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:rgba(255,255,255,0.6);border-radius:8px;border:1px solid rgba(217,119,6,0.2);" >
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:rgba(255,255,255,0.6);border-radius:8px;border:1px solid rgba(217,119,6,0.2);">
                     <span style="font-weight:700;color:var(--text-primary);font-size:0.88rem;">${supplierMap[i.supplierId] || '?'} <span style="color:var(--text-muted);font-weight:400;">#${i.invoiceNumber || ''}</span></span>
                     <div style="display:flex;gap:10px;align-items:center;">
                         <span style="font-weight:700;">${fmt(parseFloat(i.amount) || 0)}</span>
                         <span style="background:${col};color:white;padding:2px 8px;border-radius:10px;font-size:0.78rem;font-weight:700;">${dl === 0 ? '¡HOY!' : dl + 'd'}</span>
                     </div>
-                </div > `;
+                </div>`;
             }).join('');
         }
 
@@ -689,13 +689,13 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             document.getElementById('expiry-alerts-list').innerHTML = expiringSoon.map(p => {
                 const diff = Math.ceil((new Date(p.expiryDate) - now) / 86400000);
                 const col = diff <= 7 ? 'var(--danger)' : '#f59e0b';
-                return `< div style = "padding:10px;border:1px solid rgba(0,0,0,0.05);border-radius:8px;display:flex;align-items:center;gap:10px;background:white;" >
+                return `<div style="padding:10px;border:1px solid rgba(0,0,0,0.05);border-radius:8px;display:flex;align-items:center;gap:10px;background:white;">
                     <i class="ph ${diff <= 7 ? 'ph-prohibit' : 'ph-clock-countdown'}" style="font-size:1.4rem;color:${col};"></i>
                     <div>
                         <div style="font-weight:700;font-size:0.88rem;">${p.name}</div>
                         <div style="font-size:0.75rem;color:${col};font-weight:600;">Vence en ${diff} días</div>
                     </div>
-                </div > `;
+                </div>`;
             }).join('');
         }
 
@@ -705,7 +705,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             ? 'Sin actividad reciente.'
             : recentLogs.map(l => {
                 const emp = employees.find(e => e.id === l.employeeId);
-                return `< div style = "display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--bg-app);border-radius:6px;" >
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--bg-app);border-radius:6px;">
                     <div>
                         <div style="font-weight:600;font-size:0.85rem;">${emp ? emp.name : 'Desc.'}</div>
                         <div style="font-size:0.72rem;color:var(--text-muted);">${window.Utils.formatDate(l.date)}</div>
@@ -714,7 +714,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                         <div style="color:var(--accent);font-weight:700;font-size:0.85rem;">${fmt(l.payAmount)}</div>
                         <div style="font-size:0.72rem;">${l.totalHours}h</div>
                     </div>
-                </div > `;
+                </div>`;
             }).join('');
 
         // ---- Export Excel ----
