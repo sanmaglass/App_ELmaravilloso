@@ -44,13 +44,27 @@ def load_settings():
 # Cargar configuración global
 cfg = load_settings()
 
+def find_isql():
+    common_paths = [
+        cfg.get("isql_path"),
+        r"C:\Program Files (x86)\AbarrotesMultiCaja\FirebirdSQL20\isql.exe",
+        r"C:\Program Files (x86)\AbarrotesPDV\isql.exe",
+        r"C:\Program Files (x86)\AbarrotesMultiCaja\isql.exe",
+        r"C:\Program Files\Firebird\Firebird_2_0\bin\isql.exe",
+        r"C:\Program Files (x86)\Firebird\Firebird_2_0\bin\isql.exe"
+    ]
+    for p in common_paths:
+        if p and os.path.exists(p):
+            return p
+    return cfg.get("isql_path") # Fallback al configurado
+
 SUPABASE_URL_SALES = cfg["supabase_url_sales"]
 SUPABASE_URL_DAILY = cfg["supabase_url_daily"]
 SUPABASE_KEY = cfg["supabase_key"]
 DB_PATH = cfg["db_path"]
 DB_USER = cfg["db_user"]
 DB_PASS = cfg["db_pass"]
-ISQL_PATH = cfg["isql_path"]
+ISQL_PATH = find_isql()
 TIMEZONE_OFFSET = cfg["timezone_offset"]
 SYNC_START_DATE = cfg["sync_start_date"]
 

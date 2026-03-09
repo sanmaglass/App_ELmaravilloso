@@ -1,0 +1,3 @@
+CONNECT '127.0.0.1:C:\Program Files (x86)\AbarrotesMultiCaja\db\PDVDATA.FDB' USER 'SYSDBA' PASSWORD 'masterkey';
+SHOW TABLE VENTATICKETS;
+QUIT;
