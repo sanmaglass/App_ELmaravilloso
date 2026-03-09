@@ -51,7 +51,10 @@ def run_query(sql_query):
         f.write(sql_query + "\n")
         f.write("QUIT;\n")
     
-    result = subprocess.run([ISQL_PATH, "-in", query_file], capture_output=True, text=True)
+    # Previene que la ventana de CMD parpadee en Windows al ejecutarse de fondo
+    CREATE_NO_WINDOW = 0x08000000
+    
+    result = subprocess.run([ISQL_PATH, "-in", query_file], capture_output=True, text=True, creationflags=CREATE_NO_WINDOW)
     os.remove(query_file)
     
     if result.returncode != 0:
