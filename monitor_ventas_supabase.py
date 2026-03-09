@@ -4,6 +4,18 @@ import requests
 import json
 import os
 import sys
+import logging
+
+# ==========================================
+# CONFIGURACION DE LOGS (Registro de errores)
+# ==========================================
+logging.basicConfig(filename='eleventa_monitor.log', level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    encoding='utf-8')
+
+def print_log(msg):
+    print(msg)
+    logging.info(msg)
 
 # ==========================================
 # CONFIGURACIÓN SUPABASE
@@ -58,7 +70,7 @@ def run_query(sql_query):
     os.remove(query_file)
     
     if result.returncode != 0:
-        print("Error en ISQL:", result.stderr)
+        print_log(f"Error en ISQL: {result.stderr}")
         return None
         
     return result.stdout
@@ -89,7 +101,7 @@ def parse_sales(isql_output):
                         "items_count": articulos
                     })
                 except Exception as e:
-                    print(f"Error parseando linea VENTA: {line}. Detalle: {e}")
+                    print_log(f"Error parseando linea VENTA: {line}. Detalle: {e}")
     return sales
 
 def parse_turnos(isql_output):
@@ -120,28 +132,57 @@ def parse_turnos(isql_output):
                         "notes": f"Cierre de caja Eleventa (Turno #{turno_id})"
                     })
                 except Exception as e:
-                    print(f"Error parseando linea TURNO: {line}. Detalle: {e}")
+                    print_log(f"Error parseando linea TURNO: {line}. Detalle: {e}")
     return turnos
 
 def push_to_supabase(url, payload, name):
     try:
         response = requests.post(url, headers=HEADERS, json=payload)
         if response.status_code in (200, 201):
-            print(f"✅ {name} sincronizado en la nube.")
+            print_log(f"✅ {name} sincronizado en la nube.")
             return True
         else:
-            print(f"❌ Error Supabase {response.status_code}: {response.text}")
+            print_log(f"❌ Error Supabase enviando {name} | Status: {response.status_code} | Body: {response.text}")
             return False
     except Exception as e:
-        print(f"❌ Error de red: {e}")
+        print_log(f"❌ Error de red con Supabase enviando {name}: {e}")
         return False
 
 def main():
-    print("🚀 Iniciando Monitor de Eleventa (Ventas y Cierres en Tiempo Real)...")
+    print_log("🚀 Iniciando Monitor de Eleventa (Ventas y Cierres en Tiempo Real)...")
     ultimo_ticket = get_last_processed(STATE_FILE_TICKETS)
     ultimo_turno  = get_last_processed(STATE_FILE_TURNOS)
     
-    print(f"📌 Último ticket: {ultimo_ticket} | Último turno: {ultimo_turno}")
+    # === Fast-Forward Automático (Saltar Historial Antiguo) ===
+    if ultimo_ticket == 0:
+        print_log("⚠️ Primer inicio detectado: saltando historial antiguo de VENTAS...")
+        out = run_query("SELECT MAX(TICKET_ID) FROM VENTATICKETS;")
+        if out:
+            try:
+                for line in out.split("\n"):
+                    if line.strip().isdigit():
+                        ultimo_ticket = int(line.strip())
+                        save_last_processed(STATE_FILE_TICKETS, ultimo_ticket)
+                        print_log(f"✅ Historial de ventas saltado hasta el ticket #{ultimo_ticket}")
+                        break
+            except Exception as e:
+                print_log(f"Error saltando historial de ventas: {e}")
+
+    if ultimo_turno == 0:
+        print_log("⚠️ Primer inicio detectado: saltando historial antiguo de TURNOS...")
+        out = run_query("SELECT MAX(ID) FROM TURNOS;")
+        if out:
+            try:
+                for line in out.split("\n"):
+                    if line.strip().isdigit():
+                        ultimo_turno = int(line.strip())
+                        save_last_processed(STATE_FILE_TURNOS, ultimo_turno)
+                        print_log(f"✅ Historial de turnos saltado hasta el Cierre #{ultimo_turno}")
+                        break
+            except Exception as e:
+                print_log(f"Error saltando historial de turnos: {e}")
+                
+    print_log(f"📌 Último ticket vigilado: {ultimo_ticket} | Último turno vigilado: {ultimo_turno}")
     
     while True:
         try:
@@ -168,7 +209,7 @@ def main():
                         ultimo_ticket = v["ticket_id"]
                         save_last_processed(STATE_FILE_TICKETS, ultimo_ticket)
                     else:
-                        print("Pausando 5s tras error en Venta.")
+                        print_log("Pausando 5s tras error en Venta.")
                         time.sleep(5)
                         break
 
@@ -197,7 +238,7 @@ def main():
                         ultimo_turno = turno_id
                         save_last_processed(STATE_FILE_TURNOS, ultimo_turno)
                     else:
-                        print("Pausando 5s tras error en Turno.")
+                        print_log("Pausando 5s tras error en Turno.")
                         time.sleep(5)
                         break
 
@@ -205,7 +246,7 @@ def main():
             time.sleep(2)
             
         except Exception as e:
-            print(f"Error crítico en el bucle principal: {e}")
+            print_log(f"Error crítico en el bucle principal: {e}")
             time.sleep(5)
 
 if __name__ == "__main__":

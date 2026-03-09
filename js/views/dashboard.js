@@ -4,7 +4,7 @@
 // ==========================================
 window.Views = window.Views || {};
 
-window.Views.dashboard = async (container) => {
+window.Views.dashboard = async (container, selectedMonth = null) => {
     container.innerHTML = `
     <style>
         /* ---- Sub-Tab System ---- */
@@ -82,6 +82,9 @@ window.Views.dashboard = async (container) => {
             <p class="text-muted text-sm mt-1">Sincronización en tiempo real activa 🛰️</p>
         </div>
         <div class="dash-header-btns">
+            <select id="dash-month-selector" class="btn bg-glass" style="border:1px solid rgba(0,0,0,0.1); font-weight:bold; cursor:pointer; color:var(--text-primary);">
+                <option value="">Cargando...</option>
+            </select>
             <button id="btn-export-excel" class="btn btn-premium" style="background:var(--grad-success); box-shadow: 0 10px 20px rgba(0, 200, 83, 0.2);">
                 <i class="ph ph-file-xls"></i> <span class="hide-mobile">Excel</span>
             </button>
@@ -157,6 +160,9 @@ window.Views.dashboard = async (container) => {
                 <div class="pulsing-dot" style="width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 10px #ef4444;"></div>
                 Ventas en Directo (Caja)
             </h3>
+            <button class="btn btn-secondary" onclick="document.querySelector('[data-view=\\'daily_sales\\']')?.click()" style="padding: 6px 12px; font-size: 0.85rem;">
+                <i class="ph ph-calendar-check"></i> Ver Cierres de Caja Diarios
+            </button>
         </div>
         <div class="card p-0 mb-8 overflow-hidden" style="border: 1px solid rgba(239, 68, 68, 0.2);">
             <div id="live-sales-feed" style="max-height: 250px; overflow-y: auto; background: var(--bg-app);">
@@ -252,17 +258,20 @@ window.Views.dashboard = async (container) => {
             </div>
         </div>
     </div>
-
-    </div>
     `;
 
     // (Tab switching removed as only Resumen exists now)
 
     // ===================== LOAD RESUMEN DATA =====================
     try {
-        const now = new Date();
+        let now = new Date();
+        if (selectedMonth) {
+            const [y, m] = selectedMonth.split('-');
+            now = new Date(y, parseInt(m) - 1, 15);
+        }
+        const realToday = new Date();
         // IMPORTANTE: Usar hora LOCAL (no UTC) para evitar desfase en Argentina (UTC-3)
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const todayStr = `${realToday.getFullYear()}-${String(realToday.getMonth() + 1).padStart(2, '0')}-${String(realToday.getDate()).padStart(2, '0')}`;
         const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const prevMonthStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
@@ -299,6 +308,28 @@ window.Views.dashboard = async (container) => {
 
         const eleventaSales = (allEleventaSales || []).filter(s => !s.deleted);
 
+        // --- LLENAR SELECTOR DE MESES ---
+        const ms = document.getElementById('dash-month-selector');
+        if (ms) {
+            const months = new Set();
+            dailySales.forEach(s => { if (s.date) months.add(s.date.substring(0, 7)) });
+            for (let i = 0; i < 12; i++) {
+                const d = new Date(realToday.getFullYear(), realToday.getMonth() - i, 1);
+                months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+            }
+            ms.innerHTML = '';
+            Array.from(months).sort().reverse().forEach(m_str => {
+                const [y, mo] = m_str.split('-');
+                const lbl = new Date(y, parseInt(mo) - 1, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+                ms.insertAdjacentHTML('beforeend', `<option value="${m_str}">${lbl.charAt(0).toUpperCase() + lbl.slice(1)}</option>`);
+            });
+            ms.value = currentMonthStr; // Fijar mes actual
+
+            ms.addEventListener('change', (e) => {
+                window.Views.dashboard(container, e.target.value);
+            });
+        }
+
         // ---- Módulo Ventas en Directo (Eleventa) ----
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
@@ -317,7 +348,7 @@ window.Views.dashboard = async (container) => {
                     const dateObj = new Date(v.date);
                     const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
                     return `
-                        <div class="flex justify-between items-center p-3 border-b" style="border-color: rgba(0,0,0,0.03);">
+                    < div class= "flex justify-between items-center p-3 border-b" style = "border-color: rgba(0,0,0,0.03);" >
                             <div class="flex gap-3 items-center">
                                 <div class="h-8 w-8 rounded-full flex items-center justify-center bg-glass" style="color: #10b981;">
                                     <i class="ph ph-ticket"></i>
@@ -331,7 +362,7 @@ window.Views.dashboard = async (container) => {
                                 <div class="font-bold" style="color:#10b981;">+${window.Utils.formatCurrency(v.total)}</div>
                                 <div class="text-xs text-muted">Ganancia: ${window.Utils.formatCurrency(v.profit)}</div>
                             </div>
-                        </div>
+                        </div >
                     `;
                 }).join('');
             }
@@ -423,15 +454,15 @@ window.Views.dashboard = async (container) => {
             if (pct < 60) {
                 healthEl.innerHTML = '🟢 Muy Saludable';
                 healthBar.style.background = '#10b981';
-                healthDetail.textContent = `Margen estimado: ${margin}% — Excelente control de costos`;
+                healthDetail.textContent = `Margen estimado: ${margin} % — Excelente control de costos`;
             } else if (pct < 80) {
                 healthEl.innerHTML = '🟡 Aceptable';
                 healthBar.style.background = '#f59e0b';
-                healthDetail.textContent = `Margen estimado: ${margin}% — Monitorea los gastos`;
+                healthDetail.textContent = `Margen estimado: ${margin} % — Monitorea los gastos`;
             } else if (pct < 100) {
                 healthEl.innerHTML = '🟠 En riesgo';
                 healthBar.style.background = '#f97316';
-                healthDetail.textContent = `Margen estimado: ${margin}% — Gastos muy altos vs ventas`;
+                healthDetail.textContent = `Margen estimado: ${margin} % — Gastos muy altos vs ventas`;
             } else {
                 healthEl.innerHTML = '🔴 Pérdida';
                 healthBar.style.background = '#ef4444';
@@ -446,10 +477,10 @@ window.Views.dashboard = async (container) => {
         const todayTotal = todaySales.reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
 
         document.getElementById('today-summary').innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+                < div style = "display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);" >
                 <span style="color:var(--text-muted);font-size:0.85rem;"><i class="ph ph-receipt"></i> Ventas hoy</span>
                 <span style="font-weight:700;color:#10b981;font-size:0.9rem;">${fmt(todayTotal)}</span>
-            </div>
+            </div >
             <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
                 <span style="color:var(--text-muted);font-size:0.85rem;"><i class="ph ph-user-check"></i> Empleados hoy</span>
                 <span style="font-weight:700;color:var(--text-primary);font-size:0.9rem;">${todayLogs.length} registros</span>
@@ -478,7 +509,7 @@ window.Views.dashboard = async (container) => {
         document.getElementById('top-suppliers').innerHTML = topSuppliers.length === 0
             ? '<p style="color:var(--text-muted);font-size:0.85rem;">Sin datos de proveedores</p>'
             : topSuppliers.map(([id, amount], idx) => `
-                <div>
+                    < div >
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
                         <span style="font-size:0.83rem;font-weight:600;color:var(--text-primary);">${supplierMap[id] || 'Desconocido'}</span>
                         <span style="font-size:0.8rem;font-weight:700;color:${colors[idx]};">${fmt(amount)}</span>
@@ -486,8 +517,8 @@ window.Views.dashboard = async (container) => {
                     <div class="supplier-bar-bg">
                         <div class="supplier-bar-fill" style="width:0%;background:${colors[idx]};" data-width="${(amount / maxSpend * 100).toFixed(1)}"></div>
                     </div>
-                </div>
-            `).join('');
+                </div >
+                    `).join('');
 
         // Animate supplier bars
         setTimeout(() => {
@@ -502,7 +533,8 @@ window.Views.dashboard = async (container) => {
         const months6Costs = [];
         for (let i = 5; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const mStr = `${d.getFullYear()} - ${String(d.getMonth() + 1).padStart(2, '0')
+                } `;
             months6Labels.push(d.toLocaleDateString('es-ES', { month: 'short' }));
             months6Sales.push(dailySales.filter(s => s.date && s.date.startsWith(mStr)).reduce((s, d) => s + (parseFloat(d.total) || 0), 0));
             months6Costs.push(invoices.filter(inv => inv.date && inv.date.startsWith(mStr)).reduce((s, inv) => s + (parseFloat(inv.amount) || 0), 0));
@@ -615,8 +647,8 @@ window.Views.dashboard = async (container) => {
             creditEl.innerHTML = '<p style="color:#16a34a;font-weight:600;">✅ Sin deudas a crédito</p>';
         } else {
             creditEl.innerHTML = `
-                <div style="font-size:1.2rem;font-weight:700;color:#92400e;">${fmt(totalCredit)}</div>
-                <div style="font-size:0.82rem;color:#78350f;">${creditPending.length} factura${creditPending.length > 1 ? 's' : ''} pendiente${creditPending.length > 1 ? 's' : ''}</div>
+                < div style = "font-size:1.2rem;font-weight:700;color:#92400e;" > ${fmt(totalCredit)}</div >
+                    <div style="font-size:0.82rem;color:#78350f;">${creditPending.length} factura${creditPending.length > 1 ? 's' : ''} pendiente${creditPending.length > 1 ? 's' : ''}</div>
                 ${overdue.length ? `<div style="color:#dc2626;font-weight:700;font-size:0.82rem;margin-top:4px;">🚨 ${overdue.length} vencida${overdue.length > 1 ? 's' : ''}</div>` : ''}
                 ${dueSoon.length ? `<div style="color:#ea580c;font-size:0.8rem;margin-top:2px;">⏰ ${dueSoon.length} vence esta semana</div>` : ''}
             `;
@@ -635,13 +667,13 @@ window.Views.dashboard = async (container) => {
                 const d = new Date(i.dueDate); d.setHours(0, 0, 0, 0);
                 const dl = Math.ceil((d - today0) / 86400000);
                 const col = dl === 0 ? '#dc2626' : dl <= 2 ? '#ea580c' : '#d97706';
-                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:rgba(255,255,255,0.6);border-radius:8px;border:1px solid rgba(217,119,6,0.2);">
+                return `< div style = "display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:rgba(255,255,255,0.6);border-radius:8px;border:1px solid rgba(217,119,6,0.2);" >
                     <span style="font-weight:700;color:var(--text-primary);font-size:0.88rem;">${supplierMap[i.supplierId] || '?'} <span style="color:var(--text-muted);font-weight:400;">#${i.invoiceNumber || ''}</span></span>
                     <div style="display:flex;gap:10px;align-items:center;">
                         <span style="font-weight:700;">${fmt(parseFloat(i.amount) || 0)}</span>
                         <span style="background:${col};color:white;padding:2px 8px;border-radius:10px;font-size:0.78rem;font-weight:700;">${dl === 0 ? '¡HOY!' : dl + 'd'}</span>
                     </div>
-                </div>`;
+                </div > `;
             }).join('');
         }
 
@@ -657,13 +689,13 @@ window.Views.dashboard = async (container) => {
             document.getElementById('expiry-alerts-list').innerHTML = expiringSoon.map(p => {
                 const diff = Math.ceil((new Date(p.expiryDate) - now) / 86400000);
                 const col = diff <= 7 ? 'var(--danger)' : '#f59e0b';
-                return `<div style="padding:10px;border:1px solid rgba(0,0,0,0.05);border-radius:8px;display:flex;align-items:center;gap:10px;background:white;">
+                return `< div style = "padding:10px;border:1px solid rgba(0,0,0,0.05);border-radius:8px;display:flex;align-items:center;gap:10px;background:white;" >
                     <i class="ph ${diff <= 7 ? 'ph-prohibit' : 'ph-clock-countdown'}" style="font-size:1.4rem;color:${col};"></i>
                     <div>
                         <div style="font-weight:700;font-size:0.88rem;">${p.name}</div>
                         <div style="font-size:0.75rem;color:${col};font-weight:600;">Vence en ${diff} días</div>
                     </div>
-                </div>`;
+                </div > `;
             }).join('');
         }
 
@@ -673,7 +705,7 @@ window.Views.dashboard = async (container) => {
             ? 'Sin actividad reciente.'
             : recentLogs.map(l => {
                 const emp = employees.find(e => e.id === l.employeeId);
-                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--bg-app);border-radius:6px;">
+                return `< div style = "display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--bg-app);border-radius:6px;" >
                     <div>
                         <div style="font-weight:600;font-size:0.85rem;">${emp ? emp.name : 'Desc.'}</div>
                         <div style="font-size:0.72rem;color:var(--text-muted);">${window.Utils.formatDate(l.date)}</div>
@@ -682,7 +714,7 @@ window.Views.dashboard = async (container) => {
                         <div style="color:var(--accent);font-weight:700;font-size:0.85rem;">${fmt(l.payAmount)}</div>
                         <div style="font-size:0.72rem;">${l.totalHours}h</div>
                     </div>
-                </div>`;
+                </div > `;
             }).join('');
 
         // ---- Export Excel ----
@@ -702,7 +734,7 @@ window.Views.dashboard = async (container) => {
 
         // ---- WhatsApp Report ----
         document.getElementById('btn-whatsapp-report').addEventListener('click', () => {
-            const msg = `📊 *Reporte El Maravilloso*\n📅 ${now.toLocaleDateString('es-ES')}\n\n💰 Gasto Mes: ${window.Utils.formatCurrency(gastoMes, true)}\n💵 Ventas Mes: ${window.Utils.formatCurrency(ventasMes, true)}\n⏱ Horas: ${totalHours.toFixed(1)}h\n👥 Personal: ${employees.length}\n\n_Generado automáticamente_`;
+            const msg = `📊 * Reporte El Maravilloso *\n📅 ${now.toLocaleDateString('es-ES')} \n\n💰 Gasto Mes: ${window.Utils.formatCurrency(gastoMes, true)} \n💵 Ventas Mes: ${window.Utils.formatCurrency(ventasMes, true)} \n⏱ Horas: ${totalHours.toFixed(1)} h\n👥 Personal: ${employees.length} \n\n_Generado automáticamente_`;
             window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
         });
 
