@@ -7,5 +7,6 @@
     "db_pass": "masterkey",
     "isql_path": "C:\\Program Files (x86)\\AbarrotesPDV\\isql.exe",
     "timezone_offset": "-03:00",
-    "sync_start_date": "2026-03-01 00:00:00"
+    "sync_start_date": "2026-03-01 00:00:00",
+    "deep_scan_on_startup": true
 }

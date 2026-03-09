@@ -220,6 +220,29 @@ def main():
                 
     print_log(f"📌 Estado Actual | Último ticket: {ultimo_ticket} | Último turno: {ultimo_turno}")
     
+    # === DEEP SCAN (REPARAR HUECOS) ===
+    if cfg.get("deep_scan_on_startup", False):
+        print_log("🔍 Iniciando DEEP SCAN para rellenar huecos (últimos 1000 tickets)...")
+        # Escaneamos los últimos 1000 tickets previos al último procesado
+        inicio_scan = max(0, ultimo_ticket - 1000)
+        query_deep = f"""
+        SELECT V.TICKET_ID, CAST(V.FECHA_HORA AS VARCHAR(20)),
+               V.SUBTOTAL + V.IMPUESTOS AS TOTAL, V.GANANCIA_NETA, V.CANTIDAD_ARTICULOS
+        FROM VENTATICKETS V
+        WHERE V.TICKET_ID BETWEEN {inicio_scan} AND {ultimo_ticket}
+          AND (V.ESTA_CANCELADO IS NULL OR LOWER(V.ESTA_CANCELADO) NOT IN ('t', '1', 'y'))
+        ORDER BY V.TICKET_ID ASC;
+        """
+        out_deep = run_query(query_deep)
+        if out_deep:
+            deep_ventas = parse_sales(out_deep)
+            count_filled = 0
+            for v in deep_ventas:
+                # El push_to_supabase ya tiene el Escudo Anti-Duplicados
+                if push_to_supabase(SUPABASE_URL_SALES, v, f"Reparando Venta #{v['ticket_id']}"):
+                    count_filled += 1
+            print_log(f"✅ DEEP SCAN finalizado. Se revisaron {len(deep_ventas)} tickets.")
+    
     while True:
         try:
             # 1. MONITOREAR VENTAS NUEVAS
