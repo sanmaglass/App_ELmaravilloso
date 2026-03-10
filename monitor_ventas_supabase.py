@@ -45,18 +45,24 @@ def load_settings():
 cfg = load_settings()
 
 def find_isql():
+    # Prioridad: 1. Configuración, 2. Root de Abarrotes, 3. Firebird Estándar
     common_paths = [
         cfg.get("isql_path"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "isql.exe"),
         r"C:\Program Files (x86)\AbarrotesMultiCaja\FirebirdSQL20\isql.exe",
         r"C:\Program Files (x86)\AbarrotesPDV\isql.exe",
         r"C:\Program Files (x86)\AbarrotesMultiCaja\isql.exe",
-        r"C:\Program Files\Firebird\Firebird_2_0\bin\isql.exe",
-        r"C:\Program Files (x86)\Firebird\Firebird_2_0\bin\isql.exe"
     ]
     for p in common_paths:
         if p and os.path.exists(p):
             return p
-    return cfg.get("isql_path") # Fallback al configurado
+            
+    # Último recurso: Buscar en el PATH de Windows
+    import shutil
+    where_isql = shutil.which("isql.exe")
+    if where_isql: return where_isql
+
+    return cfg.get("isql_path")
 
 SUPABASE_URL_SALES = cfg["supabase_url_sales"]
 SUPABASE_URL_DAILY = cfg["supabase_url_daily"]
@@ -142,17 +148,22 @@ def push_to_supabase(url, data, description="Registro"):
         if check_exists_in_supabase(url, "ticket_id", data["ticket_id"]):
             return True
             
-    try:
-        r = requests.post(url, headers=headers, data=json.dumps(data))
-        if r.status_code in [200, 201]:
-            print_log(f"✅ {description} sincronizado en la nube.")
-            return True
-        else:
-            print_log(f"❌ Error Supabase ({r.status_code}): {r.text}")
-            return False
-    except Exception as e:
-        print_log(f"❌ Error de red: {e}")
-        return False
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            r = requests.post(url, headers=headers, data=json.dumps(data), timeout=10)
+            if r.status_code in [200, 201]:
+                print_log(f"✅ {description} sincronizado en la nube.")
+                return True
+            else:
+                print_log(f"❌ Intento {attempt+1} fallido ({r.status_code}): {r.text}")
+        except Exception as e:
+            print_log(f"❌ Error de red en intento {attempt+1}: {e}")
+        
+        time.sleep(2) # Esperar antes de reintentar
+        
+    print_log(f"🚨 ERROR CRÍTICO: No se pudo subir {description} tras {max_retries} intentos.")
+    return False
 
 def get_last_processed(filename):
     if os.path.exists(filename):
@@ -275,6 +286,8 @@ def main():
             out_ventas = run_query(query_ventas)
             if out_ventas:
                 nuevas_ventas = parse_sales(out_ventas)
+                if nuevas_ventas:
+                    print_log(f"🔎 Se detectaron {len(nuevas_ventas)} nuevas ventas en Eleventa...")
                 for v in nuevas_ventas:
                     if push_to_supabase(SUPABASE_URL_SALES, v, f"Venta #{v['ticket_id']} (${v['total']})"):
                         ultimo_ticket = v["ticket_id"]
