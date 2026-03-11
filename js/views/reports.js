@@ -2,6 +2,9 @@
 window.Views = window.Views || {};
 
 window.Views.reports = async (container) => {
+    // Save the real function to avoid dashboard alias recursion
+    window.Views._reportsReal = window.Views.reports;
+
     container.innerHTML = `
     <style>
         .month-card {

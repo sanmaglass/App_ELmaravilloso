@@ -1,8 +1,39 @@
 // Purchase Invoices View (Compras)
 window.Views = window.Views || {};
 
-window.Views.purchase_invoices = async (container) => {
+window.Views.purchase_invoices = async (container, _tab = 'compras') => {
+    // Sub-tab router: Ventas and Gastos are embedded here
+    window._facturasTab = _tab;
+
     container.innerHTML = `
+        <!-- SUB-TAB BAR -->
+        <div style="display:flex; gap:0; background:var(--bg-input); border-radius:14px; padding:4px; margin-bottom:24px; width:fit-content; box-shadow:0 1px 4px rgba(0,0,0,0.07);">
+            <button id="ftab-compras" onclick="window.Views.purchase_invoices(document.getElementById('view-container'), 'compras')" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='compras'?'var(--primary)':'transparent'}; color:${_tab==='compras'?'white':'var(--text-muted)'};">
+                <i class="ph ph-receipt"></i> Compras
+            </button>
+            <button id="ftab-ventas" onclick="window.Views.purchase_invoices(document.getElementById('view-container'), 'ventas')" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='ventas'?'var(--primary)':'transparent'}; color:${_tab==='ventas'?'white':'var(--text-muted)'};">
+                <i class="ph ph-file-text"></i> Ventas
+            </button>
+            <button id="ftab-gastos" onclick="window.Views.purchase_invoices(document.getElementById('view-container'), 'gastos')" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='gastos'?'var(--primary)':'transparent'}; color:${_tab==='gastos'?'white':'var(--text-muted)'};">
+                <i class="ph ph-coin"></i> Gastos
+            </button>
+        </div>
+        <div id="facturas-tab-content"></div>
+    `;
+
+    const tabContainer = document.getElementById('facturas-tab-content');
+
+    if (_tab === 'ventas') {
+        await window.Views.sales_invoices(tabContainer);
+        return;
+    }
+    if (_tab === 'gastos') {
+        await window.Views.expenses(tabContainer);
+        return;
+    }
+
+    // === TAB: COMPRAS (original content) ===
+    tabContainer.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
             <div>
                 <h1 style="margin-bottom:8px; color:var(--text-primary); display:flex; align-items:center; gap:10px;">
@@ -47,6 +78,7 @@ window.Views.purchase_invoices = async (container) => {
             <select id="filter-status" class="form-input">
                 <option value="all">Todos los Estados</option>
                 <option value="Pendiente">Pendiente</option>
+                <option value="Abonado">Abonado (Parcial)</option>
                 <option value="Pagado">Pagado</option>
                 <option value="Crédito">Crédito Pendiente</option>
             </select>
@@ -178,28 +210,56 @@ async function renderAnalytics() {
         const active = invoices.filter(i => !i.deleted);
 
         const now = new Date();
-        // Usar hora LOCAL para evitar desfase UTC en Argentina
-        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const lastMonth = (() => { const d = new Date(now.getFullYear(), now.getMonth() - 1, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })();
+        // Use hr LOCAL for UTC offset in Chile/Argentina (UTC-3)
+        const realCurrentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const currentYear = now.getFullYear().toString();
 
+        // Read active date filter — analytics should reflect it
+        const dateFilterEl = document.getElementById('filter-date');
+        const activeDateFilter = dateFilterEl ? dateFilterEl.value : 'all';
+
+        // Determine period label and filter prefix
+        let periodPrefix = null;
+        let periodLabel = 'del Mes';
+
+        if (activeDateFilter && activeDateFilter !== 'all') {
+            periodPrefix = activeDateFilter; // e.g. "2026-02"
+            const [y, m] = activeDateFilter.split('-');
+            const d = new Date(parseInt(y), parseInt(m) - 1, 1);
+            periodLabel = `de ${d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`;
+        } else {
+            periodPrefix = realCurrentMonth;
+        }
+
+        // Previous month for comparison
+        const [pYear, pMonth] = periodPrefix.split('-').map(Number);
+        const prevDate = new Date(pYear, pMonth - 2, 1);
+        const lastMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
         // Filter by periods
-        const thisMonth = active.filter(i => i.date && i.date.startsWith(currentMonth));
+        const thisMonth = active.filter(i => i.date && i.date.startsWith(periodPrefix));
         const prevMonth = active.filter(i => i.date && i.date.startsWith(lastMonth));
         const thisYear = active.filter(i => i.date && i.date.startsWith(currentYear));
 
         // Calculate metrics
         const monthCount = thisMonth.length;
         const monthTotal = thisMonth.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
-        const monthPending = thisMonth.filter(i => i.paymentStatus === 'Pendiente');
-        const monthPendingAmount = monthPending.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+        // Pending includes both 'Pendiente' and 'Abonado' (still have balance)
+        const monthPending = thisMonth.filter(i => i.paymentStatus === 'Pendiente' || i.paymentStatus === 'Abonado');
+        const monthPendingAmount = monthPending.reduce((sum, i) => {
+            const remaining = (parseFloat(i.amount) || 0) - (parseFloat(i.paidAmount) || 0);
+            return sum + Math.max(0, remaining);
+        }, 0);
 
         const yearTotal = thisYear.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
         const avgPerInvoice = monthCount > 0 ? monthTotal / monthCount : 0;
 
-        // Credit totals (all-time, not just this month)
-        const allCreditPending = active.filter(i => i.paymentMethod === 'Crédito' && i.paymentStatus === 'Pendiente');
-        const creditPendingTotal = allCreditPending.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+        // Credit totals (all-time, not just this month) — includes Abonado
+        const allCreditPending = active.filter(i => i.paymentMethod === 'Crédito' && (i.paymentStatus === 'Pendiente' || i.paymentStatus === 'Abonado'));
+        const creditPendingTotal = allCreditPending.reduce((sum, i) => {
+            const remaining = (parseFloat(i.amount) || 0) - (parseFloat(i.paidAmount) || 0);
+            return sum + Math.max(0, remaining);
+        }, 0);
         const creditOverdue = allCreditPending.filter(i => {
             if (!i.dueDate) return false;
             const due = new Date(i.dueDate);
@@ -216,7 +276,7 @@ async function renderAnalytics() {
 
         panel.innerHTML = `
             <div class="card" style="padding:16px; border-left:4px solid var(--primary);">
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Facturas del Mes</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Facturas ${periodLabel}</div>
                 <div style="font-size:1.8rem; font-weight:700; color:var(--primary);">${monthCount}</div>
                 <div style="font-size:0.75rem; color:${trendColor}; margin-top:4px;">
                     ${trendIcon} ${countDiff > 0 ? '+' : ''}${countDiff} vs mes anterior
@@ -224,7 +284,7 @@ async function renderAnalytics() {
             </div>
 
             <div class="card" style="padding:16px; border-left:4px solid #10b981;">
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Total del Mes</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Total ${periodLabel}</div>
                 <div style="font-size:1.5rem; font-weight:700; color:#10b981;">${formatCurrency(monthTotal)}</div>
                 <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
                     Promedio: ${formatCurrency(avgPerInvoice)}
@@ -232,7 +292,7 @@ async function renderAnalytics() {
             </div>
 
             <div class="card" style="padding:16px; border-left:4px solid #f59e0b;">
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Pendientes de Pago</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Pendientes ${periodLabel}</div>
                 <div style="font-size:1.5rem; font-weight:700; color:#f59e0b;">${monthPending.length}</div>
                 <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
                     ${formatCurrency(monthPendingAmount)}
@@ -364,11 +424,11 @@ async function renderCreditAlerts() {
         const supplierMap = {};
         suppliers.forEach(s => supplierMap[s.id] = s.name);
 
-        // Filter: Active credit invoices that are still pending
+        // Filter: Active credit invoices that are still pending OR partially paid (Abonado)
         const creditPending = invoices.filter(i =>
             !i.deleted &&
             i.paymentMethod === 'Crédito' &&
-            i.paymentStatus === 'Pendiente' &&
+            (i.paymentStatus === 'Pendiente' || i.paymentStatus === 'Abonado') &&
             i.dueDate
         );
 
@@ -391,6 +451,8 @@ async function renderCreditAlerts() {
             const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
             inv._daysLeft = diff;
             inv._supplierName = supplierMap[inv.supplierId] || 'Proveedor Desconocido';
+            inv._paidAmount = parseFloat(inv.paidAmount) || 0;
+            inv._remaining = Math.max(0, (parseFloat(inv.amount) || 0) - inv._paidAmount);
 
             if (diff < 0) overdue.push(inv);
             else if (diff <= 7) dueThisWeek.push(inv);
@@ -403,30 +465,57 @@ async function renderCreditAlerts() {
         dueThisWeek.sort((a, b) => a._daysLeft - b._daysLeft);
         dueSoon.sort((a, b) => a._daysLeft - b._daysLeft);
 
-        const totalPending = creditPending.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
-        const overdueTotal = overdue.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+        // Totals calculated using remaining balance
+        const totalPending = creditPending.reduce((sum, i) => sum + i._remaining, 0);
+        const overdueTotal = overdue.reduce((sum, i) => sum + i._remaining, 0);
 
         function renderCard(inv, color, icon) {
             const absDay = Math.abs(inv._daysLeft);
             const label = inv._daysLeft < 0 ? `${absDay} días atrasada` :
                 inv._daysLeft === 0 ? '¡Vence HOY!' :
                     `${inv._daysLeft} días restantes`;
-            return `
-                <div style="background:white; border-left:4px solid ${color}; padding:12px 16px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
-                    <div style="flex:1; min-width:0;">
-                        <div style="font-weight:700; color:#1f2937; font-size:0.95rem; display:flex; align-items:center; gap:6px;">
-                            ${icon} ${escapeHTML(inv._supplierName)}
-                        </div>
-                        <div style="font-size:0.8rem; color:#6b7280; margin-top:3px; display:flex; gap:12px; flex-wrap:wrap;">
-                            <span style="font-weight:700; color:${color};">${label}</span>
-                            <span>📅 Vence: ${formatDate(inv.dueDate)}</span>
-                            <span>💰 ${formatCurrency(inv.amount)}</span>
-                        </div>
-                        ${inv.invoiceNumber ? `<div style="font-size:0.75rem; color:#9ca3af; margin-top:2px;">#${escapeHTML(inv.invoiceNumber)} • ${escapeHTML(inv.creditDays) || '?'} días crédito</div>` : ''}
+
+            const amount = parseFloat(inv.amount) || 0;
+            const paidAmt = inv._paidAmount;
+            const pct = amount > 0 ? Math.min(100, (paidAmt / amount) * 100) : 0;
+            const hasAbono = paidAmt > 0;
+
+            const progressBar = hasAbono ? `
+                <div style="margin-top:6px;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:#6b7280; margin-bottom:3px;">
+                        <span>💵 Abonado: ${formatCurrency(paidAmt)}</span>
+                        <span>Pendiente: ${formatCurrency(inv._remaining)}</span>
                     </div>
-                    <button class="btn btn-credit-pay" data-id="${inv.id}" style="background:${color}; color:white; border:none; padding:6px 14px; border-radius:8px; font-size:0.8rem; font-weight:600; cursor:pointer; white-space:nowrap; transition:all 0.2s;">
-                        💰 Pagada
-                    </button>
+                    <div style="background:#e5e7eb; border-radius:99px; height:6px; overflow:hidden;">
+                        <div style="width:${pct.toFixed(1)}%; height:100%; background:${color}; border-radius:99px; transition:width 0.5s ease;"></div>
+                    </div>
+                </div>` : '';
+
+            return `
+                <div style="background:white; border-left:4px solid ${color}; padding:12px 16px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:700; color:#1f2937; font-size:0.95rem; display:flex; align-items:center; gap:6px;">
+                                ${icon} ${escapeHTML(inv._supplierName)}
+                                ${hasAbono ? `<span style="background:rgba(99,102,241,0.1); color:#6366f1; font-size:0.65rem; font-weight:700; padding:2px 7px; border-radius:99px;">ABONADO</span>` : ''}
+                            </div>
+                            <div style="font-size:0.8rem; color:#6b7280; margin-top:3px; display:flex; gap:12px; flex-wrap:wrap;">
+                                <span style="font-weight:700; color:${color};">${label}</span>
+                                <span>📅 Vence: ${formatDate(inv.dueDate)}</span>
+                                <span>💰 Total: ${formatCurrency(amount)}</span>
+                            </div>
+                            ${inv.invoiceNumber ? `<div style="font-size:0.75rem; color:#9ca3af; margin-top:2px;">#${escapeHTML(inv.invoiceNumber)} • ${escapeHTML(String(inv.creditDays)) || '?'} días crédito</div>` : ''}
+                            ${progressBar}
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0;">
+                            <button class="btn btn-credit-pay" data-id="${inv.id}" style="background:${color}; color:white; border:none; padding:5px 12px; border-radius:8px; font-size:0.78rem; font-weight:600; cursor:pointer; white-space:nowrap;">
+                                ✅ Liquidar
+                            </button>
+                            <button class="btn btn-credit-abonar" data-id="${inv.id}" data-amount="${amount}" data-paid="${paidAmt}" style="background:white; color:${color}; border:1.5px solid ${color}; padding:5px 12px; border-radius:8px; font-size:0.78rem; font-weight:600; cursor:pointer; white-space:nowrap;">
+                                💵 Abonar
+                            </button>
+                        </div>
+                    </div>
                 </div>
             `;
         }
@@ -440,7 +529,7 @@ async function renderCreditAlerts() {
                         </div>
                         <div>
                             <h3 style="margin:0; color:#78350f; font-size:1.1rem;">Facturas a Crédito Pendientes</h3>
-                            <p style="margin:2px 0 0 0; font-size:0.85rem; color:#92400e;">${creditPending.length} facturas • Total: ${formatCurrency(totalPending)}</p>
+                            <p style="margin:2px 0 0 0; font-size:0.85rem; color:#92400e;">${creditPending.length} facturas • Por pagar: ${formatCurrency(totalPending)}</p>
                         </div>
                     </div>
                     ${overdue.length > 0 ? `
@@ -449,21 +538,13 @@ async function renderCreditAlerts() {
                         </div>
                     ` : ''}
                 </div>
-                <div style="display:grid; gap:8px; max-height:350px; overflow-y:auto;">
+                <div style="display:grid; gap:8px; max-height:400px; overflow-y:auto;">
         `;
 
-        if (overdue.length > 0) {
-            html += overdue.map(inv => renderCard(inv, '#dc2626', '🔴')).join('');
-        }
-        if (dueThisWeek.length > 0) {
-            html += dueThisWeek.map(inv => renderCard(inv, '#ea580c', '🟠')).join('');
-        }
-        if (dueSoon.length > 0) {
-            html += dueSoon.map(inv => renderCard(inv, '#ca8a04', '🟡')).join('');
-        }
-        if (dueLater.length > 0) {
-            html += dueLater.map(inv => renderCard(inv, '#6b7280', '⚪')).join('');
-        }
+        if (overdue.length > 0) html += overdue.map(inv => renderCard(inv, '#dc2626', '🔴')).join('');
+        if (dueThisWeek.length > 0) html += dueThisWeek.map(inv => renderCard(inv, '#ea580c', '🟠')).join('');
+        if (dueSoon.length > 0) html += dueSoon.map(inv => renderCard(inv, '#ca8a04', '🟡')).join('');
+        if (dueLater.length > 0) html += dueLater.map(inv => renderCard(inv, '#6b7280', '⚪')).join('');
 
         html += `</div></div>
         <style>
@@ -475,18 +556,109 @@ async function renderCreditAlerts() {
 
         panel.innerHTML = html;
 
-        // "Mark Paid" button events
+        // ✅ FIX: "Liquidar" button — always merges full record before saving
         document.querySelectorAll('.btn-credit-pay').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = Number(e.currentTarget.dataset.id);
-                if (confirm('¿Confirmar que esta factura fue pagada?')) {
+                if (confirm('¿Confirmar que esta factura fue pagada en su totalidad?')) {
                     try {
-                        await window.DataManager.saveAndSync('purchase_invoices', { id, paymentStatus: 'Pagado' });
+                        // SAFE: Read complete record first, then merge
+                        const existing = await window.db.purchase_invoices.get(id);
+                        if (!existing) throw new Error('Factura no encontrada');
+                        await window.DataManager.saveAndSync('purchase_invoices', {
+                            ...existing,
+                            paymentStatus: 'Pagado',
+                            paidAmount: existing.amount // Mark as fully paid
+                        });
                         await renderCreditAlerts();
                         await renderAnalytics();
                         renderInvoices();
                     } catch (err) { alert('Error: ' + err.message); }
                 }
+            });
+        });
+
+        // 💵 "Abonar" button — opens a mini payment modal
+        document.querySelectorAll('.btn-credit-abonar').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = Number(e.currentTarget.dataset.id);
+                const totalAmount = parseFloat(e.currentTarget.dataset.amount) || 0;
+                const alreadyPaid = parseFloat(e.currentTarget.dataset.paid) || 0;
+                const remaining = Math.max(0, totalAmount - alreadyPaid);
+
+                // Mini-modal overlay
+                const overlay = document.createElement('div');
+                overlay.id = 'abono-overlay';
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;';
+                overlay.innerHTML = `
+                    <div style="background:white;border-radius:20px;padding:28px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                        <h3 style="margin:0 0 6px;color:#1f2937;display:flex;align-items:center;gap:8px;"><i class="ph ph-currency-dollar"></i> Registrar Abono</h3>
+                        <p style="font-size:0.85rem;color:#6b7280;margin:0 0 20px;">Ingresa el monto que vas a pagar ahora.</p>
+                        
+                        <div style="background:#fef3c7;border-radius:10px;padding:12px;margin-bottom:16px;font-size:0.85rem;">
+                            <div style="display:flex;justify-content:space-between;"><span style="color:#92400e;">Total factura:</span><b>${formatCurrency(totalAmount)}</b></div>
+                            ${alreadyPaid > 0 ? `<div style="display:flex;justify-content:space-between;"><span style="color:#92400e;">Ya abonado:</span><b style="color:#6366f1;">${formatCurrency(alreadyPaid)}</b></div>` : ''}
+                            <div style="display:flex;justify-content:space-between;border-top:1px solid #fde68a;margin-top:8px;padding-top:8px;"><span style="color:#92400e;font-weight:700;">Pendiente:</span><b style="color:#dc2626;">${formatCurrency(remaining)}</b></div>
+                        </div>
+
+                        <div style="margin-bottom:16px;">
+                            <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:6px;">Monto a Abonar ($)</label>
+                            <input type="number" id="abono-amount-input" class="form-input" placeholder="0" min="1" max="${remaining}" step="1" style="width:100%;font-size:1.1rem;font-weight:700;text-align:center;" autofocus>
+                            <div style="display:flex;gap:6px;margin-top:8px;justify-content:center;flex-wrap:wrap;">
+                                <button type="button" class="abono-preset" data-val="${Math.round(remaining * 0.25)}" style="padding:4px 10px;border-radius:20px;border:1px solid #d97706;background:white;color:#92400e;font-size:0.75rem;font-weight:600;cursor:pointer;">25%</button>
+                                <button type="button" class="abono-preset" data-val="${Math.round(remaining * 0.5)}" style="padding:4px 10px;border-radius:20px;border:1px solid #d97706;background:white;color:#92400e;font-size:0.75rem;font-weight:600;cursor:pointer;">50%</button>
+                                <button type="button" class="abono-preset" data-val="${Math.round(remaining * 0.75)}" style="padding:4px 10px;border-radius:20px;border:1px solid #d97706;background:white;color:#92400e;font-size:0.75rem;font-weight:600;cursor:pointer;">75%</button>
+                                <button type="button" class="abono-preset" data-val="${remaining}" style="padding:4px 10px;border-radius:20px;border:1px solid #10b981;background:#10b981;color:white;font-size:0.75rem;font-weight:600;cursor:pointer;">Total</button>
+                            </div>
+                        </div>
+
+                        <div style="display:flex;gap:10px;">
+                            <button id="abono-cancel" class="btn btn-secondary" style="flex:1;">Cancelar</button>
+                            <button id="abono-confirm" class="btn btn-primary" style="flex:2;background:linear-gradient(135deg,#10b981,#059669);">💰 Confirmar Abono</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+
+                // Preset buttons
+                overlay.querySelectorAll('.abono-preset').forEach(pb => {
+                    pb.addEventListener('click', () => {
+                        document.getElementById('abono-amount-input').value = pb.dataset.val;
+                    });
+                });
+
+                document.getElementById('abono-cancel').addEventListener('click', () => overlay.remove());
+                overlay.addEventListener('click', (ev) => { if (ev.target === overlay) overlay.remove(); });
+
+                document.getElementById('abono-confirm').addEventListener('click', async () => {
+                    const abonoMonto = parseFloat(document.getElementById('abono-amount-input').value) || 0;
+                    if (abonoMonto <= 0) { alert('Ingresa un monto mayor a 0.'); return; }
+                    if (abonoMonto > remaining + 0.01) {
+                        alert(`El abono (${formatCurrency(abonoMonto)}) supera el monto pendiente (${formatCurrency(remaining)}).`);
+                        return;
+                    }
+
+                    try {
+                        const existing = await window.db.purchase_invoices.get(id);
+                        if (!existing) throw new Error('Factura no encontrada');
+
+                        const newPaid = alreadyPaid + abonoMonto;
+                        const isFullyPaid = newPaid >= (totalAmount - 0.01);
+                        await window.DataManager.saveAndSync('purchase_invoices', {
+                            ...existing,
+                            paidAmount: newPaid,
+                            paymentStatus: isFullyPaid ? 'Pagado' : 'Abonado'
+                        });
+
+                        overlay.remove();
+                        await renderCreditAlerts();
+                        await renderAnalytics();
+                        renderInvoices();
+                    } catch (err) {
+                        overlay.remove();
+                        alert('Error al registrar abono: ' + err.message);
+                    }
+                });
             });
         });
 
@@ -612,10 +784,18 @@ async function renderInvoices() {
             }
 
             const isPending = inv.paymentStatus === 'Pendiente';
+            const isAbonado = inv.paymentStatus === 'Abonado';
             const amount = parseFloat(inv.amount) || 0;
+            const paidAmt = parseFloat(inv.paidAmount) || 0;
+            const abonoPct = amount > 0 ? Math.min(100, (paidAmt / amount) * 100) : 0;
+
+            // Border color: green=paid, indigo=abonado, amber=credit pending, yellow=other pending
+            const borderColor = !isPending && !isAbonado ? '#10b981'
+                : isAbonado ? '#6366f1'
+                : inv.paymentMethod === 'Crédito' ? '#d97706' : '#f59e0b';
 
             return `
-            <div class="card" style="padding:16px; display:flex; flex-wrap:wrap; align-items:center; gap:12px; border-left: 4px solid ${isPending ? (inv.paymentMethod === 'Crédito' ? '#d97706' : '#f59e0b') : '#10b981'};">
+            <div class="card" style="padding:16px; display:flex; flex-wrap:wrap; align-items:center; gap:12px; border-left: 4px solid ${borderColor};">
                 
                 <!-- Supplier & Invoice No -->
                 <div style="flex:1 1 200px; min-width:0;">
@@ -641,11 +821,21 @@ async function renderInvoices() {
                                 dueSoon ? `🟠 ${diff}d restantes` : `${diff}d restantes`;
                     return `<div style="font-size:0.75rem; margin-top:3px; display:flex; align-items:center; gap:6px;">
                             <span style="background:rgba(217,119,6,0.1); color:${dueColor}; padding:2px 8px; border-radius:10px; font-weight:700;">
-                                ⏰ Crédito ${escapeHTML(inv.creditDays) || '?'}d • ${dueLabel}
+                                ⏰ Crédito ${escapeHTML(String(inv.creditDays)) || '?'}d • ${dueLabel}
                             </span>
                             <span style="color:#9ca3af;">Vence: ${formatDate(inv.dueDate)}</span>
                         </div>`;
                 })() : ''}
+                    ${isAbonado && paidAmt > 0 ? `
+                    <div style="margin-top:5px;">
+                        <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:#6b7280;margin-bottom:2px;">
+                            <span>💵 Abonado: ${formatCurrency(paidAmt)}</span>
+                            <span>Pendiente: ${formatCurrency(amount - paidAmt)}</span>
+                        </div>
+                        <div style="background:#e5e7eb;border-radius:99px;height:5px;overflow:hidden;">
+                            <div style="width:${abonoPct.toFixed(1)}%;height:100%;background:#6366f1;border-radius:99px;"></div>
+                        </div>
+                    </div>` : ''}
                 </div>
 
                 <!-- Amount & Period -->
@@ -656,7 +846,7 @@ async function renderInvoices() {
 
                 <!-- Status -->
                 <div style="flex:1 1 100px;">
-                    <span style="padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:${isPending ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)'}; color:${isPending ? '#d97706' : '#059669'};">
+                    <span style="padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:${isAbonado ? 'rgba(99,102,241,0.1)' : isPending ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)'}; color:${isAbonado ? '#6366f1' : isPending ? '#d97706' : '#059669'};">
                         ${inv.paymentStatus}
                     </span>
                     <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">${inv.paymentMethod}</div>
@@ -823,6 +1013,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
                         <select id="inv-status" class="form-input">
                             <option value="Pagado" ${isEdit && invoiceToEdit.paymentStatus === 'Pagado' ? 'selected' : ''}>Pagado</option>
                             <option value="Pendiente" ${isEdit && invoiceToEdit.paymentStatus === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                            <option value="Abonado" ${isEdit && invoiceToEdit.paymentStatus === 'Abonado' ? 'selected' : ''}>Abonado (Parcial)</option>
                         </select>
                     </div>
 
@@ -1161,6 +1352,8 @@ async function showInvoiceModal(invoiceToEdit = null) {
                 dueDate,
                 notes,
                 imageData,
+                // Preserve paidAmount on edit; new invoices start at 0
+                paidAmount: isEdit ? (invoiceToEdit.paidAmount || 0) : 0,
                 deleted: false
             };
             window._invPhotoData = null; // limpiar temp

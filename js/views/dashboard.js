@@ -94,6 +94,25 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         </div>
     </div>
 
+    <!-- Quick-access tabs (replaces sidebar items) -->
+    <div style="display:flex; gap:0; background:var(--bg-input); border-radius:14px; padding:4px; margin-bottom:20px; width:fit-content; box-shadow:0 1px 4px rgba(0,0,0,0.07); flex-wrap:wrap;">
+        <button id="dash-tab-resumen" onclick="window._switchDashTab('resumen')" style="padding:8px 18px; border:none; border-radius:10px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.2s; background:var(--primary); color:white;">
+            <i class="ph ph-squares-four"></i> Dashboard
+        </button>
+        <button id="dash-tab-reportes" onclick="window._switchDashTab('reportes')" style="padding:8px 18px; border:none; border-radius:10px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.2s; background:transparent; color:var(--text-muted);">
+            <i class="ph ph-chart-bar"></i> Historial
+        </button>
+        <button id="dash-tab-calc" onclick="window._switchDashTab('calc')" style="padding:8px 18px; border:none; border-radius:10px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.2s; background:transparent; color:var(--text-muted);">
+            <i class="ph ph-calculator"></i> Calculadora
+        </button>
+        <button id="dash-tab-marketing" onclick="window._switchDashTab('marketing')" style="padding:8px 18px; border:none; border-radius:10px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.2s; background:transparent; color:var(--text-muted);">
+            <i class="ph ph-megaphone"></i> Marketing
+        </button>
+    </div>
+
+    <!-- Embedded sub-view (reports / calculator / marketing) -->
+    <div id="dash-subview" style="display:none; margin-bottom:20px;"></div>
+
     <!-- ===================== TAB 1: RESUMEN ===================== -->
     <div id="tab-resumen" class="dash-tab-content active">
 
@@ -1107,4 +1126,40 @@ function renderBadge(id, current, prev, invertGood) {
 // Alias to keep compatibility if any nav still references reports
 window.Views.reports = (container) => {
     window.Views.dashboard(container);
+};
+
+// --- DASHBOARD SUB-TAB SWITCHER ---
+window._switchDashTab = async (tab) => {
+    const resumenContent = document.getElementById('tab-resumen');
+    const subview = document.getElementById('dash-subview');
+    const tabs = ['resumen', 'reportes', 'calc', 'marketing'];
+
+    // Update button styles
+    tabs.forEach(t => {
+        const btn = document.getElementById(`dash-tab-${t}`);
+        if (btn) {
+            btn.style.background = t === tab ? 'var(--primary)' : 'transparent';
+            btn.style.color = t === tab ? 'white' : 'var(--text-muted)';
+        }
+    });
+
+    if (tab === 'resumen') {
+        if (resumenContent) resumenContent.style.display = '';
+        if (subview) { subview.style.display = 'none'; subview.innerHTML = ''; }
+        return;
+    }
+
+    // Hide dashboard content, show sub-view
+    if (resumenContent) resumenContent.style.display = 'none';
+    if (subview) subview.style.display = 'block';
+
+    if (tab === 'reportes') {
+        // Use _reportsReal if reports.js has stored it (avoids the dashboard alias)
+        const fn = window.Views._reportsReal || window.Views.reports;
+        if (fn) await fn(subview);
+    } else if (tab === 'calc' && window.Views.calculator) {
+        await window.Views.calculator(subview);
+    } else if (tab === 'marketing' && window.Views.marketing) {
+        await window.Views.marketing(subview);
+    }
 };

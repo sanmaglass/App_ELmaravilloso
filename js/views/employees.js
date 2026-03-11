@@ -1,19 +1,38 @@
 // Employees View
 window.Views = window.Views || {};
 
-window.Views.employees = async (container) => {
+window.Views.employees = async (container, _tab = 'equipo') => {
     // Check if Utils exists
     if (!window.Utils) {
         container.innerHTML = "<p>Error: Falta módulo de utilidades.</p>";
         return;
     }
 
+    // Sub-tab bar for Personal section
+    const tabBarHTML = `
+        <div style="display:flex; gap:0; background:var(--bg-input); border-radius:14px; padding:4px; margin-bottom:24px; width:fit-content; box-shadow:0 1px 4px rgba(0,0,0,0.07);">
+            <button onclick="window.Views.employees(document.getElementById('view-container'), 'equipo')" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='equipo'?'var(--primary)':'transparent'}; color:${_tab==='equipo'?'white':'var(--text-muted)'};">
+                <i class="ph ph-users"></i> Equipo
+            </button>
+            <button onclick="window.Views.employees(document.getElementById('view-container'), 'pagos')" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='pagos'?'var(--primary)':'transparent'}; color:${_tab==='pagos'?'white':'var(--text-muted)'};">
+                <i class="ph ph-wallet"></i> Pagos y Horas
+            </button>
+        </div>
+    `;
+
+    if (_tab === 'pagos') {
+        container.innerHTML = tabBarHTML + '<div id="empleados-tab-content"></div>';
+        await window.Views.payments(document.getElementById('empleados-tab-content'));
+        return;
+    }
+
+    // === TAB: EQUIPO (original content) ===
     const employees = await window.db.employees.toArray();
     // Filter out deleted employees
     const activeEmployees = employees.filter(e => !e.deleted);
 
-    container.innerHTML = `
-        <div class="stack-on-mobile" style="justify-content:space-between; align-items:center; margin-bottom:24px;">
+    container.innerHTML = tabBarHTML + `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
             <div>
                 <h1>Personal</h1>
                 <p class="hide-mobile" style="color:var(--text-muted);">Gestión de equipo y tarifas</p>
