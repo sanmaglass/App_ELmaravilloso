@@ -15,11 +15,16 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         body.dark-mode .dash-tabs { background:rgba(255,255,255,0.05); }
 
         /* ---- Glassmorphism & Premium UI ---- */
-        .card { backdrop-filter:blur(8px); background:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.3); box-shadow:0 8px 32px rgba(0,0,0,0.05); }
-        body.dark-mode .card { background:rgba(30, 41, 59, 0.7); border:1px solid rgba(255,255,255,0.1); }
+        .card { backdrop-filter:blur(10px); background:rgba(255,255,255,0.75); border:1px solid rgba(255,255,255,0.4); box-shadow:0 8px 24px rgba(0,0,0,0.04); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        .card:hover { transform: translateY(-4px); box-shadow: 0 14px 28px rgba(0,0,0,0.08); border-color: rgba(255,255,255,0.6); }
+        body.dark-mode .card { background:rgba(30, 41, 59, 0.75); border:1px solid rgba(255,255,255,0.1); }
+        body.dark-mode .card:hover { border-color: rgba(255,255,255,0.2); box-shadow: 0 14px 28px rgba(0,0,0,0.3); }
         
-        .bg-glass { backdrop-filter:blur(10px); background:rgba(255,255,255,0.4); border:1px solid rgba(255,255,255,0.2); }
-        body.dark-mode .bg-glass { background:rgba(255,255,255,0.05); }
+        .bg-glass { backdrop-filter:blur(10px); background:rgba(255,255,255,0.5); border:1px solid rgba(255,255,255,0.3); }
+        body.dark-mode .bg-glass { background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1); }
+
+        .premium-card { background:var(--bg-card); border-radius:18px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,0.05); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); border:1px solid rgba(0,0,0,0.02); }
+        .premium-card:hover { transform: translateY(-4px); box-shadow: 0 15px 35px rgba(0,0,0,0.08); }
 
         /* KPI Card Animated */
         .kpi-card { position:relative; overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -45,12 +50,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             margin-bottom: 1.5rem;
         }
 
-        /* ---- Bottom 3-widget row ---- */
+        /* ---- Bottom 2-widget row ---- */
         .bottom-widgets-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
         }
 
         /* ---- MOBILE OVERRIDES ---- */
@@ -249,30 +254,24 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <!-- Widgets fila inferior -->
         <div class="bottom-widgets-grid">
             <!-- Próximos pagos empleados -->
-            <div class="card card-anim p-4" style="background:linear-gradient(135deg,#fff0f0,#fff); border-bottom:3px solid #ffcccc;">
-                <h3 class="mb-2 font-bold flex items-center gap-2" style="color:#b91c1c; font-size:0.9rem;">
-                    <i class="ph ph-money"></i> Próximos Pagos
+            <div class="card card-anim p-5" style="background:linear-gradient(135deg,#fff0f0,#fff); border-bottom:4px solid #ffcccc;">
+                <h3 class="mb-3 font-bold flex items-center gap-2" style="color:#b91c1c; font-size:1rem;">
+                    <i class="ph ph-money text-xl"></i> Próximos Pagos a Equipo
                 </h3>
-                <div id="upcoming-payments-list" class="text-secondary" style="font-size:0.82rem;">
-                    Cargando...
+                <div id="upcoming-payments-list" class="text-secondary" style="font-size:0.85rem;">
+                    <div class="spinner m-auto"></div>
                 </div>
             </div>
             <!-- Facturas a crédito -->
-            <div class="card card-anim p-4" id="credit-widget" style="background:linear-gradient(135deg,#fffbeb,#fff); border-bottom:3px solid #fde68a; cursor:pointer;">
-                <h3 class="mb-2 font-bold flex items-center gap-2" style="color:#92400e; font-size:0.9rem;">
-                    <i class="ph ph-clock-countdown"></i> Facturas a Crédito
-                </h3>
-                <div id="credit-widget-content" class="text-secondary" style="font-size:0.82rem;">
-                    Cargando...
+            <div class="card card-anim p-5" id="credit-widget" style="background:linear-gradient(135deg,#fffbeb,#fff); border-bottom:4px solid #fde68a; cursor:pointer;" onclick="document.querySelector('[data-view=\\'purchase_invoices\\']')?.click()">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold flex items-center gap-2" style="color:#92400e; font-size:1rem;">
+                        <i class="ph ph-clock-countdown text-xl"></i> Facturas por Pagar (Crédito)
+                    </h3>
+                    <i class="ph ph-arrow-right text-muted"></i>
                 </div>
-            </div>
-            <!-- Últimos registros -->
-            <div class="card card-anim p-4">
-                <h3 class="mb-2 text-primary font-bold flex items-center gap-2" style="font-size:0.9rem;">
-                    <i class="ph ph-clock-clockwise"></i> Actividad Reciente
-                </h3>
-                <div id="recent-logs-list" class="text-muted flex-col gap-2" style="font-size:0.8rem;">
-                    Cargando...
+                <div id="credit-widget-content" class="text-secondary" style="font-size:0.85rem;">
+                    <div class="spinner m-auto"></div>
                 </div>
             </div>
         </div>
@@ -730,23 +729,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             }).join('');
         }
 
-        // ---- Recent Logs ----
-        const recentLogs = [...logs].sort((a, b) => b.id - a.id).slice(0, 5);
-        document.getElementById('recent-logs-list').innerHTML = recentLogs.length === 0
-            ? 'Sin actividad reciente.'
-            : recentLogs.map(l => {
-                const emp = employees.find(e => e.id === l.employeeId);
-                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--bg-app);border-radius:6px;">
-                    <div>
-                        <div style="font-weight:600;font-size:0.85rem;">${emp ? emp.name : 'Desc.'}</div>
-                        <div style="font-size:0.72rem;color:var(--text-muted);">${window.Utils.formatDate(l.date)}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="color:var(--accent);font-weight:700;font-size:0.85rem;">${fmt(l.payAmount)}</div>
-                        <div style="font-size:0.72rem;">${l.totalHours}h</div>
-                    </div>
-                </div>`;
-            }).join('');
+        // ---- (Actividad Reciente removed) ----
 
         // ---- Export Excel ----
         document.getElementById('btn-export-excel').addEventListener('click', async () => {

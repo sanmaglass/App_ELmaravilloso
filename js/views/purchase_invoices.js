@@ -1017,6 +1017,24 @@ async function showInvoiceModal(invoiceToEdit = null) {
                         </select>
                     </div>
 
+                    <!-- 💵 ABONO FIELDS (shown only when status = Abonado) -->
+                    <div id="abono-fields-container" style="grid-column:1/-1; display:${(isEdit && invoiceToEdit.paymentStatus === 'Abonado') ? 'block' : 'none'}; background:linear-gradient(135deg, #e0e7ff, #eef2ff); border:2px solid #6366f1; border-radius:12px; padding:16px; transition:all 0.3s ease;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                            <i class="ph ph-wallet" style="font-size:1.3rem; color:#4f46e5;"></i>
+                            <span style="font-weight:700; color:#3730a3; font-size:0.95rem;">Registro de Abono (Pago Parcial)</span>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:end;">
+                            <div class="form-group" style="margin:0;">
+                                <label class="form-label" style="color:#3730a3;">Monto Pagado Hoy ($)</label>
+                                <input type="number" id="inv-paid-amount" class="form-input" placeholder="Ej. 150000" min="0" value="${isEdit && invoiceToEdit.paidAmount ? invoiceToEdit.paidAmount : ''}">
+                            </div>
+                            <div style="margin:0; padding-bottom:10px;">
+                                <div style="font-size:0.8rem; color:#4f46e5; font-weight:700;">Deuda Pendiente:</div>
+                                <div id="abono-pending-preview" style="font-size:1.1rem; color:#dc2626; font-weight:800; margin-top:2px;">$0</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 💳 CREDIT FIELDS (shown only when method = Crédito) -->
                     <div id="credit-fields-container" style="grid-column:1/-1; display:${(isEdit && invoiceToEdit.paymentMethod === 'Crédito') ? 'block' : 'none'}; background:linear-gradient(135deg, #fef3c7, #fffbeb); border:2px solid #f59e0b; border-radius:12px; padding:16px; transition:all 0.3s ease;">
                         <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
@@ -1143,10 +1161,50 @@ async function showInvoiceModal(invoiceToEdit = null) {
     // --- CREDIT FIELDS LOGIC ---
     const creditContainer = document.getElementById('credit-fields-container');
     const methodSelect = document.getElementById('inv-method');
-    const statusSelect = document.getElementById('inv-status');
+    let statusSelect = document.getElementById('inv-status');
     const creditDaysInput = document.getElementById('inv-credit-days');
     const dueDateInput = document.getElementById('inv-due-date');
     const dueDatePreview = document.getElementById('due-date-preview');
+    
+    // --- ABONO FIELDS LOGIC ---
+    const abonoContainer = document.getElementById('abono-fields-container');
+    const paidAmountInput = document.getElementById('inv-paid-amount');
+    const abonoPreview = document.getElementById('abono-pending-preview');
+    const totalAmountInput = document.getElementById('inv-amount');
+
+    function calcAbono() {
+        const total = parseFloat(totalAmountInput.value) || 0;
+        const paid = parseFloat(paidAmountInput.value) || 0;
+        const remaining = total - paid;
+        
+        if (remaining > 0) {
+            abonoPreview.textContent = window.Utils.formatCurrency(remaining);
+            abonoPreview.style.color = '#dc2626'; // red
+        } else if (remaining <= 0 && total > 0) {
+            abonoPreview.textContent = '¡Totalmente pagado!';
+            abonoPreview.style.color = '#10b981'; // green
+        } else {
+            abonoPreview.textContent = window.Utils.formatCurrency(0);
+        }
+    }
+
+    statusSelect.addEventListener('change', () => {
+        if (statusSelect.value === 'Abonado') {
+            abonoContainer.style.display = 'block';
+            calcAbono();
+        } else {
+            abonoContainer.style.display = 'none';
+        }
+    });
+
+    paidAmountInput.addEventListener('input', calcAbono);
+    totalAmountInput.addEventListener('input', () => {
+        if (statusSelect.value === 'Abonado') calcAbono();
+    });
+
+    if (isEdit && invoiceToEdit.paymentStatus === 'Abonado') {
+        calcAbono();
+    }
 
     // Function to calculate due date from invoice date + credit days
     function calcDueDate() {
@@ -1324,9 +1382,21 @@ async function showInvoiceModal(invoiceToEdit = null) {
         const amount = parseFloat(document.getElementById('inv-amount').value) || 0;
         const period = document.getElementById('inv-period').value.trim();
         const paymentMethod = document.getElementById('inv-method').value;
-        const paymentStatus = document.getElementById('inv-status').value;
+        let paymentStatus = document.getElementById('inv-status').value;
         const notes = document.getElementById('inv-notes').value.trim();
         const imageData = window._invPhotoData || (isEdit ? invoiceToEdit.imageData : null) || null;
+
+        // Abono Paid Amount Calculation
+        let paidAmount = 0;
+        if (paymentStatus === 'Abonado') {
+            paidAmount = parseFloat(document.getElementById('inv-paid-amount').value) || 0;
+            if (paidAmount >= amount && amount > 0) {
+                paymentStatus = 'Pagado'; // Auto fix if they accidentally type the full amount
+                paidAmount = amount;
+            }
+        } else if (paymentStatus === 'Pagado') {
+            paidAmount = amount;
+        }
 
         // Credit fields
         const creditDays = paymentMethod === 'Crédito' ? (parseInt(document.getElementById('inv-credit-days').value) || null) : null;
