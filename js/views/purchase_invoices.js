@@ -1177,14 +1177,19 @@ async function showInvoiceModal(invoiceToEdit = null) {
         const paid = parseFloat(paidAmountInput.value) || 0;
         const remaining = total - paid;
         
-        if (remaining > 0) {
-            abonoPreview.textContent = window.Utils.formatCurrency(remaining);
-            abonoPreview.style.color = '#dc2626'; // red
-        } else if (remaining <= 0 && total > 0) {
-            abonoPreview.textContent = '¡Totalmente pagado!';
-            abonoPreview.style.color = '#10b981'; // green
-        } else {
-            abonoPreview.textContent = window.Utils.formatCurrency(0);
+        try {
+            if (remaining > 0) {
+                abonoPreview.textContent = formatCurrency(remaining);
+                abonoPreview.style.color = '#dc2626'; // red
+            } else if (remaining <= 0 && total > 0) {
+                abonoPreview.textContent = '¡Totalmente pagado!';
+                abonoPreview.style.color = '#10b981'; // green
+            } else {
+                abonoPreview.textContent = formatCurrency(0);
+            }
+        } catch (e) {
+            console.error('calcAbono error:', e);
+            abonoPreview.textContent = '$' + remaining;
         }
     }
 
