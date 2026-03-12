@@ -211,8 +211,8 @@ window.Sync = {
                         });
 
                         // --- RECONCILIACIÓN AGRESIVA (con protección de registros recientes) ---
-                        // Proteger registros creados en los últimos 10 minutos
-                        const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+                        // Proteger registros creados en la última hora (offline mode fallback)
+                        const tenMinutesAgo = Date.now() - 60 * 60 * 1000;
                         const toDeleteLocal = localData
                             .filter(item => {
                                 if (cloudIds.has(Number(item.id || item.key))) return false;

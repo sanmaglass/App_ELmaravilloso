@@ -61,10 +61,10 @@ window.DataManager = {
         const remoteTable = remoteTableMap[tableName] || tableName;
 
         try {
-            // Assign ID if new record
+            // Assign ID and created_at if it's a completely new record
             if (!data.id) {
-                data.id = Date.now() + Math.floor(Math.random() * 999);
-                // Assign created_at to avoid aggressive local deletion on first failed sync
+                // Generate a random ID under 2.1 Billion to safely fit inside Postgres INT4 column (in case DB schema is INT instead of BIGINT)
+                data.id = Math.floor(Math.random() * 2000000000);
                 data.created_at = new Date().toISOString();
             }
 
