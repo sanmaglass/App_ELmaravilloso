@@ -64,6 +64,8 @@ window.DataManager = {
             // Assign ID if new record
             if (!data.id) {
                 data.id = Date.now() + Math.floor(Math.random() * 999);
+                // Assign created_at to avoid aggressive local deletion on first failed sync
+                data.created_at = new Date().toISOString();
             }
 
             // Save locally first (put = insert or update)

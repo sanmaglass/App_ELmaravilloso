@@ -803,7 +803,7 @@ async function renderInvoices() {
                     <div style="font-size:0.85rem; color:var(--text-muted); display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                         <span style="display:flex; align-items:center; gap:4px;">
                             <i class="ph ph-hash"></i> ${escapeHTML(inv.invoiceNumber)}
-                            ${inv.imageData ? `<span style="background:var(--primary); color:white; font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:6px; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:3px;"><i class="ph ph-image"></i> FOTO DISPONIBLE</span>` : ''}
+                            ${(inv.imageData || inv.image_url) ? `<span style="background:var(--primary); color:white; font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:6px; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:3px;"><i class="ph ph-image"></i> FOTO DISPONIBLE</span>` : ''}
                         </span>
                         <span>•</span>
                         <span><i class="ph ph-calendar-blank"></i> ${formatDate(inv.date)}</span>
@@ -854,7 +854,7 @@ async function renderInvoices() {
 
             <!-- Actions -->
                 <div style="display:flex; gap:8px; align-items:center;">
-                    ${inv.imageData ? `<button class="btn btn-icon btn-view-photo" data-src="${inv.imageData}" title="Ver Foto" style="color:var(--primary);">
+                    ${(inv.imageData || inv.image_url) ? `<button class="btn btn-icon btn-view-photo" data-src="${inv.image_url || inv.imageData}" title="Ver Foto" style="color:var(--primary);">
                         <i class="ph ph-scan"></i>
                     </button>` : ''}
                      <button class="btn btn-icon btn-edit-invoice" data-id="${inv.id}" title="Editar">
@@ -1077,7 +1077,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
                         <input type="file" id="inv-photo-camera" accept="image/*" capture="environment" style="display:none;">
                         
                         <div id="inv-photo-dropzone" style="border:2px dashed var(--border); border-radius:12px; padding:20px; text-align:center; transition:all 0.2s; background:var(--bg-input); position:relative; overflow:hidden;">
-                            <div id="inv-photo-placeholder" style="${isEdit && invoiceToEdit.imageData ? 'display:none' : ''}">
+                            <div id="inv-photo-placeholder" style="${isEdit && (invoiceToEdit.imageData || invoiceToEdit.image_url) ? 'display:none' : ''}">
                                 <i class="ph ph-scan" style="font-size:2rem; color:var(--primary); margin-bottom:12px;"></i>
                                 <div style="font-weight:600; color:var(--text-primary); margin-bottom:12px;">Adjuntar foto de la factura</div>
                                 <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
@@ -1090,11 +1090,11 @@ async function showInvoiceModal(invoiceToEdit = null) {
                                 </div>
                                 <div style="font-size:0.75rem; color:var(--text-muted); margin-top:10px;">Se aplicará efecto de escaneo B&N automáticamente</div>
                             </div>
-                            <div id="inv-photo-preview" style="${isEdit && invoiceToEdit.imageData ? '' : 'display:none'}">
-                                <img id="inv-photo-img" src="${isEdit && invoiceToEdit.imageData ? invoiceToEdit.imageData : ''}" style="max-width:100%; max-height:220px; border-radius:8px; object-fit:contain; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                            <div id="inv-photo-preview" style="${isEdit && (invoiceToEdit.imageData || invoiceToEdit.image_url) ? '' : 'display:none'}">
+                                <img id="inv-photo-img" src="${isEdit ? (invoiceToEdit.image_url || invoiceToEdit.imageData || '') : ''}" style="max-width:100%; max-height:220px; border-radius:8px; object-fit:contain; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
                                 <div style="margin-top:8px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
-                                    <span style="background:var(--primary); color:white; font-size:0.7rem; font-weight:700; padding:3px 8px; border-radius:10px;"><i class="ph ph-check-circle"></i> ESCANEADA</span>
-                                    <button type="button" id="inv-photo-remove" style="background:transparent; border:1px solid var(--border); border-radius:8px; padding:3px 10px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;"><i class="ph ph-trash"></i> Quitar</button>
+                                    <span style="background:var(--primary); color:white; font-size:0.7rem; font-weight:700; padding:3px 8px; border-radius:10px;"><i class="ph ph-check-circle"></i> FOTO DISPONIBLE</span>
+                                    <button type="button" id="inv-photo-remove" style="background:transparent; border:1px solid var(--border); border-radius:8px; padding:3px 10px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;"><i class="ph ph-trash"></i> Quitar/Actualizar</button>
                                 </div>
                             </div>
                             <div id="inv-scan-progress" style="display:none; position:absolute; inset:0; background:rgba(255,255,255,0.95); align-items:center; justify-content:center; flex-direction:column; gap:8px; border-radius:10px;">
@@ -1414,6 +1414,54 @@ async function showInvoiceModal(invoiceToEdit = null) {
         }
 
         try {
+            // --- ☁️ UPLOAD PHOTO TO SUPABASE STORAGE ---
+            let imageUrl = isEdit ? invoiceToEdit.image_url : null;
+            let finalImageData = window._invPhotoData || (isEdit ? invoiceToEdit.imageData : null) || null; // Fallback local image
+
+            if (window._invPhotoData) {
+                try {
+                    // Update UI to show upload progress
+                    const saveBtn = document.getElementById('btn-save-invoice');
+                    const originalText = saveBtn.innerHTML;
+                    saveBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Subiendo foto...';
+                    saveBtn.disabled = true;
+
+                    // Convert Base64 to Blob
+                    const res = await fetch(window._invPhotoData);
+                    const blob = await res.blob();
+                    
+                    const fileName = `factura_${Date.now()}_${Math.floor(Math.random() * 1000)}.jpg`;
+                    
+                    // Upload to 'invoices' bucket
+                    const { data: uploadData, error: uploadError } = await window.Sync.client
+                        .storage
+                        .from('invoices')
+                        .upload(fileName, blob, {
+                            cacheControl: '3600',
+                            upsert: false
+                        });
+                        
+                    if (uploadError) {
+                        console.error("Storage upload error:", uploadError);
+                        alert("Hubo un problema subiendo la foto a Supabase, pero se guardará de todas formas. ¿Creaste el bucket 'invoices' en Supabase?");
+                    } else if (uploadData) {
+                        // Get public URL
+                        const { data: urlData } = window.Sync.client
+                            .storage
+                            .from('invoices')
+                            .getPublicUrl(fileName);
+                            
+                        imageUrl = urlData.publicUrl;
+                        finalImageData = null; // Clear local base64 if cloud upload succeeded
+                    }
+                    
+                    saveBtn.innerHTML = originalText;
+                    saveBtn.disabled = false;
+                } catch (e) {
+                    console.error("Storage upload exception:", e);
+                }
+            }
+
             const invoiceData = {
                 supplierId,
                 supplierName: supplierObj.name, // Save name as backup
@@ -1426,7 +1474,8 @@ async function showInvoiceModal(invoiceToEdit = null) {
                 creditDays,
                 dueDate,
                 notes,
-                imageData,
+                imageData: finalImageData, // Only kept if upload failed or using old local image
+                image_url: imageUrl,       // NEW: Cloud URL
                 // Preserve paidAmount on edit; new invoices start at 0
                 paidAmount: isEdit ? (invoiceToEdit.paidAmount || 0) : 0,
                 deleted: false

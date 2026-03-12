@@ -182,6 +182,12 @@ window.Sync = {
                                 if (!('snoozed_until' in item)) merged.snoozed_until = localReq.snoozed_until;
                             }
 
+                            // Especial para invoices: preservar image_url y imageData locales si la nube no los devuelve
+                            if (localName === 'purchase_invoices' && localReq) {
+                                if (!('image_url' in item)) merged.image_url = localReq.image_url;
+                                if (!('imageData' in item)) merged.imageData = localReq.imageData;
+                            }
+
                             // Especial para employees: preservar fields de horas si la nube no los soporta
                             if (localName === 'employees' && localReq) {
                                 if (!('owedMinutes' in item)) merged.owedMinutes = localReq.owedMinutes;
