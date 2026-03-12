@@ -1111,6 +1111,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
         }
     };
 
+    /* FEATURE DISABLED - PHOTO UPLOAD
     document.getElementById('btn-inv-camera').addEventListener('click', () => document.getElementById('inv-photo-camera').click());
     document.getElementById('btn-inv-gallery').addEventListener('click', () => document.getElementById('inv-photo-input').click());
     document.getElementById('inv-photo-input').addEventListener('change', (e) => processPhoto(e.target.files[0]));
@@ -1124,6 +1125,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
         document.getElementById('inv-photo-input').value = '';
         document.getElementById('inv-photo-camera').value = '';
     });
+    */
 
     // --- CREDIT FIELDS LOGIC ---
     const creditContainer = document.getElementById('credit-fields-container');
