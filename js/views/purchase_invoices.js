@@ -1066,45 +1066,12 @@ async function showInvoiceModal(invoiceToEdit = null) {
                         <textarea id="inv-notes" class="form-input" style="height:60px;">${isEdit && invoiceToEdit.notes ? invoiceToEdit.notes : ''}</textarea>
                     </div>
 
-                    <!-- 📷 FOTO FACTURA -->
+                    <!-- 📷 FOTO FACTURA - TEMPORALMENTE DESHABILITADO POR SEGURIDAD DE NUBE -->
+                    <!-- 
                     <div class="form-group" style="grid-column:1/-1;">
-                        <label class="form-label" style="display:flex; align-items:center; gap:6px;">
-                            <i class="ph ph-scan" style="color:var(--primary);"></i>
-                            Foto de la Factura
-                            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">(Opcional — se escanea automáticamente)</span>
-                        </label>
-                        <input type="file" id="inv-photo-input" accept="image/*" style="display:none;">
-                        <input type="file" id="inv-photo-camera" accept="image/*" capture="environment" style="display:none;">
-                        
-                        <div id="inv-photo-dropzone" style="border:2px dashed var(--border); border-radius:12px; padding:20px; text-align:center; transition:all 0.2s; background:var(--bg-input); position:relative; overflow:hidden;">
-                            <div id="inv-photo-placeholder" style="${isEdit && (invoiceToEdit.imageData || invoiceToEdit.image_url) ? 'display:none' : ''}">
-                                <i class="ph ph-scan" style="font-size:2rem; color:var(--primary); margin-bottom:12px;"></i>
-                                <div style="font-weight:600; color:var(--text-primary); margin-bottom:12px;">Adjuntar foto de la factura</div>
-                                <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-                                    <button type="button" id="btn-inv-camera" class="btn btn-primary" style="font-size:0.85rem; padding:10px 16px;">
-                                        <i class="ph ph-camera"></i> Tomar Foto
-                                    </button>
-                                    <button type="button" id="btn-inv-gallery" class="btn btn-secondary" style="font-size:0.85rem; padding:10px 16px;">
-                                        <i class="ph ph-images"></i> Elegir Galería
-                                    </button>
-                                </div>
-                                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:10px;">Se aplicará efecto de escaneo B&N automáticamente</div>
-                            </div>
-                            <div id="inv-photo-preview" style="${isEdit && (invoiceToEdit.imageData || invoiceToEdit.image_url) ? '' : 'display:none'}">
-                                <img id="inv-photo-img" src="${isEdit ? (invoiceToEdit.image_url || invoiceToEdit.imageData || '') : ''}" style="max-width:100%; max-height:220px; border-radius:8px; object-fit:contain; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-                                <div style="margin-top:8px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
-                                    <span style="background:var(--primary); color:white; font-size:0.7rem; font-weight:700; padding:3px 8px; border-radius:10px;"><i class="ph ph-check-circle"></i> FOTO DISPONIBLE</span>
-                                    <button type="button" id="inv-photo-remove" style="background:transparent; border:1px solid var(--border); border-radius:8px; padding:3px 10px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;"><i class="ph ph-trash"></i> Quitar/Actualizar</button>
-                                </div>
-                            </div>
-                            <div id="inv-scan-progress" style="display:none; position:absolute; inset:0; background:rgba(255,255,255,0.95); align-items:center; justify-content:center; flex-direction:column; gap:8px; border-radius:10px;">
-                                <i class="ph ph-spinner ph-spin" style="font-size:2.5rem; color:var(--primary);"></i>
-                                <span style="font-size:0.9rem; font-weight:600; color:var(--primary);">Procesando escaneo...</span>
-                                <span style="font-size:0.75rem; color:var(--text-muted);">Convirtiendo a blanco y negro...</span>
-                            </div>
-                        </div>
-                        <canvas id="inv-scan-canvas" style="display:none;"></canvas>
+                        ... photo elements hidden ...
                     </div>
+                    -->
 
                 </form>
             </div>
@@ -1310,9 +1277,8 @@ async function showInvoiceModal(invoiceToEdit = null) {
         const newName = prompt('Nombre del nuevo proveedor:');
         if (newName && newName.trim()) {
             try {
-                // Add to DB
-                await window.db.suppliers.add({
-                    id: Date.now(),
+                // Add to DB and sync with Supabase
+                await window.DataManager.saveAndSync('suppliers', {
                     name: newName.trim(),
                     deleted: false
                 });
@@ -1414,53 +1380,10 @@ async function showInvoiceModal(invoiceToEdit = null) {
         }
 
         try {
-            // --- ☁️ UPLOAD PHOTO TO SUPABASE STORAGE ---
+            // --- FEATURE DISABLED ---
+            // Photo upload to Supabase storage is temporarily disabled per user request
             let imageUrl = isEdit ? invoiceToEdit.image_url : null;
-            let finalImageData = window._invPhotoData || (isEdit ? invoiceToEdit.imageData : null) || null; // Fallback local image
-
-            if (window._invPhotoData) {
-                try {
-                    // Update UI to show upload progress
-                    const saveBtn = document.getElementById('btn-save-invoice');
-                    const originalText = saveBtn.innerHTML;
-                    saveBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Subiendo foto...';
-                    saveBtn.disabled = true;
-
-                    // Convert Base64 to Blob
-                    const res = await fetch(window._invPhotoData);
-                    const blob = await res.blob();
-                    
-                    const fileName = `factura_${Date.now()}_${Math.floor(Math.random() * 1000)}.jpg`;
-                    
-                    // Upload to 'invoices' bucket
-                    const { data: uploadData, error: uploadError } = await window.Sync.client
-                        .storage
-                        .from('invoices')
-                        .upload(fileName, blob, {
-                            cacheControl: '3600',
-                            upsert: false
-                        });
-                        
-                    if (uploadError) {
-                        console.error("Storage upload error:", uploadError);
-                        alert("Hubo un problema subiendo la foto a Supabase, pero se guardará de todas formas. ¿Creaste el bucket 'invoices' en Supabase?");
-                    } else if (uploadData) {
-                        // Get public URL
-                        const { data: urlData } = window.Sync.client
-                            .storage
-                            .from('invoices')
-                            .getPublicUrl(fileName);
-                            
-                        imageUrl = urlData.publicUrl;
-                        finalImageData = null; // Clear local base64 if cloud upload succeeded
-                    }
-                    
-                    saveBtn.innerHTML = originalText;
-                    saveBtn.disabled = false;
-                } catch (e) {
-                    console.error("Storage upload exception:", e);
-                }
-            }
+            let finalImageData = isEdit ? invoiceToEdit.imageData : null; // keep local fallback if exists
 
             const invoiceData = {
                 supplierId,
