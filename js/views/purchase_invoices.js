@@ -1248,11 +1248,11 @@ async function showInvoiceModal(invoiceToEdit = null) {
     }
 
     // Event for "Pending" invoice number
-    document.getElementById('btn-pending-number').addEventListener('click', () => {
+    document.getElementById('btn-pending-number').onclick = () => {
         const input = document.getElementById('inv-number');
         input.value = 'PENDIENTE';
         input.dispatchEvent(new Event('blur')); // Trigger validation check
-    });
+    };
 
     // Auto-fill period field when date changes
     const dateInput = document.getElementById('inv-date');
@@ -1275,7 +1275,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
     dateInput.addEventListener('change', autoFillPeriod);
 
     // Quick Add Supplier Event
-    document.getElementById('btn-quick-supplier').addEventListener('click', async () => {
+    document.getElementById('btn-quick-supplier').onclick = async () => {
         const newName = prompt('Nombre del nuevo proveedor:');
         if (newName && newName.trim()) {
             try {
@@ -1293,7 +1293,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
                 }, 200);
             } catch (e) { alert('Error creando proveedor: ' + e.message); }
         }
-    });
+    };
 
     // --- VALIDATION LOGIC ---
     async function isDuplicate(invoiceNumber) {
@@ -1329,14 +1329,14 @@ async function showInvoiceModal(invoiceToEdit = null) {
     }
 
     const numberInput = document.getElementById('inv-number');
-    numberInput.addEventListener('blur', async () => {
+    numberInput.onblur = async () => {
         const val = numberInput.value.trim();
         if (await isDuplicate(val)) {
             alert(`❌ Ya existe una factura con el número "${val}".\n\nPor favor usa un número diferente.`);
         }
-    });
+    };
 
-    document.getElementById('btn-save-invoice').addEventListener('click', async () => {
+    document.getElementById('btn-save-invoice').onclick = async () => {
         const supplierNameInput = document.getElementById('inv-supplier-input').value.trim();
 
         // ROBUST ID RESOLUTION
@@ -1422,7 +1422,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
             renderInvoices();
             await renderCreditAlerts();
         } catch (e) { alert('Error: ' + e.message); }
-    });
+    };
 }
 
 // --- EXPORT TO EXCEL ---
