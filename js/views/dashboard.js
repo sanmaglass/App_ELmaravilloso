@@ -188,13 +188,13 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 <i class="ph ph-calendar-check"></i> Ver Cierres de Caja Diarios
             </button>
         </div>
-        <div class="card p-0 mb-8 overflow-hidden" style="border: 1px solid rgba(239, 68, 68, 0.2);">
-            <div id="live-sales-feed" style="max-height: 250px; overflow-y: auto; background: var(--bg-app);">
-                <div class="px-4 py-3 text-center text-muted text-sm">Cargando ventas en tiempo real...</div>
+        <div class="card p-0 mb-8 overflow-hidden" style="border: 1px solid rgba(239, 68, 68, 0.2); background: transparent; backdrop-filter: none; box-shadow: none;">
+            <div id="live-sales-feed" class="live-sales-scroller">
+                <!-- Tarjetas cargadas por JS -->
             </div>
-            <div class="p-3 bg-glass border-t flex justify-between items-center text-sm" style="border-color: rgba(0,0,0,0.05);">
-                <span class="text-muted">Tickets de hoy: <b id="live-sales-count" class="text-primary">0</b></span>
-                <span class="text-muted">Total Cajas: <b id="live-sales-total" style="color:#10b981;">$0</b></span>
+            <div class="p-3 bg-glass flex justify-between items-center text-sm" style="border-radius: 12px; margin-top: 10px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
+                <span class="text-muted" style="font-weight:600;">Tickets: <b id="live-sales-count" class="text-primary" style="font-size:1.1rem;">0</b></span>
+                <span class="text-muted" style="font-weight:600;">Total Cajas: <b id="live-sales-total" style="color:#10b981; font-size:1.2rem;">$0</b></span>
             </div>
         </div>
 
@@ -372,33 +372,51 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         if (elFeed) {
             if (validSales.length === 0) {
-                elFeed.innerHTML = '<div class="px-4 py-8 text-center text-muted"><i class="ph ph-receipt" style="font-size:2rem; opacity:0.5; margin-bottom:10px;"></i><br>Aún no hay ventas registradas hoy.</div>';
+                elFeed.innerHTML = '<div style="width:100%; text-align:center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-glass); border-radius: 20px; border: 1px dashed rgba(0,0,0,0.1);"><i class="ph ph-receipt" style="font-size:2.5rem; opacity:0.5; margin-bottom:12px;"></i><br><span style="font-weight:600;">No hay ventas registradas aún</span></div>';
             } else {
-                elFeed.innerHTML = validSales.map(v => {
+                // Show up to 20 tickets maximum to keep memory footprint low
+                const renderSales = validSales.slice(0, 20);
+                elFeed.innerHTML = renderSales.map((v, index) => {
                     const dateObj = new Date(v.date);
                     const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                    // Adding 'new' class to latest ticket for a pulsing effect
+                    const isNew = index === 0 ? 'new' : '';
+                    
                     return `
-                    <div class="flex justify-between items-center p-3 border-b" style="border-color: rgba(0,0,0,0.03);">
-                            <div class="flex gap-3 items-center">
-                                <div class="h-8 w-8 rounded-full flex items-center justify-center bg-glass" style="color: #10b981;">
-                                    <i class="ph ph-ticket"></i>
-                                </div>
-                                <div>
-                                    <div class="font-bold text-sm text-primary">Ticket #${v.ticket_id || v.id}</div>
-                                    <div class="text-xs text-muted flex items-center gap-1"><i class="ph ph-clock"></i> ${timeStr} • ${v.items_count || 1} arts.</div>
-                                </div>
+                    <div class="live-ticket-card ${isNew}">
+                        <div class="live-ticket-header">
+                            <div class="live-ticket-icon">
+                                <i class="ph ph-ticket"></i>
                             </div>
                             <div class="text-right">
-                                <div class="font-bold" style="color:#10b981;">+${window.Utils.formatCurrency(v.total)}</div>
-                                <div class="text-xs text-muted">Ganancia: ${window.Utils.formatCurrency(v.profit)}</div>
+                                <div class="font-bold text-sm text-primary">#${v.ticket_id || v.id}</div>
+                                <div class="text-xs text-muted flex items-center justify-end gap-1 mt-1">
+                                    <i class="ph ph-clock"></i> ${timeStr}
+                                </div>
                             </div>
                         </div>
+                        
+                        <div style="margin-top: 10px;">
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 2px;">Venta Total</div>
+                            <div class="font-bold" style="font-size: 1.4rem; color: #10b981;">
+                                +${window.Utils.formatCurrency(v.total)}
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 15px; padding-top: 12px; border-top: 1px dashed rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
+                            <span class="text-xs" style="color: var(--text-muted); font-weight: 600;">${v.items_count || 1} artículos</span>
+                            <div class="text-xs" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 10px; border-radius: 8px; font-weight: 700;">
+                                Ganancia: ${window.Utils.formatCurrency(v.profit)}
+                            </div>
+                        </div>
+                        
+                        <i class="ph ph-trend-up live-ticket-profit"></i>
+                    </div>
                     `;
                 }).join('');
             }
-
-            document.getElementById('live-sales-count').textContent = todayEleventa.length;
-            const eleventaTotal = todayEleventa.reduce((sum, v) => sum + (parseFloat(v.total) || 0), 0);
+            document.getElementById('live-sales-count').textContent = validSales.length;
+            const eleventaTotal = validSales.reduce((sum, v) => sum + (parseFloat(v.total) || 0), 0);
             document.getElementById('live-sales-total').innerHTML = window.Utils.formatCurrency(eleventaTotal);
         }
 

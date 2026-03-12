@@ -959,9 +959,113 @@
     }
 }
 
-/* Extra tiny phones */
+    /* Extra tiny phones */
 @media (max-width: 380px) {
     #invoice-analytics {
         grid-template-columns: 1fr !important;
     }
+}
+
+/* ============================================================
+   RESPONSIVE: LIVE SALES HORIZONTAL CAROUSEL
+   ============================================================ */
+
+.live-sales-scroller {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 16px;
+    padding: 16px 20px 24px 20px; /* Extra bottom padding for shadow/scrollbar */
+    margin: 0 -20px; /* Bleed out to container edges if possible */
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbar for a cleaner look but keep functionality */
+.live-sales-scroller::-webkit-scrollbar {
+    height: 6px;
+    background: transparent;
+}
+.live-sales-scroller::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.1);
+    border-radius: 10px;
+}
+.dark-mode .live-sales-scroller::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+}
+
+.live-ticket-card {
+    flex: 0 0 calc(85% - 20px); /* Show one card + a hint of the next */
+    max-width: 300px; /* Don't let it get huge on desktop */
+    min-width: 260px;
+    scroll-snap-align: center;
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 20px;
+    padding: 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.dark-mode .live-ticket-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.live-ticket-card:active {
+    transform: scale(0.97);
+}
+
+/* Sparkle effect on new tickets */
+@keyframes newTicketPulse {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+    70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.live-ticket-card.new {
+    animation: newTicketPulse 2s infinite;
+    border-color: rgba(16, 185, 129, 0.5);
+}
+
+.live-ticket-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.live-ticket-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(52, 211, 153, 0.1));
+    color: #10b981;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.5);
+}
+
+.dark-mode .live-ticket-icon {
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.1);
+}
+
+.live-ticket-profit {
+    position: absolute;
+    bottom: -10px;
+    right: -10px;
+    font-size: 4rem;
+    color: rgba(16, 185, 129, 0.05);
+    transform: rotate(-15deg);
+    pointer-events: none;
 }
