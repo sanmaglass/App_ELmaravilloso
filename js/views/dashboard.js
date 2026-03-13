@@ -523,65 +523,78 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         renderBadge('kpi-ventas-mes-badge', ventasMes, ventasPrev, false);
 
         // ---- 🧠 IA PREDICTIVE ENGINE INTEGRATION ----
-        if (window.Utils && window.Utils.PredictionEngine) {
-            const prediction = await window.Utils.PredictionEngine.getProjectedSales();
-            const predContainer = document.getElementById('prediction-container');
+        const predContainer = document.getElementById('prediction-container');
+        if (window.Utils && window.Utils.PredictionEngine && predContainer) {
+            predContainer.classList.remove('hidden'); // Show it early with "Calculating" state
             
-            if (prediction && predContainer) {
-            predContainer.classList.remove('hidden');
-            const elPredictTotal = document.getElementById('predict-total');
-            const elPredictComparison = document.getElementById('predict-comparison');
-            const elPredictConfidence = document.getElementById('predict-confidence');
-            const elPredictProgress = document.getElementById('predict-progress-bar');
-            const elPredictPercent = document.getElementById('predict-percent');
-            const elPredictInsight = document.getElementById('predict-insight-text');
-            const elPredictInsightBox = document.getElementById('predict-insight-box');
-            const elPredictRecordValue = document.getElementById('predict-record-value');
+            try {
+                const prediction = await window.Utils.PredictionEngine.getProjectedSales();
+                
+                if (prediction) {
+                    const elPredictTotal = document.getElementById('predict-total');
+                    const elPredictComparison = document.getElementById('predict-comparison');
+                    const elPredictConfidence = document.getElementById('predict-confidence');
+                    const elPredictProgress = document.getElementById('predict-progress-bar');
+                    const elPredictPercent = document.getElementById('predict-percent');
+                    const elPredictInsight = document.getElementById('predict-insight-text');
+                    const elPredictInsightBox = document.getElementById('predict-insight-box');
+                    const elPredictRecordValue = document.getElementById('predict-record-value');
 
-            // Set current month label
-            const currentMonthName = new Date().toLocaleDateString('es-ES', { month: 'long' });
-            const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
-            const estLabel = document.getElementById('predict-month-label');
-            if (estLabel) estLabel.textContent = `est. fin de ${capitalizedMonth}`;
+                    // Set current month label
+                    const now = new Date();
+                    const currentMonthName = now.toLocaleDateString('es-ES', { month: 'long' });
+                    const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
+                    const estLabel = document.getElementById('predict-month-label');
+                    if (estLabel) estLabel.textContent = `est. fin de ${capitalizedMonth}`;
 
-            // 1. Animate Number
-            window.Utils.animateNumber(elPredictTotal, 0, prediction.projectedTotal, 2000, true);
+                    // 1. Animate Number (Ensure it's a valid number)
+                    const total = parseFloat(prediction.projectedTotal) || 0;
+                    window.Utils.animateNumber(elPredictTotal, 0, total, 2000, true);
 
-            // 2. Update Confidence Badge
-            const confLabels = { high: 'IA: Confianza Alta 🟢', medium: 'IA: Confianza Media 🟡', low: 'IA: Confianza Inicial 🔴' };
-            elPredictConfidence.textContent = confLabels[prediction.confidence] || 'IA: Analizando...';
+                    // 2. Update Confidence Badge
+                    const confLabels = { high: 'IA: Confianza Alta 🟢', medium: 'IA: Confianza Media 🟡', low: 'IA: Confianza Inicial 🔴' };
+                    if (elPredictConfidence) elPredictConfidence.textContent = confLabels[prediction.confidence] || 'IA: Analizando...';
 
-            // 3. Update Record Daily
-            if (elPredictRecordValue) elPredictRecordValue.textContent = fmt(prediction.maxDaily || 0);
+                    // 3. Update Record Daily
+                    if (elPredictRecordValue) elPredictRecordValue.textContent = fmt(prediction.maxDaily || 0);
 
-            // 4. Update Strategic Insight
-            if (elPredictInsight) {
-                elPredictInsight.textContent = prediction.insight;
-                elPredictInsightBox.style.borderLeftColor = prediction.insightColor;
+                    // 4. Update Strategic Insight
+                    if (elPredictInsight) {
+                        elPredictInsight.textContent = prediction.insight;
+                        if (elPredictInsightBox) elPredictInsightBox.style.borderLeftColor = prediction.insightColor;
+                    }
+
+                    // 5. Update Comparison
+                    if (elPredictComparison) {
+                        if (prediction.prevMonthTotal > 0) {
+                            const diffPct = ((total / prediction.prevMonthTotal - 1) * 100).toFixed(1);
+                            const isUp = total >= prediction.prevMonthTotal;
+                            elPredictComparison.innerHTML = `
+                                <span style="color:${isUp ? '#10b981' : '#f43f5e'}; font-weight:800; background:rgba(${isUp ? '16,185,129' : '244,63,94'}, 0.15); padding:4px 10px; border-radius:8px; display:flex; align-items:center; gap:4px;">
+                                    <i class="ph ph-trend-${isUp ? 'up' : 'down'}"></i> ${isUp ? '+' : ''}${diffPct}%
+                                </span>
+                                <span style="color:#64748b; font-size:0.85rem;">vs mes anterior (${fmt(prediction.prevMonthTotal)})</span>
+                            `;
+                        } else {
+                            elPredictComparison.innerHTML = `<span style="color:#64748b; font-size:0.85rem;">Esperando más historial para comparar</span>`;
+                        }
+                    }
+
+                    // 6. Update Progress Bar
+                    const progressPct = total > 0 ? Math.min(100, (prediction.mtdTotal / total) * 100) : 0;
+                    if (elPredictPercent) elPredictPercent.textContent = progressPct.toFixed(0) + '%';
+                    setTimeout(() => {
+                        if (elPredictProgress) elPredictProgress.style.width = progressPct + '%';
+                    }, 600);
+                } else {
+                    // Si la IA no tiene suficientes datos (vuelve null)
+                    const elInsight = document.getElementById('predict-insight-text');
+                    if (elInsight) elInsight.textContent = "La IA necesita al menos 2 días de ventas para iniciar proyecciones.";
+                }
+            } catch (err) {
+                console.error("Dashboard IA Error:", err);
             }
-
-            // 5. Update Comparison
-            if (prediction.prevMonthTotal > 0) {
-                const diffPct = ((prediction.projectedTotal / prediction.prevMonthTotal - 1) * 100).toFixed(1);
-                const isUp = prediction.projectedTotal >= prediction.prevMonthTotal;
-                elPredictComparison.innerHTML = `
-                    <span style="color:${isUp ? '#10b981' : '#f43f5e'}; font-weight:800; background:rgba(${isUp ? '16,185,129' : '244,63,94'}, 0.15); padding:4px 10px; border-radius:8px; display:flex; align-items:center; gap:4px;">
-                        <i class="ph ph-trend-${isUp ? 'up' : 'down'}"></i> ${isUp ? '+' : ''}${diffPct}%
-                    </span>
-                    <span style="color:#64748b; font-size:0.85rem;">vs mes anterior (${fmt(prediction.prevMonthTotal)})</span>
-                `;
-            } else {
-                elPredictComparison.innerHTML = `<span style="color:#64748b; font-size:0.85rem;">Esperando datos del mes anterior para comparar</span>`;
-            }
-
-            // 6. Update Progress Bar
-            const progressPct = prediction.projectedTotal > 0 ? Math.min(100, (prediction.mtdTotal / prediction.projectedTotal) * 100) : 0;
-            if (elPredictPercent) elPredictPercent.textContent = progressPct.toFixed(0) + '%';
-            setTimeout(() => {
-                if (elPredictProgress) elPredictProgress.style.width = progressPct + '%';
-            }, 600);
         }
-    }
 
         // ---- CEO Metrics: Margin ----
         const margenNetoMonto = ventasMes - gastoTotal;

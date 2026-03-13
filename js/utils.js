@@ -627,6 +627,17 @@ window.Utils = {
     PredictionEngine: {
         async getProjectedSales() {
             try {
+                // Helper interno para estandarizar fechas a YYYY-MM-DD
+                const toKey = (d) => {
+                    if (!d) return null;
+                    const dateObj = d instanceof Date ? d : window.Utils.parseLocalDate(d);
+                    if (!dateObj || isNaN(dateObj.getTime())) return null;
+                    const y = dateObj.getFullYear();
+                    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                    const day = String(dateObj.getDate()).padStart(2, '0');
+                    return `${y}-${m}-${day}`;
+                };
+
                 const [daily, eleventa] = await Promise.all([
                     window.db.daily_sales.toArray(),
                     window.db.eleventa_sales.toArray()
@@ -637,25 +648,23 @@ window.Utils = {
                 const currentMonth = now.getMonth();
                 const currentYear = now.getFullYear();
 
-                // 1. Normalización y Consolidación O(N)
-                // Usamos los cierres manuales como la "verdad" si existen. 
-                // Si no hay cierre, sumamos todos los tickets de Eleventa del día.
+                // 1. Consolidación Robusta O(N)
                 const manualEntries = daily.filter(s => !s.deleted && s.date);
                 const closedDays = new Set();
                 
                 manualEntries.forEach(s => {
-                    const dateKey = String(s.date).split('T')[0].split(' ')[0];
-                    if (dateKey.length === 10) {
-                        salesMap.set(dateKey, parseFloat(s.total || 0));
-                        closedDays.add(dateKey);
+                    const key = toKey(s.date);
+                    if (key) {
+                        salesMap.set(key, parseFloat(s.total || 0) || 0);
+                        closedDays.add(key);
                     }
                 });
 
                 eleventa.filter(s => !s.deleted && s.date).forEach(s => {
-                    const dateKey = String(s.date).split('T')[0].split(' ')[0];
-                    if (dateKey.length === 10 && !closedDays.has(dateKey)) {
-                        const amount = parseFloat(s.total || s.cash || s.amount || 0);
-                        salesMap.set(dateKey, (salesMap.get(dateKey) || 0) + amount);
+                    const key = toKey(s.date);
+                    if (key && !closedDays.has(key)) {
+                        const amount = parseFloat(s.total || s.cash || s.amount || 0) || 0;
+                        salesMap.set(key, (salesMap.get(key) || 0) + amount);
                     }
                 });
 
@@ -675,9 +684,8 @@ window.Utils = {
                 const monthKeys = Object.keys(monthlyData).sort();
                 const monthValues = monthKeys.map(k => monthlyData[k]);
                 
-                // Simple Linear Regression on Monthly Totals (last 6 months)
                 const regressionMonths = monthValues.slice(-6);
-                let slope = 0; // Growth per month
+                let slope = 0; 
                 if (regressionMonths.length >= 2) {
                     const n = regressionMonths.length;
                     let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
@@ -687,14 +695,15 @@ window.Utils = {
                         sumXY += i * regressionMonths[i];
                         sumXX += i * i;
                     }
-                    slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+                    const denom = (n * sumXX - sumX * sumX);
+                    slope = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0;
                 }
 
-                // 3. Estacionalidad Semanal (Weekday Seasonality)
-                const weekdayTotals = [0, 0, 0, 0, 0, 0, 0];
-                const weekdayCounts = [0, 0, 0, 0, 0, 0, 0];
+                if (isNaN(slope)) slope = 0;
+
+                // 3. Estacionalidad Semanal
+                const weekdayTotals = [0,0,0,0,0,0,0], weekdayCounts = [0,0,0,0,0,0,0];
                 let maxDaily = 0;
-                let recordDay = null;
 
                 allSales.forEach(s => {
                     const d = window.Utils.parseLocalDate(s.date);
@@ -702,10 +711,7 @@ window.Utils = {
                         const day = d.getDay();
                         weekdayTotals[day] += s.amount;
                         weekdayCounts[day]++;
-                        if (s.amount > maxDaily) {
-                            maxDaily = s.amount;
-                            recordDay = s;
-                        }
+                        if (s.amount > maxDaily) maxDaily = s.amount;
                     }
                 });
 
@@ -726,57 +732,53 @@ window.Utils = {
                 const todayNum = now.getDate();
                 let projection = mtdTotal;
                 
-                // Factor de Tendencia Recente vs Historia Larga
                 const recentHistory = allSales.slice(-14);
-                const recentAvg = recentHistory.reduce((a, b) => a + b.amount, 0) / (recentHistory.length || 1);
-                
-                // Aplicamos el Slope de la regresión mensual para ajustar el promedio global
-                // Si el negocio crece 100k al mes, el promedio diario debería subir ~3.3k por mes
+                const recentAvg = (recentHistory.reduce((a, b) => a + b.amount, 0) / (recentHistory.length || 1)) || globalAvg;
                 const dailyGrowthAdjust = slope / 30;
-                const adjustedGlobalAvg = (globalAvg * 0.5) + (recentAvg * 0.5) + dailyGrowthAdjust;
+                let adjustedGlobalAvg = (globalAvg * 0.4) + (recentAvg * 0.6) + dailyGrowthAdjust;
+                if (adjustedGlobalAvg < 0) adjustedGlobalAvg = globalAvg;
 
                 for (let d = todayNum + 1; d <= lastDayOfMonth; d++) {
                     const dateObj = new Date(currentYear, currentMonth, d);
                     projection += Math.max(0, adjustedGlobalAvg * weights[dateObj.getDay()]);
                 }
 
-                // 5. Comparación y Meta
+                // 5. Comparación
                 const prevMonthTotal = monthlyData[monthKeys[monthKeys.length - 2]] || 0;
                 const growthPct = prevMonthTotal > 0 ? ((projection / prevMonthTotal - 1) * 100) : 0;
 
-                // 6. Insight Generator 🤖
-                let insight = "Sigue registrando ventas para mejorar la puntería.";
+                // 6. Insight Generator
+                let insight = "Analizando tus datos para darte la mejor estrategia...";
                 let color = "#94a3b8";
 
-                if (allSales.length > 15) {
+                if (allSales.length > 5) {
                     if (growthPct > 10) {
-                        insight = `🚀 ¡Vas volando! Proyectas un crecimiento del ${growthPct.toFixed(0)}% vs el mes pasado.`;
+                        insight = `🚀 ¡Vas volando! Crecimiento proyectado del ${growthPct.toFixed(0)}% vs mes pasado.`;
                         color = "#10b981";
                     } else if (growthPct < -5) {
-                        insight = "⚠️ Tendencia a la baja. Revisa promociones para reactivar las ventas.";
+                        insight = "⚠️ Tendencia a la baja. Considera una oferta relámpago para repuntar.";
                         color = "#f43f5e";
-                    } else if (projection > Math.max(...monthValues.slice(0, -1))) {
-                        insight = "🏆 ¡Récord histórico a la vista! Este podría ser tu mejor mes.";
+                    } else if (projection > Math.max(...monthValues.slice(0, -1), 0)) {
+                        insight = "🏆 ¡Récord histórico a la vista! Mantén este ritmo imparable.";
                         color = "#fbbf24";
                     } else {
-                        insight = "📈 Negocio estable. Los patrones de fin de semana son consistentes.";
+                        insight = "📈 Negocio estable. Tus patrones de venta se mantienen sólidos.";
                         color = "#60a5fa";
                     }
                 }
 
                 return {
                     mtdTotal,
-                    projectedTotal: Math.round(projection),
+                    projectedTotal: Math.round(projection) || 0,
                     prevMonthTotal,
-                    growthRateMoM: slope,
                     maxDaily,
                     insight,
                     insightColor: color,
-                    confidence: allSales.length > 60 ? 'high' : allSales.length > 15 ? 'medium' : 'low'
+                    confidence: allSales.length > 60 ? 'high' : allSales.length > 20 ? 'medium' : 'low'
                 };
 
             } catch (e) {
-                console.error("AI Engine V2 Error:", e);
+                console.error("AI Engine Error:", e);
                 return null;
             }
         }
