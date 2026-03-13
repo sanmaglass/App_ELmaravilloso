@@ -75,7 +75,10 @@ async function renderSuppliers(filterText = '') {
                     </div>
                     <div>
                         <div class="font-bold text-primary" style="font-size:1.05rem;">${s.name}</div>
-                        ${s.contact ? `<div class="text-muted" style="font-size:0.85rem;"><i class="ph ph-phone"></i> ${s.contact}</div>` : ''}
+                        <div class="flex gap-3 text-muted" style="font-size:0.82rem; margin-top:2px;">
+                            ${s.rut ? `<span><i class="ph ph-identification-card"></i> ${s.rut}</span>` : ''}
+                            ${s.contact ? `<span><i class="ph ph-phone"></i> ${s.contact}</span>` : ''}
+                        </div>
                     </div>
                 </div>
                 <div class="flex gap-2">
@@ -136,8 +139,8 @@ function showSupplierModal(supplierToEdit = null) {
                 </div>
                 <div class="responsive-grid-2 gap-3 mb-4">
                     <div class="form-group">
-                        <label class="form-label" style="font-size:0.85rem;">Nombre Corto</label>
-                        <input type="text" id="sup-short-name" class="form-input" placeholder="Ej: Coca Cola" value="${isEdit ? (supplierToEdit.shortName || '') : ''}">
+                        <label class="form-label">RUT</label>
+                        <input type="text" id="sup-rut" class="form-input" placeholder="12.345.678-9" value="${isEdit ? (supplierToEdit.rut || '') : ''}">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Giro</label>
@@ -163,12 +166,12 @@ function showSupplierModal(supplierToEdit = null) {
 
     modal.classList.remove('hidden');
 
-    document.getElementById('btn-save-supplier').addEventListener('click', async () => {
+        document.getElementById('btn-save-supplier').addEventListener('click', async () => {
         const name = document.getElementById('sup-name').value.trim();
-        const rut = document.getElementById('sup-rut').value.trim();
-        const giro = document.getElementById('sup-giro').value.trim();
-        const address = document.getElementById('sup-address').value.trim();
-        const contact = document.getElementById('sup-contact').value.trim();
+        const rut = document.getElementById('sup-rut')?.value.trim() || '';
+        const giro = document.getElementById('sup-giro')?.value.trim() || '';
+        const address = document.getElementById('sup-address')?.value.trim() || '';
+        const contact = document.getElementById('sup-contact')?.value.trim() || '';
 
         if (!name) { alert('El nombre es obligatorio'); return; }
 

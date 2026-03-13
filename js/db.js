@@ -48,9 +48,15 @@ window.DataManager = {
 
     // Optional columns added by Pro migration — not all Supabase tables have them
     _remindersCoreFields: ['id', 'title', 'type', 'frequency_unit', 'frequency_value',
-        'next_run', 'completed', 'deleted', 'created_at'],
+        'next_run', 'completed', 'deleted'],
     _purchaseInvoicesCoreFields: ['id', 'supplierId', 'invoiceNumber', 'date', 'amount',
         'paymentMethod', 'paymentStatus', 'dueDate', 'creditDays', 'deleted'],
+    _suppliersCoreFields: ['id', 'name', 'rut', 'giro', 'address', 'contact', 'deleted'],
+    _expensesCoreFields: ['id', 'title', 'amount', 'category', 'date', 'deleted'],
+    _employeesCoreFields: ['id', 'name', 'paymentMode', 'paymentFrequency', 'baseSalary',
+        'owedMinutes', 'recoveryRateMinutes', 'recoveryStartDate', 'deleted'],
+    _dailySalesCoreFields: ['id', 'date', 'cash', 'transfer', 'debit', 'credit', 'total', 'notes', 'deleted'],
+    _electronicInvoicesCoreFields: ['id', 'date', 'receiverName', 'receiverRut', 'total', 'status', 'folio', 'pdfUrl', 'deleted'],
 
     /**
      * Guarda o actualiza una entidad y sincroniza con Supabase.
@@ -96,8 +102,18 @@ window.DataManager = {
                         syncErr.code === 'PGRST204' ||
                         syncErr.code === '42703';
 
-                    if (isColumnErr && (tableName === 'reminders' || tableName === 'purchase_invoices')) {
-                        const coreFields = tableName === 'reminders' ? this._remindersCoreFields : this._purchaseInvoicesCoreFields;
+                    const fallbackTables = {
+                        'reminders': this._remindersCoreFields,
+                        'purchase_invoices': this._purchaseInvoicesCoreFields,
+                        'suppliers': this._suppliersCoreFields,
+                        'expenses': this._expensesCoreFields,
+                        'employees': this._employeesCoreFields,
+                        'daily_sales': this._dailySalesCoreFields,
+                        'electronic_invoices': this._electronicInvoicesCoreFields
+                    };
+
+                    if (isColumnErr && fallbackTables[tableName]) {
+                        const coreFields = fallbackTables[tableName];
                         console.warn(`[DataManager] Retrying ${tableName} with core fields only...`);
                         const coreData = {};
                         coreFields.forEach(k => {
