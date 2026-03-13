@@ -523,10 +523,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         renderBadge('kpi-ventas-mes-badge', ventasMes, ventasPrev, false);
 
         // ---- 🧠 IA PREDICTIVE ENGINE INTEGRATION ----
-        const prediction = await window.Utils.PredictionEngine.getProjectedSales();
-        const predContainer = document.getElementById('prediction-container');
-        
-        if (prediction && predContainer) {
+        if (window.Utils && window.Utils.PredictionEngine) {
+            const prediction = await window.Utils.PredictionEngine.getProjectedSales();
+            const predContainer = document.getElementById('prediction-container');
+            
+            if (prediction && predContainer) {
             predContainer.classList.remove('hidden');
             const elPredictTotal = document.getElementById('predict-total');
             const elPredictComparison = document.getElementById('predict-comparison');
@@ -580,6 +581,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 if (elPredictProgress) elPredictProgress.style.width = progressPct + '%';
             }, 600);
         }
+    }
 
         // ---- CEO Metrics: Margin ----
         const margenNetoMonto = ventasMes - gastoTotal;

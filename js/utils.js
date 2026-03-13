@@ -638,19 +638,26 @@ window.Utils = {
                 const currentYear = now.getFullYear();
 
                 // 1. Normalización y Consolidación O(N)
-                const consolidate = (arr, isDaily) => {
-                    arr.filter(s => !s.deleted && s.date).forEach(s => {
-                        const dateKey = String(s.date).split('T')[0].split(' ')[0];
+                // Usamos los cierres manuales como la "verdad" si existen. 
+                // Si no hay cierre, sumamos todos los tickets de Eleventa del día.
+                const manualEntries = daily.filter(s => !s.deleted && s.date);
+                const closedDays = new Set();
+                
+                manualEntries.forEach(s => {
+                    const dateKey = String(s.date).split('T')[0].split(' ')[0];
+                    if (dateKey.length === 10) {
+                        salesMap.set(dateKey, parseFloat(s.total || 0));
+                        closedDays.add(dateKey);
+                    }
+                });
+
+                eleventa.filter(s => !s.deleted && s.date).forEach(s => {
+                    const dateKey = String(s.date).split('T')[0].split(' ')[0];
+                    if (dateKey.length === 10 && !closedDays.has(dateKey)) {
                         const amount = parseFloat(s.total || s.cash || s.amount || 0);
-                        if (isDaily) {
-                            salesMap.set(dateKey, amount); // Daily closure has priority
-                        } else if (!salesMap.has(dateKey)) {
-                            salesMap.set(dateKey, (salesMap.get(dateKey) || 0) + amount);
-                        }
-                    });
-                };
-                consolidate(daily, true);
-                consolidate(eleventa, false);
+                        salesMap.set(dateKey, (salesMap.get(dateKey) || 0) + amount);
+                    }
+                });
 
                 const allSales = Array.from(salesMap.entries())
                     .map(([date, amount]) => ({ date, amount }))
