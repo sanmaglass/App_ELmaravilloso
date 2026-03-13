@@ -121,13 +121,26 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
     <!-- ===================== TAB 1: RESUMEN ===================== -->
     <div id="tab-resumen" class="dash-tab-content active">
 
-        <!-- Alertas semanales -->
-        <div id="weekly-summary-container" class="hidden" style="margin-bottom:24px;">
-            <div class="premium-card" style="border-left:6px solid #f59e0b; background:rgba(245,158,11,0.05);">
-                <h3 class="text-warning font-bold flex items-center gap-2 mb-4 text-base">
-                    <i class="ph ph-calendar-check text-xl"></i> Vencimientos Esta Semana
-                </h3>
-                <div id="weekly-summary-list" class="flex-col gap-3"></div>
+        <!-- Alertas semanales y Notificaciones Urgentes -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px; margin-bottom:24px;">
+            <!-- Notificaciones Urgentes (Contadora) -->
+            <div id="urgent-notifications-container" class="hidden">
+                <div class="premium-card" style="border-left:6px solid #ef4444; background:rgba(239,68,68,0.05);">
+                    <h3 class="text-danger font-bold flex items-center gap-2 mb-4 text-base">
+                        <i class="ph ph-warning-circle text-xl pulse"></i> NOTIFICACIONES URGENTES
+                    </h3>
+                    <div id="urgent-notifications-list" class="flex-col gap-3"></div>
+                </div>
+            </div>
+
+            <!-- Vencimientos semanales -->
+            <div id="weekly-summary-container" class="hidden">
+                <div class="premium-card" style="border-left:6px solid #f59e0b; background:rgba(245,158,11,0.05);">
+                    <h3 class="text-warning font-bold flex items-center gap-2 mb-4 text-base">
+                        <i class="ph ph-calendar-check text-xl"></i> Vencimientos Esta Semana
+                    </h3>
+                    <div id="weekly-summary-list" class="flex-col gap-3"></div>
+                </div>
             </div>
         </div>
 
@@ -746,6 +759,93 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 </div>`;
             }).join('');
         }
+
+        // ---- Notificaciones Urgentes (Pago Contadora) ----
+        const accountantDueDay = 14;
+        const currentYear = now.getFullYear();
+        const currentMonthIdx = now.getMonth();
+        
+        let urgentHtml = '';
+        
+        // Check if current month's payment is already registered in expenses
+        const currentMonthIntStr = `${currentYear}-${String(currentMonthIdx + 1).padStart(2, '0')}`;
+        const hasPaidAccountant = allExpenses.some(e => 
+            !e.deleted && 
+            e.category === 'Contabilidad' && 
+            e.date.startsWith(currentMonthIntStr)
+        );
+
+        if (!hasPaidAccountant) {
+            const dueDate = new Date(currentYear, currentMonthIdx, accountantDueDay);
+            const diffDays = Math.ceil((dueDate - today0) / 86400000);
+
+            if (diffDays <= 5) { // Show from the 9th onwards
+                const urgentIcon = diffDays <= 0 ? 'ph-warning-octagon' : 'ph-calendar-plus';
+                const urgentMsg = diffDays < 0 ? 'Pago de Contadora ATRASADO' : diffDays === 0 ? 'Pago de Contadora HOY' : `Faltan ${diffDays} días para el pago de Contadora`;
+                const urgentColor = diffDays <= 0 ? '#ef4444' : '#f97316';
+                
+                urgentHtml += `
+                <div style="padding:14px; background:white; border-radius:12px; border:1px solid rgba(239,68,68,0.1); display:flex; flex-direction:column; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <i class="ph ${urgentIcon}" style="font-size:2rem; color:${urgentColor};"></i>
+                        <div>
+                            <div style="font-weight:700; font-size:1.05rem; color:var(--text-primary);">${urgentMsg}</div>
+                            <div style="font-size:0.85rem; color:var(--text-muted);">Fecha límite: 14 de ${now.toLocaleDateString('es-ES', { month: 'long' })}</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="window._showAccountantQuickPay()" style="width:100%; justify-content:center; margin-top:5px; background:${urgentColor};">
+                        <i class="ph ph-hand-coins"></i> Registrar Pago Realizado
+                    </button>
+                </div>`;
+            }
+        }
+
+        // History Summary Accountant
+        const accountantExpenses = allExpenses.filter(e => !e.deleted && e.category === 'Contabilidad')
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        if (accountantExpenses.length > 0) {
+            const totalPaidAccountant = accountantExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+            urgentHtml += `
+            <div style="margin-top:10px; padding:10px; border-top:1px dashed var(--border);">
+                <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600; display:flex; justify-content:space-between;">
+                    <span>Historial Contabilidad</span>
+                    <span>Total: ${fmt(totalPaidAccountant)}</span>
+                </div>
+                <div style="margin-top:5px; font-size:0.75rem; color:var(--text-primary);">
+                    Último pago: ${fmt(accountantExpenses[0].amount)} (${window.Utils.formatDate(accountantExpenses[0].date)})
+                </div>
+            </div>`;
+        }
+
+        const urgentContainer = document.getElementById('urgent-notifications-container');
+        if (urgentHtml) {
+            urgentContainer.classList.remove('hidden');
+            document.getElementById('urgent-notifications-list').innerHTML = urgentHtml;
+        } else {
+            urgentContainer.classList.add('hidden');
+        }
+
+        // Global function to quick-register accountant payment
+        window._showAccountantQuickPay = () => {
+             const val = prompt('Ingresa el monto pagado a la contadora:', '0');
+             const amount = parseFloat(val);
+             if (!isNaN(amount) && amount > 0) {
+                 const today = new Date().toISOString().split('T')[0];
+                 window.DataManager.saveAndSync('expenses', {
+                     title: 'Pago Contadora - ' + new Date().toLocaleDateString('es-ES', { month: 'long' }),
+                     amount: amount,
+                     category: 'Contabilidad',
+                     date: today,
+                     deleted: false
+                 }).then(res => {
+                     if (res.success) {
+                         alert('✅ Pago registrado correctamente.');
+                         window.Views.dashboard(container); // Refresh
+                     }
+                 });
+             }
+        };
 
         // ---- (Actividad Reciente removed) ----
 

@@ -29,6 +29,7 @@ window.Views.expenses = async (container) => {
                 <option value="all">Todas las Categorías</option>
                 <option value="Servicios">Servicios Básicos</option>
                 <option value="Alquiler">Alquiler</option>
+                <option value="Contabilidad">Contabilidad</option>
                 <option value="Transporte">Transporte</option>
                 <option value="Insumos">Insumos</option>
                 <option value="Marketing">Marketing</option>
@@ -272,6 +273,7 @@ function showExpenseModal(expenseToEdit = null) {
                         <select id="exp-category" class="form-input">
                             <option value="Servicios" ${isEdit && expenseToEdit.category === 'Servicios' ? 'selected' : ''}>Servicios Básicos</option>
                             <option value="Alquiler" ${isEdit && expenseToEdit.category === 'Alquiler' ? 'selected' : ''}>Alquiler</option>
+                            <option value="Contabilidad" ${isEdit && expenseToEdit.category === 'Contabilidad' ? 'selected' : ''}>Contabilidad</option>
                             <option value="Transporte" ${isEdit && expenseToEdit.category === 'Transporte' ? 'selected' : ''}>Transporte</option>
                             <option value="Insumos" ${isEdit && expenseToEdit.category === 'Insumos' ? 'selected' : ''}>Insumos</option>
                             <option value="Marketing" ${isEdit && expenseToEdit.category === 'Marketing' ? 'selected' : ''}>Marketing</option>

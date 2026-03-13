@@ -232,10 +232,10 @@
                 .then((reg) => {
                     console.log('✅ Service Worker registrado');
 
-                    // Check for updates every 60 seconds
+                    // Check for updates every 5 minutes (less intrusive)
                     setInterval(() => {
                         reg.update();
-                    }, 60000);
+                    }, 300000);
 
                     // Detect when new service worker is waiting
                     reg.addEventListener('updatefound', () => {
@@ -243,13 +243,10 @@
                         newWorker.addEventListener('statechange', () => {
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                 // New version available!
-                                console.log('🔄 Nueva versión detectada. Actualizando...');
+                                console.log('🔄 Nueva versión instalada. Se aplicará al recargar o en el siguiente inicio.');
                                 newWorker.postMessage({ type: 'SKIP_WAITING' });
-
-                                // Opcional: Avisar al usuario o recargar directo
-                                setTimeout(() => {
-                                    window.location.reload(true); // Force reload
-                                }, 500);
+                                // We don't force reload here anymore to avoid interrupting the user.
+                                // The preserved view logic will handle it if they manually reload.
                             }
                         });
                     });

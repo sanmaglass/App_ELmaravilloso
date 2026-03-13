@@ -42,7 +42,7 @@ window.Views.calendar = async (container) => {
             indicators = `
                 <div style="margin-top:4px; font-size:0.75rem;">
                     <div style="color:var(--accent);">${dayLogs.length} reg.</div>
-                    <div class="money-sensitive" style="color:var(--text-muted);">${window.Utils.formatCurrency(dayLogs.reduce((acc, curr) => acc + (curr.payAmount || 0), 0))}</div>
+                    <div style="color:var(--text-muted);">${window.Utils.formatCurrency(dayLogs.reduce((acc, curr) => acc + (curr.payAmount || 0), 0))}</div>
                 </div>
             `;
         }

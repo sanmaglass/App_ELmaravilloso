@@ -111,8 +111,7 @@ async function init() {
                     // Background sync (async skip waiting)
                     window.Sync.syncAll().then(() => {
                         console.log('Background Sync Completed');
-                        const current = window.state.currentView;
-                        if (views[current]) views[current]();
+                        // Redundant re-render removed to prevent UI flicker/stuck modals
                     });
 
                     await window.Sync.initRealtimeSync();
@@ -160,6 +159,7 @@ async function init() {
                 // Navigate
                 const viewName = target.dataset.view;
                 window.state.currentView = viewName; // Update state
+                localStorage.setItem('wm_current_view', viewName); // Persist view for reloads
                 document.getElementById('page-title').textContent = target.querySelector('span').textContent;
                 if (views[viewName]) {
                     views[viewName]();
@@ -172,9 +172,20 @@ async function init() {
             });
         });
 
-        // Initial Load
-        window.state.currentView = 'dashboard';
-        views.dashboard();
+        // Initial Load (Restore from localStorage if possible)
+        const savedView = localStorage.getItem('wm_current_view') || 'dashboard';
+        window.state.currentView = savedView;
+        if (views[savedView]) {
+            views[savedView]();
+            // Highlight correct nav item
+            navItems.forEach(b => {
+                if (b.dataset.view === savedView) b.classList.add('active');
+                else b.classList.remove('active');
+            });
+            const titleEl = document.getElementById('page-title');
+            const navBtn = Array.from(navItems).find(b => b.dataset.view === savedView);
+            if (titleEl && navBtn) titleEl.textContent = navBtn.querySelector('span').textContent;
+        }
 
         // GLOBAL SYNC LISTENER: Solo actúa en vistas sin syncHandler propio
         // Las vistas con su propio syncHandler (purchase_invoices, expenses, daily_sales, etc.)

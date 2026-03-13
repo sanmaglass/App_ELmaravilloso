@@ -237,15 +237,15 @@ window.Views.reports = async (container) => {
                     <div class="flex items-center gap-3 flex-wrap">
                         <div class="text-right">
                             <div class="text-xs text-muted font-bold uppercase tracking-wider">Ventas</div>
-                            <div class="text-base font-bold text-success">${escapeHTML(fmt(m.totalVentas))}</div>
+                            <div class="text-base font-bold text-success">${fmt(m.totalVentas)}</div>
                         </div>
                         <div class="text-right">
                             <div class="text-xs text-muted font-bold uppercase tracking-wider">Gastos</div>
-                            <div class="text-base font-bold text-primary">${escapeHTML(fmt(m.totalGastos))}</div>
+                            <div class="text-base font-bold text-primary">${fmt(m.totalGastos)}</div>
                         </div>
                         <div class="profit-pill" style="background:${pillColor}; color:${pillText};">
                             <i class="ph ${pillIcon}"></i>
-                            ${escapeHTML(fmt(utilidad))}${margen !== null ? ` <span class="opacity-70 font-normal">(${escapeHTML(margen)}%)</span>` : ''}
+                            ${fmt(utilidad)}${margen !== null ? ` <span class="opacity-70 font-normal">(${margen}%)</span>` : ''}
                         </div>
                         <i class="ph ph-caret-down month-toggle-icon${isCurrentMonth ? ' open' : ''}"></i>
                     </div>
