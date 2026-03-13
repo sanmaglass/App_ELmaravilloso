@@ -5,7 +5,11 @@
 window.Views = window.Views || {};
 
 window.Views.dashboard = async (container, selectedMonth = null) => {
-    container.innerHTML = `
+    // 🔍 SMART REFRESH CHECK: If basic shell already exists, skip innerHTML overwrite
+    const isAlreadyRendered = document.getElementById('tab-resumen') !== null;
+    
+    if (!isAlreadyRendered) {
+        container.innerHTML = `
     <style>
         /* ---- Sub-Tab System ---- */
         .dash-tabs { display:flex; gap:6px; background:rgba(0,0,0,0.04); padding:6px; border-radius:16px; width:fit-content; }
@@ -337,6 +341,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         </div>
     </div>
     `;
+    } // End if(!isAlreadyRendered)
 
     // (Tab switching removed as only Resumen exists now)
 
@@ -512,14 +517,15 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // Gasto mes with badge
         const elGasto = document.getElementById('kpi-gasto-mes');
         if (elGasto) {
-            elGasto.innerHTML = ''; // Clear
-            elGasto.insertAdjacentHTML('afterbegin', fmt(gastoTotal)); // Use gastoTotal (incl. Salaries) for main card per user request
+            window.Utils.animateNumber(elGasto, 0, gastoTotal, 1000, true);
         }
         renderBadge('kpi-gasto-mes-badge', gastoTotal, gastoPrev, true);
 
         // Ventas mes with badge
         const elVentas = document.getElementById('kpi-ventas-mes');
-        if (elVentas) elVentas.innerHTML = fmt(ventasMes);
+        if (elVentas) {
+            window.Utils.animateNumber(elVentas, 0, ventasMes, 1000, true);
+        }
         renderBadge('kpi-ventas-mes-badge', ventasMes, ventasPrev, false);
 
         // ---- 🧠 IA PREDICTIVE ENGINE INTEGRATION ----
@@ -601,7 +607,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const margenNetoPct = ventasMes > 0 ? (margenNetoMonto / ventasMes * 100) : 0;
 
         const elMargenMonto = document.getElementById('kpi-margen-neto');
-        if (elMargenMonto) elMargenMonto.innerHTML = fmt(margenNetoMonto);
+        if (elMargenMonto) {
+            window.Utils.animateNumber(elMargenMonto, 0, margenNetoMonto, 1000, true);
+        }
 
         const elMargenBadge = document.getElementById('kpi-margen-badge');
         if (elMargenBadge) {
