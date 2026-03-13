@@ -803,7 +803,6 @@ async function renderInvoices() {
                     <div style="font-size:0.85rem; color:var(--text-muted); display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                         <span style="display:flex; align-items:center; gap:4px;">
                             <i class="ph ph-hash"></i> ${escapeHTML(inv.invoiceNumber)}
-                            ${(inv.imageData || inv.image_url) ? `<span style="background:var(--primary); color:white; font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:6px; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:3px;"><i class="ph ph-image"></i> FOTO DISPONIBLE</span>` : ''}
                         </span>
                         <span>•</span>
                         <span><i class="ph ph-calendar-blank"></i> ${formatDate(inv.date)}</span>
@@ -852,11 +851,8 @@ async function renderInvoices() {
                     <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">${inv.paymentMethod}</div>
                 </div>
 
-            <!-- Actions -->
+                <!-- Actions -->
                 <div style="display:flex; gap:8px; align-items:center;">
-                    ${(inv.imageData || inv.image_url) ? `<button class="btn btn-icon btn-view-photo" data-src="${inv.image_url || inv.imageData}" title="Ver Foto" style="color:var(--primary);">
-                        <i class="ph ph-scan"></i>
-                    </button>` : ''}
                      <button class="btn btn-icon btn-edit-invoice" data-id="${inv.id}" title="Editar">
                         <i class="ph ph-pencil-simple"></i>
                     </button>
@@ -899,8 +895,8 @@ async function renderInvoices() {
         document.querySelectorAll('.btn-delete-invoice').forEach(btn =>
             btn.addEventListener('click', (e) => handleDeleteInvoice(Number(e.currentTarget.dataset.id)))
         );
-        document.querySelectorAll('.btn-view-photo').forEach(btn =>
-            btn.addEventListener('click', (e) => { e.stopPropagation(); openInvoiceLightbox(e.currentTarget.dataset.src); })
+        document.querySelectorAll('.btn-delete-invoice').forEach(btn =>
+            btn.addEventListener('click', (e) => handleDeleteInvoice(Number(e.currentTarget.dataset.id)))
         );
 
     } catch (e) {
@@ -1066,12 +1062,6 @@ async function showInvoiceModal(invoiceToEdit = null) {
                         <textarea id="inv-notes" class="form-input" style="height:60px;">${isEdit && invoiceToEdit.notes ? invoiceToEdit.notes : ''}</textarea>
                     </div>
 
-                    <!-- 📷 FOTO FACTURA - TEMPORALMENTE DESHABILITADO POR SEGURIDAD DE NUBE -->
-                    <!-- 
-                    <div class="form-group" style="grid-column:1/-1;">
-                        ... photo elements hidden ...
-                    </div>
-                    -->
 
                 </form>
             </div>
@@ -1086,30 +1076,6 @@ async function showInvoiceModal(invoiceToEdit = null) {
     modal.classList.remove('hidden');
     window._invPhotoData = null; // reset para nueva factura
 
-    // --- PHOTO SCAN LOGIC ---
-    const processPhoto = async (file) => {
-        if (!file) return;
-        const progress = document.getElementById('inv-scan-progress');
-        const placeholder = document.getElementById('inv-photo-placeholder');
-        const preview = document.getElementById('inv-photo-preview');
-        const previewImg = document.getElementById('inv-photo-img');
-
-        progress.style.display = 'flex';
-        placeholder.style.display = 'none';
-
-        try {
-            const scanned = await scanInvoicePhoto(file);
-            window._invPhotoData = scanned;
-            previewImg.src = scanned;
-            preview.style.display = 'block';
-        } catch (err) {
-            console.error('Error escaneando:', err);
-            alert('Error al procesar la imagen.');
-            placeholder.style.display = 'block';
-        } finally {
-            progress.style.display = 'none';
-        }
-    };
 
     /* FEATURE DISABLED - PHOTO UPLOAD
     document.getElementById('btn-inv-camera').addEventListener('click', () => document.getElementById('inv-photo-camera').click());
@@ -1357,7 +1323,6 @@ async function showInvoiceModal(invoiceToEdit = null) {
         const paymentMethod = document.getElementById('inv-method').value;
         let paymentStatus = document.getElementById('inv-status').value;
         const notes = document.getElementById('inv-notes').value.trim();
-        const imageData = window._invPhotoData || (isEdit ? invoiceToEdit.imageData : null) || null;
 
         // Abono Paid Amount Calculation
         let paidAmount = 0;
@@ -1385,8 +1350,6 @@ async function showInvoiceModal(invoiceToEdit = null) {
             // --- FEATURE DISABLED ---
             // Photo upload to Supabase storage is temporarily disabled per user request
             let imageUrl = isEdit ? invoiceToEdit.image_url : null;
-            let finalImageData = isEdit ? invoiceToEdit.imageData : null; // keep local fallback if exists
-
             const invoiceData = {
                 supplierId,
                 supplierName: supplierObj.name, // Save name as backup
@@ -1399,13 +1362,10 @@ async function showInvoiceModal(invoiceToEdit = null) {
                 creditDays,
                 dueDate,
                 notes,
-                imageData: finalImageData, // Only kept if upload failed or using old local image
-                image_url: imageUrl,       // NEW: Cloud URL
                 // Preserve paidAmount on edit; new invoices start at 0
                 paidAmount: isEdit ? (invoiceToEdit.paidAmount || 0) : 0,
                 deleted: false
             };
-            window._invPhotoData = null; // limpiar temp
 
             if (isEdit) {
                 await window.DataManager.saveAndSync('purchase_invoices', { id: invoiceToEdit.id, ...invoiceData });
@@ -1574,247 +1534,4 @@ async function populateSupplierFilter() {
     const currentValue = select.value;
     select.innerHTML = '<option value="all">Todos los Proveedores</option>' +
         supplierOptions.map(s => `<option value="${s.id}" ${String(s.id) === String(currentValue) ? 'selected' : ''}>${s.name}</option>`).join('');
-}
-
-// ================================================================
-// 📷 DOCUMENT SCANNER — Auto-detect + perspective warp + B&N
-// ================================================================
-
-async function scanInvoicePhoto(file) {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.onload = async () => {
-            URL.revokeObjectURL(url);
-            const MAX = 1600;
-            let w = img.naturalWidth, h = img.naturalHeight;
-            if (w > MAX || h > MAX) {
-                if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-                else { w = Math.round(w * MAX / h); h = MAX; }
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width = w; canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-
-            const corners = detectDocCorners(canvas, w, h);
-            const prog = document.getElementById('inv-scan-progress');
-            if (prog) prog.style.display = 'none';
-
-            try {
-                const adjusted = await showScannerUI(canvas, corners, w, h);
-                resolve(applyDocumentScan(canvas, adjusted, w, h));
-            } catch (_) {
-                resolve(applyThresholdOnly(canvas, w, h));
-            }
-        };
-        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
-        img.src = url;
-    });
-}
-
-function detectDocCorners(canvas, w, h) {
-    const SCALE = 4;
-    const sw = Math.floor(w / SCALE), sh = Math.floor(h / SCALE);
-    const sc = document.createElement('canvas');
-    sc.width = sw; sc.height = sh;
-    sc.getContext('2d').drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
-    const d = sc.getContext('2d').getImageData(0, 0, sw, sh).data;
-    const g = new Uint8Array(sw * sh);
-    for (let i = 0; i < sw * sh; i++) g[i] = (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) | 0;
-
-    const b = new Uint8Array(sw * sh);
-    for (let y = 1; y < sh - 1; y++) for (let x = 1; x < sw - 1; x++)
-        b[y * sw + x] = ((g[(y - 1) * sw + x - 1] + 2 * g[(y - 1) * sw + x] + g[(y - 1) * sw + x + 1] + 2 * g[y * sw + x - 1] + 4 * g[y * sw + x] + 2 * g[y * sw + x + 1] + g[(y + 1) * sw + x - 1] + 2 * g[(y + 1) * sw + x] + g[(y + 1) * sw + x + 1]) / 16) | 0;
-
-    const edges = new Uint8Array(sw * sh);
-    for (let y = 1; y < sh - 1; y++) for (let x = 1; x < sw - 1; x++) {
-        const gx = -b[(y - 1) * sw + x - 1] - 2 * b[y * sw + x - 1] - b[(y + 1) * sw + x - 1] + b[(y - 1) * sw + x + 1] + 2 * b[y * sw + x + 1] + b[(y + 1) * sw + x + 1];
-        const gy = -b[(y - 1) * sw + x - 1] - 2 * b[(y - 1) * sw + x] - b[(y - 1) * sw + x + 1] + b[(y + 1) * sw + x - 1] + 2 * b[(y + 1) * sw + x] + b[(y + 1) * sw + x + 1];
-        edges[y * sw + x] = Math.min(255, Math.sqrt(gx * gx + gy * gy)) | 0;
-    }
-
-    const THRESH = 40, P = 8;
-    let tl = [sw * 0.25, sh * 0.25], tr = [sw * 0.75, sh * 0.25], br = [sw * 0.75, sh * 0.75], bl = [sw * 0.25, sh * 0.75];
-    let tlS = Infinity, trS = -Infinity, brS = -Infinity, blS = Infinity, found = 0;
-    for (let y = 1; y < sh - 1; y++) for (let x = 1; x < sw - 1; x++) {
-        if (edges[y * sw + x] < THRESH) continue;
-        found++;
-        const sum = x + y, diff = x - y;
-        if (sum < tlS) { tlS = sum; tl = [x, y]; }
-        if (diff > trS) { trS = diff; tr = [x, y]; }
-        if (sum > brS) { brS = sum; br = [x, y]; }
-        if (diff < blS) { blS = diff; bl = [x, y]; }
-    }
-
-    const docW = Math.max(tr[0], br[0]) - Math.min(tl[0], bl[0]);
-    const docH = Math.max(br[1], bl[1]) - Math.min(tl[1], tr[1]);
-    if (found < 200 || docW < sw * 0.25 || docH < sh * 0.25)
-        return [[P * SCALE, P * SCALE], [w - P * SCALE, P * SCALE], [w - P * SCALE, h - P * SCALE], [P * SCALE, h - P * SCALE]];
-
-    return [
-        [Math.max(0, (tl[0] - P) * SCALE), Math.max(0, (tl[1] - P) * SCALE)],
-        [Math.min(w, (tr[0] + P) * SCALE), Math.max(0, (tr[1] - P) * SCALE)],
-        [Math.min(w, (br[0] + P) * SCALE), Math.min(h, (br[1] + P) * SCALE)],
-        [Math.max(0, (bl[0] - P) * SCALE), Math.min(h, (bl[1] + P) * SCALE)]
-    ];
-}
-
-function showScannerUI(canvas, corners, w, h) {
-    return new Promise((resolve, reject) => {
-        const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;';
-
-        const maxW = window.innerWidth - 32, maxH = window.innerHeight - 170;
-        const scale = Math.min(maxW / w, maxH / h, 1);
-        const dw = Math.round(w * scale), dh = Math.round(h * scale);
-        const dc = document.createElement('canvas');
-        dc.width = dw; dc.height = dh;
-        dc.style.cssText = 'border-radius:8px;touch-action:none;user-select:none;';
-
-        let pts = corners.map(([x, y]) => [x * scale, y * scale]);
-
-        const render = () => {
-            const ctx = dc.getContext('2d');
-            ctx.drawImage(canvas, 0, 0, w, h, 0, 0, dw, dh);
-            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, dw, dh);
-            ctx.save(); ctx.globalCompositeOperation = 'destination-out';
-            ctx.beginPath(); ctx.moveTo(...pts[0]); pts.slice(1).forEach(p => ctx.lineTo(...p)); ctx.closePath(); ctx.fill();
-            ctx.restore();
-            ctx.save(); ctx.beginPath(); ctx.moveTo(...pts[0]); pts.slice(1).forEach(p => ctx.lineTo(...p)); ctx.closePath(); ctx.clip();
-            ctx.drawImage(canvas, 0, 0, w, h, 0, 0, dw, dh); ctx.restore();
-            ctx.beginPath(); ctx.moveTo(...pts[0]); pts.slice(1).forEach(p => ctx.lineTo(...p)); ctx.closePath();
-            ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2; ctx.stroke();
-            pts.forEach(([x, y]) => {
-                ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI * 2);
-                ctx.fillStyle = '#22c55e'; ctx.fill();
-                ctx.strokeStyle = 'white'; ctx.lineWidth = 2.5; ctx.stroke();
-            });
-        };
-        render();
-
-        let dragIdx = -1;
-        const pos = e => { const r = dc.getBoundingClientRect(), t = e.touches?.[0] || e; return [t.clientX - r.left, t.clientY - r.top]; };
-        dc.addEventListener('mousedown', e => { const p = pos(e); dragIdx = pts.findIndex(([x, y]) => Math.hypot(x - p[0], y - p[1]) < 30); });
-        dc.addEventListener('touchstart', e => { e.preventDefault(); const p = pos(e); dragIdx = pts.findIndex(([x, y]) => Math.hypot(x - p[0], y - p[1]) < 38); }, { passive: false });
-        const onMove = e => { e.preventDefault(); if (dragIdx < 0) return; const [px, py] = pos(e); pts[dragIdx] = [Math.max(0, Math.min(dw, px)), Math.max(0, Math.min(dh, py))]; render(); };
-        dc.addEventListener('mousemove', onMove); dc.addEventListener('touchmove', onMove, { passive: false });
-        dc.addEventListener('mouseup', () => dragIdx = -1); dc.addEventListener('touchend', () => dragIdx = -1);
-
-        const hdr = document.createElement('div');
-        hdr.style.cssText = 'color:white;font-weight:700;font-size:1rem;text-align:center;';
-        hdr.innerHTML = '📄 Ajustar bordes del documento<br><span style="font-size:0.75rem;opacity:0.6;font-weight:400;">Arrastra los puntos verdes a las esquinas de la factura</span>';
-
-        const btnRow = document.createElement('div');
-        btnRow.style.cssText = 'display:flex;gap:12px;width:100%;max-width:' + dw + 'px;';
-        const btnSkip = document.createElement('button');
-        btnSkip.className = 'btn btn-secondary'; btnSkip.style.flex = '1'; btnSkip.textContent = 'Omitir';
-        btnSkip.onclick = () => {
-            btnSkip.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
-            setTimeout(() => { document.body.removeChild(overlay); reject('skipped'); }, 50);
-        };
-        const btnOk = document.createElement('button');
-        btnOk.className = 'btn btn-primary'; btnOk.style.flex = '2'; btnOk.innerHTML = '<i class="ph ph-check"></i> Aplicar';
-        btnOk.onclick = () => {
-            btnOk.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Transformando...';
-            setTimeout(() => { document.body.removeChild(overlay); resolve(pts.map(([x, y]) => [x / scale, y / scale])); }, 50);
-        };
-        btnRow.append(btnSkip, btnOk);
-
-        const hint = document.createElement('div');
-        hint.style.cssText = 'color:rgba(255,255,255,0.5);font-size:0.72rem;text-align:center;';
-        hint.textContent = 'Si las esquinas ya están bien, toca Aplicar directamente';
-        overlay.append(hdr, dc, btnRow, hint);
-        document.body.appendChild(overlay);
-    });
-}
-
-function applyDocumentScan(srcCanvas, corners, w, h) {
-    const [tl, tr, br, bl] = corners;
-    const dw = Math.round(Math.max(Math.hypot(tr[0] - tl[0], tr[1] - tl[1]), Math.hypot(br[0] - bl[0], br[1] - bl[1])));
-    const dh = Math.round(Math.max(Math.hypot(bl[0] - tl[0], bl[1] - tl[1]), Math.hypot(br[0] - tr[0], br[1] - tr[1])));
-    const dst = document.createElement('canvas');
-    dst.width = dw; dst.height = dh;
-    const dctx = dst.getContext('2d');
-    const H = computeHomography([[0, 0], [dw, 0], [dw, dh], [0, dh]], [tl, tr, br, bl]);
-    const sp = srcCanvas.getContext('2d').getImageData(0, 0, w, h).data;
-    const di = dctx.createImageData(dw, dh);
-    const dp = di.data;
-    for (let v = 0; v < dh; v++) for (let u = 0; u < dw; u++) {
-        const D = H[6] * u + H[7] * v + 1, sx = (H[0] * u + H[1] * v + H[2]) / D, sy = (H[3] * u + H[4] * v + H[5]) / D;
-        const x0 = sx | 0, y0 = sy | 0, x1 = x0 + 1, y1 = y0 + 1, wx = sx - x0, wy = sy - y0;
-        const pi = (v * dw + u) * 4;
-        if (x0 >= 0 && x1 < w && y0 >= 0 && y1 < h) {
-            for (let c = 0; c < 3; c++) dp[pi + c] = sp[(y0 * w + x0) * 4 + c] * (1 - wx) * (1 - wy) + sp[(y0 * w + x1) * 4 + c] * wx * (1 - wy) + sp[(y1 * w + x0) * 4 + c] * (1 - wx) * wy + sp[(y1 * w + x1) * 4 + c] * wx * wy;
-            dp[pi + 3] = 255;
-        } else { dp[pi] = dp[pi + 1] = dp[pi + 2] = 255; dp[pi + 3] = 255; }
-    }
-    dctx.putImageData(di, 0, 0);
-    adaptiveThreshold(dctx, dw, dh);
-    return dst.toDataURL('image/jpeg', 0.90);
-}
-
-function applyThresholdOnly(canvas, w, h) {
-    const ctx = canvas.getContext('2d');
-    adaptiveThreshold(ctx, w, h);
-    return canvas.toDataURL('image/jpeg', 0.90);
-}
-
-function adaptiveThreshold(ctx, w, h) {
-    const id = ctx.getImageData(0, 0, w, h), data = id.data;
-    const gray = new Float32Array(w * h);
-    for (let i = 0; i < w * h; i++) gray[i] = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
-    const intg = new Float64Array((w + 1) * (h + 1));
-    for (let y = 1; y <= h; y++) for (let x = 1; x <= w; x++)
-        intg[y * (w + 1) + x] = gray[(y - 1) * w + (x - 1)] + intg[(y - 1) * (w + 1) + x] + intg[y * (w + 1) + (x - 1)] - intg[(y - 1) * (w + 1) + (x - 1)];
-    const R = 11, k = -0.2;
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-        const x1 = Math.max(0, x - R), y1 = Math.max(0, y - R), x2 = Math.min(w - 1, x + R), y2 = Math.min(h - 1, y + R);
-        const cnt = (x2 - x1 + 1) * (y2 - y1 + 1);
-        const s = intg[(y2 + 1) * (w + 1) + (x2 + 1)] - intg[y1 * (w + 1) + (x2 + 1)] - intg[(y2 + 1) * (w + 1) + x1] + intg[y1 * (w + 1) + x1];
-        const idx = (y * w + x) * 4, val = gray[y * w + x] < (s / cnt) * (1 + k) ? 0 : 255;
-        data[idx] = data[idx + 1] = data[idx + 2] = val;
-    }
-    ctx.putImageData(id, 0, 0);
-}
-
-function computeHomography(src, dst) {
-    const M = [], b = [];
-    for (let i = 0; i < 4; i++) {
-        const [xi, yi] = src[i], [ui, vi] = dst[i];
-        M.push([xi, yi, 1, 0, 0, 0, -xi * ui, -yi * ui]); b.push(ui);
-        M.push([0, 0, 0, xi, yi, 1, -xi * vi, -yi * vi]); b.push(vi);
-    }
-    const n = 8, A = M.map((r, i) => [...r, b[i]]);
-    for (let c = 0; c < n; c++) {
-        let mx = c; for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[mx][c])) mx = r;
-        [A[c], A[mx]] = [A[mx], A[c]];
-        for (let r = c + 1; r < n; r++) { const f = A[r][c] / A[c][c]; for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k]; }
-    }
-    const x = new Array(n);
-    for (let i = n - 1; i >= 0; i--) { x[i] = A[i][n]; for (let j = i + 1; j < n; j++) x[i] -= A[i][j] * x[j]; x[i] /= A[i][i]; }
-    return x;
-}
-
-// --- 🔍 INVOICE PHOTO LIGHTBOX ---
-function openInvoiceLightbox(src) {
-    const existing = document.getElementById('inv-lightbox');
-    if (existing) existing.remove();
-
-    const lb = document.createElement('div');
-    lb.id = 'inv-lightbox';
-    lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:16px;box-sizing:border-box;';
-    lb.innerHTML = `
-        <div style="position:relative; max-width:min(95vw,900px); max-height:90vh; display:flex; flex-direction:column;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="color:white; font-weight:600; font-size:0.9rem;">📄 Foto de Factura</span>
-                <button onclick="document.getElementById('inv-lightbox').remove()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;border-radius:50%;width:36px;height:36px;font-size:1.2rem;cursor:pointer;">×</button>
-            </div>
-            <img src="${src}" style="max-width:100%; max-height:calc(90vh - 60px); border-radius:8px; box-shadow:0 8px 40px rgba(0,0,0,0.6); object-fit:contain;">
-            <a href="${src}" download="factura.jpg" style="display:flex; align-items:center; gap:6px; justify-content:center; margin-top:12px; color:rgba(255,255,255,0.7); font-size:0.8rem; text-decoration:none;">
-                <i class="ph ph-download-simple"></i> Descargar imagen
-            </a>
-        </div>
-    `;
-    lb.addEventListener('click', (e) => { if (e.target === lb) lb.remove(); });
-    document.body.appendChild(lb);
 }

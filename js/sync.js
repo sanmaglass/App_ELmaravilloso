@@ -251,10 +251,19 @@ window.Sync = {
                     if (remoteName !== 'settings') {
                         const finalLocalData = await window.db[localName].toArray();
                         if (finalLocalData.length > 0) {
+                            
+                            // Remover campos solo-locales para evitar errores de schema en Supabase
+                            const syncDataToPush = finalLocalData.map(item => {
+                                const copy = { ...item };
+                                if (localName === 'purchase_invoices') {
+                                    delete copy.imageData;
+                                }
+                                return copy;
+                            });
 
                             const { error: pushErr } = await window.Sync.client
                                 .from(remoteName)
-                                .upsert(finalLocalData, { onConflict: 'id' });
+                                .upsert(syncDataToPush, { onConflict: 'id' });
                             if (pushErr) console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
                         }
                     }

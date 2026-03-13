@@ -73,9 +73,15 @@ window.DataManager = {
 
             // Sync to Supabase
             if (window.Sync?.client) {
+                // Remove local-only columns before sending to Supabase
+                const syncData = { ...data };
+                if (tableName === 'purchase_invoices') {
+                    delete syncData.imageData;
+                }
+
                 const { error: syncErr } = await window.Sync.client
                     .from(remoteTable)
-                    .upsert([data], { onConflict: 'id' });
+                    .upsert([syncData], { onConflict: 'id' });
 
                 if (syncErr) {
                     console.warn(`[DataManager] Sync failed for ${tableName}:`, syncErr.message);

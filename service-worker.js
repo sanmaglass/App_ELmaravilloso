@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v232-icon-foto';
+const CACHE_NAME = 'el-maravilloso-v233';
 const urlsToCache = [
     './index.html',
     './css/style.css',
@@ -32,6 +32,7 @@ const urlsToCache = [
     './assets/logo.png',
     './assets/splash.png',
     './assets/logo-dark.png',
+    './assets/icon-512.png',
     './manifest.json',
     './offline.html'
 ];
