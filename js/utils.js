@@ -753,16 +753,16 @@ window.Utils = {
 
                 if (allSales.length > 5) {
                     if (growthPct > 10) {
-                        insight = `🚀 ¡Vas volando! Crecimiento proyectado del ${growthPct.toFixed(0)}% vs mes pasado.`;
+                        insight = `🚀 +${growthPct.toFixed(0)}% proyectado vs mes pasado.`;
                         color = "#10b981";
                     } else if (growthPct < -5) {
-                        insight = "⚠️ Tendencia a la baja. Considera una oferta relámpago para repuntar.";
+                        insight = `⚠️ Tendencia: ${growthPct.toFixed(0)}% (Se sugiere oferta).`;
                         color = "#f43f5e";
                     } else if (projection > Math.max(...monthValues.slice(0, -1), 0)) {
-                        insight = "🏆 ¡Récord histórico a la vista! Mantén este ritmo imparable.";
+                        insight = "🏆 ¡Récord histórico a la vista!";
                         color = "#fbbf24";
                     } else {
-                        insight = "📈 Negocio estable. Tus patrones de venta se mantienen sólidos.";
+                        insight = "📈 Patrón de ventas estable y sólido.";
                         color = "#60a5fa";
                     }
                 }

@@ -174,7 +174,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 <div class="predict-header">
                     <div>
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 0.8rem; color: var(--ia-accent); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">
-                            <i class="ph ph-sparkle-fill"></i> Inteligencia Predictiva Activa
+                            <i class="ph ph-sparkle-fill"></i> IA Predictiva
                         </div>
                         <h2 class="predict-title">
                             <span id="predict-total" style="background: linear-gradient(to right, var(--ia-panel-text), var(--ia-muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">...</span>
@@ -187,7 +187,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                             Calculando...
                         </div>
                         <div id="predict-record" style="margin-top: 12px; font-size: 0.75rem; color: var(--ia-muted); font-weight: 500;">
-                            Récord diario: <span id="predict-record-value" style="color: #fbbf24; font-weight: 700;">...</span>
+                            Récord día: <span id="predict-record-value" style="color: #fbbf24; font-weight: 700;">...</span>
                         </div>
                     </div>
                 </div>
@@ -195,13 +195,13 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 <!-- AI Strategic Insight -->
                 <div id="predict-insight-box" style="margin-top: 24px; padding: 14px 18px; background: var(--ia-glass); border-radius: 14px; border-left: 5px solid #6366f1; font-size: 0.92rem; line-height: 1.45; position: relative; z-index: 1;">
                     <i class="ph ph-lightbulb-filament" style="margin-right: 8px; color: #fbbf24; font-size: 1.1rem;"></i>
-                    <span id="predict-insight-text" style="color: var(--ia-panel-text); font-weight: 600;">Analizando tendencias de regresión lineal...</span>
+                    <span id="predict-insight-text" style="color: var(--ia-panel-text); font-weight: 600;">Analizando datos...</span>
                 </div>
 
                 <!-- Growth Progress -->
                 <div style="margin-top: 24px; position: relative; z-index: 1;">
                     <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--ia-muted); margin-bottom: 10px; font-weight: 700; letter-spacing: 0.5px;">
-                        <span>PROGRESO HACIA LA META IA</span>
+                        <span>AVANCE META IA</span>
                         <span id="predict-percent" style="color: var(--ia-accent); font-weight: 800;">0%</span>
                     </div>
                     <div style="height: 10px; background: var(--ia-glass); border-radius: 99px; overflow: hidden; border: 1px solid rgba(255,255,255,0.03);">
@@ -578,7 +578,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     if (elPredictConfidence) elPredictConfidence.textContent = confLabels[prediction.confidence] || 'IA: Analizando...';
 
                     // 3. Update Record Daily
-                    if (elPredictRecordValue) elPredictRecordValue.textContent = fmt(prediction.maxDaily || 0);
+                    if (elPredictRecordValue) elPredictRecordValue.innerHTML = fmt(prediction.maxDaily || 0);
 
                     // 4. Update Strategic Insight
                     if (elPredictInsight) {
