@@ -1374,8 +1374,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
                 creditDays,
                 dueDate,
                 notes,
-                // Preserve paidAmount on edit; new invoices start at 0
-                paidAmount: isEdit ? (invoiceToEdit.paidAmount || 0) : 0,
+                paidAmount, // Use the calculated paidAmount variable
                 deleted: false
             };
 

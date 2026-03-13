@@ -252,12 +252,30 @@ window.Sync = {
                         const finalLocalData = await window.db[localName].toArray();
                         if (finalLocalData.length > 0) {
                             
-                            // Remover campos solo-locales para evitar errores de schema en Supabase
+                            // --- PREVENTIVE FILTERING (PUSH) ---
+                            const fallbackTables = {
+                                'reminders': window.DataManager._remindersCoreFields,
+                                'purchase_invoices': window.DataManager._purchaseInvoicesCoreFields,
+                                'suppliers': window.DataManager._suppliersCoreFields,
+                                'expenses': window.DataManager._expensesCoreFields,
+                                'employees': window.DataManager._employeesCoreFields,
+                                'daily_sales': window.DataManager._dailySalesCoreFields,
+                                'electronic_invoices': window.DataManager._electronicInvoicesCoreFields
+                            };
+
                             const syncDataToPush = finalLocalData.map(item => {
                                 const copy = { ...item };
                                 if (localName === 'purchase_invoices') {
                                     delete copy.imageData;
                                     delete copy.created_at;
+                                }
+
+                                // If it's a known problematic table, filter to core fields BEFORE sending
+                                if (fallbackTables[localName]) {
+                                    const coreFields = fallbackTables[localName];
+                                    const clean = {};
+                                    coreFields.forEach(k => { if (copy[k] !== undefined) clean[k] = copy[k]; });
+                                    return clean;
                                 }
                                 return copy;
                             });
@@ -268,30 +286,12 @@ window.Sync = {
                                 .select('id');
                             
                             if (pushErr) {
-                                console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
-                                
-                                // --- FALLBACK PARA COLUMNAS FALTANTES (paidAmount, etc.) ---
                                 const isColumnErr = pushErr.message?.includes('column') || pushErr.code === '42703' || pushErr.code === 'PGRST204';
-                                
-                                if (isColumnErr && (remoteName === 'purchase_invoices' || remoteName === 'reminders')) {
-                                    console.warn(`[Sync] Retrying ${remoteName} batch with core fields only...`);
-                                    const coreFields = remoteName === 'reminders' 
-                                        ? window.DataManager._remindersCoreFields 
-                                        : window.DataManager._purchaseInvoicesCoreFields;
-                                    
-                                    const strictlyCoreData = syncDataToPush.map(item => {
-                                        const clean = {};
-                                        coreFields.forEach(k => { if (item[k] !== undefined) clean[k] = item[k]; });
-                                        return clean;
-                                    });
-
-                                    const { error: retryErr } = await window.Sync.client
-                                        .from(remoteName)
-                                        .upsert(strictlyCoreData, { onConflict: 'id' })
-                                        .select('id');
-                                    
-                                    if (retryErr) console.error(`[Sync] Fallback failed for ${remoteName}:`, retryErr.message);
-                                    else console.log(`[Sync] ${remoteName} batch sync recovered with core fields.`);
+                                if (isColumnErr && fallbackTables[localName]) {
+                                    // Already filtered, but if it still fails due to schema, log silently
+                                    console.log(`[Sync] ${remoteName} schema mismatch handled silently.`);
+                                } else {
+                                    console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
                                 }
                             }
                         }

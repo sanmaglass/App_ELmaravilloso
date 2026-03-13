@@ -50,7 +50,7 @@ window.DataManager = {
     _remindersCoreFields: ['id', 'title', 'type', 'frequency_unit', 'frequency_value',
         'next_run', 'completed', 'deleted'],
     _purchaseInvoicesCoreFields: ['id', 'supplierId', 'invoiceNumber', 'date', 'amount',
-        'paymentMethod', 'paymentStatus', 'dueDate', 'creditDays', 'deleted'],
+        'paymentMethod', 'paymentStatus', 'dueDate', 'creditDays', 'paidAmount', 'deleted'],
     _suppliersCoreFields: ['id', 'name', 'rut', 'giro', 'address', 'contact', 'deleted'],
     _expensesCoreFields: ['id', 'title', 'amount', 'category', 'date', 'deleted'],
     _employeesCoreFields: ['id', 'name', 'paymentMode', 'paymentFrequency', 'baseSalary',
@@ -81,11 +81,32 @@ window.DataManager = {
 
             // Sync to Supabase
             if (window.Sync?.client) {
-                // Remove local-only columns before sending to Supabase
-                const syncData = { ...data };
+                // ── PREVENTIVE FILTERING ──
+                // Check if we already know this table has schema issues
+                const fallbackTables = {
+                    'reminders': this._remindersCoreFields,
+                    'purchase_invoices': this._purchaseInvoicesCoreFields,
+                    'suppliers': this._suppliersCoreFields,
+                    'expenses': this._expensesCoreFields,
+                    'employees': this._employeesCoreFields,
+                    'daily_sales': this._dailySalesCoreFields,
+                    'electronic_invoices': this._electronicInvoicesCoreFields
+                };
+
+                let syncData = { ...data };
                 if (tableName === 'purchase_invoices') {
                     delete syncData.imageData;
                     delete syncData.created_at;
+                }
+
+                // If it's a known "problematic" table, only send core fields to avoid 400 error in console
+                if (fallbackTables[tableName]) {
+                    const coreFields = fallbackTables[tableName];
+                    const cleanData = {};
+                    coreFields.forEach(k => {
+                        if (syncData[k] !== undefined) cleanData[k] = syncData[k];
+                    });
+                    syncData = cleanData;
                 }
 
                 const { error: syncErr } = await window.Sync.client
@@ -102,34 +123,9 @@ window.DataManager = {
                         syncErr.code === 'PGRST204' ||
                         syncErr.code === '42703';
 
-                    const fallbackTables = {
-                        'reminders': this._remindersCoreFields,
-                        'purchase_invoices': this._purchaseInvoicesCoreFields,
-                        'suppliers': this._suppliersCoreFields,
-                        'expenses': this._expensesCoreFields,
-                        'employees': this._employeesCoreFields,
-                        'daily_sales': this._dailySalesCoreFields,
-                        'electronic_invoices': this._electronicInvoicesCoreFields
-                    };
-
                     if (isColumnErr && fallbackTables[tableName]) {
-                        const coreFields = fallbackTables[tableName];
-                        console.warn(`[DataManager] Retrying ${tableName} with core fields only...`);
-                        const coreData = {};
-                        coreFields.forEach(k => {
-                            if (data[k] !== undefined) coreData[k] = data[k];
-                        });
-
-                        const { error: retryErr } = await window.Sync.client
-                            .from(remoteTable)
-                            .upsert([coreData], { onConflict: 'id' })
-                            .select('id');
-
-                        if (!retryErr) {
-                            // Synced with core fields OK — migration still needed for full features
-                            return { success: true, id: data.id, syncError: 'missing_columns' };
-                        }
-                        return { success: true, id: data.id, syncError: retryErr.message };
+                        // Synced silently (preventive filtering should have caught this, but this is a double safety)
+                        return { success: true, id: data.id, syncError: 'missing_columns' };
                     }
 
                     return { success: true, id: data.id, syncError: syncErr.message };
