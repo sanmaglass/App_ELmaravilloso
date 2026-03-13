@@ -33,6 +33,11 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                 <option value="Pagado">Historial (Pagados)</option>
                 <option value="all">Todos</option>
             </select>
+            <select id="filter-loan-direction" class="form-input">
+                <option value="all">Cualquier Dirección</option>
+                <option value="to_supplier">Yo presté 📤</option>
+                <option value="from_supplier">Me prestaron 📥</option>
+            </select>
         </div>
 
         <div id="loans-list" class="flex flex-col gap-4">
@@ -46,7 +51,8 @@ window.Views.loans = async (container, filterSupplierId = null) => {
     // State for the view
     const viewState = {
         supplierId: filterSupplierId,
-        status: 'Pendiente'
+        status: 'Pendiente',
+        direction: 'all'
     };
 
     if (filterSupplierId) {
@@ -66,6 +72,10 @@ window.Views.loans = async (container, filterSupplierId = null) => {
     });
     document.getElementById('filter-loan-status').addEventListener('change', (e) => {
         viewState.status = e.target.value;
+        renderLoans();
+    });
+    document.getElementById('filter-loan-direction').addEventListener('change', (e) => {
+        viewState.direction = e.target.value;
         renderLoans();
     });
 
@@ -100,6 +110,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
         const searchTerm = document.getElementById('loan-search').value.toLowerCase();
         const statusFilter = document.getElementById('filter-loan-status').value;
         const supplierFilter = document.getElementById('filter-loan-supplier').value;
+        const directionFilter = document.getElementById('filter-loan-direction').value;
 
         try {
             const [loans, suppliers] = await Promise.all([
@@ -119,6 +130,10 @@ window.Views.loans = async (container, filterSupplierId = null) => {
 
             if (supplierFilter !== 'all') {
                 filtered = filtered.filter(l => String(l.supplierId) === supplierFilter);
+            }
+
+            if (directionFilter !== 'all') {
+                filtered = filtered.filter(l => l.direction === directionFilter);
             }
 
             if (searchTerm) {
@@ -147,14 +162,20 @@ window.Views.loans = async (container, filterSupplierId = null) => {
 
             list.innerHTML = filtered.map(l => {
                 const isPaid = l.status === 'Pagado';
-                const color = isPaid ? 'var(--success)' : 'var(--warning)';
+                const isToSupplier = l.direction === 'to_supplier';
+                const color = isPaid ? 'var(--success)' : (isToSupplier ? 'var(--warning)' : 'var(--info)');
+                const directionIcon = isToSupplier ? '📤' : '📥';
+                const directionText = isToSupplier ? 'Yo presté' : 'Me prestaron';
                 const supplierName = supplierMap[l.supplierId] || 'Proveedor Desconocido';
                 
                 return `
                     <div class="card p-4 flex justify-between items-center border-left-4" style="border-left-color: ${color}">
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-1">
-                                <span class="badge" style="background:${isPaid ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)'}; color:${color}">
+                                <span class="badge" style="background:${isPaid ? 'rgba(16,185,129,0.1)' : (isToSupplier ? 'rgba(245,158,11,0.1)' : 'rgba(14,165,233,0.1)')}; color:${color}">
+                                    ${directionIcon} ${directionText}
+                                </span>
+                                <span class="badge" style="background:${isPaid ? 'rgba(16,185,129,0.1)' : 'rgba(0,0,0,0.05)'}; color:${isPaid ? 'var(--success)' : 'var(--text-muted)'}">
                                     ${isPaid ? 'Pagado' : 'Pendiente'}
                                 </span>
                                 <span class="text-muted text-xs">${formatDate(l.date)}</span>
@@ -168,7 +189,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                             ${isPaid ? `
                                 <div class="mt-2 text-xs font-semibold py-1 px-2 bg-gray-100 rounded inline-flex items-center gap-1">
                                     <i class="ph ph-check-circle text-success"></i> 
-                                    Devuelto por: <b>${l.repaymentType === 'Dinero' ? 'Dinero 💵' : 'Producto 📦'}</b> 
+                                    ${isToSupplier ? 'Devuelto' : 'Devolví'} por: <b>${l.repaymentType === 'Dinero' ? 'Dinero 💵' : 'Producto 📦'}</b> 
                                     el ${formatDate(l.repaymentDate)}
                                 </div>
                             ` : ''}
@@ -211,22 +232,27 @@ window.Views.loans = async (container, filterSupplierId = null) => {
         const analytics = document.getElementById('loans-analytics');
         if (!analytics) return;
 
-        const totalItems = pendingLoans.reduce((sum, l) => sum + (Number(l.quantity) || 0), 0);
-        const totalValue = pendingLoans.reduce((sum, l) => sum + (Number(l.total) || 0), 0);
-        const uniqueSuppliers = new Set(pendingLoans.map(l => l.supplierId)).size;
+        const lentByMe = pendingLoans.filter(l => l.direction === 'to_supplier');
+        const lentToMe = pendingLoans.filter(l => l.direction === 'from_supplier');
+
+        const totalLentByMe = lentByMe.reduce((sum, l) => sum + (Number(l.total) || 0), 0);
+        const totalLentToMe = lentToMe.reduce((sum, l) => sum + (Number(l.total) || 0), 0);
 
         analytics.innerHTML = `
-            <div class="card p-4 border-left-4" style="border-left-color: var(--primary)">
-                <div class="text-muted text-xs uppercase font-bold mb-1">Items Pendientes</div>
-                <div class="text-2xl font-bold">${totalItems}</div>
-            </div>
             <div class="card p-4 border-left-4" style="border-left-color: var(--warning)">
-                <div class="text-muted text-xs uppercase font-bold mb-1">Valor Estimado</div>
-                <div class="text-2xl font-bold">${formatCurrency(totalValue)}</div>
+                <div class="text-muted text-xs uppercase font-bold mb-1">Deben (Yo presté)</div>
+                <div class="text-2xl font-bold" style="color:var(--warning)">${formatCurrency(totalLentByMe)}</div>
+                <div class="text-xs text-muted">${lentByMe.length} registros</div>
             </div>
             <div class="card p-4 border-left-4" style="border-left-color: var(--info)">
-                <div class="text-muted text-xs uppercase font-bold mb-1">Proveedores con deuda</div>
-                <div class="text-2xl font-bold">${uniqueSuppliers}</div>
+                <div class="text-muted text-xs uppercase font-bold mb-1">Debo (Me prestaron)</div>
+                <div class="text-2xl font-bold" style="color:var(--info)">${formatCurrency(totalLentToMe)}</div>
+                <div class="text-xs text-muted">${lentToMe.length} registros</div>
+            </div>
+            <div class="card p-4 border-left-4" style="border-left-color: var(--primary)">
+                <div class="text-muted text-xs uppercase font-bold mb-1">Total Pendientes</div>
+                <div class="text-2xl font-bold">${pendingLoans.length}</div>
+                <div class="text-xs text-muted">A través de ${new Set(pendingLoans.map(l => l.supplierId)).size} proveedores</div>
             </div>
         `;
     }
@@ -248,6 +274,25 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                 </div>
                 <div class="p-6">
                     <div class="form-group mb-4">
+                        <label class="form-label">Dirección del Préstamo *</label>
+                        <div class="flex gap-2">
+                            <label class="flex-1 cursor-pointer">
+                                <input type="radio" name="loan-direction" value="to_supplier" class="hidden peer" ${!isEdit || loanToEdit.direction === 'to_supplier' ? 'checked' : ''}>
+                                <div class="p-3 border rounded text-center peer-checked:border-primary peer-checked:bg-primary-light peer-checked:text-primary transition-all">
+                                    <i class="ph ph-export mb-1" style="font-size:1.2rem;"></i>
+                                    <div class="text-xs font-boldUppercase">Yo presté</div>
+                                </div>
+                            </label>
+                            <label class="flex-1 cursor-pointer">
+                                <input type="radio" name="loan-direction" value="from_supplier" class="hidden peer" ${isEdit && loanToEdit.direction === 'from_supplier' ? 'checked' : ''}>
+                                <div class="p-3 border rounded text-center peer-checked:border-info peer-checked:bg-info-light peer-checked:text-info transition-all">
+                                    <i class="ph ph-import mb-1" style="font-size:1.2rem;"></i>
+                                    <div class="text-xs font-boldUppercase">Me prestaron</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group mb-4">
                         <label class="form-label">Proveedor *</label>
                         <select id="loan-supplier-id" class="form-input" required>
                             <option value="">Seleccionar proveedor...</option>
@@ -259,7 +304,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                         </select>
                     </div>
                     <div class="form-group mb-4">
-                        <label class="form-label">Ítem / Producto Prestado *</label>
+                        <label class="form-label">Ítem / Producto *</label>
                         <input type="text" id="loan-item" class="form-input" placeholder="Ej: Mangas de sushi" required value="${isEdit ? loanToEdit.item : ''}">
                     </div>
                     <div class="responsive-grid-2 gap-3 mb-4">
@@ -273,7 +318,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                         </div>
                     </div>
                     <div class="form-group mb-4">
-                        <label class="form-label">Fecha del Préstamo</label>
+                        <label class="form-label">Fecha</label>
                         <input type="date" id="loan-date" class="form-input" value="${isEdit ? loanToEdit.date : new Date().toISOString().split('T')[0]}">
                     </div>
                     <div class="form-group">
@@ -292,6 +337,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
         modal.classList.remove('hidden');
 
         document.getElementById('btn-save-loan').addEventListener('click', async () => {
+            const direction = document.querySelector('input[name="loan-direction"]:checked').value;
             const supplierId = Number(document.getElementById('loan-supplier-id').value);
             const item = document.getElementById('loan-item').value.trim();
             const quantity = Number(document.getElementById('loan-quantity').value);
@@ -313,6 +359,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                     total: quantity * unitPrice,
                     date,
                     notes,
+                    direction,
                     status: isEdit ? loanToEdit.status : 'Pendiente',
                     deleted: false
                 };
@@ -336,6 +383,8 @@ window.Views.loans = async (container, filterSupplierId = null) => {
         const loan = await window.db.loans.get(id);
         if (!loan) return;
 
+        const isToSupplier = loan.direction === 'to_supplier';
+
         const modal = document.getElementById('modal-container');
         modal.innerHTML = `
             <div class="modal" style="max-width:400px;">
@@ -346,7 +395,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                     </button>
                 </div>
                 <div class="p-6">
-                    <p class="mb-4 text-sm">¿Cómo te devolvieron el préstamo de <b>${loan.item}</b>?</p>
+                    <p class="mb-4 text-sm">${isToSupplier ? `¿Cómo te devolvieron el préstamo de <b>${loan.item}</b>?` : `¿Cómo devolviste el préstamo de <b>${loan.item}</b>?`}</p>
                     
                     <div class="flex flex-col gap-3">
                         <button class="btn btn-secondary w-full flex justify-between items-center p-4 hover:bg-success-light" id="btn-repay-money">
@@ -354,7 +403,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                             <i class="ph ph-caret-right"></i>
                         </button>
                         <button class="btn btn-secondary w-full flex justify-between items-center p-4 hover:bg-info-light" id="btn-repay-product">
-                            <span class="flex items-center gap-2"><i class="ph ph-package text-info" style="font-size:1.5rem;"></i> Me devolvieron los de productos</span>
+                            <span class="flex items-center gap-2"><i class="ph ph-package text-info" style="font-size:1.5rem;"></i> Se devolvieron los productos</span>
                             <i class="ph ph-caret-right"></i>
                         </button>
                     </div>
