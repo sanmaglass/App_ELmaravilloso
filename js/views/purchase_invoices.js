@@ -1341,9 +1341,21 @@ async function showInvoiceModal(invoiceToEdit = null) {
         const dueDate = paymentMethod === 'Crédito' ? (document.getElementById('inv-due-date').value || null) : null;
 
         // ✅ DUPLICATE CHECK: Verify invoice number doesn't already exist
-        if (await isDuplicate(invoiceNumber)) {
-            alert(`❌ Ya existe una factura con el número "${invoiceNumber}".\n\nPor favor usa un número diferente.`);
-            return;
+        if (!isEdit && await isDuplicate(invoiceNumber)) {
+            if (!confirm(`⚠️ Ya existe una factura con el número "${invoiceNumber}".\n\n¿Deseas ACTUALIZAR la factura existente con esta nueva información?`)) {
+                return;
+            }
+            // If they said yes, we find the existing ID and turn this into an Edit
+            const allInvoices = await window.db.purchase_invoices.toArray();
+            const existing = allInvoices.find(i => String(i.invoiceNumber).trim().toUpperCase() === invoiceNumber.trim().toUpperCase() && !i.deleted);
+            if (existing) {
+                // We'll proceed as an edit of the existing ID
+                isEdit = true;
+                invoiceToEdit = existing;
+            }
+        } else if (isEdit && await isDuplicate(invoiceNumber)) {
+             alert(`❌ Ya existe OTRA factura con el número "${invoiceNumber}".\n\nPor favor usa un número diferente.`);
+             return;
         }
 
         try {

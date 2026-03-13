@@ -77,11 +77,13 @@ window.DataManager = {
                 const syncData = { ...data };
                 if (tableName === 'purchase_invoices') {
                     delete syncData.imageData;
+                    delete syncData.created_at;
                 }
 
                 const { error: syncErr } = await window.Sync.client
                     .from(remoteTable)
-                    .upsert([syncData], { onConflict: 'id' });
+                    .upsert([syncData], { onConflict: 'id' })
+                    .select('id');
 
                 if (syncErr) {
                     console.warn(`[DataManager] Sync failed for ${tableName}:`, syncErr.message);
@@ -92,7 +94,7 @@ window.DataManager = {
                         syncErr.code === 'PGRST204' ||
                         syncErr.code === '42703';
 
-                    if (isColumnErr && tableName === 'reminders') {
+                    if (isColumnErr && (tableName === 'reminders' || tableName === 'purchase_invoices')) {
                         console.warn('[DataManager] Retrying reminders with core fields only...');
                         const coreData = {};
                         this._remindersCoreFields.forEach(k => {
@@ -101,7 +103,8 @@ window.DataManager = {
 
                         const { error: retryErr } = await window.Sync.client
                             .from(remoteTable)
-                            .upsert([coreData], { onConflict: 'id' });
+                            .upsert([coreData], { onConflict: 'id' })
+                            .select('id');
 
                         if (!retryErr) {
                             // Synced with core fields OK — migration still needed for full features

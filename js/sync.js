@@ -257,13 +257,15 @@ window.Sync = {
                                 const copy = { ...item };
                                 if (localName === 'purchase_invoices') {
                                     delete copy.imageData;
+                                    delete copy.created_at;
                                 }
                                 return copy;
                             });
 
                             const { error: pushErr } = await window.Sync.client
                                 .from(remoteName)
-                                .upsert(syncDataToPush, { onConflict: 'id' });
+                                .upsert(syncDataToPush, { onConflict: 'id' })
+                                .select('id');
                             if (pushErr) console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
                         }
                     }
