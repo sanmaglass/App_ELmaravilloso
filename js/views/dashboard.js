@@ -1386,13 +1386,13 @@ async function renderReportsTab() {
 function renderBadge(id, current, prev, invertGood) {
     const el = document.getElementById(id);
     if (!el) return;
-    if (prev === 0) { el.className = 'kpi-badge neutral'; el.textContent = '— sin datos anteriores'; return; }
+    if (prev === 0) { el.className = 'status-badge status-paid'; el.innerHTML = 'Nuevos datos'; return; }
     const pct = ((current - prev) / prev * 100).toFixed(1);
     const isUp = current > prev;
     // invertGood=true means UP is BAD (gastos), false means UP is GOOD (ventas)
     const good = invertGood ? !isUp : isUp;
-    el.className = `kpi-badge ${isUp ? (good ? 'up' : 'down') : (good ? 'up' : 'down')}`;
-    el.innerHTML = `${isUp ? '▲' : '▼'} ${Math.abs(pct)}% vs mes anterior`;
+    el.className = `status-badge ${good ? 'status-paid' : 'status-overdue'}`;
+    el.innerHTML = `<i class="ph ph-trend-${isUp ? 'up' : 'down'}"></i> ${isUp ? '+' : ''}${pct}% vs mes ant.`;
 }
 
 // Alias to keep compatibility if any nav still references reports

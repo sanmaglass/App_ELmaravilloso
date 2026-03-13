@@ -868,18 +868,20 @@ async function renderInvoices() {
 
 
         // Render Pagination Controls
-        if (totalPages > 1) {
-            pagination.innerHTML = `
-                <button class="btn btn-secondary" ${page === 1 ? 'disabled' : ''} onclick="window.changeInvoicePage(${page - 1})">
-                    <i class="ph ph-caret-left"></i> Anterior
-                </button>
-                <span style="font-weight:600; color:var(--text-muted);">Página ${page} de ${totalPages}</span>
-                <button class="btn btn-secondary" ${page === totalPages ? 'disabled' : ''} onclick="window.changeInvoicePage(${page + 1})">
-                    Siguiente <i class="ph ph-caret-right"></i>
-                </button>
-            `;
-        } else {
-            pagination.innerHTML = '';
+        if (pagination) {
+            if (totalPages > 1) {
+                pagination.innerHTML = `
+                    <button class="btn btn-secondary" ${page === 1 ? 'disabled' : ''} onclick="window.changeInvoicePage(${page - 1})">
+                        <i class="ph ph-caret-left"></i> Anterior
+                    </button>
+                    <span style="font-weight:600; color:var(--text-muted);">Página ${page} de ${totalPages}</span>
+                    <button class="btn btn-secondary" ${page === totalPages ? 'disabled' : ''} onclick="window.changeInvoicePage(${page + 1})">
+                        Siguiente <i class="ph ph-caret-right"></i>
+                    </button>
+                `;
+            } else {
+                pagination.innerHTML = '';
+            }
         }
 
         // Global function for pagination click
@@ -901,7 +903,9 @@ async function renderInvoices() {
 
     } catch (e) {
         console.error("Error in renderInvoices:", e);
-        list.innerHTML = `<div style="color:red; padding:20px;">Error cargando datos: ${e.message}</div>`;
+        if (list) {
+            list.innerHTML = `<div style="color:red; padding:20px;">Error cargando datos: ${e.message}</div>`;
+        }
     }
 }
 
