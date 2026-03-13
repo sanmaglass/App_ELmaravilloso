@@ -192,10 +192,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     </div>
                 </div>
 
-                <!-- AI Strategic Insight -->
-                <div id="predict-insight-box" style="margin-top: 24px; padding: 14px 18px; background: var(--ia-glass); border-radius: 14px; border-left: 5px solid #6366f1; font-size: 0.92rem; line-height: 1.45; position: relative; z-index: 1;">
-                    <i class="ph ph-lightbulb-filament" style="margin-right: 8px; color: #fbbf24; font-size: 1.1rem;"></i>
-                    <span id="predict-insight-text" style="color: var(--ia-panel-text); font-weight: 600;">...</span>
+                <!-- AI Strategic Insight (Redesigned for UI/UX Pro) -->
+                <div id="predict-insight-box" style="margin-top: 24px; padding: 12px 16px; background: rgba(99, 102, 241, 0.08); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.15); display: flex; align-items: center; gap: 10px; position: relative; z-index: 1;">
+                    <div id="predict-insight-dot" style="width: 6px; height: 6px; border-radius: 50%; background: #6366f1; box-shadow: 0 0 8px #6366f1;"></div>
+                    <span id="predict-insight-text" style="color: var(--ia-panel-text); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.3px;">Analizando...</span>
                 </div>
 
                 <!-- Growth Progress -->
@@ -591,10 +591,18 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     // 3. Update Record Daily
                     if (elPredictRecordValue) elPredictRecordValue.innerHTML = fmt(prediction.maxDaily || 0);
 
-                    // 4. Update Strategic Insight
+                    // 4. Update Strategic Insight (UI/UX Refined)
                     if (elPredictInsight) {
                         elPredictInsight.textContent = prediction.insight;
-                        if (elPredictInsightBox) elPredictInsightBox.style.borderLeftColor = prediction.insightColor;
+                        const elDot = document.getElementById('predict-insight-dot');
+                        if (elDot) {
+                            elDot.style.background = prediction.insightColor;
+                            elDot.style.boxShadow = `0 0 8px ${prediction.insightColor}`;
+                        }
+                        if (elPredictInsightBox) {
+                            elPredictInsightBox.style.background = `${prediction.insightColor}10`; // 0.1 opacity
+                            elPredictInsightBox.style.borderColor = `${prediction.insightColor}30`; // 0.2 opacity
+                        }
                     }
 
                     // 5. Update Comparison
