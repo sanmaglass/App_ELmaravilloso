@@ -358,15 +358,27 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
     </div>
     `;
     } else {
-        // Force update labels if already rendered (Fixing "Old Labels" bug due to Smart Refresh)
+        // Force update labels and structure if already rendered (Fixing "Old Labels/Icons" bug due to Smart Refresh)
         const elTitleIA = document.getElementById('label-ia-title');
         if (elTitleIA) elTitleIA.innerHTML = '<i class="ph ph-sparkle-fill"></i> IA';
+        
         const elMetaIA = document.getElementById('label-ia-meta');
         if (elMetaIA) elMetaIA.textContent = 'META IA';
+        
         const elRecordBox = document.getElementById('predict-record');
         if (elRecordBox) {
              const vSpan = document.getElementById('predict-record-value');
              elRecordBox.innerHTML = `Récord: <span id="predict-record-value" style="color: #fbbf24; font-weight: 700;">${vSpan?.innerHTML || '...'}</span>`;
+        }
+
+        // FORCE REDESIGN OF INSIGHT BOX (Removing lightbulb/rocket)
+        const elInsightBox = document.getElementById('predict-insight-box');
+        if (elInsightBox && !document.getElementById('predict-insight-dot')) {
+            elInsightBox.style.cssText = "margin-top: 24px; padding: 12px 16px; background: rgba(99, 102, 241, 0.08); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.15); display: flex; align-items: center; gap: 10px; position: relative; z-index: 1;";
+            elInsightBox.innerHTML = `
+                <div id="predict-insight-dot" style="width: 6px; height: 6px; border-radius: 50%; background: #6366f1; box-shadow: 0 0 8px #6366f1;"></div>
+                <span id="predict-insight-text" style="color: var(--ia-panel-text); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.3px;">Actualizando...</span>
+            `;
         }
     } // End if(!isAlreadyRendered)
 
@@ -584,9 +596,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     const total = parseFloat(prediction.projectedTotal) || 0;
                     window.Utils.animateNumber(elPredictTotal, 0, total, 2000, true);
 
-                    // 2. Update Confidence Badge
-                    const confLabels = { high: 'IA: Confianza Alta 🟢', medium: 'IA: Confianza Media 🟡', low: 'IA: Confianza Inicial 🔴' };
-                    if (elPredictConfidence) elPredictConfidence.textContent = confLabels[prediction.confidence] || 'IA: Analizando...';
+                    // 2. Update Confidence Badge (Removed Emojis)
+                    const confLabels = { high: 'Confianza Alta', medium: 'Confianza Media', low: 'Confianza Inicial' };
+                    if (elPredictConfidence) {
+                        elPredictConfidence.textContent = confLabels[prediction.confidence] || 'Analizando...';
+                        elPredictConfidence.style.color = prediction.confidence === 'high' ? '#10b981' : prediction.confidence === 'medium' ? '#fbbf24' : '#f43f5e';
+                    }
 
                     // 3. Update Record Daily
                     if (elPredictRecordValue) elPredictRecordValue.innerHTML = fmt(prediction.maxDaily || 0);
