@@ -49,6 +49,8 @@ window.DataManager = {
     // Optional columns added by Pro migration — not all Supabase tables have them
     _remindersCoreFields: ['id', 'title', 'type', 'frequency_unit', 'frequency_value',
         'next_run', 'completed', 'deleted', 'created_at'],
+    _purchaseInvoicesCoreFields: ['id', 'supplierId', 'invoiceNumber', 'date', 'amount',
+        'paymentMethod', 'paymentStatus', 'dueDate', 'creditDays', 'deleted'],
 
     /**
      * Guarda o actualiza una entidad y sincroniza con Supabase.
@@ -95,9 +97,10 @@ window.DataManager = {
                         syncErr.code === '42703';
 
                     if (isColumnErr && (tableName === 'reminders' || tableName === 'purchase_invoices')) {
-                        console.warn('[DataManager] Retrying reminders with core fields only...');
+                        const coreFields = tableName === 'reminders' ? this._remindersCoreFields : this._purchaseInvoicesCoreFields;
+                        console.warn(`[DataManager] Retrying ${tableName} with core fields only...`);
                         const coreData = {};
-                        this._remindersCoreFields.forEach(k => {
+                        coreFields.forEach(k => {
                             if (data[k] !== undefined) coreData[k] = data[k];
                         });
 

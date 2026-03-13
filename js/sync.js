@@ -262,11 +262,38 @@ window.Sync = {
                                 return copy;
                             });
 
-                            const { error: pushErr } = await window.Sync.client
+                            let { error: pushErr } = await window.Sync.client
                                 .from(remoteName)
                                 .upsert(syncDataToPush, { onConflict: 'id' })
                                 .select('id');
-                            if (pushErr) console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
+                            
+                            if (pushErr) {
+                                console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
+                                
+                                // --- FALLBACK PARA COLUMNAS FALTANTES (paidAmount, etc.) ---
+                                const isColumnErr = pushErr.message?.includes('column') || pushErr.code === '42703' || pushErr.code === 'PGRST204';
+                                
+                                if (isColumnErr && (remoteName === 'purchase_invoices' || remoteName === 'reminders')) {
+                                    console.warn(`[Sync] Retrying ${remoteName} batch with core fields only...`);
+                                    const coreFields = remoteName === 'reminders' 
+                                        ? window.DataManager._remindersCoreFields 
+                                        : window.DataManager._purchaseInvoicesCoreFields;
+                                    
+                                    const strictlyCoreData = syncDataToPush.map(item => {
+                                        const clean = {};
+                                        coreFields.forEach(k => { if (item[k] !== undefined) clean[k] = item[k]; });
+                                        return clean;
+                                    });
+
+                                    const { error: retryErr } = await window.Sync.client
+                                        .from(remoteName)
+                                        .upsert(strictlyCoreData, { onConflict: 'id' })
+                                        .select('id');
+                                    
+                                    if (retryErr) console.error(`[Sync] Fallback failed for ${remoteName}:`, retryErr.message);
+                                    else console.log(`[Sync] ${remoteName} batch sync recovered with core fields.`);
+                                }
+                            }
                         }
                     }
                 } catch (tableErr) {

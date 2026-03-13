@@ -34,8 +34,11 @@ window.Utils = {
     // Helper to parse date string as local instead of UTC
     parseLocalDate: (dateStr) => {
         if (!dateStr) return null;
-        const [year, month, day] = dateStr.split('-').map(Number);
-        return new Date(year, month - 1, day);
+        // Solo tomar la parte de la fecha YYYY-MM-DD
+        const cleanDate = String(dateStr).split('T')[0].split(' ')[0];
+        const parts = cleanDate.split('-').map(Number);
+        if (parts.length !== 3) return null;
+        return new Date(parts[0], parts[1] - 1, parts[2]);
     },
 
     formatDate: (dateString, options = {}) => {
@@ -617,6 +620,158 @@ window.Utils = {
                 this._notifQueue = [];
                 this._notifTimeout = null;
             }, 2000); // Wait 2 seconds of silence before firing
+        }
+    },
+
+    // --- 🧠 PREDICTIVE ENGINE V2 (Regresión & Insights) ---
+    PredictionEngine: {
+        async getProjectedSales() {
+            try {
+                const [daily, eleventa] = await Promise.all([
+                    window.db.daily_sales.toArray(),
+                    window.db.eleventa_sales.toArray()
+                ]);
+
+                const salesMap = new Map();
+                const now = new Date();
+                const currentMonth = now.getMonth();
+                const currentYear = now.getFullYear();
+
+                // 1. Normalización y Consolidación O(N)
+                const consolidate = (arr, isDaily) => {
+                    arr.filter(s => !s.deleted && s.date).forEach(s => {
+                        const dateKey = String(s.date).split('T')[0].split(' ')[0];
+                        const amount = parseFloat(s.total || s.cash || s.amount || 0);
+                        if (isDaily) {
+                            salesMap.set(dateKey, amount); // Daily closure has priority
+                        } else if (!salesMap.has(dateKey)) {
+                            salesMap.set(dateKey, (salesMap.get(dateKey) || 0) + amount);
+                        }
+                    });
+                };
+                consolidate(daily, true);
+                consolidate(eleventa, false);
+
+                const allSales = Array.from(salesMap.entries())
+                    .map(([date, amount]) => ({ date, amount }))
+                    .sort((a, b) => a.date.localeCompare(b.date));
+
+                if (allSales.length < 2) return null;
+
+                // 2. Regresión Lineal Multi-Mes (MoM Growth)
+                const monthlyData = {};
+                allSales.forEach(s => {
+                    const mKey = s.date.substring(0, 7); // YYYY-MM
+                    monthlyData[mKey] = (monthlyData[mKey] || 0) + s.amount;
+                });
+
+                const monthKeys = Object.keys(monthlyData).sort();
+                const monthValues = monthKeys.map(k => monthlyData[k]);
+                
+                // Simple Linear Regression on Monthly Totals (last 6 months)
+                const regressionMonths = monthValues.slice(-6);
+                let slope = 0; // Growth per month
+                if (regressionMonths.length >= 2) {
+                    const n = regressionMonths.length;
+                    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+                    for (let i = 0; i < n; i++) {
+                        sumX += i;
+                        sumY += regressionMonths[i];
+                        sumXY += i * regressionMonths[i];
+                        sumXX += i * i;
+                    }
+                    slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+                }
+
+                // 3. Estacionalidad Semanal (Weekday Seasonality)
+                const weekdayTotals = [0, 0, 0, 0, 0, 0, 0];
+                const weekdayCounts = [0, 0, 0, 0, 0, 0, 0];
+                let maxDaily = 0;
+                let recordDay = null;
+
+                allSales.forEach(s => {
+                    const d = window.Utils.parseLocalDate(s.date);
+                    if (d) {
+                        const day = d.getDay();
+                        weekdayTotals[day] += s.amount;
+                        weekdayCounts[day]++;
+                        if (s.amount > maxDaily) {
+                            maxDaily = s.amount;
+                            recordDay = s;
+                        }
+                    }
+                });
+
+                const weekdayAverages = weekdayTotals.map((tot, i) => weekdayCounts[i] > 0 ? tot / weekdayCounts[i] : 0);
+                const globalAvg = weekdayAverages.reduce((a, b) => a + b, 0) / 7;
+                const weights = weekdayAverages.map(avg => globalAvg > 0 ? avg / globalAvg : 1);
+
+                // 4. MTD y Proyección
+                let mtdTotal = 0;
+                allSales.forEach(s => {
+                    const d = window.Utils.parseLocalDate(s.date);
+                    if (d && d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+                        mtdTotal += s.amount;
+                    }
+                });
+
+                const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                const todayNum = now.getDate();
+                let projection = mtdTotal;
+                
+                // Factor de Tendencia Recente vs Historia Larga
+                const recentHistory = allSales.slice(-14);
+                const recentAvg = recentHistory.reduce((a, b) => a + b.amount, 0) / (recentHistory.length || 1);
+                
+                // Aplicamos el Slope de la regresión mensual para ajustar el promedio global
+                // Si el negocio crece 100k al mes, el promedio diario debería subir ~3.3k por mes
+                const dailyGrowthAdjust = slope / 30;
+                const adjustedGlobalAvg = (globalAvg * 0.5) + (recentAvg * 0.5) + dailyGrowthAdjust;
+
+                for (let d = todayNum + 1; d <= lastDayOfMonth; d++) {
+                    const dateObj = new Date(currentYear, currentMonth, d);
+                    projection += Math.max(0, adjustedGlobalAvg * weights[dateObj.getDay()]);
+                }
+
+                // 5. Comparación y Meta
+                const prevMonthTotal = monthlyData[monthKeys[monthKeys.length - 2]] || 0;
+                const growthPct = prevMonthTotal > 0 ? ((projection / prevMonthTotal - 1) * 100) : 0;
+
+                // 6. Insight Generator 🤖
+                let insight = "Sigue registrando ventas para mejorar la puntería.";
+                let color = "#94a3b8";
+
+                if (allSales.length > 15) {
+                    if (growthPct > 10) {
+                        insight = `🚀 ¡Vas volando! Proyectas un crecimiento del ${growthPct.toFixed(0)}% vs el mes pasado.`;
+                        color = "#10b981";
+                    } else if (growthPct < -5) {
+                        insight = "⚠️ Tendencia a la baja. Revisa promociones para reactivar las ventas.";
+                        color = "#f43f5e";
+                    } else if (projection > Math.max(...monthValues.slice(0, -1))) {
+                        insight = "🏆 ¡Récord histórico a la vista! Este podría ser tu mejor mes.";
+                        color = "#fbbf24";
+                    } else {
+                        insight = "📈 Negocio estable. Los patrones de fin de semana son consistentes.";
+                        color = "#60a5fa";
+                    }
+                }
+
+                return {
+                    mtdTotal,
+                    projectedTotal: Math.round(projection),
+                    prevMonthTotal,
+                    growthRateMoM: slope,
+                    maxDaily,
+                    insight,
+                    insightColor: color,
+                    confidence: allSales.length > 60 ? 'high' : allSales.length > 15 ? 'medium' : 'low'
+                };
+
+            } catch (e) {
+                console.error("AI Engine V2 Error:", e);
+                return null;
+            }
         }
     }
 };

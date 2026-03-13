@@ -144,6 +144,53 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
+        <!-- 🧠 IA PREDICTIVE PANEL -->
+        <div id="prediction-container" class="hidden" style="margin-bottom:24px;">
+            <div class="premium-card card-anim" style="background: linear-gradient(135deg, #1e293b 0%, #020617 100%); color: white; border: none; position: relative; overflow: hidden; padding: 24px;">
+                <!-- Decorative background elements -->
+                <div style="position: absolute; top: -30px; right: -30px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 70%); border-radius: 50%; filter: blur(40px);"></div>
+                <div style="position: absolute; bottom: -50px; left: -50px; width: 180px; height: 180px; background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, transparent 70%); border-radius: 50%; filter: blur(50px);"></div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 0.8rem; color: #818cf8; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">
+                            <i class="ph ph-sparkle-fill"></i> Inteligencia Predictiva Activa
+                        </div>
+                        <h2 style="margin: 0; font-size: 2.5rem; font-weight: 800; letter-spacing: -1.5px; display: flex; align-items: baseline; gap: 10px;">
+                            <span id="predict-total" style="background: linear-gradient(to right, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">...</span>
+                            <span id="predict-month-label" style="font-size: 0.95rem; font-weight: 500; color: #64748b; letter-spacing: 0;">est. fin de mes</span>
+                        </h2>
+                        <div id="predict-comparison" style="margin-top: 10px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;"></div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div id="predict-confidence" style="background: rgba(255,255,255,0.05); padding: 5px 14px; border-radius: 99px; font-size: 0.7rem; font-weight: 800; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px);">
+                            Calculando...
+                        </div>
+                        <div id="predict-record" style="margin-top: 12px; font-size: 0.75rem; color: #94a3b8; font-weight: 500;">
+                            Récord diario: <span id="predict-record-value" style="color: #fbbf24; font-weight: 700;">...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Strategic Insight -->
+                <div id="predict-insight-box" style="margin-top: 24px; padding: 12px 16px; background: rgba(255,255,255,0.03); border-radius: 12px; border-left: 4px solid #6366f1; font-size: 0.9rem; line-height: 1.4; position: relative; z-index: 1;">
+                    <i class="ph ph-lightbulb-filament" style="margin-right: 8px; color: #fbbf24;"></i>
+                    <span id="predict-insight-text" style="color: #e2e8f0; font-weight: 500;">Analizando tendencias de regresión lineal...</span>
+                </div>
+
+                <!-- Growth Progress -->
+                <div style="margin-top: 24px; position: relative; z-index: 1;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #64748b; margin-bottom: 10px; font-weight: 600;">
+                        <span>PROGRESO HACIA LA META IA</span>
+                        <span id="predict-percent" style="color: #818cf8; font-weight: 800;">0%</span>
+                    </div>
+                    <div style="height: 8px; background: rgba(255,255,255,0.05); border-radius: 99px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);">
+                        <div id="predict-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #6366f1, #a855f7, #6366f1); background-size: 200% 100%; animation: shimmer 3s infinite linear; border-radius: 99px; transition: width 2s cubic-bezier(0.34, 1.56, 0.64, 1);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- KPI Cards con Estética Premium -->
         <div class="grid grid-cols-auto gap-6 mb-8">
             <!-- Ventas mes -->
@@ -475,15 +522,66 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         if (elVentas) elVentas.innerHTML = fmt(ventasMes);
         renderBadge('kpi-ventas-mes-badge', ventasMes, ventasPrev, false);
 
-        // ---- CEO Metrics: Forecast & Margin ----
-        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        const currentDay = now.getDate();
-        const dailyAvg = ventasMes / currentDay;
-        const forecastVentas = dailyAvg * daysInMonth;
+        // ---- 🧠 IA PREDICTIVE ENGINE INTEGRATION ----
+        const prediction = await window.Utils.PredictionEngine.getProjectedSales();
+        const predContainer = document.getElementById('prediction-container');
+        
+        if (prediction && predContainer) {
+            predContainer.classList.remove('hidden');
+            const elPredictTotal = document.getElementById('predict-total');
+            const elPredictComparison = document.getElementById('predict-comparison');
+            const elPredictConfidence = document.getElementById('predict-confidence');
+            const elPredictProgress = document.getElementById('predict-progress-bar');
+            const elPredictPercent = document.getElementById('predict-percent');
+            const elPredictInsight = document.getElementById('predict-insight-text');
+            const elPredictInsightBox = document.getElementById('predict-insight-box');
+            const elPredictRecordValue = document.getElementById('predict-record-value');
 
-        const elForecast = document.getElementById('kpi-proyeccion-cierre');
-        if (elForecast) elForecast.innerHTML = fmt(forecastVentas);
+            // Set current month label
+            const currentMonthName = new Date().toLocaleDateString('es-ES', { month: 'long' });
+            const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
+            const estLabel = document.getElementById('predict-month-label');
+            if (estLabel) estLabel.textContent = `est. fin de ${capitalizedMonth}`;
 
+            // 1. Animate Number
+            window.Utils.animateNumber(elPredictTotal, 0, prediction.projectedTotal, 2000, true);
+
+            // 2. Update Confidence Badge
+            const confLabels = { high: 'IA: Confianza Alta 🟢', medium: 'IA: Confianza Media 🟡', low: 'IA: Confianza Inicial 🔴' };
+            elPredictConfidence.textContent = confLabels[prediction.confidence] || 'IA: Analizando...';
+
+            // 3. Update Record Daily
+            if (elPredictRecordValue) elPredictRecordValue.textContent = fmt(prediction.maxDaily || 0);
+
+            // 4. Update Strategic Insight
+            if (elPredictInsight) {
+                elPredictInsight.textContent = prediction.insight;
+                elPredictInsightBox.style.borderLeftColor = prediction.insightColor;
+            }
+
+            // 5. Update Comparison
+            if (prediction.prevMonthTotal > 0) {
+                const diffPct = ((prediction.projectedTotal / prediction.prevMonthTotal - 1) * 100).toFixed(1);
+                const isUp = prediction.projectedTotal >= prediction.prevMonthTotal;
+                elPredictComparison.innerHTML = `
+                    <span style="color:${isUp ? '#10b981' : '#f43f5e'}; font-weight:800; background:rgba(${isUp ? '16,185,129' : '244,63,94'}, 0.15); padding:4px 10px; border-radius:8px; display:flex; align-items:center; gap:4px;">
+                        <i class="ph ph-trend-${isUp ? 'up' : 'down'}"></i> ${isUp ? '+' : ''}${diffPct}%
+                    </span>
+                    <span style="color:#64748b; font-size:0.85rem;">vs mes anterior (${fmt(prediction.prevMonthTotal)})</span>
+                `;
+            } else {
+                elPredictComparison.innerHTML = `<span style="color:#64748b; font-size:0.85rem;">Esperando datos del mes anterior para comparar</span>`;
+            }
+
+            // 6. Update Progress Bar
+            const progressPct = prediction.projectedTotal > 0 ? Math.min(100, (prediction.mtdTotal / prediction.projectedTotal) * 100) : 0;
+            if (elPredictPercent) elPredictPercent.textContent = progressPct.toFixed(0) + '%';
+            setTimeout(() => {
+                if (elPredictProgress) elPredictProgress.style.width = progressPct + '%';
+            }, 600);
+        }
+
+        // ---- CEO Metrics: Margin ----
         const margenNetoMonto = ventasMes - gastoTotal;
         const margenNetoPct = ventasMes > 0 ? (margenNetoMonto / ventasMes * 100) : 0;
 
