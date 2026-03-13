@@ -23,7 +23,8 @@ const views = {
     electronic_invoices: () => window.Views.electronic_invoices(document.getElementById('view-container')),
     reminders: () => window.Views.reminders(document.getElementById('view-container')),
     reports: () => window.Views.reports(document.getElementById('view-container')),
-    settings: () => window.Views.settings(document.getElementById('view-container'))
+    settings: () => window.Views.settings(document.getElementById('view-container')),
+    loans: () => window.Views.loans(document.getElementById('view-container'))
 };
 
 // Initialize App

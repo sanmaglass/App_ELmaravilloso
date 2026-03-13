@@ -118,7 +118,8 @@ window.Sync = {
                 { local: 'daily_sales', remote: 'daily_sales', orderBy: 'date' },
                 { local: 'electronic_invoices', remote: 'electronic_invoices', orderBy: 'date' },
                 { local: 'reminders', remote: 'reminders', orderBy: 'id' },
-                { local: 'eleventa_sales', remote: 'eleventa_sales', orderBy: 'date', descending: true }
+                { local: 'eleventa_sales', remote: 'eleventa_sales', orderBy: 'date', descending: true },
+                { local: 'loans', remote: 'loans', orderBy: 'date', descending: true }
             ];
 
             let dataChanged = false;
@@ -260,7 +261,8 @@ window.Sync = {
                                 'expenses': window.DataManager._expensesCoreFields,
                                 'employees': window.DataManager._employeesCoreFields,
                                 'daily_sales': window.DataManager._dailySalesCoreFields,
-                                'electronic_invoices': window.DataManager._electronicInvoicesCoreFields
+                                'electronic_invoices': window.DataManager._electronicInvoicesCoreFields,
+                                'loans': window.DataManager._loansCoreFields
                             };
 
                             const syncDataToPush = finalLocalData.map(item => {
@@ -466,6 +468,7 @@ window.Sync = {
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'electronic_invoices' }, (payload) => window.Sync.handleRealtimeChange('electronic_invoices', payload))
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'reminders' }, (payload) => window.Sync.handleRealtimeChange('reminders', payload))
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'eleventa_sales' }, (payload) => window.Sync.handleRealtimeChange('eleventa_sales', payload))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'loans' }, (payload) => window.Sync.handleRealtimeChange('loans', payload))
                 .subscribe((status) => {
                     if (status === 'SUBSCRIBED') {
                         console.log('✅ Realtime connected!');
@@ -526,7 +529,7 @@ window.Sync = {
         const tables = [
             'employees', 'worklogs', 'products', 'promotions',
             'suppliers', 'purchase_invoices', 'sales_invoices',
-            'expenses', 'daily_sales', 'electronic_invoices', 'reminders', 'eleventa_sales'
+            'expenses', 'daily_sales', 'electronic_invoices', 'reminders', 'eleventa_sales', 'loans'
         ];
         for (const table of tables) {
             const { error } = await window.Sync.client.from(table).delete().gte('id', 0);

@@ -82,6 +82,9 @@ async function renderSuppliers(filterText = '') {
                     </div>
                 </div>
                 <div class="flex gap-2">
+                     <button class="btn btn-icon btn-view-loans" data-id="${s.id}" title="Ver Préstamos" style="color:var(--warning);">
+                        <i class="ph ph-hand-coins"></i>
+                    </button>
                      <button class="btn btn-icon btn-edit-supplier" data-id="${s.id}" title="Editar">
                         <i class="ph ph-pencil-simple"></i>
                     </button>
@@ -98,6 +101,19 @@ async function renderSuppliers(filterText = '') {
         );
         document.querySelectorAll('.btn-edit-supplier').forEach(btn =>
             btn.addEventListener('click', (e) => handleEditSupplier(Number(e.currentTarget.dataset.id)))
+        );
+        document.querySelectorAll('.btn-view-loans').forEach(btn =>
+            btn.addEventListener('click', (e) => {
+                const id = Number(e.currentTarget.dataset.id);
+                window.Views.loans(document.getElementById('view-container'), id);
+                // Update nav state
+                document.querySelectorAll('.nav-item').forEach(b => {
+                    if (b.dataset.view === 'loans') b.classList.add('active');
+                    else b.classList.remove('active');
+                });
+                document.getElementById('page-title').textContent = 'Préstamos';
+                window.state.currentView = 'loans';
+            })
         );
 
     } catch (err) {

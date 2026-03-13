@@ -20,7 +20,8 @@ db.version(14).stores({
     daily_sales: 'id, date, deleted',
     settings: 'key',
     reminders: 'id, deleted, completed, [completed+deleted]',
-    eleventa_sales: 'id, ticket_id, date, deleted'
+    eleventa_sales: 'id, ticket_id, date, deleted',
+    loans: 'id, supplierId, date, deleted'
 });
 
 // ──────────────────────────────────────────────────────────────
@@ -57,6 +58,7 @@ window.DataManager = {
         'owedMinutes', 'recoveryRateMinutes', 'recoveryStartDate', 'deleted'],
     _dailySalesCoreFields: ['id', 'date', 'cash', 'transfer', 'debit', 'credit', 'total', 'notes', 'deleted'],
     _electronicInvoicesCoreFields: ['id', 'date', 'receiverName', 'receiverRut', 'total', 'status', 'folio', 'pdfUrl', 'deleted'],
+    _loansCoreFields: ['id', 'supplierId', 'item', 'quantity', 'unitPrice', 'total', 'date', 'notes', 'status', 'repaymentType', 'repaymentDate', 'deleted'],
 
     /**
      * Guarda o actualiza una entidad y sincroniza con Supabase.
@@ -90,7 +92,8 @@ window.DataManager = {
                     'expenses': this._expensesCoreFields,
                     'employees': this._employeesCoreFields,
                     'daily_sales': this._dailySalesCoreFields,
-                    'electronic_invoices': this._electronicInvoicesCoreFields
+                    'electronic_invoices': this._electronicInvoicesCoreFields,
+                    'loans': this._loansCoreFields
                 };
 
                 let syncData = { ...data };
