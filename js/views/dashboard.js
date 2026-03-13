@@ -64,22 +64,39 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         /* ---- MOBILE OVERRIDES ---- */
         @media (max-width: 768px) {
-            .pl-chart-grid {
-                grid-template-columns: 1fr;
-            }
-            .bottom-widgets-grid {
-                grid-template-columns: 1fr;
-            }
-            .dash-header {
-                margin-bottom: 1rem;
-            }
-            .premium-card, .card {
-                padding: 16px !important;
-            }
-            .text-3xl {
-                font-size: 1.5rem !important;
-            }
+            .pl-chart-grid { grid-template-columns: 1fr; }
+            .bottom-widgets-grid { grid-template-columns: 1fr; }
+            .dash-header { margin-bottom: 1rem; }
+            .premium-card, .card { padding: 16px !important; }
+            .text-3xl { font-size: 1.5rem !important; }
+            
+            /* AI Panel Mobile Adjustments */
+            .predict-header { flex-direction: column; align-items: flex-start !important; gap: 16px; }
+            .predict-title { font-size: 1.8rem !important; }
+            .predict-badge-container { text-align: left !important; width: 100%; display: flex; justify-content: space-between; align-items: center; }
         }
+
+        /* AI Panel Theme Variables */
+        :root {
+            --ia-panel-bg: linear-gradient(135deg, #1e293b 0%, #020617 100%);
+            --ia-panel-text: #ffffff;
+            --ia-accent: #818cf8;
+            --ia-muted: #94a3b8;
+            --ia-glass: rgba(255, 255, 255, 0.05);
+        }
+
+        body:not(.dark-mode) {
+            --ia-panel-bg: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            --ia-panel-text: #1e293b;
+            --ia-accent: #4f46e5;
+            --ia-muted: #64748b;
+            --ia-glass: rgba(0, 0, 0, 0.03);
+        }
+
+        .predict-header { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; }
+        .predict-title { margin: 0; font-size: 2.5rem; font-weight: 800; letter-spacing: -1.5px; display: flex; align-items: baseline; gap: 10px; }
+        .predict-badge { background: var(--ia-glass); padding: 5px 14px; border-radius: 99px; font-size: 0.7rem; font-weight: 800; color: var(--ia-muted); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px); }
+        body:not(.dark-mode) .predict-badge { border-color: rgba(0,0,0,0.05); color: var(--ia-accent); }
     </style>
 
     <!-- Header -->
@@ -150,45 +167,44 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         <!-- 🧠 IA PREDICTIVE PANEL -->
         <div id="prediction-container" class="hidden" style="margin-bottom:24px;">
-            <div class="premium-card card-anim" style="background: linear-gradient(135deg, #1e293b 0%, #020617 100%); color: white; border: none; position: relative; overflow: hidden; padding: 24px;">
+            <div class="premium-card card-anim" style="background: var(--ia-panel-bg); color: var(--ia-panel-text); border: none; position: relative; overflow: hidden; padding: 24px;">
                 <!-- Decorative background elements -->
-                <div style="position: absolute; top: -30px; right: -30px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 70%); border-radius: 50%; filter: blur(40px);"></div>
-                <div style="position: absolute; bottom: -50px; left: -50px; width: 180px; height: 180px; background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, transparent 70%); border-radius: 50%; filter: blur(50px);"></div>
+                <div style="position: absolute; top: -30px; right: -30px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%); border-radius: 50%; filter: blur(40px);"></div>
                 
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1;">
+                <div class="predict-header">
                     <div>
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 0.8rem; color: #818cf8; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 0.8rem; color: var(--ia-accent); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">
                             <i class="ph ph-sparkle-fill"></i> Inteligencia Predictiva Activa
                         </div>
-                        <h2 style="margin: 0; font-size: 2.5rem; font-weight: 800; letter-spacing: -1.5px; display: flex; align-items: baseline; gap: 10px;">
-                            <span id="predict-total" style="background: linear-gradient(to right, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">...</span>
-                            <span id="predict-month-label" style="font-size: 0.95rem; font-weight: 500; color: #64748b; letter-spacing: 0;">est. fin de mes</span>
+                        <h2 class="predict-title">
+                            <span id="predict-total" style="background: linear-gradient(to right, var(--ia-panel-text), var(--ia-muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">...</span>
+                            <span id="predict-month-label" style="font-size: 0.95rem; font-weight: 500; color: var(--ia-muted); letter-spacing: 0;">est. fin de mes</span>
                         </h2>
                         <div id="predict-comparison" style="margin-top: 10px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;"></div>
                     </div>
-                    <div style="text-align: right;">
-                        <div id="predict-confidence" style="background: rgba(255,255,255,0.05); padding: 5px 14px; border-radius: 99px; font-size: 0.7rem; font-weight: 800; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px);">
+                    <div class="predict-badge-container" style="text-align: right;">
+                        <div id="predict-confidence" class="predict-badge">
                             Calculando...
                         </div>
-                        <div id="predict-record" style="margin-top: 12px; font-size: 0.75rem; color: #94a3b8; font-weight: 500;">
+                        <div id="predict-record" style="margin-top: 12px; font-size: 0.75rem; color: var(--ia-muted); font-weight: 500;">
                             Récord diario: <span id="predict-record-value" style="color: #fbbf24; font-weight: 700;">...</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- AI Strategic Insight -->
-                <div id="predict-insight-box" style="margin-top: 24px; padding: 12px 16px; background: rgba(255,255,255,0.03); border-radius: 12px; border-left: 4px solid #6366f1; font-size: 0.9rem; line-height: 1.4; position: relative; z-index: 1;">
-                    <i class="ph ph-lightbulb-filament" style="margin-right: 8px; color: #fbbf24;"></i>
-                    <span id="predict-insight-text" style="color: #e2e8f0; font-weight: 500;">Analizando tendencias de regresión lineal...</span>
+                <div id="predict-insight-box" style="margin-top: 24px; padding: 14px 18px; background: var(--ia-glass); border-radius: 14px; border-left: 5px solid #6366f1; font-size: 0.92rem; line-height: 1.45; position: relative; z-index: 1;">
+                    <i class="ph ph-lightbulb-filament" style="margin-right: 8px; color: #fbbf24; font-size: 1.1rem;"></i>
+                    <span id="predict-insight-text" style="color: var(--ia-panel-text); font-weight: 600;">Analizando tendencias de regresión lineal...</span>
                 </div>
 
                 <!-- Growth Progress -->
                 <div style="margin-top: 24px; position: relative; z-index: 1;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #64748b; margin-bottom: 10px; font-weight: 600;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--ia-muted); margin-bottom: 10px; font-weight: 700; letter-spacing: 0.5px;">
                         <span>PROGRESO HACIA LA META IA</span>
-                        <span id="predict-percent" style="color: #818cf8; font-weight: 800;">0%</span>
+                        <span id="predict-percent" style="color: var(--ia-accent); font-weight: 800;">0%</span>
                     </div>
-                    <div style="height: 8px; background: rgba(255,255,255,0.05); border-radius: 99px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="height: 10px; background: var(--ia-glass); border-radius: 99px; overflow: hidden; border: 1px solid rgba(255,255,255,0.03);">
                         <div id="predict-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #6366f1, #a855f7, #6366f1); background-size: 200% 100%; animation: shimmer 3s infinite linear; border-radius: 99px; transition: width 2s cubic-bezier(0.34, 1.56, 0.64, 1);"></div>
                     </div>
                 </div>
