@@ -58,7 +58,7 @@ window.DataManager = {
         'owedMinutes', 'recoveryRateMinutes', 'recoveryStartDate', 'deleted'],
     _dailySalesCoreFields: ['id', 'date', 'cash', 'transfer', 'debit', 'credit', 'total', 'notes', 'deleted'],
     _electronicInvoicesCoreFields: ['id', 'date', 'receiverName', 'receiverRut', 'total', 'status', 'folio', 'pdfUrl', 'deleted'],
-    _loansCoreFields: ['id', 'supplierId', 'item', 'quantity', 'unitPrice', 'total', 'date', 'notes', 'status', 'direction', 'repaymentType', 'repaymentDate', 'deleted'],
+    _loansCoreFields: ['id', 'supplierId', 'item', 'quantity', 'unitPrice', 'total', 'date', 'notes', 'status', 'direction', 'type', 'repaymentType', 'repaymentDate', 'deleted'],
 
     /**
      * Guarda o actualiza una entidad y sincroniza con Supabase.

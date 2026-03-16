@@ -1,0 +1,91 @@
+{
+  "project": {
+    "name": "El Maravilloso Final",
+    "description": "Aplicación PWA para la gestión integral de ventas, inventario, facturación electrónica y sincronización con Eleventa/Firebird.",
+    "version": "1.0.0",
+    "tech_stack": {
+      "frontend": "HTML5, Vanilla CSS, Vanilla JS (PWA)",
+      "local_db": "Dexie.js (IndexedDB)",
+      "cloud_db": "Supabase (PostgreSQL + Realtime)",
+      "external_source": "FirebirdSQL (eleventa)",
+      "integrations": ["SII Chile (via SimpleAPI)"]
+    }
+  },
+  "getting_started": {
+    "prerequisites": [
+      "Navegador moderno con soporte PWA",
+      "Credenciales de Supabase (URL y Key)",
+      "Acceso al servidor local de Firebird (si se usa sincronización local)"
+    ],
+    "setup_steps": [
+      {
+        "step": 1,
+        "action": "Configurar credenciales en settings.json o en el panel de Ajustes de la App.",
+        "description": "Se requiere supabase_url y supabase_key para la persistencia en la nube."
+      },
+      {
+        "step": 2,
+        "action": "Ejecutar 🚀 ABRIR.bat",
+        "description": "Inicia el entorno local o despliega la interfaz."
+      },
+      {
+        "step": 3,
+        "action": "Verificar indicador de Sync",
+        "description": "El icono de nube debe estar en verde (En Línea) o morado (Tiempo Real)."
+      }
+    ],
+    "scripts": {
+      "ABRIR.bat": "Abre la aplicación en el navegador predeterminado.",
+      "SUBIR.bat": "Proceso de despliegue o subida de cambios al repositorio/servidor."
+    }
+  },
+  "database_schema": {
+    "local_dexie": {
+      "description": "Base de datos reactiva en el navegador para funcionamiento offline.",
+      "tables": [
+        { "name": "employees", "primary_key": "id", "sync": true },
+        { "name": "suppliers", "primary_key": "id", "sync": true },
+        { "name": "purchase_invoices", "primary_key": "id", "sync": true },
+        { "name": "eleventa_sales", "primary_key": "id", "description": "Ventas importadas del sistema local." },
+        { "name": "loans", "primary_key": "id", "description": "Seguimiento de préstamos bidireccionales." }
+      ]
+    },
+    "cloud_supabase": {
+      "description": "Repositorio central de datos con capacidades de tiempo real.",
+      "critical_tables": {
+        "worklogs": "Registro de horas y asistencia.",
+        "daily_sales": "Cierre de caja diario concentrado.",
+        "electronic_invoices": "DTEs emitidos y recibidos."
+      }
+    },
+    "source_system_firebird": {
+      "db_path": "PDVDATA.FDB",
+      "description": "Base de datos de Eleventa de donde se extraen las ventas para sincronizar a la nube."
+    }
+  },
+  "external_integrations": {
+    "sii_chile": {
+      "provider": "SimpleAPI / SII",
+      "data_received": [
+        "Folio de factura",
+        "PDF de DTE",
+        "Track ID de envío"
+      ],
+      "data_sent": [
+        "RUT Receptor",
+        "Detalle de Items (Monto, Exento/Afecto)",
+        "Datos de Emisor"
+      ]
+    },
+    "eleventa": {
+      "type": "Data Ingestion",
+      "bridge": "js/sync.js + settings.json",
+      "logic": "Extrae registros de ventas locales y los sube a la tabla 'eleventa_sales' en Supabase."
+    }
+  },
+  "data_flow": {
+    "ui_to_local": "Las vistas guardan cambios en Dexie via DataManager.",
+    "local_to_cloud": "Sync.js detecta cambios o corre procesos periódicos de push/pull.",
+    "realtime": "Supabase Realtime actualiza Dexie automáticamente cuando otros dispositivos cambian datos."
+  }
+}

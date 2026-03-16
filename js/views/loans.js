@@ -263,6 +263,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
         
         const modal = document.getElementById('modal-container');
         const isEdit = !!loanToEdit;
+        const loanType = isEdit ? (loanToEdit.type || (loanToEdit.quantity === 1 && loanToEdit.unitPrice === loanToEdit.total ? 'Dinero' : 'Producto')) : 'Producto';
 
         modal.innerHTML = `
             <div class="modal" style="max-width:500px;">
@@ -292,6 +293,15 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                             </label>
                         </div>
                     </div>
+
+                    <div class="form-group mb-4">
+                        <label class="form-label">Tipo de Préstamo *</label>
+                        <select id="loan-type" class="form-input">
+                            <option value="Producto" ${loanType === 'Producto' ? 'selected' : ''}>📦 Producto / Insumo</option>
+                            <option value="Dinero" ${loanType === 'Dinero' ? 'selected' : ''}>💵 Dinero (Efectivo/Transf.)</option>
+                        </select>
+                    </div>
+
                     <div class="form-group mb-4">
                         <label class="form-label">Proveedor *</label>
                         <select id="loan-supplier-id" class="form-input" required>
@@ -304,19 +314,28 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                         </select>
                     </div>
                     <div class="form-group mb-4">
-                        <label class="form-label">Ítem / Producto *</label>
+                        <label class="form-label" id="label-item">Ítem / Descripción *</label>
                         <input type="text" id="loan-item" class="form-input" placeholder="Ej: Mangas de sushi" required value="${isEdit ? loanToEdit.item : ''}">
                     </div>
-                    <div class="responsive-grid-2 gap-3 mb-4">
+
+                    <!-- Fields for Product -->
+                    <div id="fields-product" class="responsive-grid-2 gap-3 mb-4" style="display: ${loanType === 'Producto' ? 'grid' : 'none'};">
                         <div class="form-group">
                             <label class="form-label">Cantidad *</label>
-                            <input type="number" id="loan-quantity" class="form-input" placeholder="0" required value="${isEdit ? loanToEdit.quantity : ''}">
+                            <input type="number" id="loan-quantity" class="form-input" placeholder="0" value="${isEdit ? loanToEdit.quantity : ''}">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Precio Unitario (Estimado)</label>
+                            <label class="form-label">Precio Unit. (Est.)</label>
                             <input type="number" id="loan-unit-price" class="form-input" placeholder="0" value="${isEdit ? loanToEdit.unitPrice : ''}">
                         </div>
                     </div>
+
+                    <!-- Fields for Money -->
+                    <div id="fields-money" class="form-group mb-4" style="display: ${loanType === 'Dinero' ? 'block' : 'none'};">
+                        <label class="form-label">Monto Total ($) *</label>
+                        <input type="number" id="loan-total-money" class="form-input" placeholder="0" value="${isEdit ? loanToEdit.total : ''}">
+                    </div>
+
                     <div class="form-group mb-4">
                         <label class="form-label">Fecha</label>
                         <input type="date" id="loan-date" class="form-input" value="${isEdit ? loanToEdit.date : new Date().toISOString().split('T')[0]}">
@@ -336,16 +355,47 @@ window.Views.loans = async (container, filterSupplierId = null) => {
 
         modal.classList.remove('hidden');
 
+        // Logic to toggle fields
+        const typeSelect = document.getElementById('loan-type');
+        const fieldsProduct = document.getElementById('fields-product');
+        const fieldsMoney = document.getElementById('fields-money');
+        const labelItem = document.getElementById('label-item');
+
+        typeSelect.addEventListener('change', () => {
+            if (typeSelect.value === 'Dinero') {
+                fieldsProduct.style.display = 'none';
+                fieldsMoney.style.display = 'block';
+                labelItem.textContent = 'Descripción del Préstamo *';
+                document.getElementById('loan-item').placeholder = 'Ej: Préstamo para caja chica';
+            } else {
+                fieldsProduct.style.display = 'grid';
+                fieldsMoney.style.display = 'none';
+                labelItem.textContent = 'Ítem / Producto *';
+                document.getElementById('loan-item').placeholder = 'Ej: Mangas de sushi';
+            }
+        });
+
         document.getElementById('btn-save-loan').addEventListener('click', async () => {
             const direction = document.querySelector('input[name="loan-direction"]:checked').value;
+            const type = typeSelect.value;
             const supplierId = Number(document.getElementById('loan-supplier-id').value);
             const item = document.getElementById('loan-item').value.trim();
-            const quantity = Number(document.getElementById('loan-quantity').value);
-            const unitPrice = Number(document.getElementById('loan-unit-price').value) || 0;
             const date = document.getElementById('loan-date').value;
             const notes = document.getElementById('loan-notes').value.trim();
 
-            if (!supplierId || !item || !quantity) {
+            let quantity, unitPrice, total;
+
+            if (type === 'Dinero') {
+                total = Number(document.getElementById('loan-total-money').value);
+                quantity = 1;
+                unitPrice = total;
+            } else {
+                quantity = Number(document.getElementById('loan-quantity').value);
+                unitPrice = Number(document.getElementById('loan-unit-price').value) || 0;
+                total = quantity * unitPrice;
+            }
+
+            if (!supplierId || !item || (type === 'Producto' && !quantity) || (type === 'Dinero' && !total)) {
                 alert('Por favor completa los campos obligatorios (*)');
                 return;
             }
@@ -356,10 +406,11 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                     item,
                     quantity,
                     unitPrice,
-                    total: quantity * unitPrice,
+                    total,
                     date,
                     notes,
                     direction,
+                    type,
                     status: isEdit ? loanToEdit.status : 'Pendiente',
                     deleted: false
                 };

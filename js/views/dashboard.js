@@ -674,6 +674,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const healthDetail = document.getElementById('health-detail');
         const healthRatioPct = document.getElementById('health-ratio-pct');
 
+        if (!healthEl || !healthBar || !healthDetail) return; // Guard against race condition
+
         if (ventasMes === 0) {
             healthEl.textContent = '⚪ Sin datos de ventas';
             healthBar.style.width = '0%';
@@ -1043,7 +1045,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
     } catch (e) {
         console.error('Dashboard error:', e);
-        container.innerHTML += `<p style="color:red;">Error cargando datos: ${e.message}</p>`;
+        if (container && container.isConnected) {
+            container.innerHTML += `<p style="color:red;">Error cargando datos: ${e.message}</p>`;
+        }
     }
 };
 
