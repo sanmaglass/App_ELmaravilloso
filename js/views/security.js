@@ -13,29 +13,51 @@ window.Views.security = async (container) => {
     const channelFormat = (await window.db.settings.get('nvr_channel_format'))?.value || '101'; // '101' (101, 201...) or '1' (1, 2, 3...)
 
     container.innerHTML = `
-        <div class="stack-on-mobile" style="justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <style>
+            .security-grid-bg { background: #000; position: relative; }
+            .scanline {
+                width: 100%; height: 2px; background: rgba(220, 38, 38, 0.1);
+                position: absolute; top: 0; left: 0; z-index: 5;
+                animation: scan 4s linear infinite; pointer-events: none;
+            }
+            @keyframes scan {
+                0% { top: 0; }
+                100% { top: 100%; }
+            }
+            .cyber-badge {
+                background: rgba(0,0,0,0.8); border: 1px solid var(--primary);
+                color: var(--primary); font-family: 'Space Mono', monospace;
+                font-size: 0.65rem; padding: 4px 8px; border-radius: 4px;
+                text-transform: uppercase; letter-spacing: 1px;
+            }
+        </style>
+
+        <div class="stack-on-mobile" style="justify-content:space-between; align-items:center; margin-bottom:24px; background:#050505; padding:20px; border-radius:16px; border:1px solid #1a1a1a;">
             <div>
-                <h1 style="margin:0; display:flex; align-items:center; gap:12px;">
-                    <i class="ph ph-video-camera" style="color:var(--primary);"></i>
-                    Seguridad
+                <h1 style="margin:0; display:flex; align-items:center; gap:12px; color:#fff; font-size:1.5rem;">
+                    <i class="ph ph-shield-checkered" style="color:var(--primary); filter: drop-shadow(0 0 10px var(--primary));"></i>
+                    PROTOCOLO SEGURIDAD
+                    <span class="cyber-badge" style="margin-left:10px;">En Línea</span>
                 </h1>
-                <p style="color:var(--text-muted); margin-top:4px;">Cámaras en vivo</p>
+                <p style="color:var(--text-muted); margin-top:4px; font-family:'Space Mono', monospace; font-size:0.8rem;">Monitor de Vigilancia Activa v2.0</p>
             </div>
-            <button id="btn-config-nvr" class="btn btn-secondary">
-                <i class="ph ph-gear"></i> <span class="hide-mobile">Configuración Avanzada</span><span class="show-mobile-only" style="display:none;">Ajustes</span>
-            </button>
+            <div style="display:flex; gap:10px;">
+                <button id="btn-config-nvr" class="btn" style="background:transparent; border:1px solid #333; color:#aaa; font-size:0.8rem;">
+                    <i class="ph ph-terminal"></i> Config
+                </button>
+            </div>
         </div>
 
-        <div id="cams-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
+        <div id="cams-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px;">
             <!-- Cameras will load here -->
-            <div class="loading-state" style="grid-column: 1/-1; padding: 100px;">
-                <div class="spinner"></div>
-                <p>Estableciendo conexión...</p>
+            <div class="loading-state" style="grid-column: 1/-1; padding: 100px; color:#fff;">
+                <div class="spinner" style="border-color:var(--primary);"></div>
+                <p style="font-family:'Space Mono';">AUTENTICANDO NVR...</p>
             </div>
         </div>
 
-        <div style="margin-top:24px; padding:16px; background:rgba(220,38,38,0.05); border-radius:12px; border:1px dashed var(--primary); font-size:0.9rem; color:var(--text-secondary);">
-            <i class="ph ph-info"></i> <b>Guía de Solución:</b> Si ves un error XML, abre **Configuración Avanzada** y cambia el **"Formato de Canal"** a **"Simple (1, 2, 3)"**. Algunos modelos antiguos requieren este formato.
+        <div style="margin-top:24px; padding:16px; background:#0a0000; border-radius:12px; border:1px solid #300; font-size:0.8rem; color:#855; font-family:'Space Mono';">
+            <i class="ph ph-warning"></i> [AVISO] Conexión cifrada vía ISAPI. Si hay fallos de red, verificar el firewall del NVR.
         </div>
     `;
 
@@ -57,25 +79,24 @@ window.Views.security = async (container) => {
             const apiUrl = `/ISAPI/${nvrEndpoint}/channels/${channel}/picture`;
 
             const camCard = document.createElement('div');
-            camCard.className = 'card';
+            camCard.className = 'card security-grid-bg';
             camCard.style.padding = '0';
             camCard.style.overflow = 'hidden';
             camCard.style.background = '#000';
+            camCard.style.border = '1px solid #1a1a1a';
             camCard.style.position = 'relative';
             camCard.style.aspectRatio = '16/9';
 
             camCard.innerHTML = `
-                <div style="position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.6); color:#fff; padding:4px 10px; border-radius:4px; font-size:0.75rem; font-weight:bold; z-index:10; display:flex; align-items:center; gap:6px;">
-                    <span style="width:8px; height:8px; background:#ff0000; border-radius:50%; box-shadow:0 0 5px #ff0000;"></span>
-                    CÁMARA ${camId} (CH ${channel})
+                <div class="scanline"></div>
+                <div style="position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.8); color:var(--primary); padding:4px 10px; border-radius:4px; font-size:0.65rem; font-weight:bold; z-index:10; display:flex; align-items:center; gap:8px; border:1px solid rgba(220,38,38,0.3); font-family:'Space Mono';">
+                    <span style="width:6px; height:6px; background:#ff0000; border-radius:50%; box-shadow:0 0 8px #ff0000; animation: pulse 2s infinite;"></span>
+                    LIVE // CAM_${camId.toString().padStart(2, '0')}
                 </div>
-                <img id="img-cam-${camId}" alt="Stream Cámara ${camId}" style="width:100%; height:100%; object-fit:cover; display:block;">
-                <div id="status-cam-${camId}" style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; color:rgba(255,255,255,0.4); font-size:0.8rem; padding:20px; text-align:center;">
-                    <i class="ph ph-circle-notch ph-spin" style="font-size:1.5rem; margin-bottom:12px;"></i>
-                    Conectando...
-                    <button class="btn btn-secondary" style="margin-top:12px; font-size:0.7rem; padding:6px 12px; background:rgba(255,255,255,0.1); color:#fff; border-color:rgba(255,255,255,0.2);" onclick="window.open('http://${nvrIp}:${nvrPort}${apiUrl}', '_blank')">
-                        <i class="ph ph-arrow-square-out"></i> Probar en otra pestaña
-                    </button>
+                <img id="img-cam-${camId}" alt="Stream" style="width:100%; height:100%; object-fit:cover; display:block; filter: grayscale(0.5) contrast(1.2) brightness(0.85);">
+                <div id="status-cam-${camId}" style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; color:rgba(255,255,255,0.2); font-size:0.7rem; padding:20px; text-align:center; font-family:'Space Mono';">
+                    <i class="ph ph-broadcast ph-spin" style="font-size:1.2rem; margin-bottom:8px; color:var(--primary);"></i>
+                    DIFUSIÓN SUPABASE_PROXY...
                 </div>
             `;
 

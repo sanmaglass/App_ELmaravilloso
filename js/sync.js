@@ -13,11 +13,18 @@ window.Sync = {
     // Dispara 'sync-data-updated' con debounce para evitar loops de refrescos
     _scheduleSyncEvent() {
         if (this._dispatchTimer) clearTimeout(this._dispatchTimer);
+        
+        // Durante la carga inicial (primeros 5s) usamos un debounce más largo
+        const isInitialSync = !window._appInitializedAt || (Date.now() - window._appInitializedAt < 5000);
+        const delay = isInitialSync ? 1500 : 800;
+
         this._dispatchTimer = setTimeout(() => {
             this._dispatchTimer = null;
+            console.log(`[Sync] Despachando evento de actualización (delay: ${delay}ms)`);
             window.dispatchEvent(new CustomEvent('sync-data-updated'));
-        }, 800);
+        }, delay);
     },
+
 
     // Inicializar cliente
     init: async () => {

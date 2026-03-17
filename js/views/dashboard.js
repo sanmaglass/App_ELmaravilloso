@@ -169,52 +169,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
-        <!-- 🧠 IA PREDICTIVE PANEL -->
-        <div id="prediction-container" class="hidden" style="margin-bottom:24px;">
-            <div class="premium-card card-anim" style="background: var(--ia-panel-bg); color: var(--ia-panel-text); border: none; position: relative; overflow: hidden; padding: 24px;">
-                <!-- Decorative background elements -->
-                <div style="position: absolute; top: -30px; right: -30px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%); border-radius: 50%; filter: blur(40px);"></div>
-                
-                <div class="predict-header">
-                    <div>
-                        <div id="label-ia-title" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 0.8rem; color: var(--ia-accent); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">
-                            <i class="ph ph-sparkle-fill"></i> IA
-                        </div>
-                        <h2 class="predict-title">
-                            <span id="predict-total" style="background: linear-gradient(to right, var(--ia-panel-text), var(--ia-muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">...</span>
-                            <span id="predict-month-label" style="font-size: 0.95rem; font-weight: 500; color: var(--ia-muted); letter-spacing: 0;">est. Marzo</span>
-                        </h2>
-                        <div id="predict-comparison" style="margin-top: 10px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;"></div>
-                    </div>
-                    <div class="predict-badge-container" style="text-align: right;">
-                        <div id="predict-confidence" class="predict-badge">
-                            Calc...
-                        </div>
-                        <div id="predict-record" style="margin-top: 12px; font-size: 0.75rem; color: var(--ia-muted); font-weight: 500;">
-                            Récord: <span id="predict-record-value" style="color: #fbbf24; font-weight: 700;">...</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- AI Strategic Insight (Redesigned for UI/UX Pro) -->
-                <div id="predict-insight-box" style="margin-top: 24px; padding: 12px 16px; background: rgba(99, 102, 241, 0.08); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.15); display: flex; align-items: center; gap: 10px; position: relative; z-index: 1;">
-                    <div id="predict-insight-dot" style="width: 6px; height: 6px; border-radius: 50%; background: #6366f1; box-shadow: 0 0 8px #6366f1;"></div>
-                    <span id="predict-insight-text" style="color: var(--ia-panel-text); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.3px;">Analizando...</span>
-                </div>
-
-                <!-- Growth Progress -->
-                <div style="margin-top: 24px; position: relative; z-index: 1;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--ia-muted); margin-bottom: 10px; font-weight: 700; letter-spacing: 0.5px;">
-                        <span id="label-ia-meta">META IA</span>
-                        <span id="predict-percent" style="color: var(--ia-accent); font-weight: 800;">0%</span>
-                    </div>
-                    <div style="height: 10px; background: var(--ia-glass); border-radius: 99px; overflow: hidden; border: 1px solid rgba(255,255,255,0.03);">
-                        <div id="predict-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #6366f1, #a855f7, #6366f1); background-size: 200% 100%; animation: shimmer 3s infinite linear; border-radius: 99px; transition: width 2s cubic-bezier(0.34, 1.56, 0.64, 1);"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- KPI Cards con Estética Premium -->
         <div class="grid grid-cols-auto gap-6 mb-8">
             <!-- Ventas mes -->
@@ -260,6 +214,52 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     <div id="health-bar" class="h-full" style="width:0%; background:var(--grad-success); transition:width 1s ease;"></div>
                 </div>
                 <div id="health-detail" class="text-xs text-muted mt-3 italic">Calculando métricas de salud...</div>
+            </div>
+        </div>
+
+        <!-- 🧠 IA PREDICTIVE PANEL (Secondary Priority) -->
+        <div id="prediction-container" class="hidden" style="margin-bottom:24px;">
+            <div class="premium-card card-anim" style="background: var(--ia-panel-bg); color: var(--ia-panel-text); border: none; position: relative; overflow: hidden; padding: 24px;">
+                <!-- Decorative background elements -->
+                <div style="position: absolute; top: -30px; right: -30px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%); border-radius: 50%; filter: blur(40px);"></div>
+                
+                <div class="predict-header">
+                    <div>
+                        <div id="label-ia-title" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 0.8rem; color: var(--ia-accent); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">
+                            <i class="ph ph-sparkle-fill"></i> IA
+                        </div>
+                        <h2 class="predict-title">
+                            <span id="predict-total" style="background: linear-gradient(to right, var(--ia-panel-text), var(--ia-muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">...</span>
+                            <span id="predict-month-label" style="font-size: 0.95rem; font-weight: 500; color: var(--ia-muted); letter-spacing: 0;">est. Marzo</span>
+                        </h2>
+                        <div id="predict-comparison" style="margin-top: 10px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;"></div>
+                    </div>
+                    <div class="predict-badge-container" style="text-align: right;">
+                        <div id="predict-confidence" class="predict-badge">
+                            Calc...
+                        </div>
+                        <div id="predict-record" style="margin-top: 12px; font-size: 0.75rem; color: var(--ia-muted); font-weight: 500;">
+                            Récord: <span id="predict-record-value" style="color: #fbbf24; font-weight: 700;">...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Strategic Insight (Redesigned for UI/UX Pro) -->
+                <div id="predict-insight-box" style="margin-top: 24px; padding: 12px 16px; background: rgba(99, 102, 241, 0.08); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.15); display: flex; align-items: center; gap: 10px; position: relative; z-index: 1;">
+                    <div id="predict-insight-dot" style="width: 6px; height: 6px; border-radius: 50%; background: #6366f1; box-shadow: 0 0 8px #6366f1;"></div>
+                    <span id="predict-insight-text" style="color: var(--ia-panel-text); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.3px;">Analizando...</span>
+                </div>
+
+                <!-- Growth Progress -->
+                <div style="margin-top: 24px; position: relative; z-index: 1;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--ia-muted); margin-bottom: 10px; font-weight: 700; letter-spacing: 0.5px;">
+                        <span id="label-ia-meta">META IA</span>
+                        <span id="predict-percent" style="color: var(--ia-accent); font-weight: 800;">0%</span>
+                    </div>
+                    <div style="height: 10px; background: var(--ia-glass); border-radius: 99px; overflow: hidden; border: 1px solid rgba(255,255,255,0.03);">
+                        <div id="predict-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #6366f1, #a855f7, #6366f1); background-size: 200% 100%; animation: shimmer 3s infinite linear; border-radius: 99px; transition: width 2s cubic-bezier(0.34, 1.56, 0.64, 1);"></div>
+                    </div>
+                </div>
             </div>
         </div>
 

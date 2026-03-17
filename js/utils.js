@@ -540,13 +540,41 @@ window.Utils = {
 
     animateNumber: (el, start, end, duration = 1000, isCurrency = false) => {
         if (!el) return;
+        
+        // --- BU GUARD: Evitar "saltos" si el valor objetivo no ha cambiado ---
+        const targetVal = parseFloat(end) || 0;
+        const currentTarget = parseFloat(el.dataset.targetValue);
+        
+        // Si ya estamos animando hacia este valor o ya terminamos en él, ignorar
+        if (currentTarget === targetVal) {
+            return; 
+        }
+        
+        // Registrar nuevo objetivo
+        el.dataset.targetValue = targetVal;
+        
         let startTimestamp = null;
         const step = (timestamp) => {
             if (!startTimestamp) startTimestamp = timestamp;
             const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            const value = Math.floor(progress * (end - start) + start);
-            el.innerHTML = isCurrency ? window.Utils.formatCurrency(value) : value.toLocaleString();
-            if (progress < 1) window.requestAnimationFrame(step);
+            const value = Math.floor(progress * (targetVal - start) + start);
+            
+            // Solo actualizar el DOM si el valor calculado es distinto al texto actual
+            // (Pequeña optimización de renderizado)
+            const formatted = isCurrency ? window.Utils.formatCurrency(value) : value.toLocaleString();
+            if (el.innerHTML !== formatted) {
+                el.innerHTML = formatted;
+            }
+            
+            if (progress < 1) {
+                // Verificar si durante la animación cambió el objetivo (otra llamada a animateNumber)
+                if (parseFloat(el.dataset.targetValue) === targetVal) {
+                    window.requestAnimationFrame(step);
+                }
+            } else {
+                // Asegurar valor final exacto
+                el.innerHTML = isCurrency ? window.Utils.formatCurrency(targetVal) : targetVal.toLocaleString();
+            }
         };
         window.requestAnimationFrame(step);
     },

@@ -188,6 +188,9 @@ async function init() {
             if (titleEl && navBtn) titleEl.textContent = navBtn.querySelector('span').textContent;
         }
 
+        // Global initialization timestamp for sync guards
+        window._appInitializedAt = Date.now();
+
         // GLOBAL SYNC LISTENER: Solo actúa en vistas sin syncHandler propio
         // Las vistas con su propio syncHandler (purchase_invoices, expenses, daily_sales, etc.)
         // se auto-refrescan. Este listener solo cubre el dashboard y vistas sin handler.
@@ -199,6 +202,15 @@ async function init() {
         window.addEventListener('sync-data-updated', () => {
             const current = window.state.currentView;
             if (VIEWS_WITH_OWN_SYNC.has(current)) return; // Ya tiene su propio handler
+
+            // GUARDIA DE ARRANQUE: Durante los primeros 3 segundos, ignorar refrescos globales
+            // si el dashboard ya está visible, para evitar el parpadeo de "carga múltiple".
+            const timeSinceInit = Date.now() - window._appInitializedAt;
+            if (timeSinceInit < 3000 && current === 'dashboard') {
+                console.log("🛡️ Sync Guard: Ignorando refresco de Dashboard durante arranque crítico.");
+                return;
+            }
+
             clearTimeout(_globalSyncDebounce);
             _globalSyncDebounce = setTimeout(() => {
                 console.log("♻️ Global sync refresh for:", current);
@@ -229,42 +241,29 @@ async function init() {
         // --- SPLASH ON RESUME (como app nativa iOS) ---
         let _lastHidden = null;
         let _splashTimer = null;
-
         document.addEventListener('visibilitychange', () => {
             const splash = document.getElementById('splash-screen');
             if (!splash) return;
 
             if (document.hidden) {
-                // App va al fondo — guardar momento
                 _lastHidden = Date.now();
             } else {
-                // App vuelve — mostrar splash solo si estuvo fuera > 3s
                 const awayTime = Date.now() - (_lastHidden || 0);
                 if (_lastHidden && awayTime > 3000) {
-
-                    // Cancelar timer anterior si existe
                     if (_splashTimer) clearTimeout(_splashTimer);
-
-                    // IMPORTANTE: Limpiar estilos inline antes de mostrar
+                    
                     splash.removeAttribute('style');
                     splash.classList.remove('hidden');
 
-                    // Animar barra de carga
-                    const bar = document.getElementById('splash-bar');
-                    if (bar) {
-                        bar.style.transition = 'none';
-                        bar.style.width = '0%';
-                        requestAnimationFrame(() => {
-                            bar.style.transition = 'width 1.1s ease-out';
-                            bar.style.width = '100%';
-                        });
-                    }
-
-                    // Ocultar tras 1.4s — solo con clase, sin estilos inline
                     _splashTimer = setTimeout(() => {
-                        splash.classList.add('hidden');
+                        splash.style.opacity = '0';
+                        splash.style.transition = 'opacity 0.6s ease';
+                        setTimeout(() => {
+                            splash.classList.add('hidden');
+                            splash.removeAttribute('style');
+                        }, 600);
                         _splashTimer = null;
-                    }, 1400);
+                    }, 1200);
                 }
             }
         });
