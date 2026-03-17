@@ -33,8 +33,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         /* KPI Card Animated */
         .kpi-card { position:relative; overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .kpi-card:hover { transform:translateY(-5px) scale(1.02); box-shadow:0 12px 40px rgba(0,0,0,0.1); }
-        .kpi-card .kpi-glow { position:absolute; top:-50%; right:-50%; width:200%; height:200%; background:radial-gradient(circle, currentColor 0%, transparent 70%); opacity:0.05; pointer-events:none; }
         
+        .stat-value-mega { font-size: clamp(2.5rem, 5vw, 4rem); line-height: 1; font-weight: 900; letter-spacing: -2px; }
+        .stat-label-premium { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 8px; }
+
         /* Card animation */
         @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
         .card-anim { animation: slideUp 0.5s ease backwards; }
@@ -172,48 +174,48 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <!-- KPI Cards con Estética Premium -->
         <div class="grid grid-cols-auto gap-6 mb-8">
             <!-- Ventas mes -->
-            <div class="premium-card card-anim" style="border-top:5px solid #10b981;">
-                <div class="flex justify-between items-start mb-4">
+            <div class="premium-card card-anim" style="border-top:5px solid #10b981; background: linear-gradient(180deg, rgba(16,185,129,0.05) 0%, white 100%);">
+                <div class="flex justify-between items-start mb-6">
                     <div class="p-3 rounded-2xl" style="background:rgba(16,185,129,0.1); color:#10b981;">
-                        <i class="ph ph-trend-up text-2xl"></i>
+                        <i class="ph ph-chart-line-up text-3xl"></i>
                     </div>
-                    <div id="kpi-ventas-mes-badge" class="status-badge status-paid">Calculando...</div>
+                    <div id="kpi-ventas-mes-badge" class="status-badge" style="background:rgba(16,185,129,0.1); color:#059669; border:1px solid rgba(16,185,129,0.2);">Calculando...</div>
                 </div>
-                <div class="text-muted font-bold text-xs uppercase letter-spacing-1">Ventas del Mes</div>
-                <div id="kpi-ventas-mes" class="text-primary font-bold text-3xl mt-1">...</div>
-                <div class="spark-container mt-4"><canvas id="spark-ventas"></canvas></div>
+                <div class="stat-label-premium">Ventas del Mes</div>
+                <div id="kpi-ventas-mes" class="stat-value-mega text-primary mt-1">...</div>
+                <div class="spark-container mt-6"><canvas id="spark-ventas"></canvas></div>
             </div>
 
             <!-- Gasto mes -->
-            <div class="premium-card card-anim" style="border-top:5px solid var(--primary); background: linear-gradient(180deg, rgba(230,0,0,0.03) 0%, white 100%);">
-                <div class="flex justify-between items-start mb-4">
+            <div class="premium-card card-anim delay-1" style="border-top:5px solid var(--primary); background: linear-gradient(180deg, rgba(230,0,0,0.03) 0%, white 100%);">
+                <div class="flex justify-between items-start mb-6">
                     <div class="p-3 rounded-2xl" style="background:rgba(230,0,0,0.1); color:var(--primary);">
-                        <i class="ph ph-receipt text-2xl"></i>
+                        <i class="ph ph-hand-coins text-3xl"></i>
                     </div>
                     <div id="kpi-gasto-mes-badge" class="status-badge status-overdue">Gastos Mes</div>
                 </div>
-                <div class="text-muted font-bold text-xs uppercase letter-spacing-1">Gasto Total</div>
-                <div id="kpi-gasto-mes" class="text-primary font-bold text-3xl mt-1">...</div>
-                <div class="spark-container mt-4"><canvas id="spark-gastos"></canvas></div>
+                <div class="stat-label-premium">Inversión / Gastos</div>
+                <div id="kpi-gasto-mes" class="stat-value-mega text-primary mt-1">...</div>
+                <div class="spark-container mt-6"><canvas id="spark-gastos"></canvas></div>
             </div>
 
             <!-- Margen Neto / Salud -->
-            <div class="premium-card card-anim" style="border-top:5px solid #84cc16;">
-                <div class="flex justify-between items-start mb-4">
+            <div class="premium-card card-anim delay-2" style="border-top:5px solid #84cc16; background: linear-gradient(180deg, rgba(132,204,22,0.05) 0%, white 100%);">
+                <div class="flex justify-between items-start mb-6">
                     <div class="p-3 rounded-2xl" style="background:rgba(132,204,22,0.1); color:#84cc16;">
-                        <i class="ph ph-target text-2xl"></i>
+                        <i class="ph ph-heartbeat text-3xl"></i>
                     </div>
                     <div id="health-label" class="status-badge" style="background:rgba(132,204,22,0.1); color:#65a30d; font-weight:700;">Salud</div>
                 </div>
-                <div class="text-muted font-bold text-xs uppercase letter-spacing-1">Margen Neto Estimado</div>
-                <div class="flex items-baseline gap-2">
-                    <div id="kpi-margen-neto" class="font-bold text-3xl mt-1" style="color:#65a30d;">...</div>
-                    <div id="health-ratio-pct" class="text-xs font-bold text-muted">0%</div>
+                <div class="stat-label-premium">Rentabilidad</div>
+                <div class="flex items-baseline gap-3">
+                    <div id="kpi-margen-neto" class="stat-value-mega mt-1" style="color:#65a30d;">...</div>
+                    <div id="health-ratio-pct" class="text-sm font-black text-muted">0%</div>
                 </div>
-                <div id="health-bar-wrap" class="w-full h-2 rounded-full overflow-hidden mt-4" style="background:rgba(0,0,0,0.05);">
-                    <div id="health-bar" class="h-full" style="width:0%; background:var(--grad-success); transition:width 1s ease;"></div>
+                <div id="health-bar-wrap" class="w-full h-3 rounded-full overflow-hidden mt-6" style="background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.03);">
+                    <div id="health-bar" class="h-full" style="width:0%; background:linear-gradient(90deg, #84cc16, #22c55e); transition:width 1s ease;"></div>
                 </div>
-                <div id="health-detail" class="text-xs text-muted mt-3 italic">Calculando métricas de salud...</div>
+                <div id="health-detail" class="text-xs text-muted mt-4 font-medium italic">Calculando métricas de salud...</div>
             </div>
         </div>
 
