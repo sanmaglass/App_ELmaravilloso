@@ -521,20 +521,5 @@ window.Sync = {
         } catch (error) {
             console.error('Error handling realtime change:', error);
         }
-    },
-
-    // DELETE ALL DATA FROM CLOUD (DANGER)
-    nukeCloud: async function () {
-        if (!window.Sync.client) throw new Error('No cloud connection');
-        const tables = [
-            'employees', 'worklogs', 'products', 'promotions',
-            'suppliers', 'purchase_invoices', 'sales_invoices',
-            'expenses', 'daily_sales', 'electronic_invoices', 'reminders', 'eleventa_sales', 'loans'
-        ];
-        for (const table of tables) {
-            const { error } = await window.Sync.client.from(table).delete().gte('id', 0);
-            if (error) throw error;
-        }
-        console.log('All cloud data deleted successfully');
     }
 };

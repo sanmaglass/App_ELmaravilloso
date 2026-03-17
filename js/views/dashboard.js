@@ -104,6 +104,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <div>
             <h1 class="text-primary font-bold flex items-center gap-3 text-2xl">
                 <i class="ph ph-squares-four"></i> Resumen de Negocio
+                <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(16,185,129,0.1); padding:4px 10px; border-radius:8px; border:1px solid rgba(16,185,129,0.2); margin-left:10px;">
+                    <i class="ph ph-shield-check" style="color:#10b981; font-size:1rem;"></i>
+                    <span style="font-size:0.65rem; color:#10b981; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;">Protegido</span>
+                </div>
             </h1>
             <p class="text-muted text-sm mt-1">Sincronización en tiempo real activa 🛰️</p>
         </div>

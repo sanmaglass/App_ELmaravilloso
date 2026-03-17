@@ -166,7 +166,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                 const color = isPaid ? 'var(--success)' : (isToSupplier ? 'var(--warning)' : 'var(--info)');
                 const directionIcon = isToSupplier ? '📤' : '📥';
                 const directionText = isToSupplier ? 'Yo presté' : 'Me prestaron';
-                const supplierName = supplierMap[l.supplierId] || 'Proveedor Desconocido';
+                const supplierName = l.borrowerName || supplierMap[l.supplierId] || 'Persona Desconocida';
                 
                 return `
                     <div class="card p-4 flex justify-between items-center border-left-4" style="border-left-color: ${color}">
@@ -303,8 +303,26 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                     </div>
 
                     <div class="form-group mb-4">
+                        <label class="form-label">¿A quién va dirigido? *</label>
+                        <div class="flex gap-2">
+                            <label class="flex-1 cursor-pointer">
+                                <input type="radio" name="loan-entity-type" value="supplier" class="hidden peer" ${!isEdit || loanToEdit.supplierId ? 'checked' : ''}>
+                                <div class="p-2 border rounded text-center peer-checked:border-primary peer-checked:bg-primary-light peer-checked:text-primary transition-all text-sm">
+                                    Proveedor
+                                </div>
+                            </label>
+                            <label class="flex-1 cursor-pointer">
+                                <input type="radio" name="loan-entity-type" value="person" class="hidden peer" ${isEdit && !loanToEdit.supplierId && loanToEdit.borrowerName ? 'checked' : ''}>
+                                <div class="p-2 border rounded text-center peer-checked:border-primary peer-checked:bg-primary-light peer-checked:text-primary transition-all text-sm">
+                                    Persona
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-4" id="group-supplier" style="display: ${!isEdit || loanToEdit.supplierId ? 'block' : 'none'};">
                         <label class="form-label">Proveedor *</label>
-                        <select id="loan-supplier-id" class="form-input" required>
+                        <select id="loan-supplier-id" class="form-input">
                             <option value="">Seleccionar proveedor...</option>
                             ${activeSuppliers.map(s => `
                                 <option value="${s.id}" ${isEdit && loanToEdit.supplierId == s.id ? 'selected' : (viewState.supplierId == s.id ? 'selected' : '')}>
@@ -313,6 +331,12 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                             `).join('')}
                         </select>
                     </div>
+
+                    <div class="form-group mb-4" id="group-person" style="display: ${isEdit && !loanToEdit.supplierId && loanToEdit.borrowerName ? 'block' : 'none'};">
+                        <label class="form-label">Nombre de la Persona *</label>
+                        <input type="text" id="loan-borrower-name" class="form-input" placeholder="Ej: Juan Pérez" value="${isEdit ? (loanToEdit.borrowerName || '') : ''}">
+                    </div>
+
                     <div class="form-group mb-4">
                         <label class="form-label" id="label-item">Ítem / Descripción *</label>
                         <input type="text" id="loan-item" class="form-input" placeholder="Ej: Mangas de sushi" required value="${isEdit ? loanToEdit.item : ''}">
@@ -360,6 +384,21 @@ window.Views.loans = async (container, filterSupplierId = null) => {
         const fieldsProduct = document.getElementById('fields-product');
         const fieldsMoney = document.getElementById('fields-money');
         const labelItem = document.getElementById('label-item');
+        const entityTypeRadios = document.querySelectorAll('input[name="loan-entity-type"]');
+        const groupSupplier = document.getElementById('group-supplier');
+        const groupPerson = document.getElementById('group-person');
+
+        entityTypeRadios.forEach(r => {
+            r.addEventListener('change', () => {
+                if (r.value === 'supplier') {
+                    groupSupplier.style.display = 'block';
+                    groupPerson.style.display = 'none';
+                } else {
+                    groupSupplier.style.display = 'none';
+                    groupPerson.style.display = 'block';
+                }
+            });
+        });
 
         typeSelect.addEventListener('change', () => {
             if (typeSelect.value === 'Dinero') {
@@ -377,8 +416,10 @@ window.Views.loans = async (container, filterSupplierId = null) => {
 
         document.getElementById('btn-save-loan').addEventListener('click', async () => {
             const direction = document.querySelector('input[name="loan-direction"]:checked').value;
+            const entityType = document.querySelector('input[name="loan-entity-type"]:checked').value;
             const type = typeSelect.value;
-            const supplierId = Number(document.getElementById('loan-supplier-id').value);
+            const supplierId = entityType === 'supplier' ? Number(document.getElementById('loan-supplier-id').value) : null;
+            const borrowerName = entityType === 'person' ? document.getElementById('loan-borrower-name').value.trim() : null;
             const item = document.getElementById('loan-item').value.trim();
             const date = document.getElementById('loan-date').value;
             const notes = document.getElementById('loan-notes').value.trim();
@@ -395,7 +436,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                 total = quantity * unitPrice;
             }
 
-            if (!supplierId || !item || (type === 'Producto' && !quantity) || (type === 'Dinero' && !total)) {
+            if ((entityType === 'supplier' && !supplierId) || (entityType === 'person' && !borrowerName) || !item || (type === 'Producto' && !quantity) || (type === 'Dinero' && !total)) {
                 alert('Por favor completa los campos obligatorios (*)');
                 return;
             }
@@ -403,6 +444,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
             try {
                 const loanData = {
                     supplierId,
+                    borrowerName,
                     item,
                     quantity,
                     unitPrice,
