@@ -58,7 +58,12 @@ window.DataManager = {
         'owedMinutes', 'recoveryRateMinutes', 'recoveryStartDate', 'deleted'],
     _dailySalesCoreFields: ['id', 'date', 'cash', 'transfer', 'debit', 'credit', 'total', 'notes', 'deleted'],
     _electronicInvoicesCoreFields: ['id', 'date', 'receiverName', 'receiverRut', 'total', 'status', 'folio', 'pdfUrl', 'deleted'],
-    _loansCoreFields: ['id', 'supplierId', 'borrowerName', 'item', 'quantity', 'unitPrice', 'total', 'date', 'notes', 'status', 'direction', 'type', 'repaymentType', 'repaymentDate', 'deleted'],
+    // Confirmed columns in Supabase loans table (snake_case as stored in DB)
+    // Missing from Supabase schema: supplier_id, unit_price, borrower_name, repayment_type, repayment_date
+    // Run the migration SQL to add them. Until then, only these fields sync successfully:
+    _loansCoreFields: ['id', 'item', 'quantity', 'total', 'date', 'notes', 'status', 'direction', 'type', 'deleted'],
+    // Full fields list (used after running migration SQL in Supabase)
+    _loansFullFields: ['id', 'supplier_id', 'borrower_name', 'item', 'quantity', 'unit_price', 'total', 'date', 'notes', 'status', 'direction', 'type', 'repayment_type', 'repayment_date', 'deleted'],
 
     /**
      * Guarda o actualiza una entidad y sincroniza con Supabase.
@@ -102,8 +107,30 @@ window.DataManager = {
                     delete syncData.created_at;
                 }
 
+                // Loans: convert camelCase local fields to snake_case for Supabase
+                if (tableName === 'loans') {
+                    syncData = {
+                        id: data.id,
+                        item: data.item,
+                        quantity: data.quantity,
+                        total: data.total,
+                        date: data.date,
+                        notes: data.notes || null,
+                        status: data.status,
+                        direction: data.direction,
+                        type: data.type,
+                        deleted: data.deleted,
+                        // These will work once you run the migration SQL in Supabase:
+                        supplier_id: data.supplierId || null,
+                        unit_price: data.unitPrice || null,
+                        borrower_name: data.borrowerName || null,
+                        repayment_type: data.repaymentType || null,
+                        repayment_date: data.repaymentDate || null,
+                    };
+                }
+
                 // If it's a known "problematic" table, only send core fields to avoid 400 error in console
-                if (fallbackTables[tableName]) {
+                if (fallbackTables[tableName] && tableName !== 'loans') {
                     const coreFields = fallbackTables[tableName];
                     const cleanData = {};
                     coreFields.forEach(k => {

@@ -314,6 +314,36 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
+        <!-- Top Productos -->
+        <div class="responsive-grid-2 gap-6 mb-8">
+            <!-- Más Vendidos -->
+            <div class="premium-card">
+                <h3 class="font-bold mb-4 flex items-center gap-2" style="color:var(--primary); font-size:1.05rem;">
+                    <i class="ph ph-shopping-cart text-xl"></i> Más Vendidos (Volumen)
+                </h3>
+                <div id="top-volume-list" class="flex-col gap-3"><div class="spinner m-auto"></div></div>
+            </div>
+            <!-- Mayor Margen -->
+            <div class="premium-card">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold flex items-center gap-2" style="color:#10b981; font-size:1.05rem;">
+                        <i class="ph ph-trend-up text-xl"></i> Mayor Margen de Ganancia
+                    </h3>
+                </div>
+                <div id="top-margin-list" class="flex-col gap-3"><div class="spinner m-auto"></div></div>
+            </div>
+        </div>
+        
+        <!-- Alerta Poca Ganancia / Gancho -->
+        <div class="premium-card mb-8" style="background:rgba(239, 68, 68, 0.05); border-left:4px solid #ef4444;">
+             <h3 class="font-bold flex items-center gap-2" style="color:#ef4444; font-size:1.05rem; margin-bottom:12px;">
+                 <i class="ph ph-magnet text-xl"></i> Productos "Gancho" (Alta rotación, Bajo margen real)
+             </h3>
+             <div id="low-margin-list" class="flex gap-4 overflow-x-auto pb-2" style="scrollbar-width:thin;">
+                 <div class="spinner m-auto"></div>
+             </div>
+        </div>
+
         <!-- Gráfico P&L + Top Proveedores -->
         <div class="pl-chart-grid">
             <!-- Gráfico P&L 6 meses -->
@@ -734,6 +764,81 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 <span style="font-weight:600;color:var(--text-muted);font-size:0.85rem;">${now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
             </div>
         `;
+
+        // ---- Top Products and Margins (Data parsed from API Sync) ----
+        const currentMonthEleventa = eleventaSales.filter(s => s.date && s.date.startsWith(currentMonthStr));
+        const productStats = {};
+        let totalItemsFound = 0;
+        
+        currentMonthEleventa.forEach(sale => {
+            if (sale.items && Array.isArray(sale.items)) {
+                sale.items.forEach(item => {
+                    const name = item.name || 'Desconocido';
+                    if (!productStats[name]) {
+                        productStats[name] = { qty: 0, profit: 0, revenue: 0 };
+                    }
+                    productStats[name].qty += parseFloat(item.qty) || 1;
+                    productStats[name].profit += parseFloat(item.profit) || 0;
+                    productStats[name].revenue += (parseFloat(item.price) || 0) * (parseFloat(item.qty) || 1);
+                    totalItemsFound++;
+                });
+            }
+        });
+
+        const allProductsArr = Object.entries(productStats);
+        
+        const topVolume = [...allProductsArr].sort((a, b) => b[1].qty - a[1].qty).slice(0, 5);
+        const topMargin = [...allProductsArr].sort((a, b) => b[1].profit - a[1].profit).slice(0, 5);
+        
+        // Hooks: At least 2 sold, lowest margin percentage
+        const hooks = [...allProductsArr]
+            .filter(x => x[1].qty >= 2 && x[1].revenue > 0)
+            .sort((a, b) => (a[1].profit / a[1].revenue) - (b[1].profit / b[1].revenue))
+            .slice(0, 5);
+
+        const elVol = document.getElementById('top-volume-list');
+        if (elVol) {
+            elVol.innerHTML = topVolume.length ? topVolume.map((p, idx) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border);">
+                    <div style="display:flex; align-items:center; gap:10px; flex:1; overflow:hidden;">
+                        <span style="font-weight:800; color:var(--text-muted); width:15px; flex-shrink:0;">${idx+1}</span>
+                        <span style="font-weight:600; font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${p[0]}">${p[0]}</span>
+                    </div>
+                    <div style="font-weight:700; color:var(--primary); flex-shrink:0; padding-left:10px;">${p[1].qty} uds</div>
+                </div>
+            `).join('') : '<p class="text-muted text-sm text-center py-4">Faltan datos de productos detallados. La nueva API los traerá pronto.</p>';
+        }
+
+        const elMarg = document.getElementById('top-margin-list');
+        if (elMarg) {
+            elMarg.innerHTML = topMargin.length ? topMargin.map((p, idx) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border);">
+                    <div style="display:flex; align-items:center; gap:10px; flex:1; overflow:hidden;">
+                        <span style="font-weight:800; color:var(--text-muted); width:15px; flex-shrink:0;">${idx+1}</span>
+                        <div style="display:flex; flex-direction:column; overflow:hidden;">
+                            <span style="font-weight:600; font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${p[0]}">${p[0]}</span>
+                            <span style="font-size:0.75rem; color:#10b981; font-weight:600;">Ganancia Total: ${fmt(p[1].profit)}</span>
+                        </div>
+                    </div>
+                    <div style="background:rgba(16,185,129,0.1); color:#10b981; padding:4px 8px; border-radius:8px; font-weight:800; font-size:0.75rem; flex-shrink:0; margin-left:10px;">
+                        ${p[1].revenue > 0 ? ((p[1].profit/p[1].revenue)*100).toFixed(1) : 0}% ganancia
+                    </div>
+                </div>
+            `).join('') : '<p class="text-muted text-sm text-center py-4">Sin datos de productos.</p>';
+        }
+
+        const elHooks = document.getElementById('low-margin-list');
+        if (elHooks) {
+            elHooks.innerHTML = hooks.length ? hooks.map((p) => `
+                <div style="min-width:220px; max-width:220px; background:white; padding:12px; border-radius:12px; border:1px solid rgba(239, 68, 68, 0.2); flex-shrink:0;">
+                    <div style="font-weight:800; font-size:0.85rem; margin-bottom:4px; max-height:40px; overflow:hidden; color:var(--text-primary); text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${p[0]}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;">Cada compra te deja solo <b style="color:#ef4444;">${fmt(p[1].profit / p[1].qty)}</b></div>
+                    <div style="margin-top:8px; display:inline-block; background:rgba(239,68,68,0.1); color:#ef4444; padding:4px 8px; border-radius:6px; font-weight:800; font-size:0.75rem;">
+                        Margen real ${(p[1].revenue > 0 ? (p[1].profit/p[1].revenue)*100 : 0).toFixed(1)}%
+                    </div>
+                </div>
+            `).join('') : '<p class="text-muted text-sm px-4">Recopilando datos históricos de productos gancho...</p>';
+        }
 
         // ---- Top Proveedores ----
         const supplierSpend = {};

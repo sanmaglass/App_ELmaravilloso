@@ -196,6 +196,15 @@ window.Sync = {
                                 if (!('imageData' in item)) merged.imageData = localReq.imageData;
                             }
 
+                            // Especial para loans: preservar campos que la nube puede no tener aún
+                            if (localName === 'loans' && localReq) {
+                                if (!('borrowerName' in item) || item.borrowerName === undefined) merged.borrowerName = localReq.borrowerName;
+                                if (!('type' in item) || item.type === undefined) merged.type = localReq.type;
+                                if (!('direction' in item) || item.direction === undefined) merged.direction = localReq.direction;
+                                if (!('repaymentType' in item) || item.repaymentType === undefined) merged.repaymentType = localReq.repaymentType;
+                                if (!('repaymentDate' in item) || item.repaymentDate === undefined) merged.repaymentDate = localReq.repaymentDate;
+                            }
+
                             // Especial para employees: preservar fields de horas si la nube no los soporta
                             if (localName === 'employees' && localReq) {
                                 if (!('owedMinutes' in item)) merged.owedMinutes = localReq.owedMinutes;
