@@ -344,6 +344,19 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
              </div>
         </div>
 
+        <!-- Alerta Sin Margen / Error -->
+        <div class="premium-card mb-8" style="background:linear-gradient(135deg, #1e293b, #0f172a); border-left:4px solid #fbbf24;">
+             <h3 class="font-bold flex items-center gap-2" style="color:#fbbf24; font-size:1.05rem; margin-bottom:12px;">
+                 <i class="ph ph-warning text-xl pulsing-dot" style="animation: none;"></i> Revisión Urgente: Productos Sin Ganancia (0%)
+             </h3>
+             <div id="zero-margin-list" class="flex gap-4 overflow-x-auto pb-2" style="scrollbar-width:thin;">
+                 <div class="spinner m-auto" style="border-color:#fbbf24; border-top-color:transparent;"></div>
+             </div>
+             <p style="font-size:0.75rem; color:#94a3b8; margin-top:12px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
+                🚨 Estos productos dejaron ganancia cero (o negativa). Revisa en Eleventa si olvidaste ingresarles el costo unitario.
+             </p>
+        </div>
+
         <!-- Gráfico P&L + Top Proveedores -->
         <div class="pl-chart-grid">
             <!-- Gráfico P&L 6 meses -->
@@ -422,6 +435,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
     // ===================== LOAD RESUMEN DATA =====================
     try {
+        const msCurrent = document.getElementById('dash-month-selector');
+        if (selectedMonth === null && msCurrent && msCurrent.value) {
+            selectedMonth = msCurrent.value;
+        }
+
         let now = new Date();
         if (selectedMonth) {
             const [y, m] = selectedMonth.split('-');
@@ -790,10 +808,16 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const topVolume = [...allProductsArr].sort((a, b) => b[1].qty - a[1].qty).slice(0, 5);
         const topMargin = [...allProductsArr].sort((a, b) => b[1].profit - a[1].profit).slice(0, 5);
         
-        // Hooks: At least 2 sold, lowest margin percentage
+        // Hooks: At least 2 sold, lowest margin percentage, profit > 0 (to separate from errors)
         const hooks = [...allProductsArr]
-            .filter(x => x[1].qty >= 2 && x[1].revenue > 0)
+            .filter(x => x[1].qty >= 2 && x[1].revenue > 0 && x[1].profit > 0)
             .sort((a, b) => (a[1].profit / a[1].revenue) - (b[1].profit / b[1].revenue))
+            .slice(0, 5);
+
+        // Zero Margin / Possible data entry errors
+        const zeroMargin = [...allProductsArr]
+            .filter(x => x[1].qty >= 1 && Math.abs(x[1].profit) < 1) // Profit is 0 or negative
+            .sort((a, b) => b[1].qty - a[1].qty)
             .slice(0, 5);
 
         const elVol = document.getElementById('top-volume-list');
@@ -837,7 +861,17 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                         Margen real ${(p[1].revenue > 0 ? (p[1].profit/p[1].revenue)*100 : 0).toFixed(1)}%
                     </div>
                 </div>
-            `).join('') : '<p class="text-muted text-sm px-4">Recopilando datos históricos de productos gancho...</p>';
+            `).join('') : '<p class="text-muted text-sm px-4">Buscando productos gancho...</p>';
+        }
+
+        const elZero = document.getElementById('zero-margin-list');
+        if (elZero) {
+            elZero.innerHTML = zeroMargin.length ? zeroMargin.map((p) => `
+                <div style="min-width:220px; max-width:220px; background:rgba(255,255,255,0.05); padding:12px; border-radius:12px; border:1px dashed rgba(251, 191, 36, 0.4); flex-shrink:0;">
+                    <div style="font-weight:800; font-size:0.85rem; margin-bottom:4px; max-height:40px; overflow:hidden; color:#fff; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${p[0]}</div>
+                    <div style="font-size:0.75rem; color:#fbbf24; margin-top:6px; background:rgba(251,191,36,0.1); padding:4px 8px; border-radius:6px;"><b>${p[1].qty} uds.</b> vendidas a $0 margen</div>
+                </div>
+            `).join('') : '<p style="color:#10b981; font-size:0.85rem; padding:0 16px;">¡Todo en orden! Sin errores este mes.</p>';
         }
 
         // ---- Top Proveedores ----
