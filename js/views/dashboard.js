@@ -99,6 +99,48 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .predict-title { margin: 0; font-size: 2.5rem; font-weight: 800; letter-spacing: -1.5px; display: flex; align-items: baseline; gap: 10px; }
         .predict-badge { background: var(--ia-glass); padding: 5px 14px; border-radius: 99px; font-size: 0.7rem; font-weight: 800; color: var(--ia-muted); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px); }
         body:not(.dark-mode) .predict-badge { border-color: rgba(0,0,0,0.05); color: var(--ia-accent); }
+
+        /* Responsive Dashboard List Items */
+        .dash-list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--border); transition: background 0.2s; }
+        .dash-list-item:hover { background: rgba(0,0,0,0.02); }
+        body.dark-mode .dash-list-item:hover { background: rgba(255,255,255,0.03); }
+        
+        .product-name-wrap { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+        .product-rank { font-weight: 800; color: var(--text-muted); width: 22px; flex-shrink: 0; font-size: 0.75rem; }
+        .product-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+        .product-name { font-weight: 600; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); }
+        .product-meta { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+        .product-stat { font-weight: 800; flex-shrink: 0; padding-left: 12px; font-size: 0.9rem; }
+        .badge-pct { padding: 4px 8px; border-radius: 8px; font-weight: 800; font-size: 0.72rem; flex-shrink: 0; margin-left: 10px; white-space: nowrap; }
+
+        @media (max-width: 480px) {
+            .product-name { font-size: 0.82rem; }
+            .product-stat { font-size: 0.82rem; }
+            .badge-pct { padding: 3px 6px; font-size: 0.68rem; margin-left: 6px; }
+            .dash-list-item { padding: 8px 0; }
+        }
+
+        /* Live Sales Feed */
+        .live-sales-scroller { display: flex; gap: 12px; overflow-x: auto; padding: 10px 5px 20px 5px; scrollbar-width: none; -ms-overflow-style: none; scroll-snap-type: x mandatory; }
+        .live-sales-scroller::-webkit-scrollbar { display: none; }
+        
+        .live-ticket-card { min-width: 200px; background: var(--bg-card); border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid var(--border); scroll-snap-align: start; position: relative; overflow: hidden; }
+        .live-ticket-card.new { animation: pulseNew 2s infinite; border-color: #10b981; }
+        @keyframes pulseNew { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        
+        .live-ticket-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .live-ticket-icon { width: 32px; height: 32px; border-radius: 10px; background: rgba(16, 185, 129, 0.1); color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+        .live-ticket-profit { position: absolute; bottom: 10px; right: 10px; font-size: 1.5rem; opacity: 0.05; color: #10b981; transform: rotate(-15deg); }
+
+        /* Horizontal Product Cards (Hooks & Zero Margin) */
+        .h-scroll-container { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+        .h-product-card { min-width: 200px; max-width: 200px; background: white; padding: 14px; border-radius: 16px; border: 1px solid var(--border); flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.03); transition: transform 0.2s; }
+        .h-product-card:hover { transform: translateY(-3px); }
+        body.dark-mode .h-product-card { background: rgba(255,255,255,0.05); }
+        
+        .h-product-name { font-weight: 800; font-size: 0.85rem; margin-bottom: 6px; height: 40px; overflow: hidden; color: var(--text-primary); text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; }
+        .h-product-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
+        .h-product-badge { margin-top: 10px; display: inline-block; padding: 4px 8px; border-radius: 8px; font-weight: 800; font-size: 0.7rem; }
     </style>
 
     <!-- Header -->
@@ -823,12 +865,14 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const elVol = document.getElementById('top-volume-list');
         if (elVol) {
             elVol.innerHTML = topVolume.length ? topVolume.map((p, idx) => `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border);">
-                    <div style="display:flex; align-items:center; gap:10px; flex:1; overflow:hidden;">
-                        <span style="font-weight:800; color:var(--text-muted); width:15px; flex-shrink:0;">${idx+1}</span>
-                        <span style="font-weight:600; font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${p[0]}">${p[0]}</span>
+                <div class="dash-list-item">
+                    <div class="product-name-wrap">
+                        <span class="product-rank">${idx+1}</span>
+                        <div class="product-info">
+                            <span class="product-name" title="${p[0]}">${p[0]}</span>
+                        </div>
                     </div>
-                    <div style="font-weight:700; color:var(--primary); flex-shrink:0; padding-left:10px;">${p[1].qty} uds</div>
+                    <div class="product-stat text-primary">${p[1].qty} uds</div>
                 </div>
             `).join('') : '<p class="text-muted text-sm text-center py-4">Faltan datos de productos detallados. La nueva API los traerá pronto.</p>';
         }
@@ -836,16 +880,16 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const elMarg = document.getElementById('top-margin-list');
         if (elMarg) {
             elMarg.innerHTML = topMargin.length ? topMargin.map((p, idx) => `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border);">
-                    <div style="display:flex; align-items:center; gap:10px; flex:1; overflow:hidden;">
-                        <span style="font-weight:800; color:var(--text-muted); width:15px; flex-shrink:0;">${idx+1}</span>
-                        <div style="display:flex; flex-direction:column; overflow:hidden;">
-                            <span style="font-weight:600; font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${p[0]}">${p[0]}</span>
-                            <span style="font-size:0.75rem; color:#10b981; font-weight:600;">Ganancia Total: ${fmt(p[1].profit)}</span>
+                <div class="dash-list-item">
+                    <div class="product-name-wrap">
+                        <span class="product-rank">${idx+1}</span>
+                        <div class="product-info">
+                            <span class="product-name" title="${p[0]}">${p[0]}</span>
+                            <span class="product-meta text-success">Ganancia: ${fmt(p[1].profit)}</span>
                         </div>
                     </div>
-                    <div style="background:rgba(16,185,129,0.1); color:#10b981; padding:4px 8px; border-radius:8px; font-weight:800; font-size:0.75rem; flex-shrink:0; margin-left:10px;">
-                        ${p[1].revenue > 0 ? ((p[1].profit/p[1].revenue)*100).toFixed(1) : 0}% ganancia
+                    <div class="badge-pct" style="background:rgba(16,185,129,0.1); color:#10b981;">
+                        ${p[1].revenue > 0 ? ((p[1].profit/p[1].revenue)*100).toFixed(1) : 0}%
                     </div>
                 </div>
             `).join('') : '<p class="text-muted text-sm text-center py-4">Sin datos de productos.</p>';
@@ -853,12 +897,13 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         const elHooks = document.getElementById('low-margin-list');
         if (elHooks) {
+            elHooks.className = "h-scroll-container";
             elHooks.innerHTML = hooks.length ? hooks.map((p) => `
-                <div style="min-width:220px; max-width:220px; background:white; padding:12px; border-radius:12px; border:1px solid rgba(239, 68, 68, 0.2); flex-shrink:0;">
-                    <div style="font-weight:800; font-size:0.85rem; margin-bottom:4px; max-height:40px; overflow:hidden; color:var(--text-primary); text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${p[0]}</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;">Cada compra te deja solo <b style="color:#ef4444;">${fmt(p[1].profit / p[1].qty)}</b></div>
-                    <div style="margin-top:8px; display:inline-block; background:rgba(239,68,68,0.1); color:#ef4444; padding:4px 8px; border-radius:6px; font-weight:800; font-size:0.75rem;">
-                        Margen real ${(p[1].revenue > 0 ? (p[1].profit/p[1].revenue)*100 : 0).toFixed(1)}%
+                <div class="h-product-card" style="border-color: rgba(239, 68, 68, 0.2);">
+                    <div class="h-product-name">${p[0]}</div>
+                    <div class="h-product-meta">Deja solo <b class="text-danger">${fmt(p[1].profit / p[1].qty)}</b> x unidad</div>
+                    <div class="h-product-badge" style="background:rgba(239,68,68,0.1); color:#ef4444;">
+                        Margen: ${(p[1].revenue > 0 ? (p[1].profit/p[1].revenue)*100 : 0).toFixed(1)}%
                     </div>
                 </div>
             `).join('') : '<p class="text-muted text-sm px-4">Buscando productos gancho...</p>';
@@ -866,10 +911,14 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         const elZero = document.getElementById('zero-margin-list');
         if (elZero) {
+            elZero.className = "h-scroll-container";
             elZero.innerHTML = zeroMargin.length ? zeroMargin.map((p) => `
-                <div style="min-width:220px; max-width:220px; background:rgba(255,255,255,0.05); padding:12px; border-radius:12px; border:1px dashed rgba(251, 191, 36, 0.4); flex-shrink:0;">
-                    <div style="font-weight:800; font-size:0.85rem; margin-bottom:4px; max-height:40px; overflow:hidden; color:#fff; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${p[0]}</div>
-                    <div style="font-size:0.75rem; color:#fbbf24; margin-top:6px; background:rgba(251,191,36,0.1); padding:4px 8px; border-radius:6px;"><b>${p[1].qty} uds.</b> vendidas a $0 margen</div>
+                <div class="h-product-card" style="border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.03);">
+                    <div class="h-product-name" style="color:#fff;">${p[0]}</div>
+                    <div class="h-product-meta" style="color:#fbbf24;"><b>${p[1].qty} uds.</b> vendidas</div>
+                    <div class="h-product-badge" style="background:rgba(251,191,36,0.1); color:#fbbf24;">
+                        Sin Ganancia (0%)
+                    </div>
                 </div>
             `).join('') : '<p style="color:#10b981; font-size:0.85rem; padding:0 16px;">¡Todo en orden! Sin errores este mes.</p>';
         }
