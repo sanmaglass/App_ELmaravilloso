@@ -231,12 +231,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             <!-- Gasto mes -->
             <div class="premium-card card-anim delay-1" style="border-top:5px solid var(--primary); background: linear-gradient(180deg, rgba(230,0,0,0.03) 0%, white 100%);">
                 <div class="flex justify-between items-start mb-6">
-                    <div class="p-3 rounded-2xl" style="background:rgba(230,0,0,0.1); color:var(--primary);">
+                    <div class="p-3 rounded-2xl" style="background:rgba(230,0,0,0.1); color:var(--primary);" title="Incluye: Sueldos de Yamileth/Personal y Gastos del Local. NO incluye facturas de mercadería.">
                         <i class="ph ph-hand-coins text-3xl"></i>
                     </div>
-                    <div id="kpi-gasto-mes-badge" class="status-badge status-overdue">Gastos Mes</div>
+                    <div id="kpi-gasto-mes-badge" class="status-badge status-overdue">Fijos + Sueldos</div>
                 </div>
-                <div class="stat-label-premium">Inversión / Gastos</div>
+                <div class="stat-label-premium text-primary">Gastos Operativos <i class="ph ph-info" title="No incluye facturas de compra/inventario. Solo gastos puros del local y nómina."></i></div>
                 <div id="kpi-gasto-mes" class="stat-value-mega text-primary mt-1">...</div>
                 <div class="spark-container mt-6"><canvas id="spark-gastos"></canvas></div>
             </div>
@@ -620,19 +620,42 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             document.getElementById('live-sales-total').innerHTML = window.Utils.formatCurrency(eleventaTotal);
         }
 
-        // ---- KPI Calculations ----
-        const thisMonthInvoices = invoices.filter(i => i.date && i.date.startsWith(currentMonthStr));
-        const prevMonthInvoices = invoices.filter(i => i.date && i.date.startsWith(prevMonthStr));
+        // ---- KPI Calculations (True Profitability Engine) ----
+        // 1. Sales (Total Revenue)
         const thisMonthSales = dailySales.filter(d => d.date && d.date.startsWith(currentMonthStr));
         const prevMonthSales = dailySales.filter(d => d.date && d.date.startsWith(prevMonthStr));
-
-        const gastoMes = thisMonthInvoices.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
-        const gastoPrev = prevMonthInvoices.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
         const ventasMes = thisMonthSales.reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
         const ventasPrev = prevMonthSales.reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
 
+        // 2. Gross Profit (From Eleventa API)
+        const thisMonthEleventa = eleventaSales.filter(s => s.date && s.date.startsWith(currentMonthStr));
+        const prevMonthEleventa = eleventaSales.filter(s => s.date && s.date.startsWith(prevMonthStr));
+        
+        // Sumamos el Margen Directo de cada ticket (Venta - Costo)
+        const gananciaBrutaMes = thisMonthEleventa.reduce((s, t) => s + (parseFloat(t.profit) || 0), 0);
+        const gananciaBrutaPrev = prevMonthEleventa.reduce((s, t) => s + (parseFloat(t.profit) || 0), 0);
+
+        // 3. Operational Expenses (Local Bills, etc.)
+        const thisMonthExpenses = allExpenses.filter(e => e.date && e.date.startsWith(currentMonthStr));
+        const prevMonthExpenses = allExpenses.filter(e => e.date && e.date.startsWith(prevMonthStr));
+        
+        const gastosOperativosMes = thisMonthExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+        const gastosOperativosPrev = prevMonthExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+
+        // 4. Payroll (Sueldos dinámicos, incluyendo Yamileth, etc.)
+        // Si más adelante cambias el sueldo en la app de RRHH, este bloque se actualiza solo.
         const monthlyPayments = await window.Utils.calculateMonthlyPayments(employees, logs, now);
-        const gastoTotal = gastoMes + (monthlyPayments.totalPaid || 0);
+        const sueldosMes = monthlyPayments.totalPaid || 0;
+        
+        console.log(`[Rentabilidad] Venta Bruta: ${gananciaBrutaMes} | Gastos Op: ${gastosOperativosMes} | Sueldos: ${sueldosMes}`);
+
+        // 5. Total Operating Expenses (Opex + Payroll) - NOT INVENTORY
+        const gastoTotal = gastosOperativosMes + sueldosMes;
+        const gastoPrev = gastosOperativosPrev; // We'll compare against OPEX for previous month trend
+
+        // 6. Invoices (Cashflow only, informational. Mercadería comprada)
+        const thisMonthInvoices = invoices.filter(i => i.date && i.date.startsWith(currentMonthStr));
+        const gastoInventarioMes = thisMonthInvoices.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
 
         const currentMonthLogs = logs.filter(l => l.date && l.date.startsWith(currentMonthStr));
         const totalHours = currentMonthLogs.reduce((a, l) => a + (l.totalHours || 0), 0);
@@ -748,23 +771,23 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             }
         }
 
-        // ---- CEO Metrics: Margin ----
-        const margenNetoMonto = ventasMes - gastoTotal;
-        const margenNetoPct = ventasMes > 0 ? (margenNetoMonto / ventasMes * 100) : 0;
+        // ---- CEO Metrics: True Profitability (Utilidad Neta) ----
+        // ¡La Utilidad Neta REAL es la Ganancia Bruta (API) menos los Gastos Operativos y Sueldos!
+        const utilidadNetaMonto = gananciaBrutaMes - gastoTotal;
+        const margenNetoPct = ventasMes > 0 ? (utilidadNetaMonto / ventasMes * 100) : 0;
 
         const elMargenMonto = document.getElementById('kpi-margen-neto');
         if (elMargenMonto) {
-            window.Utils.animateNumber(elMargenMonto, 0, margenNetoMonto, 1000, true);
+            window.Utils.animateNumber(elMargenMonto, 0, utilidadNetaMonto, 1000, true);
         }
 
         const elMargenBadge = document.getElementById('kpi-margen-badge');
         if (elMargenBadge) {
-            elMargenBadge.textContent = margenNetoPct.toFixed(1) + '% de rentabilidad';
-            elMargenBadge.className = 'kpi-badge ' + (margenNetoPct > 30 ? 'up' : margenNetoPct > 10 ? 'neutral' : 'down');
+            elMargenBadge.textContent = margenNetoPct.toFixed(1) + '% de margen neto final';
+            elMargenBadge.className = 'kpi-badge ' + (margenNetoPct > 15 ? 'up' : margenNetoPct > 5 ? 'neutral' : 'down');
         }
 
-        // ---- Health Indicator ----
-        const healthRatio = ventasMes > 0 ? (gastoTotal / ventasMes) : null;
+        // ---- Health Indicator (Based on Operative Health) ----
         const healthEl = document.getElementById('health-label');
         const healthBar = document.getElementById('health-bar');
         const healthDetail = document.getElementById('health-detail');
@@ -772,33 +795,37 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         if (!healthEl || !healthBar || !healthDetail) return; // Guard against race condition
 
-        if (ventasMes === 0) {
-            healthEl.textContent = '⚪ Sin datos de ventas';
+        if (gananciaBrutaMes === 0) {
+            healthEl.textContent = '⚪ Sin datos de margen API';
             healthBar.style.width = '0%';
-            healthDetail.textContent = 'Registra ventas para ver el indicador';
+            if(healthRatioPct) healthRatioPct.textContent = '0%';
+            healthDetail.textContent = 'Revisa los costos en Eleventa para calcular la utilidad';
         } else {
-            const pct = Math.min(100, (gastoTotal / ventasMes) * 100);
-            const margin = ((ventasMes - gastoTotal) / ventasMes * 100).toFixed(1);
-            setTimeout(() => { healthBar.style.width = pct + '%'; }, 100);
+            // El riesgo es: ¿qué porcentaje de la Ganancia Bruta (API) se lo comen los gastos operativos?
+            const burdenPct = Math.min(100, Math.max(0, (gastoTotal / gananciaBrutaMes) * 100)); // Carga operativa sobre margen
+            const margin = margenNetoPct.toFixed(1);
+            
+            setTimeout(() => { healthBar.style.width = burdenPct + '%'; }, 100);
+            if(healthRatioPct) healthRatioPct.textContent = margin + '% final';
 
-            if (pct < 60) {
+            // Menos "burden" (carga) es mejor. Si los gastos comen el 100% de la ganancia bruta, es pérdida.
+            if (burdenPct < 50) {
                 healthEl.innerHTML = '🟢 Muy Saludable';
                 healthBar.style.background = '#10b981';
-                healthDetail.textContent = `Margen estimado: ${margin} % — Excelente control de costos`;
-            } else if (pct < 80) {
+                healthDetail.textContent = `Operación perfecta: Mantienes ${margin}% de utilidad final (incluye ${window.Utils.formatCurrency(sueldosMes)} en sueldos).`;
+            } else if (burdenPct < 75) {
                 healthEl.innerHTML = '🟡 Aceptable';
                 healthBar.style.background = '#f59e0b';
-                healthDetail.textContent = `Margen estimado: ${margin} % — Monitorea los gastos`;
-            } else if (pct < 100) {
+                healthDetail.textContent = `Aceptable: Gastos Op. comen el ${burdenPct.toFixed(0)}% del margen base bruto.`;
+            } else if (burdenPct < 100) {
                 healthEl.innerHTML = '🟠 En riesgo';
                 healthBar.style.background = '#f97316';
-                healthDetail.textContent = `Margen estimado: ${margin} % — Gastos muy altos vs ventas`;
+                healthDetail.textContent = `Alerta: Tus gastos del local y sueldos absorben todo tu margen!`;
             } else {
-                healthEl.innerHTML = '🔴 Pérdida';
+                healthEl.innerHTML = '🔴 Pérdida Neta';
                 healthBar.style.background = '#ef4444';
-                healthDetail.textContent = `Los gastos superan las ventas este mes`;
+                healthDetail.textContent = `Estás pagando para trabajar. Los gastos (${window.Utils.formatCurrency(gastoTotal)}) superan el margen bruto.`;
             }
-            if (healthRatioPct) healthRatioPct.textContent = pct.toFixed(1) + '%';
         }
 
         // ---- Resumen de Hoy ----
