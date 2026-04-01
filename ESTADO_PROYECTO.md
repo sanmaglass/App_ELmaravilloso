@@ -3,7 +3,7 @@
 ## 📍 Ubicación Actual
 - **Ruta Local:** `C:\Users\sanma\OneDrive\Documentos\GitHub\el-maravilloso-final`
 - **GitHub:** `https://github.com/sanmaglass/App_ELmaravilloso.git`
-- **Estado Git:** Limpio en el commit **CAMBIO 70** (01-04-2026). Se reestructuró la lógica de rentabilidad (API Eleventa vs Flow) y se limpió el dashboard central. Se agregó .gitignore.
+- **Estado Git:** Limpio en el commit **CAMBIO 71** (01-04-2026). Resolución de bug aritmético en "Productos Gancho" (`item.profit * qty`).
 
 ## 🚀 Accesos
 - Se creó un acceso directo en el Escritorio para apertura rápida.

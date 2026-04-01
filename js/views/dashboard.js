@@ -843,9 +843,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     if (!productStats[name]) {
                         productStats[name] = { qty: 0, profit: 0, revenue: 0 };
                     }
-                    productStats[name].qty += parseFloat(item.qty) || 1;
-                    productStats[name].profit += parseFloat(item.profit) || 0;
-                    productStats[name].revenue += (parseFloat(item.price) || 0) * (parseFloat(item.qty) || 1);
+                    const q = parseFloat(item.qty) || 1;
+                    productStats[name].qty += q;
+                    productStats[name].profit += (parseFloat(item.profit) || 0) * q;
+                    productStats[name].revenue += (parseFloat(item.price) || 0) * q;
                     totalItemsFound++;
                 });
             }
