@@ -3,7 +3,7 @@
 ## 📍 Ubicación Actual
 - **Ruta Local:** `C:\Users\sanma\OneDrive\Documentos\GitHub\el-maravilloso-final`
 - **GitHub:** `https://github.com/sanmaglass/App_ELmaravilloso.git`
-- **Estado Git:** Limpio en el commit **CAMBIO 71** (01-04-2026). Resolución de bug aritmético en "Productos Gancho" (`item.profit * qty`).
+- **Estado Git:** Limpio en el commit **CAMBIO 72** (01-04-2026). Rediseño "Premium/Golden" del bloque de Mayor Margen y filtro de rotación (min. 5) integrado.
 
 ## 🚀 Accesos
 - Se creó un acceso directo en el Escritorio para apertura rápida.

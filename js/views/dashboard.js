@@ -352,33 +352,34 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         </div>
 
         <!-- Top Productos -->
+        <!-- Estrellas del Negocio (Mayor Margen Total) -->
+        <div class="premium-card mb-8" style="background:linear-gradient(135deg, #022c22, #064e3b); color: white; border:1px solid #10b981; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);">
+             <h3 class="font-bold flex items-center gap-2 mb-4" style="color:#34d399; font-size:1.15rem;">
+                 <i class="ph ph-crown text-2xl pulsing-dot"></i> Estrellas del Negocio (Mayor Margen Real este Mes)
+             </h3>
+             <div id="top-margin-list" class="flex gap-4 overflow-x-auto pb-4" style="scrollbar-width:thin;">
+                 <div class="spinner m-auto border-white"></div>
+             </div>
+        </div>
+
         <div class="responsive-grid-2 gap-6 mb-8">
-            <!-- Más Vendidos -->
+            <!-- Más Vendidos (Volumen) -->
             <div class="premium-card">
                 <h3 class="font-bold mb-4 flex items-center gap-2" style="color:var(--primary); font-size:1.05rem;">
                     <i class="ph ph-shopping-cart text-xl"></i> Más Vendidos (Volumen)
                 </h3>
                 <div id="top-volume-list" class="flex-col gap-3"><div class="spinner m-auto"></div></div>
             </div>
-            <!-- Mayor Margen -->
-            <div class="premium-card">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold flex items-center gap-2" style="color:#10b981; font-size:1.05rem;">
-                        <i class="ph ph-trend-up text-xl"></i> Mayor Margen de Ganancia
-                    </h3>
-                </div>
-                <div id="top-margin-list" class="flex-col gap-3"><div class="spinner m-auto"></div></div>
+            
+            <!-- Productos Gancho (Alta rotación, Bajo margen real) -->
+            <div class="premium-card" style="background:rgba(239, 68, 68, 0.05); border-left:4px solid #ef4444;">
+                 <h3 class="font-bold flex items-center gap-2" style="color:#ef4444; font-size:1.05rem; margin-bottom:12px;">
+                     <i class="ph ph-magnet text-xl"></i> Ganchos (Bajo Margen)
+                 </h3>
+                 <div id="low-margin-list" class="flex-col gap-3">
+                     <div class="spinner m-auto"></div>
+                 </div>
             </div>
-        </div>
-        
-        <!-- Alerta Poca Ganancia / Gancho -->
-        <div class="premium-card mb-8" style="background:rgba(239, 68, 68, 0.05); border-left:4px solid #ef4444;">
-             <h3 class="font-bold flex items-center gap-2" style="color:#ef4444; font-size:1.05rem; margin-bottom:12px;">
-                 <i class="ph ph-magnet text-xl"></i> Productos "Gancho" (Alta rotación, Bajo margen real)
-             </h3>
-             <div id="low-margin-list" class="flex gap-4 overflow-x-auto pb-2" style="scrollbar-width:thin;">
-                 <div class="spinner m-auto"></div>
-             </div>
         </div>
 
         <!-- Alerta Sin Margen / Error -->
@@ -855,11 +856,13 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const allProductsArr = Object.entries(productStats);
         
         const topVolume = [...allProductsArr].sort((a, b) => b[1].qty - a[1].qty).slice(0, 5);
-        const topMargin = [...allProductsArr].sort((a, b) => b[1].profit - a[1].profit).slice(0, 5);
+        const topMargin = [...allProductsArr]
+            .filter(x => x[1].qty >= 5 && x[1].revenue > 0) // Minimum 5 sales and valid revenue to show as star
+            .sort((a, b) => b[1].profit - a[1].profit).slice(0, 5);
         
-        // Hooks: At least 2 sold, lowest margin percentage, profit > 0 (to separate from errors)
+        // Hooks: At least 5 sold, lowest margin percentage, profit > 0 (to separate from errors)
         const hooks = [...allProductsArr]
-            .filter(x => x[1].qty >= 2 && x[1].revenue > 0 && x[1].profit > 0)
+            .filter(x => x[1].qty >= 5 && x[1].revenue > 0 && x[1].profit > 0)
             .sort((a, b) => (a[1].profit / a[1].revenue) - (b[1].profit / b[1].revenue))
             .slice(0, 5);
 
@@ -886,34 +889,56 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         const elMarg = document.getElementById('top-margin-list');
         if (elMarg) {
-            elMarg.innerHTML = topMargin.length ? topMargin.map((p, idx) => `
-                <div class="dash-list-item">
-                    <div class="product-name-wrap">
-                        <span class="product-rank">${idx+1}</span>
-                        <div class="product-info">
-                            <span class="product-name" title="${p[0]}">${p[0]}</span>
-                            <span class="product-meta text-success">Ganancia: ${fmt(p[1].profit)}</span>
+            elMarg.innerHTML = topMargin.length ? topMargin.map((p, idx) => {
+                const marginPct = p[1].revenue > 0 ? ((p[1].profit/p[1].revenue)*100).toFixed(0) : 0;
+                if (idx === 0) {
+                    // Golden Card #1
+                    return `
+                        <div style="min-width: 250px; flex-shrink: 0; background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); border-radius: 16px; padding: 16px; color: #fff; position: relative; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.4);">
+                            <div style="position: absolute; top: -10px; right: -10px; font-size: 5rem; opacity: 0.15;"><i class="ph ph-crown"></i></div>
+                            <div style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; color: #fef3c7;">👑 Top #1 Oro</div>
+                            <div style="font-size: 1.15rem; font-weight: 800; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 4px rgba(0,0,0,0.1);" title="${p[0]}">${p[0]}</div>
+                            <div style="font-size: 1.6rem; font-weight: 900; margin-bottom: 8px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">${fmt(p[1].profit)}</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 700; color: #fff;">
+                                <span>Rendimiento Real:</span>
+                                <span style="background: rgba(0,0,0,0.2); padding: 3px 10px; border-radius: 12px; font-size: 0.9rem;">${marginPct}%</span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="badge-pct" style="background:rgba(16,185,129,0.1); color:#10b981;">
-                        ${p[1].revenue > 0 ? ((p[1].profit/p[1].revenue)*100).toFixed(1) : 0}%
-                    </div>
-                </div>
-            `).join('') : '<p class="text-muted text-sm text-center py-4">Sin datos de productos.</p>';
+                    `;
+                } else {
+                    // Premium Glass Cards #2-#5
+                    return `
+                        <div style="min-width: 220px; flex-shrink: 0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 16px; position: relative; overflow: hidden;">
+                            <div style="position: absolute; bottom: 0; left: 0; height: 4px; width: ${marginPct}%; background: #34d399; border-radius: 0 4px 0 0; transition: width 1s ease-out;"></div>
+                            <div style="font-size: 0.75rem; font-weight: 600; color: #6ee7b7; margin-bottom: 4px;">RANK #${idx+1}</div>
+                            <div style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${p[0]}">${p[0]}</div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #34d399; margin-bottom: 8px;">${fmt(p[1].profit)}</div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #94a3b8;">
+                                <span>Margen</span>
+                                <span style="color:#fff; font-weight:700;">${marginPct}%</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('') : '<p style="color:#94a3b8; font-size:0.9rem; padding: 20px;">Necesitas un mínimo de 5 ventas recientes de un mismo producto en el mes para generar el Salón de la Fama.</p>';
         }
 
         const elHooks = document.getElementById('low-margin-list');
         if (elHooks) {
-            elHooks.className = "h-scroll-container";
             elHooks.innerHTML = hooks.length ? hooks.map((p) => `
-                <div class="h-product-card" style="border-color: rgba(239, 68, 68, 0.2);">
-                    <div class="h-product-name">${p[0]}</div>
-                    <div class="h-product-meta">Deja solo <b class="text-danger">${fmt(p[1].profit / p[1].qty)}</b> x unidad</div>
-                    <div class="h-product-badge" style="background:rgba(239,68,68,0.1); color:#ef4444;">
-                        Margen: ${(p[1].revenue > 0 ? (p[1].profit/p[1].revenue)*100 : 0).toFixed(1)}%
+                <div class="dash-list-item" style="border: 1px solid rgba(239,68,68,0.1); padding-left:12px;">
+                    <div class="product-name-wrap">
+                        <span class="product-rank" style="background:#ef4444; color:white;"><i class="ph ph-warning"></i></span>
+                        <div class="product-info">
+                            <span class="product-name" title="${p[0]}">${p[0]}</span>
+                            <span class="product-meta text-danger" style="font-weight:600;">Deja ${fmt(p[1].profit / p[1].qty)} x unid.</span>
+                        </div>
+                    </div>
+                    <div class="badge-pct" style="background:rgba(239,68,68,0.1); color:#ef4444;">
+                        ${(p[1].revenue > 0 ? (p[1].profit/p[1].revenue)*100 : 0).toFixed(0)}%
                     </div>
                 </div>
-            `).join('') : '<p class="text-muted text-sm px-4">Buscando productos gancho...</p>';
+            `).join('') : '<p class="text-muted text-sm text-center py-4">Todo sano y equilibrado.</p>';
         }
 
         const elZero = document.getElementById('zero-margin-list');
