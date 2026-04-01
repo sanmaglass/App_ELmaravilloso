@@ -326,32 +326,27 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
-        <!-- Resumen de Hoy y Operativa -->
-        <div class="responsive-grid-2 gap-6 mb-8">
-            <!-- Operativa -->
-            <div class="premium-card">
-                 <h3 class="text-primary font-bold mb-4 flex items-center gap-2 text-base">
-                    <i class="ph ph-lightning"></i> Resumen Operativo
-                </h3>
-                <div class="flex-col gap-4">
-                    <div class="flex justify-between items-center p-3 rounded-xl bg-glass" style="border: 1px solid rgba(0,0,0,0.03);">
-                        <span class="text-muted text-sm"><i class="ph ph-timer"></i> Horas del Mes</span>
-                        <span id="dashboard-total-hours" class="font-bold text-primary">...</span>
-                    </div>
-                    <div class="flex justify-between items-center p-3 rounded-xl bg-glass" style="border: 1px solid rgba(0,0,0,0.03);">
-                        <span class="text-muted text-sm"><i class="ph ph-users"></i> Equipo Activo</span>
-                        <span id="dashboard-active-employees" class="font-bold text-primary">...</span>
-                    </div>
+        <!-- Resumen Operativo (Centralizado) -->
+        <div class="premium-card mb-8">
+             <h3 class="text-primary font-bold mb-4 flex items-center gap-2 text-base">
+                <i class="ph ph-lightning text-xl" style="color: #f59e0b;"></i> Resumen de Operaciones y Equipo
+            </h3>
+            <div class="responsive-grid-2 gap-4">
+                <div class="flex justify-between items-center p-3 rounded-xl bg-glass" style="border: 1px solid rgba(0,0,0,0.03);">
+                    <span class="text-muted text-sm"><i class="ph ph-user-check"></i> Trabajando Hoy</span>
+                    <span id="dashboard-today-employees" class="font-bold text-primary">...</span>
                 </div>
-            </div>
-
-            <!-- Resumen de hoy -->
-            <div class="premium-card" style="background: var(--grad-warning); color:white; border:none;">
-                <h3 class="font-bold mb-4 flex items-center gap-2 text-base" style="color:white;">
-                    <i class="ph ph-sun-horizon text-xl"></i> Movimientos de Hoy
-                </h3>
-                <div id="today-summary" class="flex-col gap-3">
-                    <div class="spinner border-white m-auto"></div>
+                <div class="flex justify-between items-center p-3 rounded-xl bg-glass" style="border: 1px solid rgba(0,0,0,0.03);">
+                    <span class="text-muted text-sm" style="color:#3b82f6;"><i class="ph ph-clock"></i> Horas Hoy</span>
+                    <span id="dashboard-today-hours" class="font-bold" style="color:#3b82f6;">...</span>
+                </div>
+                <div class="flex justify-between items-center p-3 rounded-xl bg-glass" style="border: 1px solid rgba(0,0,0,0.03);">
+                    <span class="text-muted text-sm"><i class="ph ph-users"></i> Equipo Activo Mes</span>
+                    <span id="dashboard-active-employees" class="font-bold text-primary">...</span>
+                </div>
+                <div class="flex justify-between items-center p-3 rounded-xl bg-glass" style="border: 1px solid rgba(0,0,0,0.03);">
+                    <span class="text-muted text-sm"><i class="ph ph-calendar"></i> Horas Totales Mes</span>
+                    <span id="dashboard-total-hours" class="font-bold text-primary">...</span>
                 </div>
             </div>
         </div>
@@ -812,7 +807,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             if (burdenPct < 50) {
                 healthEl.innerHTML = '🟢 Muy Saludable';
                 healthBar.style.background = '#10b981';
-                healthDetail.textContent = `Operación perfecta: Mantienes ${margin}% de utilidad final (incluye ${window.Utils.formatCurrency(sueldosMes)} en sueldos).`;
+                healthDetail.textContent = `Operación perfecta: Mantienes ${margin}% de utilidad final (incluye ${window.Utils.formatCurrency(sueldosMes, true)} en sueldos).`;
             } else if (burdenPct < 75) {
                 healthEl.innerHTML = '🟡 Aceptable';
                 healthBar.style.background = '#f59e0b';
@@ -824,33 +819,17 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             } else {
                 healthEl.innerHTML = '🔴 Pérdida Neta';
                 healthBar.style.background = '#ef4444';
-                healthDetail.textContent = `Estás pagando para trabajar. Los gastos (${window.Utils.formatCurrency(gastoTotal)}) superan el margen bruto.`;
+                healthDetail.textContent = `Estás pagando para trabajar. Los gastos (${window.Utils.formatCurrency(gastoTotal, true)}) superan el margen bruto.`;
             }
         }
 
-        // ---- Resumen de Hoy ----
+        // ---- Resumen Operativo de Hoy Centralizado ----
         const todayLogs = logs.filter(l => l.date === todayStr);
-        const todaySales = dailySales.filter(d => d.date === todayStr);
-        const todayTotal = todaySales.reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
-
-        document.getElementById('today-summary').innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
-                <span style="color:var(--text-muted);font-size:0.85rem;"><i class="ph ph-receipt"></i> Ventas hoy</span>
-                <span style="font-weight:700;color:#10b981;font-size:0.9rem;">${fmt(todayTotal)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
-                <span style="color:var(--text-muted);font-size:0.85rem;"><i class="ph ph-user-check"></i> Empleados hoy</span>
-                <span style="font-weight:700;color:var(--text-primary);font-size:0.9rem;">${todayLogs.length} registros</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
-                <span style="color:var(--text-muted);font-size:0.85rem;"><i class="ph ph-timer"></i> Horas hoy</span>
-                <span style="font-weight:700;color:#3b82f6;font-size:0.9rem;">${todayLogs.reduce((s, l) => s + (l.totalHours || 0), 0).toFixed(1)}h</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;">
-                <span style="color:var(--text-muted);font-size:0.85rem;"><i class="ph ph-calendar-blank"></i> Fecha</span>
-                <span style="font-weight:600;color:var(--text-muted);font-size:0.85rem;">${now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-            </div>
-        `;
+        const elTodayEmp = document.getElementById('dashboard-today-employees');
+        const elTodayHours = document.getElementById('dashboard-today-hours');
+        
+        if (elTodayEmp) elTodayEmp.textContent = `${todayLogs.length} registros`;
+        if (elTodayHours) elTodayHours.textContent = `${todayLogs.reduce((s, l) => s + (l.totalHours || 0), 0).toFixed(1)}h`;
 
         // ---- Top Products and Margins (Data parsed from API Sync) ----
         const currentMonthEleventa = eleventaSales.filter(s => s.date && s.date.startsWith(currentMonthStr));
