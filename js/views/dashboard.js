@@ -353,14 +353,14 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         <!-- Top Productos -->
         <!-- Estrellas del Negocio (Mayor Margen Total) -->
-        <div class="premium-card mb-8" style="background:linear-gradient(135deg, #022c22, #064e3b); color: white; border:1px solid #10b981; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);">
+        <div class="premium-card mb-8 overflow-hidden" style="max-width: 100vw; background:linear-gradient(135deg, #022c22, #064e3b); color: white; border:1px solid #10b981; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);">
              <div class="flex flex-col mb-4">
                  <h3 class="font-bold flex items-center gap-2" style="color:#34d399; font-size:1.15rem;">
                      <i class="ph ph-crown text-2xl pulsing-dot"></i> Estrellas del Negocio
                  </h3>
                  <span style="font-size:0.75rem; color:#6ee7b7; opacity:0.8; margin-left:2rem;">Mayor volumen de dinero (ganancia neta) aportado este mes</span>
              </div>
-             <div id="top-margin-list" class="flex gap-4 overflow-x-auto pb-4" style="scrollbar-width:thin; scroll-snap-type: x mandatory; padding-right: 24px;">
+             <div id="top-margin-list" class="flex gap-4 overflow-x-auto pb-4" style="scrollbar-width:thin; -webkit-overflow-scrolling: touch;">
                  <div class="spinner m-auto border-white"></div>
              </div>
         </div>
@@ -897,7 +897,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 if (idx === 0) {
                     // Golden Card #1
                     return `
-                        <div style="min-width: 200px; width: 75%; max-width: 250px; scroll-snap-align: start; flex-shrink: 0; background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); border-radius: 16px; padding: 14px; color: #fff; position: relative; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.4);">
+                        <div style="min-width: 220px; flex-shrink: 0; background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); border-radius: 16px; padding: 14px; color: #fff; position: relative; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.4);">
                             <div style="position: absolute; top: -10px; right: -10px; font-size: 5rem; opacity: 0.15;"><i class="ph ph-crown"></i></div>
                             <div style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; color: #fef3c7;">👑 Top #1 Oro</div>
                             <div style="font-size: 1.1rem; font-weight: 800; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 4px rgba(0,0,0,0.1);" title="${p[0]}">${p[0]}</div>
@@ -911,7 +911,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 } else {
                     // Premium Glass Cards #2-#5
                     return `
-                        <div style="min-width: 180px; width: 65%; max-width: 220px; scroll-snap-align: start; flex-shrink: 0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 14px; position: relative; overflow: hidden;">
+                        <div style="min-width: 190px; flex-shrink: 0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 14px; position: relative; overflow: hidden;">
                             <div style="position: absolute; bottom: 0; left: 0; height: 4px; width: ${marginPct}%; background: #34d399; border-radius: 0 4px 0 0; transition: width 1s ease-out;"></div>
                             <div style="font-size: 0.75rem; font-weight: 600; color: #6ee7b7; margin-bottom: 4px;">RANK #${idx+1}</div>
                             <div style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${p[0]}">${p[0]}</div>
