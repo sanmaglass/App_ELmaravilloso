@@ -204,7 +204,7 @@ body {
     flex: 1;
     height: 100vh;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: clip; /* 'clip' recorta visualmente sin bloquear el scroll horizontal de los hijos */
     /* El contenido se desplaza aquí */
     padding: 40px;
     position: relative;
@@ -213,6 +213,7 @@ body {
     /* Asegurar que nada se desborde horizontalmente */
     max-width: 100%;
 }
+
 
 @media (max-width: 768px) {
     .main-content {

@@ -121,10 +121,28 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }
 
         /* Live Sales Feed */
-        .live-sales-scroller { display: flex; gap: 12px; overflow-x: auto; padding: 10px 5px 20px 5px; scrollbar-width: none; -ms-overflow-style: none; scroll-snap-type: x mandatory; }
-        .live-sales-scroller::-webkit-scrollbar { display: none; }
+        .live-sales-scroller {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 10px 5px 20px 5px;
+            scrollbar-width: thin;
+            -ms-overflow-style: none;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x;
+            cursor: grab;
+            /* Evitar que el contenido se expanda y rompa el layout */
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        .live-sales-scroller::-webkit-scrollbar { height: 4px; }
+        .live-sales-scroller::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 2px; }
+        .live-sales-scroller::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
+        .live-sales-scroller.dragging { cursor: grabbing; user-select: none; }
         
-        .live-ticket-card { min-width: 200px; background: var(--bg-card); border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid var(--border); scroll-snap-align: start; position: relative; overflow: hidden; }
+        .live-ticket-card { min-width: 200px; flex-shrink: 0; background: var(--bg-card); border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid var(--border); scroll-snap-align: start; position: relative; overflow: hidden; }
         .live-ticket-card.new { animation: pulseNew 2s infinite; border-color: #10b981; }
         @keyframes pulseNew { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
         
@@ -132,15 +150,55 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .live-ticket-icon { width: 32px; height: 32px; border-radius: 10px; background: rgba(16, 185, 129, 0.1); color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
         .live-ticket-profit { position: absolute; bottom: 10px; right: 10px; font-size: 1.5rem; opacity: 0.05; color: #10b981; transform: rotate(-15deg); }
 
+        /* Estrellas del Negocio — scroll horizontal táctil y con ratón */
+        #top-margin-list {
+            display: flex;
+            gap: 16px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding-bottom: 12px;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x;
+            cursor: grab;
+            max-width: 100%;
+            box-sizing: border-box;
+            scrollbar-width: thin;
+        }
+        #top-margin-list::-webkit-scrollbar { height: 4px; }
+        #top-margin-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 2px; }
+        #top-margin-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 2px; }
+        #top-margin-list.dragging { cursor: grabbing; user-select: none; }
+
         /* Horizontal Product Cards (Hooks & Zero Margin) */
-        .h-scroll-container { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
-        .h-product-card { min-width: 200px; max-width: 200px; background: white; padding: 14px; border-radius: 16px; border: 1px solid var(--border); flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.03); transition: transform 0.2s; }
+        .h-scroll-container {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding-bottom: 10px;
+            scrollbar-width: thin;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x;
+            cursor: grab;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        .h-scroll-container.dragging { cursor: grabbing; user-select: none; }
+        .h-product-card { min-width: 200px; max-width: 200px; flex-shrink: 0; background: white; padding: 14px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.03); transition: transform 0.2s; }
         .h-product-card:hover { transform: translateY(-3px); }
         body.dark-mode .h-product-card { background: rgba(255,255,255,0.05); }
         
         .h-product-name { font-weight: 800; font-size: 0.85rem; margin-bottom: 6px; height: 40px; overflow: hidden; color: var(--text-primary); text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; }
         .h-product-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
         .h-product-badge { margin-top: 10px; display: inline-block; padding: 4px 8px; border-radius: 8px; font-weight: 800; font-size: 0.7rem; }
+
+        /* Pista visual: indicador de scroll disponible en contenedores horizontales */
+        @media (max-width: 768px) {
+            .live-sales-scroller, #top-margin-list, .h-scroll-container {
+                /* En móvil nunca mostrar cursor de escritorio */
+                cursor: default;
+            }
+        }
     </style>
 
     <!-- Header -->
@@ -353,17 +411,18 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         <!-- Top Productos -->
         <!-- Estrellas del Negocio (Mayor Margen Total) -->
-        <div class="premium-card mb-8 overflow-hidden" style="max-width: 100vw; background:linear-gradient(135deg, #022c22, #064e3b); color: white; border:1px solid #10b981; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);">
+        <div class="premium-card mb-8" style="background:linear-gradient(135deg, #022c22, #064e3b); color: white; border:1px solid #10b981; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);">
              <div class="flex flex-col mb-4">
                  <h3 class="font-bold flex items-center gap-2" style="color:#34d399; font-size:1.15rem;">
                      <i class="ph ph-crown text-2xl pulsing-dot"></i> Estrellas del Negocio
                  </h3>
-                 <span style="font-size:0.75rem; color:#6ee7b7; opacity:0.8; margin-left:2rem;">Mayor volumen de dinero (ganancia neta) aportado este mes</span>
+                 <span style="font-size:0.75rem; color:#6ee7b7; opacity:0.8; margin-left:2rem;">Mayor volumen de dinero (ganancia neta) aportado este mes — deslizá para ver más →</span>
              </div>
-             <div id="top-margin-list" class="flex gap-4 overflow-x-auto pb-4" style="scrollbar-width:thin; -webkit-overflow-scrolling: touch;">
+             <div id="top-margin-list">
                  <div class="spinner m-auto border-white"></div>
              </div>
         </div>
+
 
         <div class="responsive-grid-2 gap-6 mb-8">
             <!-- Más Vendidos (Volumen) -->
@@ -958,7 +1017,17 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             `).join('') : '<p style="color:#10b981; font-size:0.85rem; padding:0 16px;">¡Todo en orden! Sin errores este mes.</p>';
         }
 
+        // ---- Activar arrastre con ratón (escritorio) en contenedores horizontales ----
+        // El scroll táctil en celular ya funciona via CSS (touch-action: pan-x)
+        // Esta función solo añade la experiencia de arrastre adicional para el ratón en PC.
+        if (window.Utils && window.Utils.setupHorizontalDragScroll) {
+            window.Utils.setupHorizontalDragScroll(document.getElementById('live-sales-feed'));
+            window.Utils.setupHorizontalDragScroll(document.getElementById('top-margin-list'));
+            window.Utils.setupHorizontalDragScroll(document.getElementById('zero-margin-list'));
+        }
+
         // ---- Top Proveedores ----
+
         const supplierSpend = {};
         invoices.forEach(i => {
             if (!i.supplierId) return;

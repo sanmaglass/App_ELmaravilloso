@@ -813,6 +813,56 @@ window.Utils = {
     }
 };
 
+// --- Utilidad: Arrastre Horizontal con el Mouse (solo escritorio) ---
+// Llamar con: window.Utils.setupHorizontalDragScroll(elemento)
+// En celulares con táctil, el scroll nativo (touch-action: pan-x) ya lo gestiona el navegador.
+window.Utils.setupHorizontalDragScroll = (el) => {
+    if (!el) return;
+
+    let isDragging = false;
+    let startX = 0;
+    let scrollStart = 0;
+    let movedDistance = 0;
+
+    el.addEventListener('mousedown', (e) => {
+        // Solo activar con el botón izquierdo del ratón
+        if (e.button !== 0) return;
+        isDragging = true;
+        movedDistance = 0;
+        startX = e.pageX - el.offsetLeft;
+        scrollStart = el.scrollLeft;
+        el.classList.add('dragging');
+        e.preventDefault(); // Evita selección de texto al arrastrar
+    });
+
+    el.addEventListener('mouseleave', () => {
+        isDragging = false;
+        el.classList.remove('dragging');
+    });
+
+    el.addEventListener('mouseup', () => {
+        isDragging = false;
+        el.classList.remove('dragging');
+    });
+
+    el.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        const x = e.pageX - el.offsetLeft;
+        const walk = (x - startX) * 1.5; // Multiplicador para velocidad de desplazamiento
+        movedDistance = Math.abs(walk);
+        el.scrollLeft = scrollStart - walk;
+    });
+
+    // Evitar que un "click accidental" durante el arrastre active links/botones internos
+    el.addEventListener('click', (e) => {
+        if (movedDistance > 5) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, true);
+};
+
 // --- GLOBAL SHORTCUTS ---
 window.formatCurrency = (amount, plain = false) => window.Utils.formatCurrency(amount, plain);
 window.formatDate = (dateString, options = {}) => window.Utils.formatDate(dateString, options);
