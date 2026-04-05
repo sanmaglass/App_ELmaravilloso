@@ -707,22 +707,30 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             .filter(e => e.category === 'Retiro del Due\u00f1o')
             .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 
-        const gastosOperativosMes = thisMonthExpenses
-            .filter(e => e.category !== 'Retiro del Due\u00f1o')
-            .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-
         const gastosOperativosPrev = prevMonthExpenses
             .filter(e => e.category !== 'Retiro del Due\u00f1o')
             .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 
-        // 4. Payroll (Sueldos dinámicos, solo personal, NO el dueño)
-        const monthlyPayments = await window.Utils.calculateMonthlyPayments(employees, logs, now);
-        const sueldosMes = monthlyPayments.totalPaid || 0;
+        // 4. PRORATEO DE RENTABILIDAD
+        // Calculate the daily burn rate (Fixed expenses + Salaries)
+        const burnRateInfo = await window.Utils.calculateDailyBurnRate(allExpenses, employees, now);
+        const sueldosMes = burnRateInfo.salariesProjectedSum || 0;
+        const gastosOperativosMes = burnRateInfo.fixedExpensesSum || 0;
+        
+        // Carga prorrateada al día de hoy
+        const currentDayOfMoth = Array.from(thisMonthSales).length > 0 ? now.getDate() : 1; 
+        const gastoTotalProrrateado = burnRateInfo.dailyBurnRate * currentDayOfMoth;
+        
+        // Sumar también cualquier gasto operativo del mes *no fijo* (variable)
+        const gastosVariablesMes = thisMonthExpenses
+            .filter(e => !e.isFixed && e.category !== 'Retiro del Due\u00f1o')
+            .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 
-        console.log(`[Rentabilidad] Ganancia Bruta: ${gananciaBrutaMes} | Retiro Dueño: ${gastosRetiroDueno} | Sueldos: ${sueldosMes} | Gastos Op: ${gastosOperativosMes}`);
+        console.log(`[Rentabilidad] Ganancia Bruta: ${gananciaBrutaMes} | Retiro Dueño: ${gastosRetiroDueno} | BurnRate Diario: ${burnRateInfo.dailyBurnRate} | Gastos Var: ${gastosVariablesMes}`);
 
         // 5. Total Operating Expenses (Opex + Payroll + Retiro) - NOT INVENTORY
-        const gastoTotal = gastosOperativosMes + sueldosMes + gastosRetiroDueno;
+        // The *total* accumulated cost for the month so far is Prorated Fixed Costs + Variable Costs + Withdrawals
+        const gastoTotal = gastoTotalProrrateado + gastosVariablesMes + gastosRetiroDueno;
         const gastoPrev = gastosOperativosPrev;
 
         // 6. Invoices (Cashflow only, informational. Mercadería comprada)
@@ -880,9 +888,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             elHealthDetail.innerHTML = `
                 <div style="margin-top:10px; background:rgba(0,0,0,0.02); border-radius:10px; padding:10px 12px;">
                     ${fmtRow('Ganancia Bruta (Eleventa)', gananciaBrutaMes, '#10b981', '💰')}
-                    ${sueldosMes > 0 ? fmtRow('Sueldos Personal (Yamileth)', -sueldosMes, '#ef4444', '👤') : ''}
-                    ${gastosRetiroDueno > 0 ? fmtRow('Retiro del Dueño', -gastosRetiroDueno, '#f97316', '💼') : ''}
-                    ${gastosOperativosMes > 0 ? fmtRow('Gastos del Local', -gastosOperativosMes, '#f59e0b', '🏪') : ''}
+                    ${burnRateInfo.dailyBurnRate > 0 ? fmtRow(`Carga Fija Prorrateada (${currentDayOfMoth} días a ${window.Utils.formatCurrency(burnRateInfo.dailyBurnRate)}/día)`, -gastoTotalProrrateado, '#ef4444', '🏭') : ''}
+                    ${gastosVariablesMes > 0 ? fmtRow('Gastos Variables (No Fijos)', -gastosVariablesMes, '#f59e0b', '🏪') : ''}
+                    ${gastosRetiroDueno > 0 ? fmtRow('Retiro del Dueño (Adelantos)', -gastosRetiroDueno, '#f97316', '💼') : ''}
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0 2px; margin-top:4px; border-top:2px solid rgba(0,0,0,0.1);">
                         <span style="font-size:0.85rem; font-weight:800; color:var(--text-primary);">= Utilidad Neta Real</span>
                         <span style="font-weight:900; font-size:1rem; color:${netColor};">${utilidadNetaMonto >= 0 ? '+' : ''}${window.Utils.formatCurrency(utilidadNetaMonto)}</span>

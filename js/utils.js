@@ -538,6 +538,38 @@ window.Utils = {
         };
     },
 
+    // --- PRORATION LOGIC (BURN RATE) ---
+    calculateDailyBurnRate: async (expenses, employees, referenceDate) => {
+        const month = referenceDate.getMonth();
+        const year = referenceDate.getFullYear();
+        const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+        
+        // Days in the current month
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        // 1. Sum Fixed Expenses (isFixed = true) for the current month
+        const fixedExpensesSum = expenses
+            .filter(e => !e.deleted && e.isFixed && e.date && e.date.startsWith(monthStr))
+            .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+            
+        // 2. Sum Salaries 
+        // We use the projected total from the month to cover what the business *must* pay in total
+        const monthlyPaymentsInfo = await window.Utils.calculateMonthlyPayments(employees, [], referenceDate);
+        const salariesProjectedSum = monthlyPaymentsInfo.totalProjected;
+        
+        // 3. Calculate Daily Burn Rate
+        const totalMonthlyCommitments = fixedExpensesSum + salariesProjectedSum;
+        const dailyBurnRate = totalMonthlyCommitments / daysInMonth;
+        
+        return {
+            daysInMonth,
+            fixedExpensesSum,
+            salariesProjectedSum,
+            totalMonthlyCommitments,
+            dailyBurnRate: Math.round(dailyBurnRate)
+        };
+    },
+
     animateNumber: (el, start, end, duration = 1000, isCurrency = false) => {
         if (!el) return;
         

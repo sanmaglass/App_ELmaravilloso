@@ -199,6 +199,7 @@ async function renderExpenses() {
                         <span><i class="ph ph-calendar-blank"></i> ${formatDate(exp.date)}</span>
                         <span>•</span>
                         <span style="color:var(--primary); background:rgba(255,0,0,0.05); padding:2px 8px; border-radius:4px;">${exp.category}</span>
+                        ${exp.isFixed ? '<span style="color:#f59e0b; background:rgba(245,158,11,0.1); padding:2px 8px; border-radius:4px; font-weight:bold;"><i class="ph ph-push-pin"></i> Fijo Mensual</span>' : ''}
                     </div>
                 </div>
                 <div style="text-align:right; flex: 0 0 auto;">
@@ -289,6 +290,14 @@ function showExpenseModal(expenseToEdit = null) {
                         <input type="date" id="exp-date" class="form-input" value="${isEdit ? expenseToEdit.date : today}">
                     </div>
 
+                    <div class="form-group" style="display:flex; align-items:center; gap:8px; margin-top:8px; padding:12px; background:rgba(245,158,11,0.05); border-radius:8px; border:1px solid rgba(245,158,11,0.2);">
+                        <input type="checkbox" id="exp-isfixed" style="width:18px; height:18px; cursor:pointer;" ${isEdit && expenseToEdit.isFixed ? 'checked' : ''}>
+                        <div style="display:flex; flex-direction:column;">
+                            <label for="exp-isfixed" style="font-weight:600; cursor:pointer; color:var(--text-primary); margin:0;">¿Es un Gasto Fijo Mensual?</label>
+                            <span style="font-size:0.75rem; color:var(--text-muted);">El sistema usará este valor para calcular tu costo diario de operación (Prorrateo).</span>
+                        </div>
+                    </div>
+
                 </form>
             </div>
             <div class="modal-footer">
@@ -306,6 +315,7 @@ function showExpenseModal(expenseToEdit = null) {
         const amount = parseFloat(document.getElementById('exp-amount').value) || 0;
         const category = document.getElementById('exp-category').value;
         const date = document.getElementById('exp-date').value;
+        const isFixed = document.getElementById('exp-isfixed').checked;
 
         if (!title || amount <= 0) {
             alert('Por favor ingresa un título y un monto válido.');
@@ -318,6 +328,7 @@ function showExpenseModal(expenseToEdit = null) {
                 amount,
                 category,
                 date,
+                isFixed,
                 deleted: false
             };
 
