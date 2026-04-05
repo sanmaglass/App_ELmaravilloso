@@ -541,11 +541,22 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }
 
         let now = new Date();
+        const realToday = new Date();
+        
         if (selectedMonth) {
             const [y, m] = selectedMonth.split('-');
-            now = new Date(y, parseInt(m) - 1, 15);
+            const reqY = parseInt(y);
+            const reqM = parseInt(m) - 1;
+            
+            // Si el mes seleccionado es el actual, usamos el día de hoy
+            if (reqY === realToday.getFullYear() && reqM === realToday.getMonth()) {
+                now = new Date(realToday.getFullYear(), realToday.getMonth(), realToday.getDate(), 12, 0, 0);
+            } else {
+                // Si es un mes pasado, asumimos el mes entero (el último día del mes)
+                now = new Date(reqY, reqM + 1, 0, 12, 0, 0); 
+            }
         }
-        const realToday = new Date();
+        
         // IMPORTANTE: Usar hora LOCAL (no UTC) para evitar desfase en Argentina (UTC-3)
         const todayStr = `${realToday.getFullYear()}-${String(realToday.getMonth() + 1).padStart(2, '0')}-${String(realToday.getDate()).padStart(2, '0')}`;
         const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -882,10 +893,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         // Renderizar el desglose detallado siempre
         if (elHealthDetail) {
-            const fmtRow = (label, value, color, icon) => {
+            const fmtRow = (label, value, color, iconClass) => {
                 const isNeg = value < 0;
                 return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed rgba(0,0,0,0.06);">
-                    <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:5px;">${icon} ${label}</span>
+                    <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;"><i class="${iconClass}"></i> ${label}</span>
                     <span style="font-weight:700; font-size:0.9rem; color:${color};">${isNeg ? '-' : ''}${window.Utils.formatCurrency(Math.abs(value))}</span>
                 </div>`;
             };
@@ -913,22 +924,22 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             ].join('');
 
             elHealthDetail.innerHTML = `
-                <div style="margin-top:10px; background:rgba(0,0,0,0.02); border-radius:10px; padding:10px 12px;">
-                    ${fmtRow('Ganancia Bruta (Eleventa)', gananciaBrutaMes, '#10b981', '💰')}
+                <div style="margin-top:10px; background:rgba(0,0,0,0.02); border-radius:10px; padding:10px 12px; font-family: var(--font-primary, Arial, sans-serif);">
+                    ${fmtRow('Ganancia Bruta (Eleventa)', gananciaBrutaMes, '#10b981', 'ph ph-coins')}
                     
                     ${burnRateInfo.dailyBurnRate > 0 ? `
-                        ${fmtRow(`Carga Fija Prorrateada (${currentDayOfMoth} días a ${window.Utils.formatCurrency(burnRateInfo.dailyBurnRate)}/día)`, -gastoTotalProrrateado, '#ef4444', '🏭')}
-                        <div style="padding-left: 20px; padding-right: 4px; padding-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); font-style: italic; border-bottom:1px dashed rgba(0,0,0,0.06);">
+                        ${fmtRow(`Carga Fija Prorrateada (${currentDayOfMoth} días a ${window.Utils.formatCurrency(burnRateInfo.dailyBurnRate)}/día)`, -gastoTotalProrrateado, '#ef4444', 'ph ph-chart-line-down')}
+                        <div style="padding-left: 20px; padding-right: 4px; padding-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); border-bottom:1px dashed rgba(0,0,0,0.06);">
                             ${prorrateoItemsHtml}
                         </div>
                     ` : ''}
 
-                    ${gastosVariablesMes > 0 ? fmtRow('Gastos Variables (No Fijos)', -gastosVariablesMes, '#f59e0b', '🏪') : ''}
-                    ${ownerExtraDraw > 0 ? fmtRow('Reparto de Utilidades Extra Dueño', -ownerExtraDraw, '#9333ea', '💎') : ''}
+                    ${gastosVariablesMes > 0 ? fmtRow('Gastos Variables (No fijos)', -gastosVariablesMes, '#f59e0b', 'ph ph-receipt') : ''}
+                    ${ownerExtraDraw > 0 ? fmtRow('Reparto de Utilidades Extra Dueño', -ownerExtraDraw, '#9333ea', 'ph ph-briefcase') : ''}
                     
                     ${sueldoBaseDuenoMensual > 0 ? `
                     <div style="margin: 8px 0; padding: 8px; background: rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.1); border-radius:8px;">
-                       <div style="font-size:0.8rem; font-weight:700; color:var(--primary); margin-bottom:4px;"><i class="ph ph-wallet"></i> Cuenta Corriente Dueño</div>
+                       <div style="font-size:0.8rem; font-weight:700; color:var(--primary); margin-bottom:4px;"><i class="ph ph-wallet"></i> Estado de Cuenta: Dueño</div>
                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:2px;">
                            <span style="color:var(--text-muted);">Sueldo Base Mensual:</span>
                            <span style="font-weight:600;">${window.Utils.formatCurrency(sueldoBaseDuenoMensual)}</span>
@@ -941,7 +952,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     </div>` : ''}
 
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0 2px; margin-top:4px; border-top:2px solid rgba(0,0,0,0.1);">
-                        <span style="font-size:0.85rem; font-weight:800; color:var(--text-primary);">= Utilidad Neta Real</span>
+                        <span style="font-size:0.85rem; font-weight:800; color:var(--text-primary);">Total Utilidad Mensual Proyectada</span>
                         <span style="font-weight:900; font-size:1rem; color:${netColor};">${utilidadNetaMonto >= 0 ? '+' : ''}${window.Utils.formatCurrency(utilidadNetaMonto)}</span>
                     </div>
                 </div>
