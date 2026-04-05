@@ -135,6 +135,18 @@ async function renderDailySales() {
         }
 
         const activeSales = dailySales.filter(s => !s.deleted);
+ 
+        // --- CALCULO DE RENTABILIDAD DIARIA (ELEVENTA) ---
+        const allEleventa = await window.db.eleventa_sales.toArray();
+        const profitByDate = new Map();
+        allEleventa.forEach(s => {
+            const d = s.date?.split('T')[0];
+            if (d && s.profit) {
+                profitByDate.set(d, (profitByDate.get(d) || 0) + parseFloat(s.profit));
+            }
+        });
+
+        const formatCurrency = window.Utils.formatCurrency;
 
         // Filter by month and search
         let filtered = activeSales.filter(s => {
@@ -204,6 +216,11 @@ async function renderDailySales() {
                     ${sale.credit ? `<span style="background:rgba(139,92,246,0.1); padding:3px 10px; border-radius:20px; color:#5b21b6; white-space:nowrap;">
                         <i class="ph ph-star"></i> Créd: ${formatCurrency(sale.credit)}
                     </span>` : ''}
+                    
+                    <!-- NEW: Rentabilidad Diaria -->
+                    <span style="background:rgba(139,92,246,0.15); padding:3px 10px; border-radius:20px; color:#5b21b6; font-weight:600; white-space:nowrap; border:1px solid rgba(139,92,246,0.3);">
+                        <i class="ph ph-chart-line-up"></i> Utilidad: ${formatCurrency(profitByDate.get(sale.date) || 0)}
+                    </span>
                 </div>
             </div>
         `).join('');
@@ -299,6 +316,7 @@ function showDailySaleModal(saleToEdit = null) {
     modal.classList.remove('hidden');
 
     // Auto-calc Total
+    const formatCurrency = window.Utils.formatCurrency;
     const inputs = document.querySelectorAll('.calc-input');
     const totalPreview = document.getElementById('ds-total-preview');
 
@@ -375,13 +393,22 @@ async function exportDailySalesToExcel() {
             return;
         }
 
+        // Calculamos Utilidad para el reporte Excel
+        const allEleventa = await window.db.eleventa_sales.toArray();
+        const profitByDate = new Map();
+        allEleventa.forEach(s => {
+            const d = s.date?.split('T')[0];
+            if (d && s.profit) profitByDate.set(d, (profitByDate.get(d) || 0) + parseFloat(s.profit));
+        });
+
         const data = activeSales.map(s => ({
             Fecha: s.date,
             Efectivo: s.cash,
             Transferencia: s.transfer,
             Debito: s.debit,
             Credito: s.credit,
-            Total: s.total,
+            Total_Venta: s.total,
+            Utilidad_Eleventa: profitByDate.get(s.date) || 0,
             Notas: s.notes
         }));
 

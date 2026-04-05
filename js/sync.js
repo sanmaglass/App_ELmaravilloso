@@ -138,6 +138,9 @@ window.Sync = {
                     const orderKey = map.orderBy || 'id';
 
                     // 1. PULL PHASE (Cloud is Master)
+                    window.Sync.updateIndicator('syncing', `${remoteName}...`);
+                    console.log(`[Sync] Iniciando PULL de ${remoteName}...`);
+                    
                     let query = window.Sync.client
                         .from(remoteName)
                         .select('*');
@@ -148,12 +151,14 @@ window.Sync = {
                         query = query.order(orderKey, { ascending: true });
                     }
 
-                    // Para eleventa_sales no queremos descargar todo el historial de 10 años, solo limitar a unos 300 recientes si es muy grande, o filtro por fecha futura.
+                    // --- SINCRO RODANTE (90 DÍAS) ---
+                    // Para Eleventa, siempre revisamos los últimos 3 meses para cubrir huecos.
+                    // bulkPut evita duplicados usando el ID único de cada ticket.
                     if (remoteName === 'eleventa_sales') {
-                        // Traer solo las ventas del ultimo mes o limit 500 para no reventar la RAM
-                        const thirtyDaysAgo = new Date();
-                        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                        query = query.gte('date', thirtyDaysAgo.toISOString()).limit(500);
+                        const rollingDate = new Date();
+                        rollingDate.setDate(rollingDate.getDate() - 90);
+                        query = query.gte('date', rollingDate.toISOString()).limit(10000);
+                        console.log(`[Sync] Eleventa: Barrido rodante de 90 días activado.`);
                     }
 
                     const { data: cloudData, error } = await query;
@@ -161,6 +166,10 @@ window.Sync = {
                     if (error) throw error;
 
                     if (cloudData) {
+                        console.log(`[Sync] ${remoteName}: Recibidos ${cloudData.length} registros de la nube.`);
+                        if (cloudData.length > 500) {
+                            window.Sync.updateIndicator('syncing', `${remoteName}: ${cloudData.length} recs...`);
+                        }
                         const cloudIds = new Set();
                         // Crear mapa local para preservar campos no existentes en nube (por falta de migración)
                         const localData = await window.db[localName].toArray();
@@ -227,14 +236,29 @@ window.Sync = {
                             return true;
                         });
 
-                        // --- RECONCILIACIÓN AGRESIVA (con protección de registros recientes) ---
-                        // Proteger registros creados en la última hora (offline mode fallback)
-                        const tenMinutesAgo = Date.now() - 60 * 60 * 1000;
+                        // --- RECONCILIACIÓN POR RANGO (Protección de Historial) ---
+                        // Solo borramos huérfanos locales si están dentro del rango que pedimos a la nube
+                        // Para Eleventa, solo arriesgamos borrar huérfanos de los ÚLTIMOS 3 DÍAS (por si anularon un ticket)
+                        const orphanSafetyWindow = 3 * 24 * 60 * 60 * 1000; // 3 días en ms
+                        const nowMs = Date.now();
+                        const tenMinutesAgo = nowMs - 60 * 60 * 1000;
+                        
                         const toDeleteLocal = localData
                             .filter(item => {
                                 if (cloudIds.has(Number(item.id || item.key))) return false;
+                                
+                                // Regla 1: No borrar si se creó hace menos de 1 hora (evitar race conditions)
                                 const createdAt = item.created_at ? new Date(item.created_at).getTime() : 0;
-                                if (createdAt > tenMinutesAgo) return false; // recién creado, proteger
+                                if (createdAt > tenMinutesAgo) return false;
+
+                                // Regla 2: PROTECCIÓN CRÍTICA DE HISTORIAL
+                                // Si es Eleventa, solo borramos si el ticket es de hace menos de 3 días.
+                                // Todo lo que sea más viejo se queda localmente para SIEMPRE, aunque no venga en el query incremental.
+                                if (localName === 'eleventa_sales' && item.date) {
+                                    const itemDateMs = new Date(item.date).getTime();
+                                    if (nowMs - itemDateMs > orphanSafetyWindow) return false; // Proteger histórico
+                                }
+
                                 return true;
                             })
                             .map(item => item.id);
@@ -248,6 +272,7 @@ window.Sync = {
 
                         // Actualizar local con datos oficiales de la nube
                         if (normalizedCloudData.length > 0) {
+                            console.log(`[Sync] ${localName}: Procesando bulkPut de ${normalizedCloudData.length} registros...`);
                             // Solo marcar como cambiado si el conteo o algún ID difiere
                             const localIds = new Set(localData.map(r => r.id));
                             const cloudHasNew = normalizedCloudData.some(r => !localIds.has(r.id));

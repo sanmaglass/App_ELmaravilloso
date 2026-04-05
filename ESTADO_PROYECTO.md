@@ -3,7 +3,7 @@
 ## 📍 Ubicación Actual
 - **Ruta Local:** `C:\Users\sanma\OneDrive\Documentos\GitHub\el-maravilloso-final`
 - **GitHub:** `https://github.com/sanmaglass/App_ELmaravilloso.git`
-- **Estado Git:** Limpio en el commit **CAMBIO 72** (01-04-2026). Rediseño "Premium/Golden" del bloque de Mayor Margen y filtro de rotación (min. 5) integrado.
+- **Estado Git:** **CAMBIO 73** (02-04-2026). Solucionados los problemas de scroll horizontal en los widgets del Dashboard. Se liberó el contenedor global de restricciones de desbordamiento ('overflow-x: clip') y se dotó a los carruseles de desplazamiento táctil nativo para celulares, más una función personalizada ('utils.js') para poder arrastrar con el mouse en la computadora.
 
 ## 🚀 Accesos
 - Se creó un acceso directo en el Escritorio para apertura rápida.

@@ -7,7 +7,7 @@ window.Views = window.Views || {};
 window.Views.dashboard = async (container, selectedMonth = null) => {
     // 🔍 SMART REFRESH CHECK: If basic shell already exists, skip innerHTML overwrite
     const isAlreadyRendered = document.getElementById('tab-resumen') !== null;
-    
+
     if (!isAlreadyRendered) {
         container.innerHTML = `
     <style>
@@ -510,14 +510,14 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // Force update labels and structure if already rendered (Fixing "Old Labels/Icons" bug due to Smart Refresh)
         const elTitleIA = document.getElementById('label-ia-title');
         if (elTitleIA) elTitleIA.innerHTML = '<i class="ph ph-sparkle-fill"></i> IA';
-        
+
         const elMetaIA = document.getElementById('label-ia-meta');
         if (elMetaIA) elMetaIA.textContent = 'META IA';
-        
+
         const elRecordBox = document.getElementById('predict-record');
         if (elRecordBox) {
-             const vSpan = document.getElementById('predict-record-value');
-             elRecordBox.innerHTML = `Récord: <span id="predict-record-value" style="color: #fbbf24; font-weight: 700;">${vSpan?.innerHTML || '...'}</span>`;
+            const vSpan = document.getElementById('predict-record-value');
+            elRecordBox.innerHTML = `Récord: <span id="predict-record-value" style="color: #fbbf24; font-weight: 700;">${vSpan?.innerHTML || '...'}</span>`;
         }
 
         // FORCE REDESIGN OF INSIGHT BOX (Removing lightbulb/rocket)
@@ -639,7 +639,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
                     // Adding 'new' class to latest ticket for a pulsing effect
                     const isNew = index === 0 ? 'new' : '';
-                    
+
                     return `
                     <div class="live-ticket-card ${isNew}">
                         <div class="live-ticket-header">
@@ -693,23 +693,37 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const gananciaBrutaMes = thisMonthEleventa.reduce((s, t) => s + (parseFloat(t.profit) || 0), 0);
         const gananciaBrutaPrev = prevMonthEleventa.reduce((s, t) => s + (parseFloat(t.profit) || 0), 0);
 
-        // 3. Operational Expenses (Local Bills, etc.)
-        const thisMonthExpenses = allExpenses.filter(e => e.date && e.date.startsWith(currentMonthStr));
-        const prevMonthExpenses = allExpenses.filter(e => e.date && e.date.startsWith(prevMonthStr));
-        
-        const gastosOperativosMes = thisMonthExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-        const gastosOperativosPrev = prevMonthExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+        // --- VALIDACIÓN DE COHERENCIA (Ventas Caja vs Tickets) ---
+        const totalVentasEleventa = thisMonthEleventa.reduce((s, t) => s + (parseFloat(t.total) || 0), 0);
+        const diffRatio = ventasMes > 0 ? (totalVentasEleventa / ventasMes) : 1;
+        const isDataIncomplete = diffRatio < 0.85 && ventasMes > 500000; // Si falta más del 15% y hay ventas significativas
 
-        // 4. Payroll (Sueldos dinámicos, incluyendo Yamileth, etc.)
-        // Si más adelante cambias el sueldo en la app de RRHH, este bloque se actualiza solo.
+        // 3. Operational Expenses (Local Bills, etc.)
+        // Separamos el Retiro del Dueño de los gastos generales para el desglose
+        const thisMonthExpenses = allExpenses.filter(e => !e.deleted && e.date && e.date.startsWith(currentMonthStr));
+        const prevMonthExpenses = allExpenses.filter(e => !e.deleted && e.date && e.date.startsWith(prevMonthStr));
+
+        const gastosRetiroDueno = thisMonthExpenses
+            .filter(e => e.category === 'Retiro del Due\u00f1o')
+            .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+
+        const gastosOperativosMes = thisMonthExpenses
+            .filter(e => e.category !== 'Retiro del Due\u00f1o')
+            .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+
+        const gastosOperativosPrev = prevMonthExpenses
+            .filter(e => e.category !== 'Retiro del Due\u00f1o')
+            .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+
+        // 4. Payroll (Sueldos dinámicos, solo personal, NO el dueño)
         const monthlyPayments = await window.Utils.calculateMonthlyPayments(employees, logs, now);
         const sueldosMes = monthlyPayments.totalPaid || 0;
-        
-        console.log(`[Rentabilidad] Venta Bruta: ${gananciaBrutaMes} | Gastos Op: ${gastosOperativosMes} | Sueldos: ${sueldosMes}`);
 
-        // 5. Total Operating Expenses (Opex + Payroll) - NOT INVENTORY
-        const gastoTotal = gastosOperativosMes + sueldosMes;
-        const gastoPrev = gastosOperativosPrev; // We'll compare against OPEX for previous month trend
+        console.log(`[Rentabilidad] Ganancia Bruta: ${gananciaBrutaMes} | Retiro Dueño: ${gastosRetiroDueno} | Sueldos: ${sueldosMes} | Gastos Op: ${gastosOperativosMes}`);
+
+        // 5. Total Operating Expenses (Opex + Payroll + Retiro) - NOT INVENTORY
+        const gastoTotal = gastosOperativosMes + sueldosMes + gastosRetiroDueno;
+        const gastoPrev = gastosOperativosPrev;
 
         // 6. Invoices (Cashflow only, informational. Mercadería comprada)
         const thisMonthInvoices = invoices.filter(i => i.date && i.date.startsWith(currentMonthStr));
@@ -748,10 +762,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const predContainer = document.getElementById('prediction-container');
         if (window.Utils && window.Utils.PredictionEngine && predContainer) {
             predContainer.classList.remove('hidden'); // Show it early with "Calculating" state
-            
+
             try {
                 const prediction = await window.Utils.PredictionEngine.getProjectedSales();
-                
+
                 if (prediction) {
                     const elPredictTotal = document.getElementById('predict-total');
                     const elPredictComparison = document.getElementById('predict-comparison');
@@ -830,7 +844,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }
 
         // ---- CEO Metrics: True Profitability (Utilidad Neta) ----
-        // ¡La Utilidad Neta REAL es la Ganancia Bruta (API) menos los Gastos Operativos y Sueldos!
+        // Utilidad Neta REAL = Ganancia Bruta (API) - Sueldos Personal - Retiro Dueño - Gastos Operativos
         const utilidadNetaMonto = gananciaBrutaMes - gastoTotal;
         const margenNetoPct = ventasMes > 0 ? (utilidadNetaMonto / ventasMes * 100) : 0;
 
@@ -845,44 +859,67 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             elMargenBadge.className = 'kpi-badge ' + (margenNetoPct > 15 ? 'up' : margenNetoPct > 5 ? 'neutral' : 'down');
         }
 
-        // ---- Health Indicator (Based on Operative Health) ----
+        // ---- DESGLOSE RENTABILIDAD NETA (Nuevo widget de transparencia) ----
+        const elHealthDetail = document.getElementById('health-detail');
+        const elHealthBar = document.getElementById('health-bar');
         const healthEl = document.getElementById('health-label');
-        const healthBar = document.getElementById('health-bar');
-        const healthDetail = document.getElementById('health-detail');
         const healthRatioPct = document.getElementById('health-ratio-pct');
 
-        if (!healthEl || !healthBar || !healthDetail) return; // Guard against race condition
+        // Renderizar el desglose detallado siempre
+        if (elHealthDetail) {
+            const fmtRow = (label, value, color, icon) => {
+                const isNeg = value < 0;
+                return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed rgba(0,0,0,0.06);">
+                    <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:5px;">${icon} ${label}</span>
+                    <span style="font-weight:700; font-size:0.9rem; color:${color};">${isNeg ? '-' : ''}${window.Utils.formatCurrency(Math.abs(value))}</span>
+                </div>`;
+            };
+
+            const netColor = utilidadNetaMonto >= 0 ? '#16a34a' : '#dc2626';
+
+            elHealthDetail.innerHTML = `
+                <div style="margin-top:10px; background:rgba(0,0,0,0.02); border-radius:10px; padding:10px 12px;">
+                    ${fmtRow('Ganancia Bruta (Eleventa)', gananciaBrutaMes, '#10b981', '💰')}
+                    ${sueldosMes > 0 ? fmtRow('Sueldos Personal (Yamileth)', -sueldosMes, '#ef4444', '👤') : ''}
+                    ${gastosRetiroDueno > 0 ? fmtRow('Retiro del Dueño', -gastosRetiroDueno, '#f97316', '💼') : ''}
+                    ${gastosOperativosMes > 0 ? fmtRow('Gastos del Local', -gastosOperativosMes, '#f59e0b', '🏪') : ''}
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0 2px; margin-top:4px; border-top:2px solid rgba(0,0,0,0.1);">
+                        <span style="font-size:0.85rem; font-weight:800; color:var(--text-primary);">= Utilidad Neta Real</span>
+                        <span style="font-weight:900; font-size:1rem; color:${netColor};">${utilidadNetaMonto >= 0 ? '+' : ''}${window.Utils.formatCurrency(utilidadNetaMonto)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ---- Health Indicator (Based on Operative Health) ----
+        if (!healthEl || !elHealthBar) return; // Guard against race condition
 
         if (gananciaBrutaMes === 0) {
             healthEl.textContent = '⚪ Sin datos de margen API';
-            healthBar.style.width = '0%';
-            if(healthRatioPct) healthRatioPct.textContent = '0%';
-            healthDetail.textContent = 'Revisa los costos en Eleventa para calcular la utilidad';
+            elHealthBar.style.width = '0%';
+            if (healthRatioPct) healthRatioPct.textContent = '0%';
         } else {
-            // El riesgo es: ¿qué porcentaje de la Ganancia Bruta (API) se lo comen los gastos operativos?
-            const burdenPct = Math.min(100, Math.max(0, (gastoTotal / gananciaBrutaMes) * 100)); // Carga operativa sobre margen
+            const burdenPct = Math.min(100, Math.max(0, (gastoTotal / gananciaBrutaMes) * 100));
             const margin = margenNetoPct.toFixed(1);
-            
-            setTimeout(() => { healthBar.style.width = burdenPct + '%'; }, 100);
-            if(healthRatioPct) healthRatioPct.textContent = margin + '% final';
 
-            // Menos "burden" (carga) es mejor. Si los gastos comen el 100% de la ganancia bruta, es pérdida.
-            if (burdenPct < 50) {
+            setTimeout(() => { elHealthBar.style.width = burdenPct + '%'; }, 100);
+            if (healthRatioPct) healthRatioPct.textContent = margin + '% final';
+
+            if (isDataIncomplete) {
+                healthEl.innerHTML = '🟠 Datos Incompletos';
+                elHealthBar.style.background = '#f97316';
+            } else if (burdenPct < 50) {
                 healthEl.innerHTML = '🟢 Muy Saludable';
-                healthBar.style.background = '#10b981';
-                healthDetail.textContent = `Operación perfecta: Mantienes ${margin}% de utilidad final (incluye ${window.Utils.formatCurrency(sueldosMes, true)} en sueldos).`;
+                elHealthBar.style.background = '#10b981';
             } else if (burdenPct < 75) {
                 healthEl.innerHTML = '🟡 Aceptable';
-                healthBar.style.background = '#f59e0b';
-                healthDetail.textContent = `Aceptable: Gastos Op. comen el ${burdenPct.toFixed(0)}% del margen base bruto.`;
+                elHealthBar.style.background = '#f59e0b';
             } else if (burdenPct < 100) {
                 healthEl.innerHTML = '🟠 En riesgo';
-                healthBar.style.background = '#f97316';
-                healthDetail.textContent = `Alerta: Tus gastos del local y sueldos absorben todo tu margen!`;
+                elHealthBar.style.background = '#f97316';
             } else {
                 healthEl.innerHTML = '🔴 Pérdida Neta';
-                healthBar.style.background = '#ef4444';
-                healthDetail.textContent = `Estás pagando para trabajar. Los gastos (${window.Utils.formatCurrency(gastoTotal, true)}) superan el margen bruto.`;
+                elHealthBar.style.background = '#ef4444';
             }
         }
 
@@ -890,7 +927,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const todayLogs = logs.filter(l => l.date === todayStr);
         const elTodayEmp = document.getElementById('dashboard-today-employees');
         const elTodayHours = document.getElementById('dashboard-today-hours');
-        
+
         if (elTodayEmp) elTodayEmp.textContent = `${todayLogs.length} registros`;
         if (elTodayHours) elTodayHours.textContent = `${todayLogs.reduce((s, l) => s + (l.totalHours || 0), 0).toFixed(1)}h`;
 
@@ -898,7 +935,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const currentMonthEleventa = eleventaSales.filter(s => s.date && s.date.startsWith(currentMonthStr));
         const productStats = {};
         let totalItemsFound = 0;
-        
+
         currentMonthEleventa.forEach(sale => {
             if (sale.items && Array.isArray(sale.items)) {
                 sale.items.forEach(item => {
@@ -916,12 +953,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         });
 
         const allProductsArr = Object.entries(productStats);
-        
+
         const topVolume = [...allProductsArr].sort((a, b) => b[1].qty - a[1].qty).slice(0, 5);
         const topMargin = [...allProductsArr]
             .filter(x => x[1].qty >= 5 && x[1].revenue > 0) // Minimum 5 sales and valid revenue to show as star
             .sort((a, b) => b[1].profit - a[1].profit).slice(0, 5);
-        
+
         // Hooks: At least 5 sold, lowest margin percentage, profit > 0 (to separate from errors)
         const hooks = [...allProductsArr]
             .filter(x => x[1].qty >= 5 && x[1].revenue > 0 && x[1].profit > 0)
@@ -939,7 +976,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             elVol.innerHTML = topVolume.length ? topVolume.map((p, idx) => `
                 <div class="dash-list-item">
                     <div class="product-name-wrap">
-                        <span class="product-rank">${idx+1}</span>
+                        <span class="product-rank">${idx + 1}</span>
                         <div class="product-info">
                             <span class="product-name" title="${p[0]}">${p[0]}</span>
                         </div>
@@ -952,7 +989,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const elMarg = document.getElementById('top-margin-list');
         if (elMarg) {
             elMarg.innerHTML = topMargin.length ? topMargin.map((p, idx) => {
-                const marginPct = p[1].revenue > 0 ? ((p[1].profit/p[1].revenue)*100).toFixed(0) : 0;
+                const marginPct = p[1].revenue > 0 ? ((p[1].profit / p[1].revenue) * 100).toFixed(0) : 0;
                 if (idx === 0) {
                     // Golden Card #1
                     return `
@@ -972,7 +1009,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     return `
                         <div style="min-width: 190px; flex-shrink: 0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 14px; position: relative; overflow: hidden;">
                             <div style="position: absolute; bottom: 0; left: 0; height: 4px; width: ${marginPct}%; background: #34d399; border-radius: 0 4px 0 0; transition: width 1s ease-out;"></div>
-                            <div style="font-size: 0.75rem; font-weight: 600; color: #6ee7b7; margin-bottom: 4px;">RANK #${idx+1}</div>
+                            <div style="font-size: 0.75rem; font-weight: 600; color: #6ee7b7; margin-bottom: 4px;">RANK #${idx + 1}</div>
                             <div style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${p[0]}">${p[0]}</div>
                             <div style="font-size: 1.25rem; font-weight: 800; color: #34d399; margin-bottom: 8px;">${fmt(p[1].profit)}</div>
                             <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #94a3b8;">
@@ -997,7 +1034,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                         </div>
                     </div>
                     <div class="badge-pct" style="background:rgba(239,68,68,0.1); color:#ef4444;">
-                        ${(p[1].revenue > 0 ? (p[1].profit/p[1].revenue)*100 : 0).toFixed(0)}%
+                        ${(p[1].revenue > 0 ? (p[1].profit / p[1].revenue) * 100 : 0).toFixed(0)}%
                     </div>
                 </div>
             `).join('') : '<p class="text-muted text-sm text-center py-4">Todo sano y equilibrado.</p>';
@@ -1235,14 +1272,14 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const accountantDueDay = 14;
         const currentYear = now.getFullYear();
         const currentMonthIdx = now.getMonth();
-        
+
         let urgentHtml = '';
-        
+
         // Check if current month's payment is already registered in expenses
         const currentMonthIntStr = `${currentYear}-${String(currentMonthIdx + 1).padStart(2, '0')}`;
-        const hasPaidAccountant = allExpenses.some(e => 
-            !e.deleted && 
-            e.category === 'Contabilidad' && 
+        const hasPaidAccountant = allExpenses.some(e =>
+            !e.deleted &&
+            e.category === 'Contabilidad' &&
             e.date.startsWith(currentMonthIntStr)
         );
 
@@ -1254,7 +1291,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 const urgentIcon = diffDays <= 0 ? 'ph-warning-octagon' : 'ph-calendar-plus';
                 const urgentMsg = diffDays < 0 ? 'Pago de Contadora ATRASADO' : diffDays === 0 ? 'Pago de Contadora HOY' : `Faltan ${diffDays} días para el pago de Contadora`;
                 const urgentColor = diffDays <= 0 ? '#ef4444' : '#f97316';
-                
+
                 urgentHtml += `
                 <div style="padding:14px; background:white; border-radius:12px; border:1px solid rgba(239,68,68,0.1); display:flex; flex-direction:column; gap:10px;">
                     <div style="display:flex; align-items:center; gap:12px;">
@@ -1274,7 +1311,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // History Summary Accountant
         const accountantExpenses = allExpenses.filter(e => !e.deleted && e.category === 'Contabilidad')
             .sort((a, b) => new Date(b.date) - new Date(a.date));
-        
+
         if (accountantExpenses.length > 0) {
             const totalPaidAccountant = accountantExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
             urgentHtml += `
@@ -1299,23 +1336,23 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         // Global function to quick-register accountant payment
         window._showAccountantQuickPay = () => {
-             const val = prompt('Ingresa el monto pagado a la contadora:', '0');
-             const amount = parseFloat(val);
-             if (!isNaN(amount) && amount > 0) {
-                 const today = new Date().toISOString().split('T')[0];
-                 window.DataManager.saveAndSync('expenses', {
-                     title: 'Pago Contadora - ' + new Date().toLocaleDateString('es-ES', { month: 'long' }),
-                     amount: amount,
-                     category: 'Contabilidad',
-                     date: today,
-                     deleted: false
-                 }).then(res => {
-                     if (res.success) {
-                         alert('✅ Pago registrado correctamente.');
-                         window.Views.dashboard(container); // Refresh
-                     }
-                 });
-             }
+            const val = prompt('Ingresa el monto pagado a la contadora:', '0');
+            const amount = parseFloat(val);
+            if (!isNaN(amount) && amount > 0) {
+                const today = new Date().toISOString().split('T')[0];
+                window.DataManager.saveAndSync('expenses', {
+                    title: 'Pago Contadora - ' + new Date().toLocaleDateString('es-ES', { month: 'long' }),
+                    amount: amount,
+                    category: 'Contabilidad',
+                    date: today,
+                    deleted: false
+                }).then(res => {
+                    if (res.success) {
+                        alert('✅ Pago registrado correctamente.');
+                        window.Views.dashboard(container); // Refresh
+                    }
+                });
+            }
         };
 
         // ---- (Actividad Reciente removed) ----

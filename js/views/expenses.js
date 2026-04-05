@@ -27,6 +27,7 @@ window.Views.expenses = async (container) => {
             </select>
             <select id="filter-category" class="form-input">
                 <option value="all">Todas las Categorías</option>
+                <option value="Retiro del Dueño">💼 Retiro del Dueño</option>
                 <option value="Servicios">Servicios Básicos</option>
                 <option value="Alquiler">Alquiler</option>
                 <option value="Contabilidad">Contabilidad</option>
@@ -271,6 +272,7 @@ function showExpenseModal(expenseToEdit = null) {
                     <div class="form-group">
                         <label class="form-label">Categoría</label>
                         <select id="exp-category" class="form-input">
+                            <option value="Retiro del Dueño" ${isEdit && expenseToEdit.category === 'Retiro del Dueño' ? 'selected' : ''}>💼 Retiro del Dueño (tu sueldo)</option>
                             <option value="Servicios" ${isEdit && expenseToEdit.category === 'Servicios' ? 'selected' : ''}>Servicios Básicos</option>
                             <option value="Alquiler" ${isEdit && expenseToEdit.category === 'Alquiler' ? 'selected' : ''}>Alquiler</option>
                             <option value="Contabilidad" ${isEdit && expenseToEdit.category === 'Contabilidad' ? 'selected' : ''}>Contabilidad</option>
