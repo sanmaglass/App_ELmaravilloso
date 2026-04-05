@@ -548,14 +548,23 @@ window.Utils = {
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
         // 1. Sum Fixed Expenses (isFixed = true) for the current month
-        const fixedExpensesSum = expenses
-            .filter(e => !e.deleted && e.isFixed && e.date && e.date.startsWith(monthStr))
-            .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        const fixedExpensesList = expenses.filter(e => !e.deleted && e.isFixed && e.date && e.date.startsWith(monthStr));
+        const fixedExpensesSum = fixedExpensesList.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
             
         // 2. Sum Salaries 
         // We use the projected total from the month to cover what the business *must* pay in total
         const monthlyPaymentsInfo = await window.Utils.calculateMonthlyPayments(employees, [], referenceDate);
         const salariesProjectedSum = monthlyPaymentsInfo.totalProjected;
+        
+        // Calcular el detalle individual para transparencia
+        const salariesDetails = [];
+        for (const emp of employees) {
+            // We run it individually to get their specific projected total
+            const emInfo = await window.Utils.calculateMonthlyPayments([emp], [], referenceDate);
+            if (emInfo.totalProjected > 0) {
+                salariesDetails.push({ name: emp.name, amount: emInfo.totalProjected });
+            }
+        }
         
         // 3. Calculate Daily Burn Rate
         const totalMonthlyCommitments = fixedExpensesSum + salariesProjectedSum;
@@ -564,7 +573,9 @@ window.Utils = {
         return {
             daysInMonth,
             fixedExpensesSum,
+            fixedExpensesDetails: fixedExpensesList,
             salariesProjectedSum,
+            salariesDetails,
             totalMonthlyCommitments,
             dailyBurnRate: Math.round(dailyBurnRate)
         };

@@ -714,8 +714,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // 4. PRORATEO DE RENTABILIDAD
         // Calculate the daily burn rate (Fixed expenses + Salaries)
         const burnRateInfo = await window.Utils.calculateDailyBurnRate(allExpenses, employees, now);
-        const sueldosMes = burnRateInfo.salariesProjectedSum || 0;
-        const gastosOperativosMes = burnRateInfo.fixedExpensesSum || 0;
         
         // Carga prorrateada al día de hoy
         const currentDayOfMoth = Array.from(thisMonthSales).length > 0 ? now.getDate() : 1; 
@@ -726,11 +724,20 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             .filter(e => !e.isFixed && e.category !== 'Retiro del Due\u00f1o')
             .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 
-        console.log(`[Rentabilidad] Ganancia Bruta: ${gananciaBrutaMes} | Retiro Dueño: ${gastosRetiroDueno} | BurnRate Diario: ${burnRateInfo.dailyBurnRate} | Gastos Var: ${gastosVariablesMes}`);
+        // 5. CUENTA CORRIENTE DEL DUEÑO (Reparto vs Sueldo)
+        const ownerEmployees = employees.filter(e => e.name && e.name.toLowerCase().includes('due\u00f1o'));
+        const ownerPaymentsInfo = await window.Utils.calculateMonthlyPayments(ownerEmployees, logs, now);
+        const sueldoBaseDuenoMensual = ownerPaymentsInfo.totalProjected || 0;
+        
+        // El negocio asume pagarte tu sueldo (Ya está prorrateado). 
+        // Si retiras MÁS de tu sueldo base en el mes, eso es un Retiro de Utilidades y castiga la salud final.
+        const ownerExtraDraw = Math.max(0, gastosRetiroDueno - sueldoBaseDuenoMensual);
+        const ownerBalance = sueldoBaseDuenoMensual - gastosRetiroDueno;
 
-        // 5. Total Operating Expenses (Opex + Payroll + Retiro) - NOT INVENTORY
-        // The *total* accumulated cost for the month so far is Prorated Fixed Costs + Variable Costs + Withdrawals
-        const gastoTotal = gastoTotalProrrateado + gastosVariablesMes + gastosRetiroDueno;
+        console.log(`[Rentabilidad] G.Bruta: ${gananciaBrutaMes} | Retiros(Adelantos): ${gastosRetiroDueno} | Base Dueño: ${sueldoBaseDuenoMensual} | Prorrateo Hoy: ${gastoTotalProrrateado}`);
+
+        // The *total* accumulated cost for the month so far is Prorated Fixed Costs + Variable Costs + Extra Draw (beyond base salary)
+        const gastoTotal = gastoTotalProrrateado + gastosVariablesMes + ownerExtraDraw;
         const gastoPrev = gastosOperativosPrev;
 
         // 6. Invoices (Cashflow only, informational. Mercadería comprada)
@@ -885,12 +892,54 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
             const netColor = utilidadNetaMonto >= 0 ? '#16a34a' : '#dc2626';
 
+            let balanceMsg = ownerBalance >= 0 
+                ? `Te faltan percibir ${window.Utils.formatCurrency(ownerBalance)}`
+                : `¡Cobraste de más! Sobregiro de ${window.Utils.formatCurrency(Math.abs(ownerBalance))}`;
+            let balanceColor = ownerBalance >= 0 ? 'var(--text-muted)' : '#dc2626';
+
+            // --- Generar sub-lista del Prorrateo ---
+            const factorProrrateo = currentDayOfMoth / burnRateInfo.daysInMonth;
+            const prorrateoItemsHtml = [
+               ...(burnRateInfo.salariesDetails || []).map(s => `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                        <span>• Sueldo: ${s.name}</span>
+                        <span>-${window.Utils.formatCurrency(s.amount * factorProrrateo)}</span>
+                    </div>`),
+               ...(burnRateInfo.fixedExpensesDetails || []).map(e => `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                        <span>• Gasto Fijo: ${e.title}</span>
+                        <span>-${window.Utils.formatCurrency(e.amount * factorProrrateo)}</span>
+                    </div>`)
+            ].join('');
+
             elHealthDetail.innerHTML = `
                 <div style="margin-top:10px; background:rgba(0,0,0,0.02); border-radius:10px; padding:10px 12px;">
                     ${fmtRow('Ganancia Bruta (Eleventa)', gananciaBrutaMes, '#10b981', '💰')}
-                    ${burnRateInfo.dailyBurnRate > 0 ? fmtRow(`Carga Fija Prorrateada (${currentDayOfMoth} días a ${window.Utils.formatCurrency(burnRateInfo.dailyBurnRate)}/día)`, -gastoTotalProrrateado, '#ef4444', '🏭') : ''}
+                    
+                    ${burnRateInfo.dailyBurnRate > 0 ? `
+                        ${fmtRow(`Carga Fija Prorrateada (${currentDayOfMoth} días a ${window.Utils.formatCurrency(burnRateInfo.dailyBurnRate)}/día)`, -gastoTotalProrrateado, '#ef4444', '🏭')}
+                        <div style="padding-left: 20px; padding-right: 4px; padding-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); font-style: italic; border-bottom:1px dashed rgba(0,0,0,0.06);">
+                            ${prorrateoItemsHtml}
+                        </div>
+                    ` : ''}
+
                     ${gastosVariablesMes > 0 ? fmtRow('Gastos Variables (No Fijos)', -gastosVariablesMes, '#f59e0b', '🏪') : ''}
-                    ${gastosRetiroDueno > 0 ? fmtRow('Retiro del Dueño (Adelantos)', -gastosRetiroDueno, '#f97316', '💼') : ''}
+                    ${ownerExtraDraw > 0 ? fmtRow('Reparto de Utilidades Extra Dueño', -ownerExtraDraw, '#9333ea', '💎') : ''}
+                    
+                    ${sueldoBaseDuenoMensual > 0 ? `
+                    <div style="margin: 8px 0; padding: 8px; background: rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.1); border-radius:8px;">
+                       <div style="font-size:0.8rem; font-weight:700; color:var(--primary); margin-bottom:4px;"><i class="ph ph-wallet"></i> Cuenta Corriente Dueño</div>
+                       <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:2px;">
+                           <span style="color:var(--text-muted);">Sueldo Base Mensual:</span>
+                           <span style="font-weight:600;">${window.Utils.formatCurrency(sueldoBaseDuenoMensual)}</span>
+                       </div>
+                       <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:2px;">
+                           <span style="color:var(--text-muted);">Adelantos Retirados:</span>
+                           <span style="font-weight:600;">${window.Utils.formatCurrency(gastosRetiroDueno)}</span>
+                       </div>
+                       <div style="font-size:0.75rem; color:${balanceColor}; font-weight:600; text-align:right; margin-top:4px;">${balanceMsg}</div>
+                    </div>` : ''}
+
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0 2px; margin-top:4px; border-top:2px solid rgba(0,0,0,0.1);">
                         <span style="font-size:0.85rem; font-weight:800; color:var(--text-primary);">= Utilidad Neta Real</span>
                         <span style="font-weight:900; font-size:1rem; color:${netColor};">${utilidadNetaMonto >= 0 ? '+' : ''}${window.Utils.formatCurrency(utilidadNetaMonto)}</span>
