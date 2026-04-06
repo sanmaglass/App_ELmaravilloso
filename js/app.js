@@ -207,13 +207,13 @@ async function init() {
             // si el dashboard ya está visible, para evitar el parpadeo de "carga múltiple".
             const timeSinceInit = Date.now() - window._appInitializedAt;
             if (timeSinceInit < 3000 && current === 'dashboard') {
-                console.log("🛡️ Sync Guard: Ignorando refresco de Dashboard durante arranque crítico.");
+                if (window._debugMode) console.log("🛡️ Sync Guard: Ignorando refresco de Dashboard durante arranque crítico.");
                 return;
             }
 
             clearTimeout(_globalSyncDebounce);
             _globalSyncDebounce = setTimeout(() => {
-                console.log("♻️ Global sync refresh for:", current);
+                if (window._debugMode) console.log("♻️ Global sync refresh for:", current);
                 if (views[current]) views[current]();
             }, 600);
         });

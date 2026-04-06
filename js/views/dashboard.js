@@ -321,45 +321,47 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         <!-- 🧠 IA PREDICTIVE PANEL (Secondary Priority) -->
         <div id="prediction-container" class="hidden" style="margin-bottom:24px;">
-            <div class="premium-card card-anim" style="background: var(--ia-panel-bg); color: var(--ia-panel-text); border: none; position: relative; overflow: hidden; padding: 24px;">
+            <div class="premium-card card-anim" style="background: var(--ia-panel-bg); color: var(--ia-panel-text); border: none; position: relative; overflow: hidden; padding: 18px;">
                 <!-- Decorative background elements -->
-                <div style="position: absolute; top: -30px; right: -30px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%); border-radius: 50%; filter: blur(40px);"></div>
+                <div style="position: absolute; top: -30px; right: -30px; width: 150px; height: 150px; background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%); border-radius: 50%; filter: blur(40px);"></div>
                 
-                <div class="predict-header">
-                    <div>
-                        <div id="label-ia-title" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 0.8rem; color: var(--ia-accent); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">
-                            <i class="ph ph-sparkle-fill"></i> IA
+                <div class="predict-header" style="gap: 8px;">
+                    <div style="flex: 1;">
+                        <div id="label-ia-title" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 0.65rem; color: var(--ia-accent); font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+                            <i class="ph ph-sparkle-fill"></i> Inteligencia Predictiva
                         </div>
-                        <h2 class="predict-title">
+                        <h2 class="predict-title" style="font-size: 1.8rem; margin-bottom: 4px;">
                             <span id="predict-total" style="background: linear-gradient(to right, var(--ia-panel-text), var(--ia-muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">...</span>
-                            <span id="predict-month-label" style="font-size: 0.95rem; font-weight: 500; color: var(--ia-muted); letter-spacing: 0;">est. Marzo</span>
+                            <span id="predict-month-label" style="font-size: 0.8rem; font-weight: 500; color: var(--ia-muted); opacity: 0.8;">est. Abril</span>
                         </h2>
-                        <div id="predict-comparison" style="margin-top: 10px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;"></div>
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <div id="predict-comparison" style="font-size: 0.8rem; display: flex; align-items: center; gap: 6px;"></div>
+                            <div id="predict-record" style="font-size: 0.7rem; color: var(--ia-muted); font-weight: 500;">
+                                Récord: <span id="predict-record-value" style="color: #fbbf24; font-weight: 700;">...</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="predict-badge-container" style="text-align: right;">
-                        <div id="predict-confidence" class="predict-badge">
+                    <div class="predict-badge-container" style="text-align: right; flex-shrink: 0;">
+                        <div id="predict-confidence" class="predict-badge" style="font-size: 0.6rem; padding: 4px 10px;">
                             Calc...
                         </div>
-                        <div id="predict-record" style="margin-top: 12px; font-size: 0.75rem; color: var(--ia-muted); font-weight: 500;">
-                            Récord: <span id="predict-record-value" style="color: #fbbf24; font-weight: 700;">...</span>
-                        </div>
                     </div>
                 </div>
 
-                <!-- AI Strategic Insight (Redesigned for UI/UX Pro) -->
-                <div id="predict-insight-box" style="margin-top: 24px; padding: 12px 16px; background: rgba(99, 102, 241, 0.08); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.15); display: flex; align-items: center; gap: 10px; position: relative; z-index: 1;">
-                    <div id="predict-insight-dot" style="width: 6px; height: 6px; border-radius: 50%; background: #6366f1; box-shadow: 0 0 8px #6366f1;"></div>
-                    <span id="predict-insight-text" style="color: var(--ia-panel-text); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.3px;">Analizando...</span>
+                <!-- AI Strategic Insight (Compact) -->
+                <div id="predict-insight-box" style="margin-top: 16px; padding: 10px 14px; background: rgba(99, 102, 241, 0.06); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.1); display: flex; align-items: center; gap: 8px; position: relative; z-index: 1;">
+                    <div id="predict-insight-dot" style="width: 5px; height: 5px; border-radius: 50%; background: #6366f1; box-shadow: 0 0 6px #6366f1;"></div>
+                    <span id="predict-insight-text" style="color: var(--ia-panel-text); font-size: 0.8rem; font-weight: 600; line-height: 1.2;">Analizando datos...</span>
                 </div>
 
-                <!-- Growth Progress -->
-                <div style="margin-top: 24px; position: relative; z-index: 1;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--ia-muted); margin-bottom: 10px; font-weight: 700; letter-spacing: 0.5px;">
-                        <span id="label-ia-meta">META IA</span>
+                <!-- Growth Progress (Thin) -->
+                <div style="margin-top: 16px; position: relative; z-index: 1;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--ia-muted); margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">
+                        <span id="label-ia-meta">AVANCE MENSUAL</span>
                         <span id="predict-percent" style="color: var(--ia-accent); font-weight: 800;">0%</span>
                     </div>
-                    <div style="height: 10px; background: var(--ia-glass); border-radius: 99px; overflow: hidden; border: 1px solid rgba(255,255,255,0.03);">
-                        <div id="predict-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #6366f1, #a855f7, #6366f1); background-size: 200% 100%; animation: shimmer 3s infinite linear; border-radius: 99px; transition: width 2s cubic-bezier(0.34, 1.56, 0.64, 1);"></div>
+                    <div style="height: 6px; background: var(--ia-glass); border-radius: 99px; overflow: hidden; border: 1px solid rgba(255,255,255,0.03);">
+                        <div id="predict-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #6366f1, #a855f7, #6366f1); background-size: 200% 100%; animation: shimmer 3s infinite linear; border-radius: 99px; transition: width 1.5s ease-out;"></div>
                     </div>
                 </div>
             </div>
@@ -745,7 +747,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const ownerExtraDraw = Math.max(0, gastosRetiroDueno - sueldoBaseDuenoMensual);
         const ownerBalance = sueldoBaseDuenoMensual - gastosRetiroDueno;
 
-        console.log(`[Rentabilidad] G.Bruta: ${gananciaBrutaMes} | Retiros(Adelantos): ${gastosRetiroDueno} | Base Dueño: ${sueldoBaseDuenoMensual} | Prorrateo Hoy: ${gastoTotalProrrateado}`);
+        // console.log(`[Rentabilidad] G.Bruta: ${gananciaBrutaMes} | Retiros(Adelantos): ${gastosRetiroDueno} | Base Dueño: ${sueldoBaseDuenoMensual} | Prorrateo Hoy: ${gastoTotalProrrateado}`);
 
         // The *total* accumulated cost for the month so far is Prorated Fixed Costs + Variable Costs + Extra Draw (beyond base salary)
         const gastoTotal = gastoTotalProrrateado + gastosVariablesMes + ownerExtraDraw;
@@ -912,48 +914,75 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             const factorProrrateo = currentDayOfMoth / burnRateInfo.daysInMonth;
             const prorrateoItemsHtml = [
                ...(burnRateInfo.salariesDetails || []).map(s => `
-                    <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                        <span>• Sueldo: ${s.name}</span>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; opacity:0.8;">
+                        <span>• ${s.name}</span>
                         <span>-${window.Utils.formatCurrency(s.amount * factorProrrateo)}</span>
                     </div>`),
                ...(burnRateInfo.fixedExpensesDetails || []).map(e => `
-                    <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                        <span>• Gasto Fijo: ${e.title}</span>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; opacity:0.8;">
+                        <span>• ${e.title}</span>
                         <span>-${window.Utils.formatCurrency(e.amount * factorProrrateo)}</span>
                     </div>`)
             ].join('');
 
             elHealthDetail.innerHTML = `
-                <div style="margin-top:10px; background:rgba(0,0,0,0.02); border-radius:10px; padding:10px 12px; font-family: var(--font-primary, Arial, sans-serif);">
-                    ${fmtRow('Ganancia Bruta (Eleventa)', gananciaBrutaMes, '#10b981', 'ph ph-coins')}
+                <div style="margin-top:12px; background:rgba(0,0,0,0.02); border-radius:14px; padding:14px; font-family: var(--font-primary, Arial, sans-serif); border:1px solid rgba(0,0,0,0.03);">
+                    
+                    <!-- Resumen Principal -->
+                    ${fmtRow('Ganancia Bruta (Cierre Caja)', gananciaBrutaMes, '#10b981', 'ph ph-coins')}
                     
                     ${burnRateInfo.dailyBurnRate > 0 ? `
-                        ${fmtRow(`Carga Fija Prorrateada (${currentDayOfMoth} días a ${window.Utils.formatCurrency(burnRateInfo.dailyBurnRate)}/día)`, -gastoTotalProrrateado, '#ef4444', 'ph ph-chart-line-down')}
-                        <div style="padding-left: 20px; padding-right: 4px; padding-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); border-bottom:1px dashed rgba(0,0,0,0.06);">
-                            ${prorrateoItemsHtml}
-                        </div>
+                        <details style="margin: 4px 0;">
+                            <summary style="list-style:none; cursor:pointer; outline:none;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
+                                    <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                                        <i class="ph ph-chart-line-down"></i> Gastos Fijos (Prorrateo) 
+                                        <i class="ph ph-caret-down" style="font-size:0.7rem; opacity:0.5;"></i>
+                                    </span>
+                                    <span style="font-weight:700; font-size:0.9rem; color:#ef4444;">-${window.Utils.formatCurrency(gastoTotalProrrateado)}</span>
+                                </div>
+                            </summary>
+                            <div style="padding: 8px 12px; background: rgba(239,68,68,0.03); border-radius:8px; font-size:0.72rem; color:var(--text-muted); margin-bottom:8px;">
+                                <div style="font-weight:700; margin-bottom:6px; text-transform:uppercase; font-size:0.6rem; letter-spacing:0.5px; opacity:0.6;">Detalle de Prorrateo (${currentDayOfMoth} días)</div>
+                                ${prorrateoItemsHtml}
+                            </div>
+                        </details>
                     ` : ''}
 
-                    ${gastosVariablesMes > 0 ? fmtRow('Gastos Variables (No fijos)', -gastosVariablesMes, '#f59e0b', 'ph ph-receipt') : ''}
-                    ${ownerExtraDraw > 0 ? fmtRow('Reparto de Utilidades Extra Dueño', -ownerExtraDraw, '#9333ea', 'ph ph-briefcase') : ''}
+                    ${gastosVariablesMes > 0 ? fmtRow('Gastos Variables', -gastosVariablesMes, '#f59e0b', 'ph ph-receipt') : ''}
                     
+                    <!-- Cuenta Dueño (Compacta) -->
                     ${sueldoBaseDuenoMensual > 0 ? `
-                    <div style="margin: 8px 0; padding: 8px; background: rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.1); border-radius:8px;">
-                       <div style="font-size:0.8rem; font-weight:700; color:var(--primary); margin-bottom:4px;"><i class="ph ph-wallet"></i> Estado de Cuenta: Dueño</div>
-                       <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:2px;">
-                           <span style="color:var(--text-muted);">Sueldo Base Mensual:</span>
-                           <span style="font-weight:600;">${window.Utils.formatCurrency(sueldoBaseDuenoMensual)}</span>
-                       </div>
-                       <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:2px;">
-                           <span style="color:var(--text-muted);">Adelantos Retirados:</span>
-                           <span style="font-weight:600;">${window.Utils.formatCurrency(gastosRetiroDueno)}</span>
-                       </div>
-                       <div style="font-size:0.75rem; color:${balanceColor}; font-weight:600; text-align:right; margin-top:4px;">${balanceMsg}</div>
-                    </div>` : ''}
+                    <details style="margin: 4px 0;">
+                        <summary style="list-style:none; cursor:pointer; outline:none;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
+                                <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                                    <i class="ph ph-wallet"></i> Cuenta Anticipos Dueño 
+                                    <i class="ph ph-caret-down" style="font-size:0.7rem; opacity:0.5;"></i>
+                                </span>
+                                <span style="font-weight:700; font-size:0.9rem; color:${ownerExtraDraw > 0 ? '#9333ea' : 'var(--text-muted)'};">
+                                    ${ownerExtraDraw > 0 ? '-' + window.Utils.formatCurrency(ownerExtraDraw) : 'Al día'}
+                                </span>
+                            </div>
+                        </summary>
+                        <div style="padding: 10px; background: rgba(59,130,246,0.03); border-radius:10px; margin-bottom:8px; border:1px solid rgba(59,130,246,0.1);">
+                           <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
+                               <span style="color:var(--text-muted);">Sueldo Base:</span>
+                               <span style="font-weight:600;">${window.Utils.formatCurrency(sueldoBaseDuenoMensual)}</span>
+                           </div>
+                           <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
+                               <span style="color:var(--text-muted);">Anticipos tomados:</span>
+                               <span style="font-weight:600;">${window.Utils.formatCurrency(gastosRetiroDueno)}</span>
+                           </div>
+                           <div style="font-size:0.7rem; color:${balanceColor}; font-weight:700; text-align:right; margin-top:6px; border-top:1px solid rgba(0,0,0,0.03); padding-top:6px;">
+                                ${balanceMsg}
+                           </div>
+                        </div>
+                    </details>` : ''}
 
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0 2px; margin-top:4px; border-top:2px solid rgba(0,0,0,0.1);">
-                        <span style="font-size:0.85rem; font-weight:800; color:var(--text-primary);">Total Utilidad Mensual Proyectada</span>
-                        <span style="font-weight:900; font-size:1rem; color:${netColor};">${utilidadNetaMonto >= 0 ? '+' : ''}${window.Utils.formatCurrency(utilidadNetaMonto)}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0 2px; margin-top:8px; border-top:2px solid rgba(0,0,0,0.05);">
+                        <span style="font-size:0.9rem; font-weight:800; color:var(--text-primary);">UTILIDAD NETA FINAL</span>
+                        <span style="font-weight:900; font-size:1.4rem; color:${netColor}; letter-spacing:-0.5px;">${utilidadNetaMonto >= 0 ? '+' : ''}${window.Utils.formatCurrency(utilidadNetaMonto)}</span>
                     </div>
                 </div>
             `;
