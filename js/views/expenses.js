@@ -136,6 +136,7 @@ async function renderExpenses() {
     try {
         const expenses = await window.db.expenses.toArray();
         const activeExpenses = expenses.filter(e => !e.deleted);
+        const formatCurrency = window.Utils.formatCurrency;
 
         // Filter
         let filtered = activeExpenses.filter(e => {

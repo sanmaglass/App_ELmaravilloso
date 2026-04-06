@@ -359,10 +359,13 @@ window.Utils = {
 
             const tableNames = [
                 'employees', 'workLogs', 'settings', 'products', 'promotions',
-                'suppliers', 'purchase_invoices', 'sales_invoices', 'expenses', 'daily_sales'
+                'suppliers', 'purchase_invoices', 'sales_invoices', 'expenses', 
+                'daily_sales', 'electronic_invoices', 'reminders', 'eleventa_sales', 'loans'
             ];
             for (const name of tableNames) {
-                data.tables[name] = await window.db[name].toArray();
+                if (window.db[name]) {
+                    data.tables[name] = await window.db[name].toArray();
+                }
             }
 
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -641,6 +644,14 @@ window.Utils = {
         async show(title, body, url = './index.html') {
             // Verificar si la app tiene permiso
             if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+            // Construir el objeto de opciones de notificación
+            const options = {
+                body,
+                icon: './icons/icon-192.png',
+                badge: './icons/icon-192.png',
+                data: { url }
+            };
 
             // Si la aplicación está enfocada (en primer plano), opcionalmente NO mostrar notificación
             // para no duplicar con los Toasts internos. Pero para iPhone, a veces es mejor mostrarla.

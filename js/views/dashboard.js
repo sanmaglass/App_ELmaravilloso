@@ -1170,8 +1170,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const months6Costs = [];
         for (let i = 5; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const mStr = `${d.getFullYear()} - ${String(d.getMonth() + 1).padStart(2, '0')
-                } `;
+            const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             months6Labels.push(d.toLocaleDateString('es-ES', { month: 'short' }));
             months6Sales.push(dailySales.filter(s => s.date && s.date.startsWith(mStr)).reduce((s, d) => s + (parseFloat(d.total) || 0), 0));
             months6Costs.push(invoices.filter(inv => inv.date && inv.date.startsWith(mStr)).reduce((s, inv) => s + (parseFloat(inv.amount) || 0), 0));

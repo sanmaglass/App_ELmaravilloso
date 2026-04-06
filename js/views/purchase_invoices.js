@@ -1307,25 +1307,68 @@ async function showInvoiceModal(invoiceToEdit = null) {
     };
 
     document.getElementById('btn-save-invoice').onclick = async () => {
+        const form = document.querySelector('#invoice-form');
+        
+        // Remove previous highlights
+        form?.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+
         const supplierNameInput = document.getElementById('inv-supplier-input').value.trim();
 
-        // ROBUST ID RESOLUTION
-        // 1. Try exact match
-        let supplierObj = suppliers.find(s => s.name.toLowerCase() === supplierNameInput.toLowerCase());
+        // VALIDATION ERRORS LIST
+        const errors = [];
+        const amount = parseFloat(document.getElementById('inv-amount').value) || 0;
+        const paymentMethod = document.getElementById('inv-method').value;
+        const paymentStatus = document.getElementById('inv-status').value;
 
-        // 2. If no match, check if user typed something valid but didn't select
+        // 1. Valid Supplier
+        let supplierObj = suppliers.find(s => s.name.toLowerCase() === supplierNameInput.toLowerCase());
         if (!supplierObj) {
-            alert('El proveedor "' + supplierNameInput + '" no existe en la lista. Créalo con el botón (+) si es nuevo.');
+            errors.push('El proveedor "' + supplierNameInput + '" no existe. Créalo primero.');
+            document.getElementById('inv-supplier-input').classList.add('input-error');
+        }
+
+        // 2. Amount > 0
+        if (amount <= 0) {
+            errors.push('El monto total debe ser mayor a 0.');
+            document.getElementById('inv-amount').classList.add('input-error');
+        }
+
+        // 3. Status logic
+        if (paymentStatus === 'Abonado') {
+            const paid = parseFloat(document.getElementById('inv-paid-amount')?.value) || 0;
+            if (paid <= 0) {
+                errors.push('Elegiste "Abonado" pero falta el monto que se pagó hoy.');
+                document.getElementById('inv-paid-amount')?.classList.add('input-error');
+            } else if (paid >= amount) {
+                errors.push('El monto abonado no puede ser mayor o igual al total (usa estado "Pagado").');
+                document.getElementById('inv-paid-amount')?.classList.add('input-error');
+            }
+        }
+
+        // 4. Method logic (Credit)
+        if (paymentMethod === 'Crédito') {
+            const days = parseInt(document.getElementById('inv-credit-days')?.value) || 0;
+            const due = document.getElementById('inv-due-date')?.value;
+            if (days <= 0) {
+                errors.push('Para facturas a crédito, especifica los días que te dieron.');
+                document.getElementById('inv-credit-days')?.classList.add('input-error');
+            }
+            if (!due) {
+                errors.push('Falta la fecha de vencimiento del crédito.');
+                document.getElementById('inv-due-date')?.classList.add('input-error');
+            }
+        }
+
+        if (errors.length > 0) {
+            alert('⚠️ Ups! Faltan datos necesarios:\n\n- ' + errors.join('\n- '));
             return;
         }
 
+        // ROBUST ID RESOLUTION
         const supplierId = supplierObj.id;
         const invoiceNumber = document.getElementById('inv-number').value.trim();
         const date = document.getElementById('inv-date').value;
-        const amount = parseFloat(document.getElementById('inv-amount').value) || 0;
         const period = document.getElementById('inv-period').value.trim();
-        const paymentMethod = document.getElementById('inv-method').value;
-        let paymentStatus = document.getElementById('inv-status').value;
         const notes = document.getElementById('inv-notes').value.trim();
 
         // Abono Paid Amount Calculation

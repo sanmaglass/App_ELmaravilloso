@@ -51,16 +51,14 @@ window.DataManager = {
     _remindersCoreFields: ['id', 'title', 'type', 'frequency_unit', 'frequency_value',
         'next_run', 'completed', 'deleted'],
     _purchaseInvoicesCoreFields: ['id', 'supplierId', 'invoiceNumber', 'date', 'amount',
-        'paymentMethod', 'paymentStatus', 'dueDate', 'creditDays', 'paidAmount', 'deleted'],
-    _suppliersCoreFields: ['id', 'name', 'rut', 'giro', 'address', 'contact', 'deleted'],
+        'paymentMethod', 'paymentStatus', 'dueDate', 'creditDays', 'paidAmount', 'notes', 'deleted'],
+    _suppliersCoreFields: ['id', 'name', 'rut', 'giro', 'address', 'contact', 'phone', 'email', 'deleted'],
     _expensesCoreFields: ['id', 'title', 'amount', 'category', 'date', 'deleted'],
-    _employeesCoreFields: ['id', 'name', 'paymentMode', 'paymentFrequency', 'baseSalary',
+    _employeesCoreFields: ['id', 'name', 'role', 'startDate', 'paymentMode', 'paymentFrequency', 'baseSalary',
+        'workHoursPerDay', 'breakMinutes', 'defaultStartTime', 'defaultEndTime',
         'owedMinutes', 'recoveryRateMinutes', 'recoveryStartDate', 'deleted'],
     _dailySalesCoreFields: ['id', 'date', 'cash', 'transfer', 'debit', 'credit', 'total', 'notes', 'deleted'],
     _electronicInvoicesCoreFields: ['id', 'date', 'receiverName', 'receiverRut', 'total', 'status', 'folio', 'pdfUrl', 'deleted'],
-    // Confirmed columns in Supabase loans table (snake_case as stored in DB)
-    // Missing from Supabase schema: supplier_id, unit_price, borrower_name, repayment_type, repayment_date
-    // Run the migration SQL to add them. Until then, only these fields sync successfully:
     _loansCoreFields: ['id', 'item', 'quantity', 'total', 'date', 'notes', 'status', 'direction', 'type', 'deleted'],
     // Full fields list (used after running migration SQL in Supabase)
     _loansFullFields: ['id', 'supplier_id', 'borrower_name', 'item', 'quantity', 'unit_price', 'total', 'date', 'notes', 'status', 'direction', 'type', 'repayment_type', 'repayment_date', 'deleted'],
@@ -76,9 +74,12 @@ window.DataManager = {
         const remoteTable = remoteTableMap[tableName] || tableName;
 
         try {
+            // BUG FIX: ID Coercion. 
+            // If data.id is a string (from a form), parse it as a number to avoid duplicates in Dexie.
+            if (data.id) data.id = Number(data.id);
+
             // Assign ID and created_at if it's a completely new record
             if (!data.id) {
-                // Generate a random ID under 2.1 Billion to safely fit inside Postgres INT4 column (in case DB schema is INT instead of BIGINT)
                 data.id = Math.floor(Math.random() * 2000000000);
                 data.created_at = new Date().toISOString();
             }
@@ -177,7 +178,8 @@ window.DataManager = {
 
         try {
             // 1. Borrado local inmediato (Soft delete)
-            await window.db[tableName].update(id, { deleted: true });
+            const numericId = Number(id);
+            await window.db[tableName].update(numericId, { deleted: true });
 
             // 2. Intentar borrar en la nube
             if (window.Sync?.client) {

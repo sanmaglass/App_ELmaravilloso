@@ -237,15 +237,55 @@ window.Views.employees = async (container, _tab = 'equipo') => {
 
         document.getElementById('save-emp-btn').addEventListener('click', async () => {
             const form = document.getElementById('employee-form');
+            
+            // Remove previous error highlights
+            form.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+
             if (!form.reportValidity()) return;
 
             const formData = new FormData(form);
             const mode = formData.get('paymentMode');
 
+            // --- MANUAL VALIDATION ---
+            let errors = [];
+            
+            const name = formData.get('name').trim();
+            if (!name) {
+                errors.push("El nombre es obligatorio.");
+                form.querySelector('[name="name"]').classList.add('input-error');
+            }
+
+            const workHours = Number(formData.get('workHoursPerDay')) || 0;
+            if (workHours <= 0) {
+                errors.push("La jornada diaria debe ser mayor a 0 horas.");
+                form.querySelector('[name="workHoursPerDay"]').classList.add('input-error');
+            }
+
+            if (mode === 'salary') {
+                const baseSalary = Number(formData.get('baseSalary')) || 0;
+                if (baseSalary <= 0) {
+                    errors.push("Para la modalidad de Sueldo Fijo, debes indicar el Sueldo Base Mensual.");
+                    document.getElementById('inp-baseSalary').classList.add('input-error');
+                }
+            } else {
+                const hourly = Number(formData.get('hourlyRate')) || 0;
+                const daily = Number(formData.get('dailyRate')) || 0;
+                if (hourly <= 0 && daily <= 0) {
+                    errors.push("Para modalidad Manual, debes indicar al menos el Valor Hora o el Valor Día.");
+                    form.querySelector('[name="hourlyRate"]').classList.add('input-error');
+                    form.querySelector('[name="dailyRate"]').classList.add('input-error');
+                }
+            }
+
+            if (errors.length > 0) {
+                alert("⚠️ Faltan datos necesarios:\n\n- " + errors.join("\n- "));
+                return;
+            }
+
             const employeeData = {
                 name: formData.get('name'),
                 role: formData.get('role'),
-                startDate: formData.get('startDate'), // Capture from form
+                startDate: formData.get('startDate'),
                 workHoursPerDay: Number(formData.get('workHoursPerDay')) || 0,
                 breakMinutes: Number(formData.get('breakMinutes')) || 0,
                 defaultStartTime: formData.get('defaultStartTime') || '09:00',
@@ -256,19 +296,18 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                 owedMinutes: emp?.owedMinutes || 0,
                 recoveryRateMinutes: emp?.recoveryRateMinutes || 0,
 
-                // New Fields
+                // Payment fields
                 paymentMode: mode,
                 baseSalary: Number(formData.get('baseSalary')) || 0,
-                paymentFrequency: formData.get('paymentFrequency'),
+                // BUG FIX: paymentFrequency can be null when hidden; fallback to 'monthly'
+                paymentFrequency: formData.get('paymentFrequency') || 'monthly',
             };
 
             // Calculate Rates Logic
             if (mode === 'salary') {
-                // Auto-calculate rates to ensure compatibility with existing log system
                 const base = employeeData.baseSalary;
                 const freq = employeeData.paymentFrequency;
                 const hoursDay = employeeData.workHoursPerDay;
-                // Assuming 6 days work week as standard distribution (can be refined)
                 const weeklyHours = hoursDay * 6;
 
                 let cyclePay = 0;
@@ -276,40 +315,43 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                 else if (freq === 'biweekly') cyclePay = base / 2;
                 else cyclePay = base;
 
-                // Set Hourly Rate for deductions/partial calculations
-                // Formula: CyclePay / HoursInCycle
                 let hoursInCycle = 0;
                 if (freq === 'weekly') hoursInCycle = weeklyHours;
                 else if (freq === 'biweekly') hoursInCycle = weeklyHours * 2;
                 else hoursInCycle = weeklyHours * 4;
 
-                employeeData.hourlyRate = Math.round(cyclePay / hoursInCycle);
-
-                // Daily Rate (Reference for full day)
+                employeeData.hourlyRate = hoursInCycle > 0 ? Math.round(cyclePay / hoursInCycle) : 0;
                 employeeData.dailyRate = Math.round(cyclePay / (freq === 'weekly' ? 6 : (freq === 'biweekly' ? 12 : 24)));
             } else {
-                // Manual Mode
                 employeeData.hourlyRate = Number(formData.get('hourlyRate')) || 0;
                 employeeData.dailyRate = Number(formData.get('dailyRate')) || 0;
             }
 
             try {
                 if (id) {
-                    // Update: id can be string or numeric from old version
-                    await window.db.employees.update(id, employeeData);
+                    // BUG FIX: Dexie uses strict equality on primary keys.
+                    // The hidden input returns `id` as a STRING (e.g. "1746123").
+                    // If the key was stored as a Number, update(string, ...) finds 0 records → silent fail.
+                    // Solution: always coerce to Number before passing to Dexie.
+                    const numericId = Number(id);
+                    const updated = await window.db.employees.update(numericId, employeeData);
+                    if (updated === 0) {
+                        // Fallback: record not found by number, try upsert with original id
+                        await window.db.employees.put({ id: numericId, ...employeeData });
+                    }
                 } else {
-                    // New: Create unique ID to avoid collisions in cloud
                     employeeData.id = Date.now() + Math.floor(Math.random() * 1000);
                     await window.db.employees.add(employeeData);
                 }
 
-                // Sync Inmediato
+                // Sync
                 window.Sync.syncAll();
 
                 modalContainer.classList.add('hidden');
                 window.Views.employees(container);
             } catch (err) {
-                alert('Error: ' + err.message);
+                alert('Error al guardar: ' + err.message);
+                console.error('Save employee error:', err);
             }
         });
 
@@ -353,7 +395,12 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                     const businessDates = window.Utils.getBusinessDates(startStr, todayStr);
 
                     // 2. Check existing logs to avoid duplicates
-                    const existingLogs = await window.db.workLogs.where('employeeId').equals(Number(id)).toArray();
+                    // BUG FIX: Number(id) when id is empty string gives 0, matching unintended records.
+                    // Guard: only query if we have a real numeric id.
+                    const numericEmpId = Number(id);
+                    const existingLogs = numericEmpId > 0
+                        ? await window.db.workLogs.where('employeeId').equals(numericEmpId).toArray()
+                        : [];
                     const existingDates = new Set(existingLogs.map(l => l.date));
 
                     // 3. Filter missing dates
@@ -375,7 +422,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                     if (confirm(`Se generarán ${missingDates.length} registros (días hábiles faltantes).\nTotal a Pagar Estimado: ${window.Utils.formatCurrency(totalDebt)}\n\n¿Proceder?`)) {
                         const newLogs = missingDates.map((date, idx) => ({
                             id: Date.now() + idx,
-                            employeeId: Number(id),
+                            employeeId: numericEmpId,
                             date: date,
                             startTime: emp.defaultStartTime || '09:00', // Default start
                             endTime: emp.defaultEndTime || '18:00',   // Default end
