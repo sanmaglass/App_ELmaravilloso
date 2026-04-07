@@ -54,13 +54,14 @@ window.Views.employees = async (container, _tab = 'equipo') => {
             <div class="card card-hover" style="position:relative;">
                 <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px;">
                     <div style="display:flex; align-items:center; gap:16px;">
-                        <div class="avatar" style="width:56px; height:56px; font-size:1.4rem; background:linear-gradient(135deg, var(--primary), #880000); box-shadow:0 4px 10px rgba(136,0,0,0.3);">
+                        <div class="avatar" style="width:56px; height:56px; font-size:1.4rem; background:${emp.isOwner ? 'linear-gradient(135deg, #d97706, #f59e0b)' : 'linear-gradient(135deg, var(--primary), #880000)'}; box-shadow:0 4px 10px ${emp.isOwner ? 'rgba(245,158,11,0.3)' : 'rgba(136,0,0,0.3)'}; position:relative;">
                             ${emp.avatar || emp.name.substring(0, 2).toUpperCase()}
+                            ${emp.isOwner ? '<span style="position:absolute; top:-6px; right:-6px; background:#f59e0b; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:0.55rem; border:2px solid white;">👑</span>' : ''}
                         </div>
                         <div>
                             <div style="font-weight:700; font-size:1.15rem; color:var(--text-primary);">${emp.name}</div>
                             <div style="color:var(--text-secondary); font-size:0.9rem; display:flex; align-items:center; gap:6px;">
-                                <i class="ph ph-briefcase"></i> ${emp.role || 'Sin Cargo'}
+                                <i class="ph ph-briefcase"></i> ${emp.isOwner ? '👑 Dueño' : (emp.role || 'Sin Cargo')}
                             </div>
                         </div>
                     </div>
@@ -141,6 +142,28 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                         <div class="form-group">
                             <label class="form-label">Cargo / Rol</label>
                             <input type="text" name="role" class="form-input" placeholder="Ej. Vendedor, Bodeguero" value="${emp?.role || ''}">
+                        </div>
+
+                        <!-- Tipo de Empleado -->
+                        <div class="form-group" style="background:rgba(99,102,241,0.05); padding:14px 16px; border-radius:12px; border:1px solid rgba(99,102,241,0.2);">
+                            <label class="form-label" style="color:#4f46e5; font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                                <i class="ph ph-identification-badge"></i> Tipo de Empleado
+                            </label>
+                            <div style="display:flex; gap:8px;">
+                                <label style="flex:1; cursor:pointer;">
+                                    <input type="radio" name="employeeType" value="worker" ${!emp?.isOwner ? 'checked' : ''} style="display:none;" onchange="window.updateTypeSelection(this)">
+                                    <div id="type-worker-btn" style="text-align:center; padding:10px; border-radius:10px; border:2px solid ${!emp?.isOwner ? '#4f46e5' : 'var(--border)'}; background:${!emp?.isOwner ? 'rgba(99,102,241,0.1)' : 'transparent'}; font-weight:600; font-size:0.85rem; color:${!emp?.isOwner ? '#4f46e5' : 'var(--text-muted)'}; transition:all 0.2s;">
+                                        <i class="ph ph-user"></i> Trabajador
+                                    </div>
+                                </label>
+                                <label style="flex:1; cursor:pointer;">
+                                    <input type="radio" name="employeeType" value="owner" ${emp?.isOwner ? 'checked' : ''} style="display:none;" onchange="window.updateTypeSelection(this)">
+                                    <div id="type-owner-btn" style="text-align:center; padding:10px; border-radius:10px; border:2px solid ${emp?.isOwner ? '#f59e0b' : 'var(--border)'}; background:${emp?.isOwner ? 'rgba(245,158,11,0.1)' : 'transparent'}; font-weight:600; font-size:0.85rem; color:${emp?.isOwner ? '#d97706' : 'var(--text-muted)'}; transition:all 0.2s;">
+                                        <i class="ph ph-crown"></i> Dueño
+                                    </div>
+                                </label>
+                            </div>
+                            <p style="font-size:0.72rem; color:var(--text-muted); margin-top:6px;">El Dueño tiene su propia cuenta de anticipos en el Dashboard.</p>
                         </div>
 
                         <div class="form-group" style="background:rgba(220,38,38,0.05); padding:16px; border-radius:12px; border:1px solid var(--primary);">
@@ -285,6 +308,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
             const employeeData = {
                 name: formData.get('name'),
                 role: formData.get('role'),
+                isOwner: formData.get('employeeType') === 'owner',
                 startDate: formData.get('startDate'),
                 workHoursPerDay: Number(formData.get('workHoursPerDay')) || 0,
                 breakMinutes: Number(formData.get('breakMinutes')) || 0,
@@ -454,6 +478,21 @@ window.Views.employees = async (container, _tab = 'equipo') => {
             document.getElementById('manual-fields').style.display = mode === 'manual' ? 'grid' : 'none';
             document.getElementById('salary-fields').style.display = mode === 'salary' ? 'block' : 'none';
             if (mode === 'salary') window.calculateSalaryPreview();
+        };
+
+        window.updateTypeSelection = (radio) => {
+            const isOwner = radio.value === 'owner';
+            const workerBtn = document.getElementById('type-worker-btn');
+            const ownerBtn = document.getElementById('type-owner-btn');
+            if (!workerBtn || !ownerBtn) return;
+            // Worker button
+            workerBtn.style.border = `2px solid ${!isOwner ? '#4f46e5' : 'var(--border)'}`;
+            workerBtn.style.background = !isOwner ? 'rgba(99,102,241,0.1)' : 'transparent';
+            workerBtn.style.color = !isOwner ? '#4f46e5' : 'var(--text-muted)';
+            // Owner button
+            ownerBtn.style.border = `2px solid ${isOwner ? '#f59e0b' : 'var(--border)'}`;
+            ownerBtn.style.background = isOwner ? 'rgba(245,158,11,0.1)' : 'transparent';
+            ownerBtn.style.color = isOwner ? '#d97706' : 'var(--text-muted)';
         };
 
         window.calculateSalaryPreview = () => {

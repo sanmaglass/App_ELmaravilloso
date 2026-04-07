@@ -738,7 +738,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 
         // 5. CUENTA CORRIENTE DEL DUEÑO (Reparto vs Sueldo)
-        const ownerEmployees = employees.filter(e => e.name && e.name.toLowerCase().includes('due\u00f1o'));
+        const ownerEmployees = employees.filter(e => e.isOwner || (e.name && e.name.toLowerCase().includes('due\u00f1o')));
         const ownerPaymentsInfo = await window.Utils.calculateMonthlyPayments(ownerEmployees, logs, now);
         const sueldoBaseDuenoMensual = ownerPaymentsInfo.totalProjected || 0;
         
