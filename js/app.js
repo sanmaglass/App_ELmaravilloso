@@ -24,7 +24,8 @@ const views = {
     reminders: () => window.Views.reminders(document.getElementById('view-container')),
     reports: () => window.Views.reports(document.getElementById('view-container')),
     settings: () => window.Views.settings(document.getElementById('view-container')),
-    loans: () => window.Views.loans(document.getElementById('view-container'))
+    loans: () => window.Views.loans(document.getElementById('view-container')),
+    profit_monitor: () => window.Views.profit_monitor(document.getElementById('view-container'))
 };
 
 // Initialize App
@@ -196,7 +197,7 @@ async function init() {
         // se auto-refrescan. Este listener solo cubre el dashboard y vistas sin handler.
         const VIEWS_WITH_OWN_SYNC = new Set([
             'purchase_invoices', 'expenses', 'daily_sales', 'employees',
-            'sales_invoices', 'reminders', 'suppliers', 'marketing'
+            'sales_invoices', 'reminders', 'suppliers', 'marketing', 'profit_monitor'
         ]);
         let _globalSyncDebounce = null;
         window.addEventListener('sync-data-updated', () => {

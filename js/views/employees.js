@@ -358,6 +358,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                     // If the key was stored as a Number, update(string, ...) finds 0 records → silent fail.
                     // Solution: always coerce to Number before passing to Dexie.
                     const numericId = Number(id);
+                    employeeData.updatedAt = new Date().toISOString();
                     const updated = await window.db.employees.update(numericId, employeeData);
                     if (updated === 0) {
                         // Fallback: record not found by number, try upsert with original id
@@ -365,6 +366,8 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                     }
                 } else {
                     employeeData.id = Date.now() + Math.floor(Math.random() * 1000);
+                    employeeData.createdAt = new Date().toISOString();
+                    employeeData.updatedAt = employeeData.createdAt;
                     await window.db.employees.add(employeeData);
                 }
 

@@ -223,6 +223,12 @@ window.Sync = {
                                 if (!('defaultEndTime' in item)) merged.defaultEndTime = localReq.defaultEndTime;
                                 if (!('workHoursPerDay' in item)) merged.workHoursPerDay = localReq.workHoursPerDay;
                                 if (!('breakMinutes' in item)) merged.breakMinutes = localReq.breakMinutes;
+                                if (!('isOwner' in item)) merged.isOwner = localReq.isOwner;
+                                if (!('paymentMode' in item)) merged.paymentMode = localReq.paymentMode;
+                                if (!('baseSalary' in item)) merged.baseSalary = localReq.baseSalary;
+                                if (!('paymentFrequency' in item)) merged.paymentFrequency = localReq.paymentFrequency;
+                                if (!('hourlyRate' in item)) merged.hourlyRate = localReq.hourlyRate;
+                                if (!('dailyRate' in item)) merged.dailyRate = localReq.dailyRate;
                             }
 
                             return merged;

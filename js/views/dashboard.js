@@ -952,7 +952,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     ${gastosVariablesMes > 0 ? fmtRow('Gastos Variables', -gastosVariablesMes, '#f59e0b', 'ph ph-receipt') : ''}
                     
                     <!-- Cuenta Dueño (Compacta) -->
-                    ${sueldoBaseDuenoMensual > 0 ? `
+                    ${ownerEmployees.length > 0 ? `
                     <details style="margin: 4px 0;">
                         <summary style="list-style:none; cursor:pointer; outline:none;">
                             <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
@@ -966,6 +966,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                             </div>
                         </summary>
                         <div style="padding: 10px; background: rgba(59,130,246,0.03); border-radius:10px; margin-bottom:8px; border:1px solid rgba(59,130,246,0.1);">
+                           ${sueldoBaseDuenoMensual > 0 ? `
                            <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
                                <span style="color:var(--text-muted);">Sueldo Base:</span>
                                <span style="font-weight:600;">${window.Utils.formatCurrency(sueldoBaseDuenoMensual)}</span>
@@ -977,6 +978,15 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                            <div style="font-size:0.7rem; color:${balanceColor}; font-weight:700; text-align:right; margin-top:6px; border-top:1px solid rgba(0,0,0,0.03); padding-top:6px;">
                                 ${balanceMsg}
                            </div>
+                           ` : `
+                           <div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">
+                               No tienes un "Sueldo Fijo" configurado en Personal. Todo retiro será considerado Utilidad Extra.
+                           </div>
+                           <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-top:6px;">
+                               <span style="color:var(--text-muted);">Retiros Acumulados:</span>
+                               <span style="font-weight:600; color:#dc2626;">-${window.Utils.formatCurrency(gastosRetiroDueno)}</span>
+                           </div>
+                           `}
                         </div>
                     </details>` : ''}
 
