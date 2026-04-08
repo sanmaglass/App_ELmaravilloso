@@ -10,6 +10,9 @@ window.Views.profit_monitor = async (container) => {
                 </h1>
                 <p style="color:var(--text-muted);">Monitoreo de rentabilidad por producto en el inventario</p>
             </div>
+            <button class="btn btn-secondary" id="profit-resync-btn">
+                <i class="ph ph-arrows-clockwise"></i> Sincronizar Datos
+            </button>
         </div>
 
         <!-- Filters -->
@@ -56,31 +59,71 @@ window.Views.profit_monitor = async (container) => {
                     </tr>
                 </thead>
                 <tbody id="profit-list-body">
-                    <tr><td colspan="6" style="padding: 20px; text-align: center;"><div class="spinner"></div> Cargando...</td></tr>
+                    <tr><td colspan="6" style="padding: 20px; text-align: center;"><div class="spinner"></div> Analizando base de datos...</td></tr>
                 </tbody>
             </table>
+        </div>
+        <div id="profit-empty-hint" style="display:none; margin-top:20px; padding:20px; background:rgba(59,130,246,0.05); border-radius:12px; border:1px dashed #3b82f6; text-align:center;">
+             <p style="color:var(--text-muted); font-size:0.9rem;">
+                <i class="ph ph-info" style="color:#3b82f6;"></i> No se encontraron productos en el catálogo manual. 
+                Se están mostrando datos extraídos de tus ventas recientes de Eleventa.
+             </p>
         </div>
     `;
 
     const renderProfits = async () => {
         const tbody = document.getElementById('profit-list-body');
+        const emptyHint = document.getElementById('profit-empty-hint');
         if (!tbody) return;
 
         const search = document.getElementById('profit-search')?.value.toLowerCase() || '';
         const statusFilter = document.getElementById('profit-filter-status')?.value || 'all';
 
         try {
+            // Priority 1: Manual Products Table
             const products = await window.db.products.toArray();
-            const activeProducts = products.filter(p => !p.deleted);
+            let activeProducts = products.filter(p => !p.deleted);
+            let isUsingSalesData = false;
+
+            // Priority 2: Fallback to Sales Data if Products table is empty
+            if (activeProducts.length === 0) {
+                const sales = await window.db.eleventa_sales.toArray();
+                const productMap = new Map();
+                
+                sales.forEach(sale => {
+                    if (sale.items && Array.isArray(sale.items)) {
+                        sale.items.forEach(item => {
+                            if (!item.name) return;
+                            const existing = productMap.get(item.name);
+                            // We use the most recent sale price/profit as proxy for catalog
+                            if (!existing) {
+                                productMap.set(item.name, {
+                                    name: item.name,
+                                    category: 'Ventas Eleventa',
+                                    costUnit: (parseFloat(item.price) || 0) - (parseFloat(item.profit) || 0),
+                                    salePrice: parseFloat(item.price) || 0,
+                                    margin: item.profit && item.price ? (item.profit / item.price) * 100 : 0
+                                });
+                            }
+                        });
+                    }
+                });
+                activeProducts = Array.from(productMap.values());
+                isUsingSalesData = activeProducts.length > 0;
+            }
+
+            if (emptyHint) emptyHint.style.display = isUsingSalesData ? 'block' : 'none';
 
             let analyzedCount = 0;
             let totalMarginSum = 0;
             let dangerCount = 0;
             
-            // Generate parsed list
+            // Generate parsed list with field fallbacks
             const profitList = activeProducts.map(p => {
-                const cost = parseFloat(p.costUnit) || 0;
-                const price = parseFloat(p.salePrice) || 0;
+                // Support multiple property names
+                const price = parseFloat(p.salePrice || p.precio || p.price || 0);
+                const cost = parseFloat(p.costUnit || p.costo || p.buyPrice || 0);
+                
                 const profit = price - cost;
                 const marginPct = price > 0 ? (profit / price) * 100 : 0;
                 
@@ -101,9 +144,13 @@ window.Views.profit_monitor = async (container) => {
             });
 
             // Update KPI cards
-            document.getElementById('profit-total-products').textContent = analyzedCount;
-            document.getElementById('profit-avg-margin').textContent = analyzedCount > 0 ? (totalMarginSum / analyzedCount).toFixed(1) + '%' : '0%';
-            document.getElementById('profit-danger-count').textContent = dangerCount;
+            const elTotal = document.getElementById('profit-total-products');
+            const elAvg = document.getElementById('profit-avg-margin');
+            const elDanger = document.getElementById('profit-danger-count');
+            
+            if (elTotal) elTotal.textContent = analyzedCount;
+            if (elAvg) elAvg.textContent = analyzedCount > 0 ? (totalMarginSum / analyzedCount).toFixed(1) + '%' : '0%';
+            if (elDanger) elDanger.textContent = dangerCount;
 
             // Apply filters
             let filteredList = profitList.filter(p => {
@@ -117,11 +164,15 @@ window.Views.profit_monitor = async (container) => {
                 return matchSearch && matchStatus;
             });
 
-            // Sort: default to showing lowest margin first (to spot errors)
+            // Sort: lowest margin first
             filteredList.sort((a, b) => a.marginPct - b.marginPct);
 
             if (filteredList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="padding: 30px; text-align: center; color: var(--text-muted);">No se encontraron productos que coincidan.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="padding: 30px; text-align: center; color: var(--text-muted);">
+                    <i class="ph ph-warning-circle" style="font-size:2rem; display:block; margin:0 auto 10px; opacity:0.5;"></i>
+                    No se encontraron productos en la base de datos.<br>
+                    <small>Asegúrate de que tus productos estén sincronizados.</small>
+                </td></tr>`;
                 return;
             }
 
@@ -129,32 +180,24 @@ window.Views.profit_monitor = async (container) => {
 
             tbody.innerHTML = filteredList.map(p => {
                 let badgeClass = '';
-                let icon = '';
                 let color = '';
                 
                 if (p.marginPct <= 5) {
-                    badgeClass = 'status-overdue'; 
-                    icon = '<i class="ph ph-warning-octagon"></i>';
-                    color = '#ef4444';
+                    badgeClass = 'status-overdue'; color = '#ef4444';
                 } else if (p.marginPct <= 15) {
-                    badgeClass = 'status-pending'; // default orange/acceptable in style.css or a neutral color
-                    icon = '<i class="ph ph-check-circle"></i>';
-                    color = '#f59e0b';
+                    badgeClass = 'status-pending'; color = '#f59e0b';
                 } else {
-                    // Excellent margin > 15
-                    badgeClass = 'status-paid';
-                    icon = '<i class="ph ph-star"></i>';
-                    color = '#10b981';
+                    badgeClass = 'status-paid'; color = '#10b981';
                 }
 
-                // If profit is negative, extra warning
                 const rowStyle = p.profit < 0 ? 'background: rgba(239, 68, 68, 0.05);' : '';
 
                 return `
                     <tr style="border-bottom: 1px solid var(--border); ${rowStyle}">
-                        <td style="padding: 12px 16px;">
-                            <div style="font-weight: 600; color: var(--text-primary);">${p.name || 'Sin nombre'}</div>
-                            ${p.profit < 0 ? '<div style="font-size:0.75rem; color:#ef4444; font-weight:700;">Margen en pérdida</div>' : ''}
+                        <td style="padding: 12px 16px; max-width:250px;">
+                            <div style="font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${p.name}">
+                                ${p.name || 'Sin nombre'}
+                            </div>
                         </td>
                         <td style="padding: 12px 16px; color: var(--text-muted); font-size: 0.9rem;">
                             ${p.category || '—'}
@@ -169,8 +212,8 @@ window.Views.profit_monitor = async (container) => {
                             ${formatCurrency(p.profit)}
                         </td>
                         <td style="padding: 12px 16px;">
-                            <span class="status-badge ${badgeClass}" style="border: 1px solid ${color}40; color: ${color};">
-                                ${icon} ${p.marginPct.toFixed(1)}%
+                            <span class="status-badge ${badgeClass}" style="border: 1px solid ${color}40; color: ${color}; min-width:65px; justify-content:center;">
+                                ${p.marginPct.toFixed(1)}%
                             </span>
                         </td>
                     </tr>
@@ -186,8 +229,17 @@ window.Views.profit_monitor = async (container) => {
     renderProfits();
 
     // Event Listeners
-    document.getElementById('profit-search').addEventListener('input', renderProfits);
-    document.getElementById('profit-filter-status').addEventListener('change', renderProfits);
+    document.getElementById('profit-search')?.addEventListener('input', renderProfits);
+    document.getElementById('profit-filter-status')?.addEventListener('change', renderProfits);
+    document.getElementById('profit-resync-btn')?.addEventListener('click', async () => {
+        const btn = document.getElementById('profit-resync-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-arrows-clockwise ph-spin"></i> Sincronizando...';
+        await window.Sync.syncAll();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ph ph-arrows-clockwise"></i> Sincronizar Datos';
+        renderProfits();
+    });
 
     // Sync handler
     const syncHandler = () => {
