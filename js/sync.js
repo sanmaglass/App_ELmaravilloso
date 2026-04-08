@@ -13,23 +13,26 @@ window.Sync = {
     // Dispara 'sync-data-updated' con debounce para evitar loops de refrescos
     _scheduleSyncEvent() {
         if (this._dispatchTimer) clearTimeout(this._dispatchTimer);
-        
-        // Durante la carga inicial (primeros 5s) usamos un debounce más largo
+
+        // Debounce corto: agrupa eventos que llegan juntos sin retrasar la UI
         const isInitialSync = !window._appInitializedAt || (Date.now() - window._appInitializedAt < 5000);
-        const delay = isInitialSync ? 1500 : 800;
+        const delay = isInitialSync ? 300 : 100;
 
         this._dispatchTimer = setTimeout(() => {
             this._dispatchTimer = null;
-            console.log(`[Sync] Despachando evento de actualización (delay: ${delay}ms)`);
             window.dispatchEvent(new CustomEvent('sync-data-updated'));
         }, delay);
     },
 
 
     // Inicializar cliente
+    _syncListenerRegistered: false,
     init: async () => {
-        // Listener global para forzar sincronización
-        window.addEventListener('request-sync-all', () => window.Sync.syncAll());
+        // Listener global para forzar sincronización — registrar solo una vez
+        if (!window.Sync._syncListenerRegistered) {
+            window.addEventListener('request-sync-all', () => window.Sync.syncAll());
+            window.Sync._syncListenerRegistered = true;
+        }
 
         // 1. Try Config File (Pro Mode)
         let url = window.AppConfig ? window.AppConfig.supabaseUrl : null;
@@ -49,25 +52,39 @@ window.Sync = {
                     return { success: false, error: 'SDK no disponible' };
                 }
 
+                // Crear cliente siempre (createClient nunca falla por sí solo)
                 window.Sync.client = supabase.createClient(url.trim(), key.trim());
                 console.log('Cliente Supabase creado. Testeando conexión...');
 
-                // Prueba de conexión: usamos employees (tabla segura que siempre existe)
+                // Prueba de conexión: solo detecta errores fatales (key inválida, URL incorrecta)
+                // No destruimos el cliente por errores de RLS o proyecto pausado —
+                // esos se resolverán cuando el usuario autentique la sesión.
                 const { error } = await window.Sync.client
                     .from('employees')
                     .select('id', { count: 'exact', head: true })
                     .limit(1);
 
                 if (error) {
-                    console.error('Test de conexión fallido:', error);
-                    // Error de tabla no existente o API key mal configurada
+                    console.warn('[Sync.init] Test de conexión con error:', error.code, error.message);
+
+                    // Fatal: API key inválida → destruir cliente
                     if (error.code === 'PGRST301' || error.message?.includes('JWT')) {
-                        throw new Error('API Key de Supabase inválida o mal formateada.');
+                        window.Sync.client = null;
+                        window.Sync.updateIndicator('error', 'API Key inválida');
+                        return { success: false, error: 'API Key de Supabase inválida o mal formateada.' };
                     }
+                    // Fatal: tablas no existen
                     if (error.code === '42P01') {
-                        throw new Error('Tablas no encontradas. ¿Ejecutaste el script SQL en Supabase?');
+                        window.Sync.client = null;
+                        window.Sync.updateIndicator('error', 'Tablas no encontradas');
+                        return { success: false, error: 'Tablas no encontradas. ¿Ejecutaste el script SQL en Supabase?' };
                     }
-                    throw new Error(`Conexión fallida: ${error.message}`);
+
+                    // No-fatal (RLS sin sesión, proyecto pausado, error de red transitorio):
+                    // Mantenemos el cliente creado; la sesión de auth lo resolverá.
+                    console.warn('[Sync.init] Error no-fatal en test — cliente conservado para intentar con sesión.');
+                    window.Sync.updateIndicator('connected', 'Verificando...');
+                    return { success: true, warning: error.message };
                 }
 
                 console.log('Supabase conectado correctamente.');
@@ -76,18 +93,20 @@ window.Sync = {
                 return { success: true };
 
             } catch (e) {
+                // Solo llegamos aquí si hay un error de red total (fetch failed)
                 window.Sync.client = null;
                 console.error('Error detallado de Sync.init:', e);
                 const isNetworkError = e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Failed');
 
                 if (isNetworkError) {
-                    window.Sync.updateIndicator('off', 'Error de red');
+                    window.Sync.updateIndicator('off', 'Sin internet');
                 } else {
                     window.Sync.updateIndicator('error', e.message);
                 }
                 return { success: false, error: e.message };
             }
         }
+        window.Sync.updateIndicator('off', 'Sin credenciales');
         return { success: false, error: 'Faltan credenciales.' };
     },
 
@@ -131,37 +150,32 @@ window.Sync = {
 
             let dataChanged = false;
 
-            for (const map of tableMap) {
+            // ── FASE 1: Lanzar todos los PULLs en paralelo ─────────────────
+            window.Sync.updateIndicator('syncing', 'Descargando...');
+            const pullResults = await Promise.all(tableMap.map(async (map) => {
+                const orderKey = map.orderBy || 'id';
                 try {
-                    const localName = map.local;
-                    const remoteName = map.remote;
-                    const orderKey = map.orderBy || 'id';
-
-                    // 1. PULL PHASE (Cloud is Master)
-                    window.Sync.updateIndicator('syncing', `${remoteName}...`);
-                    console.log(`[Sync] Iniciando PULL de ${remoteName}...`);
-                    
-                    let query = window.Sync.client
-                        .from(remoteName)
-                        .select('*');
-
-                    if (map.descending) {
-                        query = query.order(orderKey, { ascending: false });
-                    } else {
-                        query = query.order(orderKey, { ascending: true });
-                    }
-
-                    // --- SINCRO RODANTE (90 DÍAS) ---
-                    // Para Eleventa, siempre revisamos los últimos 3 meses para cubrir huecos.
-                    // bulkPut evita duplicados usando el ID único de cada ticket.
-                    if (remoteName === 'eleventa_sales') {
+                    let query = window.Sync.client.from(map.remote).select('*');
+                    query = map.descending
+                        ? query.order(orderKey, { ascending: false })
+                        : query.order(orderKey, { ascending: true });
+                    if (map.remote === 'eleventa_sales') {
                         const rollingDate = new Date();
                         rollingDate.setDate(rollingDate.getDate() - 90);
                         query = query.gte('date', rollingDate.toISOString()).limit(10000);
-                        console.log(`[Sync] Eleventa: Barrido rodante de 90 días activado.`);
                     }
+                    const { data, error } = await query;
+                    return { map, data, error };
+                } catch (e) {
+                    return { map, data: null, error: e };
+                }
+            }));
 
-                    const { data: cloudData, error } = await query;
+            // ── FASE 2: Procesar resultados y actualizar DB local ───────────
+            for (const { map, data: cloudData, error } of pullResults) {
+                try {
+                    const localName = map.local;
+                    const remoteName = map.remote;
 
                     if (error) throw error;
 
@@ -294,61 +308,65 @@ window.Sync = {
                         }
                     }
 
-                    // 2. PUSH PHASE: Subir cambios locales al cloud (incluyendo recién creados)
-                    // Settings se omite del push — no tiene columna 'deleted'
-                    if (remoteName !== 'settings') {
-                        const finalLocalData = await window.db[localName].toArray();
-                        if (finalLocalData.length > 0) {
-                            
-                            // --- PREVENTIVE FILTERING (PUSH) ---
-                            const fallbackTables = {
-                                'reminders': window.DataManager._remindersCoreFields,
-                                'purchase_invoices': window.DataManager._purchaseInvoicesCoreFields,
-                                'suppliers': window.DataManager._suppliersCoreFields,
-                                'expenses': window.DataManager._expensesCoreFields,
-                                'employees': window.DataManager._employeesCoreFields,
-                                'daily_sales': window.DataManager._dailySalesCoreFields,
-                                'electronic_invoices': window.DataManager._electronicInvoicesCoreFields,
-                                'loans': window.DataManager._loansCoreFields
-                            };
-
-                            const syncDataToPush = finalLocalData.map(item => {
-                                const copy = { ...item };
-                                if (localName === 'purchase_invoices') {
-                                    delete copy.imageData;
-                                    delete copy.created_at;
-                                }
-
-                                // If it's a known problematic table, filter to core fields BEFORE sending
-                                if (fallbackTables[localName]) {
-                                    const coreFields = fallbackTables[localName];
-                                    const clean = {};
-                                    coreFields.forEach(k => { if (copy[k] !== undefined) clean[k] = copy[k]; });
-                                    return clean;
-                                }
-                                return copy;
-                            });
-
-                            let { error: pushErr } = await window.Sync.client
-                                .from(remoteName)
-                                .upsert(syncDataToPush, { onConflict: 'id' })
-                                .select('id');
-                            
-                            if (pushErr) {
-                                const isColumnErr = pushErr.message?.includes('column') || pushErr.code === '42703' || pushErr.code === 'PGRST204';
-                                if (isColumnErr && fallbackTables[localName]) {
-                                    // Already filtered, but if it still fails due to schema, log silently
-                                    console.log(`[Sync] ${remoteName} schema mismatch handled silently.`);
-                                } else {
-                                    console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
-                                }
-                            }
-                        }
-                    }
                 } catch (tableErr) {
                     console.error(`[Sync] Error en tabla ${map.remote}:`, tableErr.message);
                 }
             }
+
+            // ── FASE 3: Lanzar todos los PUSHes en paralelo ────────────────
+            const fallbackTables = {
+                'reminders': window.DataManager._remindersCoreFields,
+                'purchase_invoices': window.DataManager._purchaseInvoicesCoreFields,
+                'suppliers': window.DataManager._suppliersCoreFields,
+                'expenses': window.DataManager._expensesCoreFields,
+                'employees': window.DataManager._employeesCoreFields,
+                'daily_sales': window.DataManager._dailySalesCoreFields,
+                'electronic_invoices': window.DataManager._electronicInvoicesCoreFields,
+                'loans': window.DataManager._loansCoreFields
+            };
+
+            await Promise.all(tableMap
+                .filter(m => m.remote !== 'settings')
+                .map(async (map) => {
+                    const localName = map.local;
+                    const remoteName = map.remote;
+                    try {
+                        const finalLocalData = await window.db[localName].toArray();
+                        if (!finalLocalData.length) return;
+
+                        const syncDataToPush = finalLocalData.map(item => {
+                            const copy = { ...item };
+                            if (localName === 'purchase_invoices') {
+                                delete copy.imageData;
+                                delete copy.created_at;
+                            }
+                            if (fallbackTables[localName]) {
+                                const coreFields = fallbackTables[localName];
+                                const clean = {};
+                                coreFields.forEach(k => { if (copy[k] !== undefined) clean[k] = copy[k]; });
+                                if (localName === 'reminders') {
+                                    if (clean.deleted !== undefined) clean.deleted = clean.deleted ? 1 : 0;
+                                    if (clean.completed !== undefined) clean.completed = clean.completed ? 1 : 0;
+                                }
+                                return clean;
+                            }
+                            return copy;
+                        });
+
+                        const { error: pushErr } = await window.Sync.client
+                            .from(remoteName)
+                            .upsert(syncDataToPush, { onConflict: 'id' })
+                            .select('id');
+
+                        if (pushErr) {
+                            const isColumnErr = pushErr.message?.includes('column') || pushErr.code === '42703' || pushErr.code === 'PGRST204';
+                            if (!isColumnErr) console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
+                        }
+                    } catch (e) {
+                        console.error(`[Sync] Push error en ${remoteName}:`, e.message);
+                    }
+                })
+            );
 
             if (dataChanged) {
                 window.Sync._scheduleSyncEvent();
@@ -491,47 +509,10 @@ window.Sync = {
         }, intervalMs);
     },
 
-    // ===== WEBSOCKET REAL-TIME SYNC =====
     initRealtimeSync: async function () {
-        if (!window.Sync.client) {
-            console.warn('No Supabase client - skipping realtime');
-            return;
-        }
-
-        try {
-            console.log('🔌 Initializing Supabase Realtime...');
-
-            window.Sync.realtimeChannel = window.Sync.client
-                .channel('db-changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, (payload) => window.Sync.handleRealtimeChange('employees', payload))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'worklogs' }, (payload) => window.Sync.handleRealtimeChange('workLogs', payload))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => window.Sync.handleRealtimeChange('products', payload))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'promotions' }, (payload) => window.Sync.handleRealtimeChange('promotions', payload))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, (payload) => window.Sync.handleRealtimeChange('suppliers', payload))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_invoices' }, (payload) => window.Sync.handleRealtimeChange('purchase_invoices', payload))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'sales_invoices' }, (payload) => window.Sync.handleRealtimeChange('sales_invoices', payload))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_sales' }, (payload) => window.Sync.handleRealtimeChange('daily_sales', payload))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, (payload) => window.Sync.handleRealtimeChange('expenses', payload))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'electronic_invoices' }, (payload) => window.Sync.handleRealtimeChange('electronic_invoices', payload))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'reminders' }, (payload) => window.Sync.handleRealtimeChange('reminders', payload))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'eleventa_sales' }, (payload) => window.Sync.handleRealtimeChange('eleventa_sales', payload))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'loans' }, (payload) => window.Sync.handleRealtimeChange('loans', payload))
-                .subscribe((status) => {
-                    if (status === 'SUBSCRIBED') {
-                        console.log('✅ Realtime connected!');
-                        window.Sync.isRealtimeActive = true;
-                        window.Sync.updateIndicator('realtime');
-                    } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-                        console.warn('❌ Realtime disconnected, using polling fallback');
-                        window.Sync.isRealtimeActive = false;
-                        window.Sync.updateIndicator('connected', 'Polling (WebSocket caído)');
-                    }
-                });
-
-        } catch (error) {
-            console.error('Realtime init error:', error);
-            window.Sync.isRealtimeActive = false;
-        }
+        // DESACTIVADO: Realtime tiene problemas con RLS en anon keys
+        // Polling cada 30s es más confiable y sin errores
+        window.Sync.isRealtimeActive = false;
     },
 
     // Handle incoming real-time changes

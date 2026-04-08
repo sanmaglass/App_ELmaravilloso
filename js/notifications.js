@@ -91,11 +91,32 @@ window.AppNotify = {
         }
     },
 
+    // ── Approaching warning (15 min before) ─────────────────
+    async fireApproaching(reminder, minsLeft) {
+        const now = Date.now();
+        const debounceKey = `soon_${reminder.id}`;
+        if (this._lastFired[debounceKey] && (now - this._lastFired[debounceKey]) < 10 * 60 * 1000) return;
+        this._lastFired[debounceKey] = now;
+
+        this.playChime('alert');
+        if (document.visibilityState !== 'visible') {
+            this.showNotification(
+                `⏰ En ${minsLeft} min: ${reminder.title}`,
+                'Se acerca tu alerta — El Maravilloso',
+                `soon_${reminder.id}`
+            );
+        }
+        window.Sync?.showToast(`⏰ En ${minsLeft} min: ${reminder.title}`, 'info');
+    },
+
     // ── App Badge (home screen counter) ──────────────────────
     async updateBadge() {
         try {
+            const now = new Date();
+            const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+            // Badge only counts overdue + due today (not future tasks)
             const pending = await window.db.reminders
-                .filter(r => !r.deleted && !r.completed)
+                .filter(r => !r.deleted && !r.completed && new Date(r.next_run) <= endOfToday)
                 .count();
 
             // PWA Badge API (Android Chrome / iOS 16.4+)

@@ -49,7 +49,7 @@ window.DataManager = {
 
     // Optional columns added by Pro migration — not all Supabase tables have them
     _remindersCoreFields: ['id', 'title', 'type', 'frequency_unit', 'frequency_value',
-        'next_run', 'completed', 'deleted'],
+        'next_run', 'completed', 'deleted', 'priority', 'notes', 'snoozed_until', 'created_at'],
     _purchaseInvoicesCoreFields: ['id', 'supplierId', 'invoiceNumber', 'date', 'amount',
         'paymentMethod', 'paymentStatus', 'dueDate', 'creditDays', 'paidAmount', 'notes', 'deleted'],
     _suppliersCoreFields: ['id', 'name', 'rut', 'giro', 'address', 'contact', 'phone', 'email', 'deleted'],
@@ -138,6 +138,12 @@ window.DataManager = {
                         if (syncData[k] !== undefined) cleanData[k] = syncData[k];
                     });
                     syncData = cleanData;
+                }
+
+                // reminders usa columnas INTEGER para deleted/completed (no BOOLEAN)
+                if (tableName === 'reminders') {
+                    if (syncData.deleted !== undefined) syncData.deleted = syncData.deleted ? 1 : 0;
+                    if (syncData.completed !== undefined) syncData.completed = syncData.completed ? 1 : 0;
                 }
 
                 const { error: syncErr } = await window.Sync.client

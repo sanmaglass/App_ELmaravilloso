@@ -87,8 +87,8 @@ async function init() {
             const percentText = document.getElementById('splash-percent');
 
             const updateSplash = (percent, status) => {
-                // Animate the discreet loading bar
                 if (progressBar) progressBar.style.width = `${percent}%`;
+                if (statusText && status) statusText.textContent = status;
             };
 
             try {
@@ -112,12 +112,12 @@ async function init() {
 
                     // Background sync (async skip waiting)
                     window.Sync.syncAll().then(() => {
-                        console.log('Background Sync Completed');
+                        console.log('✅ Sync Inicial Completado');
                         // Redundant re-render removed to prevent UI flicker/stuck modals
                     });
 
-                    await window.Sync.initRealtimeSync();
-                    window.Sync.startAutoSync(60000);
+                    // Start auto-sync polling: 30s (ideal balance: rápido pero sin sobrecargar)
+                    window.Sync.startAutoSync(30000);
                 } else {
                     updateSplash(80, 'MODO LOCAL ACTIVO');
                     views.dashboard();
@@ -216,7 +216,7 @@ async function init() {
             _globalSyncDebounce = setTimeout(() => {
                 if (window._debugMode) console.log("♻️ Global sync refresh for:", current);
                 if (views[current]) views[current]();
-            }, 600);
+            }, 150);
         });
 
         // Evento para forzar sincronización total desde cualquier parte
@@ -290,16 +290,27 @@ window.ReminderEngine = {
     async check() {
         try {
             const now = new Date();
-            // Use filter() — compound index fails with boolean deleted values from Supabase
+            const in15min = new Date(now.getTime() + 15 * 60 * 1000);
+
+            // 1. Disparar alertas vencidas
             const dueReminders = await window.db.reminders
                 .filter(r => !r.deleted && !r.completed && new Date(r.next_run) <= now)
                 .toArray();
-
             for (const reminder of dueReminders) {
                 await this.trigger(reminder);
             }
 
-            // Always update badge count
+            // 2. Advertir tareas próximas a vencer (dentro de 15 min)
+            const approachingReminders = await window.db.reminders
+                .filter(r => !r.deleted && !r.completed &&
+                    new Date(r.next_run) > now &&
+                    new Date(r.next_run) <= in15min)
+                .toArray();
+            for (const reminder of approachingReminders) {
+                const minsLeft = Math.ceil((new Date(reminder.next_run) - now) / 60000);
+                window.AppNotify?.fireApproaching(reminder, minsLeft);
+            }
+
             window.AppNotify?.updateBadge();
         } catch (e) {
             console.error('ReminderEngine Check Error:', e);

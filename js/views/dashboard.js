@@ -386,31 +386,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
-        <!-- Resumen Operativo (Centralizado) -->
-        <div class="premium-card mb-8">
-             <h3 class="text-primary font-bold mb-4 flex items-center gap-2 text-base">
-                <i class="ph ph-lightning text-xl" style="color: #f59e0b;"></i> Resumen de Operaciones y Equipo
-            </h3>
-            <div class="responsive-grid-2 gap-4">
-                <div class="flex justify-between items-center p-3 rounded-xl bg-glass" style="border: 1px solid rgba(0,0,0,0.03);">
-                    <span class="text-muted text-sm"><i class="ph ph-user-check"></i> Trabajando Hoy</span>
-                    <span id="dashboard-today-employees" class="font-bold text-primary">...</span>
-                </div>
-                <div class="flex justify-between items-center p-3 rounded-xl bg-glass" style="border: 1px solid rgba(0,0,0,0.03);">
-                    <span class="text-muted text-sm" style="color:#3b82f6;"><i class="ph ph-clock"></i> Horas Hoy</span>
-                    <span id="dashboard-today-hours" class="font-bold" style="color:#3b82f6;">...</span>
-                </div>
-                <div class="flex justify-between items-center p-3 rounded-xl bg-glass" style="border: 1px solid rgba(0,0,0,0.03);">
-                    <span class="text-muted text-sm"><i class="ph ph-users"></i> Equipo Activo Mes</span>
-                    <span id="dashboard-active-employees" class="font-bold text-primary">...</span>
-                </div>
-                <div class="flex justify-between items-center p-3 rounded-xl bg-glass" style="border: 1px solid rgba(0,0,0,0.03);">
-                    <span class="text-muted text-sm"><i class="ph ph-calendar"></i> Horas Totales Mes</span>
-                    <span id="dashboard-total-hours" class="font-bold text-primary">...</span>
-                </div>
-            </div>
-        </div>
-
         <!-- Top Productos -->
         <!-- Estrellas del Negocio (Mayor Margen Total) -->
         <div class="premium-card mb-8" style="background:linear-gradient(135deg, #022c22, #064e3b); color: white; border:1px solid #10b981; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);">
@@ -760,12 +735,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const currentMonthLogs = logs.filter(l => l.date && l.date.startsWith(currentMonthStr));
         const totalHours = currentMonthLogs.reduce((a, l) => a + (l.totalHours || 0), 0);
 
-        // ---- Update KPI DOM ----
-        const elActiveEmp = document.getElementById('dashboard-active-employees');
-        if (elActiveEmp) elActiveEmp.textContent = employees.length;
-
-        const elTotalHours = document.getElementById('dashboard-total-hours');
-        if (elTotalHours) elTotalHours.textContent = totalHours.toFixed(1) + 'h';
+        // (Resumen Operativo eliminado — no hay datos de workLogs)
 
         const elMonthLabel = document.getElementById('stat-month-label');
         if (elMonthLabel) elMonthLabel.textContent = now.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
@@ -1030,13 +1000,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             }
         }
 
-        // ---- Resumen Operativo de Hoy Centralizado ----
-        const todayLogs = logs.filter(l => l.date === todayStr);
-        const elTodayEmp = document.getElementById('dashboard-today-employees');
-        const elTodayHours = document.getElementById('dashboard-today-hours');
-
-        if (elTodayEmp) elTodayEmp.textContent = `${todayLogs.length} registros`;
-        if (elTodayHours) elTodayHours.textContent = `${todayLogs.reduce((s, l) => s + (l.totalHours || 0), 0).toFixed(1)}h`;
+        // (Resumen Operativo eliminado — no hay datos de workLogs)
 
         // ---- Top Products and Margins (Data parsed from API Sync) ----
         const currentMonthEleventa = eleventaSales.filter(s => s.date && s.date.startsWith(currentMonthStr));

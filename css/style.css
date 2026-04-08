@@ -52,13 +52,11 @@ body {
     width: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
-    /* Prohibir scroll al body */
-    /* position: fixed; -- Removido para evitar bugs de scroll en iOS */
+    overflow-y: auto; /* enable vertical scrolling */
     font-family: var(--font-main);
     color: var(--text-primary);
     line-height: 1.5;
-    /* Permitir scroll para que las barras del navegador respondan */
+}
 
     /* --- ATMÓSFERA 'EL MARAVILLOSO' --- */
     background-color: #0f0202;

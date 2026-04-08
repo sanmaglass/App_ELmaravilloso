@@ -161,20 +161,23 @@ window.Views.reminders = async (container) => {
 
         // Group
         const now = new Date();
+        const in2h = new Date(now.getTime() + 2 * 60 * 60 * 1000);
         const endToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
         const endTomorrow = new Date(endToday); endTomorrow.setDate(endTomorrow.getDate() + 1);
         const groups = {
-            overdue: { label: '⚠️ Vencidas', items: [] },
-            today: { label: '📅 Hoy', items: [] },
-            tomorrow: { label: '🌅 Mañana', items: [] },
-            upcoming: { label: '🗓 Próximamente', items: [] },
-            done: { label: '✅ Completadas', items: [] },
+            overdue: { label: '⚠️ Vencidas', items: [], style: 'background:#fef2f2; color:#b91c1c;' },
+            soon:    { label: '⏰ Próximas 2 horas', items: [], style: 'background:#fffbeb; color:#92400e;' },
+            today:   { label: '📅 Hoy', items: [], style: '' },
+            tomorrow:{ label: '🌅 Mañana', items: [], style: '' },
+            upcoming:{ label: '🗓 Próximamente', items: [], style: '' },
+            done:    { label: '✅ Completadas', items: [], style: '' },
         };
 
         filtered.forEach(t => {
             if (t.completed) { groups.done.items.push(t); return; }
             const d = new Date(t.next_run);
             if (d < now) groups.overdue.items.push(t);
+            else if (d <= in2h) groups.soon.items.push(t);
             else if (d <= endToday) groups.today.items.push(t);
             else if (d <= endTomorrow) groups.tomorrow.items.push(t);
             else groups.upcoming.items.push(t);
@@ -183,7 +186,7 @@ window.Views.reminders = async (container) => {
         let html = '';
         for (const [, g] of Object.entries(groups)) {
             if (!g.items.length) continue;
-            html += `<div style="padding:10px 20px; background:#f1f5f9; font-size:0.8rem; font-weight:700; color:var(--text-muted); border-bottom:1px solid var(--border); letter-spacing:0.05em;">${g.label}</div>`;
+            html += `<div style="padding:10px 20px; font-size:0.8rem; font-weight:700; letter-spacing:0.05em; border-bottom:1px solid var(--border); ${g.style || 'background:#f1f5f9; color:var(--text-muted);'}">${g.label}</div>`;
             html += g.items.map(t => renderItem(t)).join('');
         }
         list.innerHTML = html;
@@ -433,13 +436,18 @@ window.Views.reminders = async (container) => {
 
     await loadTasks();
 
-    // Realtime sync handler
-    const syncHandler = () => {
+    // Realtime sync handler — limpiamos el anterior antes de registrar uno nuevo
+    // para evitar acumulación de listeners al re-entrar a la vista
+    if (window._remindersSyncHandler) {
+        window.removeEventListener('sync-data-updated', window._remindersSyncHandler);
+    }
+    window._remindersSyncHandler = () => {
         if (document.getElementById('tasks-list-container')) {
             loadTasks();
         } else {
-            window.removeEventListener('sync-data-updated', syncHandler);
+            window.removeEventListener('sync-data-updated', window._remindersSyncHandler);
+            window._remindersSyncHandler = null;
         }
     };
-    window.addEventListener('sync-data-updated', syncHandler);
+    window.addEventListener('sync-data-updated', window._remindersSyncHandler);
 };

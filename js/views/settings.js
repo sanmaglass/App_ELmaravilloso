@@ -112,12 +112,17 @@ window.Views.settings = async (container) => {
                         </div>
                     </div>
 
-                    <div style="display:flex; gap:12px; margin-bottom:16px;">
-                        <button id="btn-connect-cloud" class="btn btn-secondary" style="flex:1;">
-                            <i class="ph ph-plug"></i> Conectar
-                        </button>
-                        <button id="btn-sync-now" class="btn btn-primary" style="flex:1;">
-                            <i class="ph ph-arrows-clockwise"></i> Sincronizar Ahora
+                    <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+                        <div style="display:flex; gap:12px;">
+                            <button id="btn-connect-cloud" class="btn btn-secondary" style="flex:1;">
+                                <i class="ph ph-plug"></i> Conectar
+                            </button>
+                            <button id="btn-sync-now" class="btn btn-primary" style="flex:1;">
+                                <i class="ph ph-arrows-clockwise"></i> Sincronizar Ahora
+                            </button>
+                        </div>
+                        <button id="btn-disconnect-cloud" class="btn btn-secondary" style="width:100%; color:var(--warning); border-color:var(--warning); opacity:0.8;">
+                            <i class="ph ph-plug-zap"></i> Desconectar y Borrar Credenciales
                         </button>
                     </div>
 
@@ -276,6 +281,7 @@ window.Views.settings = async (container) => {
         const supaKey = document.getElementById('supa-key');
         const btnConnect = document.getElementById('btn-connect-cloud');
         const btnSync = document.getElementById('btn-sync-now');
+        const btnDisconnect = document.getElementById('btn-disconnect-cloud');
         const cloudStatus = document.getElementById('cloud-status');
         const btnToggleKey = document.getElementById('btn-toggle-key');
         const btnGenQr = document.getElementById('btn-gen-qr');
@@ -336,20 +342,55 @@ window.Views.settings = async (container) => {
                 const url = cleanUrl(supaUrl.value);
                 const key = supaKey.value.trim();
 
-                if (!url || !key) {
-                    updateStatus('Por favor, ingresa URL y API Key.', 'error');
+                // Validaciones de seguridad
+                const urlPattern = /^https:\/\/[a-z0-9]+\.supabase\.co$/;
+                if (!urlPattern.test(url)) {
+                    updateStatus('URL de Supabase inválida. Debe ser: https://xyz.supabase.co', 'error');
+                    return;
+                }
+
+                if (key.length < 50) {
+                    updateStatus('API Key demasiado corta. Debe ser la "Anon Public Key".', 'error');
                     return;
                 }
 
                 localStorage.setItem('supabase_url', url);
                 localStorage.setItem('supabase_key', key);
+                
+                // Actualizar AppConfig inmediatamente
+                if (window.AppConfig) {
+                    window.AppConfig.supabaseUrl = url;
+                    window.AppConfig.supabaseKey = key;
+                }
 
                 const result = await window.Sync.init();
                 if (result.success) {
                     btnSync.disabled = false;
                     updateStatus('<i class="ph ph-check-circle"></i> Conectado con éxito.', 'success');
+                    alert('Conectado correctamente a Supabase.');
                 } else {
                     updateStatus('Error: ' + result.error, 'error');
+                }
+            });
+        }
+
+        // --- DISCONNECT HANDLER ---
+        if (btnDisconnect) {
+            btnDisconnect.addEventListener('click', () => {
+                if (confirm('¿Seguro que quieres desconectar? Se borrarán las credenciales y la sesión de este dispositivo.')) {
+                    localStorage.removeItem('supabase_url');
+                    localStorage.removeItem('supabase_key');
+                    localStorage.removeItem('wm_auth');
+                    localStorage.removeItem('wm_user');
+                    
+                    if (window.AppConfig) {
+                        window.AppConfig.supabaseUrl = null;
+                        window.AppConfig.supabaseKey = null;
+                    }
+                    if (window.Sync) window.Sync.client = null;
+
+                    alert('Credenciales y sesión borradas. La app se reiniciará.');
+                    window.location.reload();
                 }
             });
         }
