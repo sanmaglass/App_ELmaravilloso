@@ -21,7 +21,7 @@ db.version(14).stores({
     settings: 'key',
     reminders: 'id, deleted, completed, [completed+deleted]',
     eleventa_sales: 'id, ticket_id, date, deleted',
-    loans: 'id, supplierId, date, deleted'
+    loans: 'id, supplierId, date, deleted, direction, status'
 });
 
 // ──────────────────────────────────────────────────────────────

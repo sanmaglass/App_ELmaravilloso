@@ -129,7 +129,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
             }
 
             if (supplierFilter !== 'all') {
-                filtered = filtered.filter(l => String(l.supplierId) === supplierFilter);
+                filtered = filtered.filter(l => l.supplierId !== null && String(l.supplierId) === supplierFilter);
             }
 
             if (directionFilter !== 'all') {
@@ -306,13 +306,13 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                         <label class="form-label">¿A quién va dirigido? *</label>
                         <div class="flex gap-2">
                             <label class="flex-1 cursor-pointer">
-                                <input type="radio" name="loan-entity-type" value="supplier" class="hidden peer" ${!isEdit || loanToEdit.supplierId ? 'checked' : ''}>
+                                <input type="radio" name="loan-entity-type" value="supplier" class="hidden peer" ${!isEdit || loanToEdit.supplierId !== null ? 'checked' : ''}>
                                 <div class="p-2 border rounded text-center peer-checked:border-primary peer-checked:bg-primary-light peer-checked:text-primary transition-all text-sm">
                                     Proveedor
                                 </div>
                             </label>
                             <label class="flex-1 cursor-pointer">
-                                <input type="radio" name="loan-entity-type" value="person" class="hidden peer" ${isEdit && !loanToEdit.supplierId && loanToEdit.borrowerName ? 'checked' : ''}>
+                                <input type="radio" name="loan-entity-type" value="person" class="hidden peer" ${isEdit && loanToEdit.supplierId === null ? 'checked' : ''}>
                                 <div class="p-2 border rounded text-center peer-checked:border-primary peer-checked:bg-primary-light peer-checked:text-primary transition-all text-sm">
                                     Persona
                                 </div>
@@ -320,7 +320,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                         </div>
                     </div>
 
-                    <div class="form-group mb-4" id="group-supplier" style="display: ${!isEdit || loanToEdit.supplierId ? 'block' : 'none'};">
+                    <div class="form-group mb-4" id="group-supplier" style="display: ${!isEdit || loanToEdit.supplierId !== null ? 'block' : 'none'};">
                         <label class="form-label">Proveedor *</label>
                         <select id="loan-supplier-id" class="form-input">
                             <option value="">Seleccionar proveedor...</option>
@@ -332,7 +332,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                         </select>
                     </div>
 
-                    <div class="form-group mb-4" id="group-person" style="display: ${isEdit && !loanToEdit.supplierId && loanToEdit.borrowerName ? 'block' : 'none'};">
+                    <div class="form-group mb-4" id="group-person" style="display: ${isEdit && loanToEdit.supplierId === null ? 'block' : 'none'};">
                         <label class="form-label">Nombre de la Persona *</label>
                         <input type="text" id="loan-borrower-name" class="form-input" placeholder="Ej: Juan Pérez" value="${isEdit ? (loanToEdit.borrowerName || '') : ''}">
                     </div>
