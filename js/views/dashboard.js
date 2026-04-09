@@ -1015,9 +1015,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                         productStats[name] = { qty: 0, profit: 0, revenue: 0 };
                     }
                     const q = parseFloat(item.qty) || 1;
+                    // Note: item.profit is already the total profit for this line (not per unit)
+                    // item.price is total price for the line, not unit price
                     productStats[name].qty += q;
-                    productStats[name].profit += (parseFloat(item.profit) || 0) * q;
-                    productStats[name].revenue += (parseFloat(item.price) || 0) * q;
+                    productStats[name].profit += (parseFloat(item.profit) || 0);
+                    productStats[name].revenue += (parseFloat(item.price) || 0);
                     totalItemsFound++;
                 });
             }
