@@ -88,10 +88,10 @@ async function renderSales() {
             <div class="premium-card p-4 flex flex-col gap-4">
                 <div class="flex justify-between items-start gap-3">
                     <div style="flex:1;">
-                        <div class="font-bold text-primary" style="font-size:1.1rem;">${sale.clientName}</div>
+                        <div class="font-bold text-primary" style="font-size:1.1rem;">${escapeHTML(sale.clientName)}</div>
                         <div class="text-xs text-muted mt-1">
-                            <i class="ph ph-hash"></i> ${sale.invoiceNumber} 
-                            <span style="margin:0 6px;">•</span> 
+                            <i class="ph ph-hash"></i> ${escapeHTML(sale.invoiceNumber)}
+                            <span style="margin:0 6px;">•</span>
                             <i class="ph ph-calendar-blank"></i> ${formatDate(sale.date)}
                         </div>
                     </div>

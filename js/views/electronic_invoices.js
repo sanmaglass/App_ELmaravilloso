@@ -192,8 +192,9 @@ async function showDTEModal() {
     const items = [];
     const updateTotals = () => {
         const neto = items.reduce((sum, i) => sum + i.price, 0);
-        const iva = Math.round(neto * 0.19);
-        const total = neto + iva;
+        // BUG FIX: Redondeo correcto a 2 decimales para cálculo monetario
+        const iva = Math.round((neto * 0.19) * 100) / 100;
+        const total = Math.round((neto + iva) * 100) / 100;
 
         document.getElementById('dte-neto').textContent = window.Utils.formatCurrency(neto);
         document.getElementById('dte-iva').textContent = window.Utils.formatCurrency(iva);
@@ -210,14 +211,15 @@ async function showDTEModal() {
     };
 
     document.getElementById('btn-add-dte-item').addEventListener('click', () => {
-        const n = document.getElementById('item-name').value;
-        const p = parseInt(document.getElementById('item-price').value);
-        if (n && p > 0) {
-            items.push({ name: n, price: p });
-            updateTotals();
-            document.getElementById('item-name').value = '';
-            document.getElementById('item-price').value = '';
-        }
+        const n = document.getElementById('item-name').value.trim();
+        const p = parseFloat(document.getElementById('item-price').value);
+        // BUG FIX: Validar que precio sea número válido, no NaN
+        if (!n) { alert('Ingresa nombre del ítem'); return; }
+        if (isNaN(p) || p <= 0) { alert('Ingresa un precio válido (> 0)'); return; }
+        items.push({ name: n, price: p });
+        updateTotals();
+        document.getElementById('item-name').value = '';
+        document.getElementById('item-price').value = '';
     });
 
     document.getElementById('btn-copy-dte-data').addEventListener('click', () => {
@@ -264,6 +266,16 @@ async function showDTEModal() {
                 });
 
                 if (result.success) {
+                    // BUG FIX: Validar que folio no sea duplicado
+                    const existing = await window.db.electronic_invoices
+                        .where('folio').equals(result.folio).toArray();
+                    if (existing.length > 0) {
+                        alert(`⚠️ ERROR: El folio ${result.folio} YA EXISTE en la BD.\n\nEsto indica un conflicto con SII. Contacta a soporte.`);
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> EMITIR FACTURA ELECTRÓNICA';
+                        return;
+                    }
+
                     const dteEntry = {
                         date: today,
                         receiverName: name,

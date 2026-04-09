@@ -639,10 +639,18 @@ async function renderCreditAlerts() {
                     }
 
                     try {
+                        // BUG FIX: Validar cambios simultáneos (race condition)
                         const existing = await window.db.purchase_invoices.get(id);
                         if (!existing) throw new Error('Factura no encontrada');
 
-                        const newPaid = alreadyPaid + abonoMonto;
+                        // Verificar que paidAmount no haya cambiado desde que se abrió el modal
+                        if (existing.paidAmount !== alreadyPaid) {
+                            alert(`⚠️ La factura fue actualizada por otro usuario.\n\nMonto anterior: ${formatCurrency(alreadyPaid)}\nMonto actual: ${formatCurrency(existing.paidAmount)}\n\nPor favor recarga la página.`);
+                            overlay.remove();
+                            return;
+                        }
+
+                        const newPaid = Math.round((existing.paidAmount + abonoMonto) * 100) / 100;
                         const isFullyPaid = newPaid >= (totalAmount - 0.01);
                         await window.DataManager.saveAndSync('purchase_invoices', {
                             ...existing,
@@ -1375,9 +1383,14 @@ async function showInvoiceModal(invoiceToEdit = null) {
         let paidAmount = 0;
         if (paymentStatus === 'Abonado') {
             paidAmount = parseFloat(document.getElementById('inv-paid-amount').value) || 0;
+            // BUG FIX: Validar abono con tolerancia
             if (paidAmount >= amount && amount > 0) {
-                paymentStatus = 'Pagado'; // Auto fix if they accidentally type the full amount
-                paidAmount = amount;
+                if (!confirm(`💡 El monto pagado (${window.Utils.formatCurrency(paidAmount)}) cubre la factura completa (${window.Utils.formatCurrency(amount)}).\n\n¿Deseas marcar como PAGADO en su totalidad?`)) {
+                    // Keep as "Abonado" with partial payment
+                } else {
+                    paymentStatus = 'Pagado';
+                    paidAmount = amount;
+                }
             }
         } else if (paymentStatus === 'Pagado') {
             paidAmount = amount;
