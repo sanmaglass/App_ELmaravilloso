@@ -1012,14 +1012,34 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 sale.items.forEach(item => {
                     const name = item.name || 'Desconocido';
                     if (!productStats[name]) {
-                        productStats[name] = { qty: 0, profit: 0, revenue: 0 };
+                        productStats[name] = { qty: 0, profit: 0, revenue: 0, costUnit: 0, priceUnit: 0 };
                     }
                     const q = parseFloat(item.qty) || 1;
-                    // Note: item.profit is already the total profit for this line (not per unit)
-                    // item.price is total price for the line, not unit price
+
+                    // Try to get cost from local products DB if Eleventa's profit is 0
+                    let profitLine = parseFloat(item.profit) || 0;
+                    let priceUnitValue = parseFloat(item.price_unit) || 0;
+                    let costUnitValue = parseFloat(item.cost_unit) || 0;
+
+                    // If profit is 0 or missing, try to calculate from local product DB
+                    if (profitLine === 0 && priceUnitValue > 0) {
+                        const localProduct = allProducts.find(p =>
+                            p.name.toLowerCase().trim() === name.toLowerCase().trim()
+                        );
+                        if (localProduct) {
+                            // Local product has: buyPrice (neto), units, isNeto flag, costUnit (already gross with IVA)
+                            costUnitValue = localProduct.costUnit || 0;
+                            priceUnitValue = parseFloat(item.price_unit) || (parseFloat(item.price) / q);
+                            // Recalculate profit per unit
+                            profitLine = (priceUnitValue - costUnitValue) * q;
+                        }
+                    }
+
                     productStats[name].qty += q;
-                    productStats[name].profit += (parseFloat(item.profit) || 0);
+                    productStats[name].profit += profitLine;
                     productStats[name].revenue += (parseFloat(item.price) || 0);
+                    productStats[name].costUnit = costUnitValue;
+                    productStats[name].priceUnit = priceUnitValue;
                     totalItemsFound++;
                 });
             }
