@@ -266,11 +266,14 @@ async function showDTEModal() {
                 });
 
                 if (result.success) {
-                    // BUG FIX: Validar que folio no sea duplicado
-                    const existing = await window.db.electronic_invoices
+                    // ── Optimistic check: folio duplicado ──────────────────────────
+                    // Comparamos contra el estado local más reciente (post-sync)
+                    // antes de persistir, para evitar folios duplicados.
+                    const folioCheck = await window.db.electronic_invoices
                         .where('folio').equals(result.folio).toArray();
-                    if (existing.length > 0) {
-                        alert(`⚠️ ERROR: El folio ${result.folio} YA EXISTE en la BD.\n\nEsto indica un conflicto con SII. Contacta a soporte.`);
+                    const activeDuplicate = folioCheck.filter(f => !f.deleted);
+                    if (activeDuplicate.length > 0) {
+                        alert(`ERROR: El folio ${result.folio} ya existe en la base de datos.\n\nEsto indica un conflicto con SII. Contacta a soporte técnico.`);
                         btn.disabled = false;
                         btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> EMITIR FACTURA ELECTRÓNICA';
                         return;
@@ -283,11 +286,23 @@ async function showDTEModal() {
                         total: items.reduce((sum, i) => sum + i.price, 0) * 1.19,
                         status: 'Enviado',
                         folio: result.folio,
-                        pdfUrl: result.pdfUrl
+                        pdfUrl: result.pdfUrl,
+                        deleted: false
                     };
-                    await window.DataManager.saveAndSync('electronic_invoices', dteEntry);
 
-                    alert(`¡Factura Folio ${result.folio} emitida con éxito!`);
+                    // ── Usar TransactionManager para guardar atómicamente ──────────
+                    const txResult = await window.TransactionManager.executeBatch([
+                        { table: 'electronic_invoices', action: 'put', data: dteEntry }
+                    ], { description: 'emit_electronic_invoice' });
+
+                    if (!txResult.success) {
+                        alert(`Error al guardar la factura: ${txResult.error}`);
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> EMITIR FACTURA ELECTRÓNICA';
+                        return;
+                    }
+
+                    alert(`Factura Folio ${result.folio} emitida con éxito.`);
                     modal.classList.add('hidden');
                     renderDTEs();
                 }

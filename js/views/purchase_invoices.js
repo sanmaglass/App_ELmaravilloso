@@ -639,21 +639,35 @@ async function renderCreditAlerts() {
                     }
 
                     try {
-                        // BUG FIX: Validar cambios simultáneos (race condition)
-                        const existing = await window.db.purchase_invoices.get(id);
-                        if (!existing) throw new Error('Factura no encontrada');
+                        // ── Optimistic Locking: re-leer el registro fresco ──────────────
+                        // Capturamos la version ANTES de abrir el modal (snapshot)
+                        const snapshotVersion = (await window.db.purchase_invoices.get(id))?.version;
 
-                        // Verificar que paidAmount no haya cambiado desde que se abrió el modal
-                        if (existing.paidAmount !== alreadyPaid) {
-                            alert(`⚠️ La factura fue actualizada por otro usuario.\n\nMonto anterior: ${formatCurrency(alreadyPaid)}\nMonto actual: ${formatCurrency(existing.paidAmount)}\n\nPor favor recarga la página.`);
+                        // Re-leer el estado actual al confirmar (puede haber cambiado)
+                        const freshLoan = await window.db.purchase_invoices.get(id);
+                        if (!freshLoan) throw new Error('Factura no encontrada');
+
+                        // Detectar conflicto: version cambió entre snapshot y confirmación
+                        const currentVersion = freshLoan.version;
+                        if (currentVersion !== undefined && snapshotVersion !== undefined && currentVersion !== snapshotVersion) {
+                            const overwrite = confirm(
+                                `La factura fue modificada mientras tenías el modal abierto.\n\n` +
+                                `Monto pagado actual: ${formatCurrency(freshLoan.paidAmount)}\n` +
+                                `Tu abono: ${formatCurrency(abonoMonto)}\n\n` +
+                                `¿Deseas aplicar el abono sobre el monto actual?`
+                            );
+                            if (!overwrite) { overlay.remove(); return; }
+                        } else if (freshLoan.paidAmount !== alreadyPaid && currentVersion === undefined) {
+                            // Fallback: si la tabla aún no tiene version, comparar por paidAmount
+                            alert(`La factura fue actualizada por otro usuario.\n\nMonto anterior: ${formatCurrency(alreadyPaid)}\nMonto actual: ${formatCurrency(freshLoan.paidAmount)}\n\nPor favor recarga la página.`);
                             overlay.remove();
                             return;
                         }
 
-                        const newPaid = Math.round((existing.paidAmount + abonoMonto) * 100) / 100;
+                        const newPaid = Math.round((freshLoan.paidAmount + abonoMonto) * 100) / 100;
                         const isFullyPaid = newPaid >= (totalAmount - 0.01);
                         await window.DataManager.saveAndSync('purchase_invoices', {
-                            ...existing,
+                            ...freshLoan,
                             paidAmount: newPaid,
                             paymentStatus: isFullyPaid ? 'Pagado' : 'Abonado'
                         });
@@ -1438,10 +1452,22 @@ async function showInvoiceModal(invoiceToEdit = null) {
                 deleted: false
             };
 
-            if (isEdit) {
-                await window.DataManager.saveAndSync('purchase_invoices', { id: invoiceToEdit.id, ...invoiceData });
-            } else {
-                await window.DataManager.saveAndSync('purchase_invoices', invoiceData);
+            // ── Guardar usando TransactionManager para atomicidad ──────────────
+            // Si renderAnalytics() u otro paso posterior falla, la factura
+            // igual queda guardada (la transacción Dexie ya hizo commit).
+            // Esto reemplaza el patrón inseguro: guardar → renderAnalytics() sin rollback.
+            const saveOp = {
+                table: 'purchase_invoices',
+                action: 'put',
+                data: isEdit ? { id: invoiceToEdit.id, ...invoiceData } : { ...invoiceData }
+            };
+
+            const txResult = await window.TransactionManager.executeBatch([saveOp], {
+                description: isEdit ? 'edit_purchase_invoice' : 'new_purchase_invoice'
+            });
+
+            if (!txResult.success) {
+                throw new Error(`Error al guardar: ${txResult.error}`);
             }
 
             modal.classList.add('hidden');

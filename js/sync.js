@@ -10,6 +10,25 @@ window.Sync = {
     _syncSummary: { updates: 0, deletes: 0 },
     _dispatchTimer: null,
 
+    // ── Deduplicación por timestamp ────────────────────────────
+    // Evita lanzar syncAll si ya se ejecutó hace menos de MIN_SYNC_INTERVAL_MS.
+    // También protege contra eventos en ráfaga (p.ej. WebSocket flood).
+    _lastSyncCompletedAt: 0,
+    MIN_SYNC_INTERVAL_MS: 500,
+
+    // Cambios pendientes de notificar (dedup de tablas)
+    _pendingChangeTables: new Set(),
+
+    /**
+     * Registra que una tabla cambió localmente.
+     * El evento 'sync-data-updated' se despacha una sola vez
+     * agrupando todos los cambios del mismo ciclo de evento.
+     */
+    markTableChanged(tableName) {
+        this._pendingChangeTables.add(tableName);
+        this._scheduleSyncEvent();
+    },
+
     // Dispara 'sync-data-updated' con debounce para evitar loops de refrescos
     _scheduleSyncEvent() {
         if (this._dispatchTimer) clearTimeout(this._dispatchTimer);
@@ -20,7 +39,11 @@ window.Sync = {
 
         this._dispatchTimer = setTimeout(() => {
             this._dispatchTimer = null;
-            window.dispatchEvent(new CustomEvent('sync-data-updated'));
+            const changedTables = [...this._pendingChangeTables];
+            this._pendingChangeTables.clear();
+            window.dispatchEvent(new CustomEvent('sync-data-updated', {
+                detail: { tables: changedTables }
+            }));
         }, delay);
     },
 
@@ -112,9 +135,16 @@ window.Sync = {
 
     // Sincronización Completa
     syncAll: async () => {
+        // ── Deduplicación por timestamp ────────────────────────
+        // Si syncAll fue llamado hace menos de MIN_SYNC_INTERVAL_MS, ignorar.
+        // Esto protege contra múltiples disparos simultáneos (ej. WebSocket + polling).
+        const now = Date.now();
+        if (now - window.Sync._lastSyncCompletedAt < window.Sync.MIN_SYNC_INTERVAL_MS) {
+            return { success: false, error: 'Deduplicado: sync reciente' };
+        }
+
         // Auto-reconnect try
         if (!window.Sync.client) {
-            console.log("Cliente Supabase nulo. Intentando reconectar...");
             await window.Sync.init();
         }
 
@@ -395,6 +425,13 @@ window.Sync = {
             } else {
                 window.Sync.updateIndicator('off', `Registros: ${totalLocal}`);
             }
+
+            // Registrar timestamp de finalización para deduplicación
+            window.Sync._lastSyncCompletedAt = Date.now();
+
+            // Notificar a DataManager para procesar queue de pendientes
+            window.dispatchEvent(new CustomEvent('sync-connected'));
+
             return { success: true };
         } catch (e) {
             console.error('Sync Error:', e);
