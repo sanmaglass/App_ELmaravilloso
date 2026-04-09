@@ -70,7 +70,7 @@ window.Sync = {
         if (url && key) {
             try {
                 if (typeof supabase === 'undefined') {
-                    console.warn('SDK de Supabase no disponible (sin internet o CDN bloqueado).');
+                    window.ErrorLogger?.log('sync.init', 'SDK no disponible', { reason: 'CDN o internet' }, true);
                     window.Sync.updateIndicator('off', 'Sin internet');
                     return { success: false, error: 'SDK no disponible' };
                 }
@@ -88,7 +88,8 @@ window.Sync = {
                     .limit(1);
 
                 if (error) {
-                    console.warn('[Sync.init] Test de conexión con error:', error.code, error.message);
+                    const isTransient = error.code !== 'PGRST301' && error.code !== '42P01';
+                    window.ErrorLogger?.log('sync.init.connection', error, { code: error.code }, isTransient);
 
                     // Fatal: API key inválida → destruir cliente
                     if (error.code === 'PGRST301' || error.message?.includes('JWT')) {
@@ -105,7 +106,6 @@ window.Sync = {
 
                     // No-fatal (RLS sin sesión, proyecto pausado, error de red transitorio):
                     // Mantenemos el cliente creado; la sesión de auth lo resolverá.
-                    console.warn('[Sync.init] Error no-fatal en test — cliente conservado para intentar con sesión.');
                     window.Sync.updateIndicator('connected', 'Verificando...');
                     return { success: true, warning: error.message };
                 }
@@ -118,8 +118,8 @@ window.Sync = {
             } catch (e) {
                 // Solo llegamos aquí si hay un error de red total (fetch failed)
                 window.Sync.client = null;
-                console.error('Error detallado de Sync.init:', e);
                 const isNetworkError = e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Failed');
+                window.ErrorLogger?.log('sync.init.exception', e, { type: isNetworkError ? 'network' : 'unknown' }, isNetworkError);
 
                 if (isNetworkError) {
                     window.Sync.updateIndicator('off', 'Sin internet');
@@ -280,7 +280,8 @@ window.Sync = {
                             // FILTRO DE BASURA: Ignorar registros con valores imposibles (ej. $8 Trillones)
                             const total = parseFloat(item.total || item.cash || 0);
                             if (total > 1000000000000) { // > 1 Trillon CLP
-                                console.warn(`[Sync] Ignorando registro basura detectado en ${remoteName}:`, item.id);
+                                window.ErrorLogger?.log('sync.pull.garbage', `Registro basura detectado en ${remoteName}`,
+                                    { tableName: remoteName, id: item.id, value: total });
                                 return false;
                             }
                             return true;
@@ -339,7 +340,7 @@ window.Sync = {
                     }
 
                 } catch (tableErr) {
-                    console.error(`[Sync] Error en tabla ${map.remote}:`, tableErr.message);
+                    window.ErrorLogger?.log(`sync.pull.${map.remote}`, tableErr, { tableName: map.remote });
                 }
             }
 
@@ -390,7 +391,9 @@ window.Sync = {
 
                         if (pushErr) {
                             const isColumnErr = pushErr.message?.includes('column') || pushErr.code === '42703' || pushErr.code === 'PGRST204';
-                            if (!isColumnErr) console.warn(`[Sync] Push error en ${remoteName}:`, pushErr.message);
+                            if (!isColumnErr) {
+                                window.ErrorLogger?.log(`sync.push.${remoteName}`, pushErr, { tableName: remoteName, code: pushErr.code }, true);
+                            }
                         }
                     } catch (e) {
                         console.error(`[Sync] Push error en ${remoteName}:`, e.message);
@@ -434,8 +437,8 @@ window.Sync = {
 
             return { success: true };
         } catch (e) {
-            console.error('Sync Error:', e);
             const isNetworkError = e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Failed') || e.message?.includes('NetworkError');
+            window.ErrorLogger?.log('sync.syncAll', e, { type: isNetworkError ? 'network' : 'sync' }, isNetworkError);
             if (isNetworkError) {
                 window.Sync.updateIndicator('off', 'Sin internet');
             } else {
@@ -632,7 +635,7 @@ window.Sync = {
             window.Sync.updateIndicator('realtime');
 
         } catch (error) {
-            console.error('Error handling realtime change:', error);
+            window.ErrorLogger?.log('sync.realtime', error, { localTableName });
         }
     }
 };
