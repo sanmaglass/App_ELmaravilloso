@@ -2,63 +2,110 @@
 setlocal enabledelayedexpansion
 cls
 
-:: Secuencias de escape de colores ANSI
-set "ESC="
-set "RED=%ESC%[91m"
-set "GREEN=%ESC%[92m"
-set "YELLOW=%ESC%[93m"
-set "BLUE=%ESC%[96m"
-set "RESET=%ESC%[0m"
-
-echo %BLUE%=========================================%RESET%
-echo %GREEN%  SINCRONIZANDO CON GITHUB...%RESET%
-echo %BLUE%=========================================%RESET%
+echo.
+echo ╔══════════════════════════════════════════════════════════════════════════╗
+echo ║              🚀 SUBIDA A GITHUB - AUTOMATICA Y MEJORADA                  ║
+echo ╚══════════════════════════════════════════════════════════════════════════╝
 echo.
 
-:: 1. Traer cambios remotos
-echo %YELLOW%[1/4] ACTUALIZANDO DESDE GITHUB (git pull)%RESET%
-git pull >nul 2>&1
-echo.
+:: ─────────────────────────────────────────────────────────────────────────────
+:: 1. VERIFICAR STATUS ACTUAL
+:: ─────────────────────────────────────────────────────────────────────────────
 
-:: 2. Buscar el ultimo numero de cambio
-set "LAST_MSG="
-for /f "delims=" %%i in ('git log -1 --pretty^=%%B 2^>nul') do (
-    if not defined LAST_MSG set "LAST_MSG=%%i"
+echo 📋 ESTADO ACTUAL
+echo ───────────────────────────────────────────────────────────────────────────
+
+for /f "tokens=*" %%A in ('git rev-parse --abbrev-ref HEAD') do set BRANCH=%%A
+for /f "tokens=*" %%A in ('git rev-list --count origin/!BRANCH!..HEAD 2^>nul ^| find "."') do set AHEAD=%%A
+
+if "!AHEAD!"=="" set AHEAD=0
+
+if !AHEAD! equ 0 (
+  echo   ✅ Ya está sincronizado
+  echo.
+  timeout /t 3 >nul
+  exit /b 0
 )
 
-set "NEXT_NUM=1"
-echo !LAST_MSG! | findstr /i /b /c:"CAMBIO " >nul
-if !errorlevel! equ 0 (
-    for /f "tokens=2" %%a in ("!LAST_MSG!") do (
-        set "LAST_NUM=%%a"
-        set /a NEXT_NUM=LAST_NUM+1
-    )
+echo   Rama: !BRANCH!
+echo   Commits a subir: !AHEAD!
+echo.
+
+:: ─────────────────────────────────────────────────────────────────────────────
+:: 2. MOSTRAR COMMITS
+:: ─────────────────────────────────────────────────────────────────────────────
+
+echo 📦 COMMITS A SUBIR
+echo ───────────────────────────────────────────────────────────────────────────
+
+git log --oneline origin/!BRANCH!..HEAD --no-decorate
+
+echo.
+
+:: ─────────────────────────────────────────────────────────────────────────────
+:: 3. MOSTRAR ARCHIVOS MODIFICADOS
+:: ─────────────────────────────────────────────────────────────────────────────
+
+echo 📁 ARCHIVOS MODIFICADOS
+echo ───────────────────────────────────────────────────────────────────────────
+
+for /f "tokens=1*" %%A in ('git diff origin/!BRANCH!...HEAD --name-status') do (
+  if "%%A"=="A" (
+    echo   ✨ [NUEVO]     %%B
+  ) else if "%%A"=="M" (
+    echo   📝 [MODIFICADO] %%B
+  ) else if "%%A"=="D" (
+    echo   🗑️  [ELIMINADO]  %%B
+  ) else (
+    echo   🔄 [%%A]      %%B
+  )
 )
 
-:: Obtener la fecha corta actual
-for /f "tokens=1-3 delims=/" %%a in ("%date%") do (set "HOY=%%a/%%b/%%c")
-set "COMMIT_MSG=CAMBIO !NEXT_NUM! - %HOY%"
-
-echo %YELLOW%Preparando commit:%RESET% %RED%^"%COMMIT_MSG%^"%RESET%
 echo.
 
-:: 3. Subir cambios
-echo %YELLOW%[2/4] GUARDANDO ARCHIVOS (git add)%RESET%
-git add .
+:: ─────────────────────────────────────────────────────────────────────────────
+:: 4. ESTADÍSTICAS
+:: ─────────────────────────────────────────────────────────────────────────────
+
+echo 📊 ESTADÍSTICAS
+echo ───────────────────────────────────────────────────────────────────────────
+
+git diff origin/!BRANCH!...HEAD --stat
+
 echo.
 
-echo %YELLOW%[3/4] CREANDO VERSION (git commit)%RESET%
-git commit -m "!COMMIT_MSG!" >nul 2>&1
+:: ─────────────────────────────────────────────────────────────────────────────
+:: 5. SUBIR AUTOMATICAMENTE
+:: ─────────────────────────────────────────────────────────────────────────────
+
+echo 🚀 SUBIENDO A GITHUB...
+echo ───────────────────────────────────────────────────────────────────────────
 echo.
 
-echo %YELLOW%[4/4] SUBIENDO A INTERNET (git push)%RESET%
-git push
-echo.
+git add . >nul 2>&1
+git commit -m "Auto-commit: !AHEAD! cambios sincronizados" >nul 2>&1
+git push origin !BRANCH! 2>&1
 
-echo %GREEN%=========================================%RESET%
-echo %GREEN%  !LISTO! TU APP ESTA RESPALDADA ONLINE%RESET%
-echo %GREEN%  SE GUARDO COMO:%RESET% %RED%!COMMIT_MSG!%RESET%
-echo %GREEN%=========================================%RESET%
-echo.
-echo %BLUE%La ventana se cerrara sola en 10 segundos...%RESET%
-timeout /t 10 >nul
+if !ERRORLEVEL! equ 0 (
+  echo.
+  echo ╔══════════════════════════════════════════════════════════════════════════╗
+  echo ║                     ✅ SUBIDA EXITOSA A GITHUB                          ║
+  echo ╚══════════════════════════════════════════════════════════════════════════╝
+  echo.
+  echo 📊 RESUMEN:
+  echo   Rama: !BRANCH!
+  echo   Commits: !AHEAD!
+  echo.
+  echo 🔗 GitHub:
+  echo   https://github.com/sanmaglass/App_ELmaravilloso/commits/!BRANCH!
+  echo.
+  echo ✅ Tu proyecto está respaldado en GitHub
+  echo.
+  timeout /t 5 >nul
+) else (
+  echo.
+  echo ❌ ERROR EN LA SUBIDA
+  echo.
+  timeout /t 5 >nul
+  exit /b 1
+)
