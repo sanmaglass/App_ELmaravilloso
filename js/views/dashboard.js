@@ -1036,9 +1036,14 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             .sort((a, b) => (a[1].profit / a[1].revenue) - (b[1].profit / b[1].revenue))
             .slice(0, 5);
 
-        // Zero Margin / Possible data entry errors
+        // Zero Margin / Possible data entry errors (products with < 1% margin)
         const zeroMargin = [...allProductsArr]
-            .filter(x => x[1].qty >= 1 && Math.abs(x[1].profit) < 1) // Profit is 0 or negative
+            .filter(x => {
+                if (x[1].qty < 1) return false;
+                // Check if margin percentage is less than 1% or negative
+                const marginPct = x[1].revenue > 0 ? (x[1].profit / x[1].revenue) : -1;
+                return marginPct < 0.01; // Less than 1% margin
+            })
             .sort((a, b) => b[1].qty - a[1].qty)
             .slice(0, 5);
 
