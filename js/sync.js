@@ -547,9 +547,57 @@ window.Sync = {
     },
 
     initRealtimeSync: async function () {
-        // DESACTIVADO: Realtime tiene problemas con RLS en anon keys
-        // Polling cada 30s es más confiable y sin errores
-        window.Sync.isRealtimeActive = false;
+        if (!window.Sync.client) return;
+
+        const tableMap = [
+            'employees', 'workLogs', 'products', 'promotions', 'suppliers',
+            'purchase_invoices', 'sales_invoices', 'expenses', 'daily_sales',
+            'electronic_invoices', 'reminders', 'eleventa_sales', 'loans'
+        ];
+
+        const remoteTableMap = {
+            'employees': 'employees', 'workLogs': 'worklogs', 'products': 'products',
+            'promotions': 'promotions', 'suppliers': 'suppliers', 'purchase_invoices': 'purchase_invoices',
+            'sales_invoices': 'sales_invoices', 'expenses': 'expenses', 'daily_sales': 'daily_sales',
+            'electronic_invoices': 'electronic_invoices', 'reminders': 'reminders',
+            'eleventa_sales': 'eleventa_sales', 'loans': 'loans'
+        };
+
+        try {
+            for (const localTable of tableMap) {
+                const remoteTable = remoteTableMap[localTable];
+
+                // Subscribe to realtime changes
+                const channel = window.Sync.client
+                    .channel(`public:${remoteTable}`)
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: '*',
+                            schema: 'public',
+                            table: remoteTable
+                        },
+                        (payload) => {
+                            window.Sync.handleRealtimeChange(localTable, payload);
+                        }
+                    )
+                    .subscribe((status) => {
+                        if (status === 'SUBSCRIBED') {
+                            console.log(`📡 Realtime activo para ${remoteTable}`);
+                            window.Sync.isRealtimeActive = true;
+                            window.Sync.updateIndicator('realtime');
+                        } else if (status === 'CLOSED') {
+                            console.warn(`📡 Realtime desconectado para ${remoteTable}`);
+                            window.Sync.isRealtimeActive = false;
+                        }
+                    });
+
+                window.Sync.realtimeChannel = channel;
+            }
+        } catch (error) {
+            console.warn('Realtime init error (fallback a polling):', error);
+            window.Sync.isRealtimeActive = false;
+        }
     },
 
     // Handle incoming real-time changes

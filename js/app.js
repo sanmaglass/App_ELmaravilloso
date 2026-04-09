@@ -116,7 +116,10 @@ async function init() {
                         // Redundant re-render removed to prevent UI flicker/stuck modals
                     });
 
-                    // Start auto-sync polling: 30s (ideal balance: rápido pero sin sobrecargar)
+                    // Iniciar WebSockets real-time (instantáneo)
+                    window.Sync.initRealtimeSync();
+
+                    // Fallback: polling cada 30s si WebSocket falla
                     window.Sync.startAutoSync(30000);
                 } else {
                     updateSplash(80, 'MODO LOCAL ACTIVO');
