@@ -2,9 +2,9 @@
 window.Outbox = {
   async enqueue(tableName, op, payload, hlc) {
     try {
-      const tx = window.db.transaction(['rw', tableName, 'sync_outbox'], async () => {
+      return await window.db.transaction('rw', [window.db[tableName], window.db.sync_outbox], async () => {
         // 1. Actualizar registro local
-        payload.updated_at_hlc = HLC.encode(hlc);
+        payload.updated_at_hlc = typeof hlc === 'number' ? hlc : HLC.encode(hlc || HLC.now());
         payload.updated_by_device = DeviceId.get();
         await window.db[tableName].put(payload);
 
@@ -18,7 +18,6 @@ window.Outbox = {
           retries: 0
         });
       });
-      return await tx;
     } catch (e) {
       console.error('❌ Outbox.enqueue falló:', e);
       throw e;

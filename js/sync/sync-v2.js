@@ -6,6 +6,21 @@ window.SyncV2 = {
   isRealtimeActive: false,
   syncLocks: new Set(),
 
+  // Normaliza cualquier HLC a un número comparable.
+  // Acepta: número, objeto {physical, logical}, string numérico, o undefined.
+  _toHlcNumber(value) {
+    if (value == null) return 0;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const n = Number(value);
+      return isNaN(n) ? 0 : n;
+    }
+    if (typeof value === 'object' && 'physical' in value) {
+      return HLC.encode(value);
+    }
+    return 0;
+  },
+
   async init() {
     const url = localStorage.getItem('supabase_url') || window.AppConfig.supabaseUrl;
     const key = localStorage.getItem('supabase_key') || window.AppConfig.supabaseKey;
@@ -63,22 +78,26 @@ window.SyncV2 = {
 
           for (const remote_rec of data) {
             const local_rec = await window.db[local].get(remote_rec.id);
-            const shouldApply = !local_rec || HLC.encode(local_rec.updated_at_hlc || { physical: 0, logical: 0 }) < remote_rec.updated_at_hlc;
+            const localHlc = this._toHlcNumber(local_rec?.updated_at_hlc);
+            const remoteHlc = Number(remote_rec.updated_at_hlc) || 0;
+            const shouldApply = !local_rec || localHlc < remoteHlc;
 
             if (shouldApply) {
-              remote_rec.updated_at_hlc = remote_rec.updated_at_hlc || HLC.encode(HLC.now());
+              remote_rec.updated_at_hlc = remoteHlc || HLC.encode(HLC.now());
               await window.db[local].put(remote_rec);
-            } else if (local_rec && HLC.encode(local_rec.updated_at_hlc || { physical: 0, logical: 0 }) > remote_rec.updated_at_hlc) {
+            } else if (local_rec && localHlc > remoteHlc) {
               // Conflicto: local ganó
-              await window.db.sync_conflicts.add({
-                table_name: remote,
-                record_id: remote_rec.id,
-                remote_hlc: remote_rec.updated_at_hlc,
-                local_hlc: HLC.encode(local_rec.updated_at_hlc),
-                resolution: 'local_kept'
-              });
+              if (window.db.sync_conflicts) {
+                await window.db.sync_conflicts.add({
+                  table_name: remote,
+                  record_id: remote_rec.id,
+                  remote_hlc: remoteHlc,
+                  local_hlc: localHlc,
+                  resolution: 'local_kept'
+                });
+              }
             }
-            lastHlc = Math.max(lastHlc, remote_rec.updated_at_hlc);
+            lastHlc = Math.max(lastHlc, remoteHlc);
           }
 
           if (data.length < limit) break;
@@ -143,9 +162,12 @@ window.SyncV2 = {
 
       if (eventType === 'INSERT' || eventType === 'UPDATE') {
         const localRec = await window.db[local].get(rec.id);
-        const shouldApply = !localRec || (rec.updated_at_hlc >= (HLC.encode(localRec.updated_at_hlc || { physical: 0, logical: 0 })));
+        const localHlc = this._toHlcNumber(localRec?.updated_at_hlc);
+        const remoteHlc = Number(rec.updated_at_hlc) || 0;
+        const shouldApply = !localRec || remoteHlc >= localHlc;
 
         if (shouldApply) {
+          rec.updated_at_hlc = remoteHlc;
           await window.db[local].put(rec);
           console.log(`📡✅ ${table}#${rec.id} aplicado`);
         }
