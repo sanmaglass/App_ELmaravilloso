@@ -1,6 +1,7 @@
-const CACHE_NAME = 'el-maravilloso-v250';
+const CACHE_NAME = 'el-maravilloso-v251';
+// NOTA: auth.js, main.js, index.html NO se cachean (siempre red)
 const urlsToCache = [
-    './index.html',
+    // NO cachear: './index.html', './main.js', './js/views/auth.js'
     './css/style.css',
     './css/components.css',
     './js/app.js',
@@ -10,8 +11,7 @@ const urlsToCache = [
     './js/config.js',
     './js/sii_api.js',
     './js/notifications.js',
-    // archivos
-    './js/views/auth.js',
+    // archivos (excluido auth.js)
     './js/views/calculator.js',
     './js/views/calendar.js',
     './js/views/dashboard.js',
@@ -28,7 +28,7 @@ const urlsToCache = [
     './js/views/security.js',
     './js/views/settings.js',
     './js/views/suppliers.js',
-    // assets 
+    // assets
     './assets/logo.png',
     './assets/splash.png',
     './assets/logo-dark.png',
@@ -72,28 +72,25 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Critical files: ALWAYS fetch from network first (auth.js, main.js)
+    // Critical files: NETWORK ONLY (nunca cachear)
     const criticalFiles = ['/main.js', 'main.js', '/js/views/auth.js', 'js/views/auth.js', '/index.html', 'index.html'];
     const isCritical = criticalFiles.some(file => url.pathname.endsWith(file));
 
     if (isCritical) {
-        // Network ONLY for critical files
+        // Network ONLY for critical files - NO caching at all
         event.respondWith(
             fetch(event.request)
                 .then((networkResponse) => {
+                    // Return network response WITHOUT caching
                     if (networkResponse && networkResponse.status === 200) {
-                        const responseClone = networkResponse.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request, responseClone);
-                        });
+                        return networkResponse;
                     }
-                    return networkResponse;
+                    throw new Error('Network error');
                 })
                 .catch(() => {
-                    // Offline fallback
+                    // ONLY use cache if truly offline, but prefer online
                     return caches.match(event.request)
-                        .then((cachedResponse) => {
-                            if (cachedResponse) return cachedResponse;
+                        .catch(() => {
                             if (event.request.headers.get('accept')?.includes('text/html')) {
                                 return caches.match('./offline.html');
                             }
