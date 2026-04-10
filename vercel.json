@@ -2,6 +2,12 @@
   "buildCommand": "echo 'Static site'",
   "outputDirectory": ".",
   "public": true,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/manifest.json",
