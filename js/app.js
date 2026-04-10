@@ -423,13 +423,5 @@ function resetInactivityTimer() {
     }
 }
 
-// User interactions to monitor
-['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
-    window.addEventListener(evt, resetInactivityTimer, { passive: true });
-});
-
-// Initial start
-resetInactivityTimer();
-
-// Start
-init();
+// NOTA: Las llamadas a init() y resetInactivityTimer() se hacen desde main.js
+// Este archivo solo define funciones globales, NO inicia la app
