@@ -32,7 +32,7 @@ window.SyncV2 = {
     try {
       await this.pullIncremental();
       await this.drainOutbox();
-      window.dispatchEvent(new CustomEvent('sync-data-updated', { detail: { tables: [] } }));
+      document.dispatchEvent(new CustomEvent('sync-data-updated', { detail: { tables: [] } }));
     } catch (e) {
       console.error('❌ SyncV2.syncAll() error:', e);
       await window.ErrorLogger?.log('sync.v2.syncAll', e, {}, false);
@@ -153,7 +153,7 @@ window.SyncV2 = {
         await window.db[local].delete(rec.id);
       }
 
-      window.dispatchEvent(new CustomEvent('sync-data-updated', { detail: { tables: [local] } }));
+      document.dispatchEvent(new CustomEvent('sync-data-updated', { detail: { tables: [local] } }));
     } catch (e) {
       console.error(`❌ Realtime handler error:`, e);
     }
