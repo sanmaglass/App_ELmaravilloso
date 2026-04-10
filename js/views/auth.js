@@ -54,23 +54,23 @@ window.Views.login = (container) => {
     `;
 
     // --- AUTO LOGIN (Sin PIN) ---
-    // Usar sessionStorage (más seguro y no persiste entre pestañas)
-    if (!sessionStorage.getItem('wm_auth')) {
-        sessionStorage.setItem('wm_auth', 'true');
-        sessionStorage.setItem('wm_user', 'Administrador');
+    // Usar localStorage para que persista entre recargas
+    if (!localStorage.getItem('wm_auth')) {
+        localStorage.setItem('wm_auth', 'true');
+        localStorage.setItem('wm_user', 'Administrador');
 
         // Limpiar datos de PIN antiguos
         localStorage.removeItem('wm_pin_mode');
         localStorage.removeItem('pin_attempts');
         localStorage.removeItem('pin_lockout_until');
 
-        // Esperar un momento y llamar init() directamente sin recargar
+        // Esperar un momento y mostrar app
         setTimeout(() => {
             document.querySelector('.app-container').style.display = 'flex';
             const loginWrapper = document.getElementById('login-wrapper');
             if (loginWrapper) loginWrapper.remove();
 
-            // Iniciar app
+            // Iniciar app sin recargar
             if (typeof init === 'function') {
                 init();
             } else {

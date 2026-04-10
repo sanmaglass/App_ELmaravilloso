@@ -22,7 +22,8 @@ const views = {
 async function init() {
     try {
         // --- AUTH CHECK ---
-        const isAuth = sessionStorage.getItem('wm_auth');
+        // Usar localStorage para que persista entre recargas/cierres
+        const isAuth = localStorage.getItem('wm_auth');
         if (!isAuth) {
             // Show Login View, bypass standard app load
             document.querySelector('.app-container').style.display = 'none'; // Hide main layout
@@ -66,7 +67,7 @@ async function init() {
                 // Logout Check
                 if (btn.dataset.view === 'logout') {
                     if (confirm('¿Cerrar sesión?')) {
-                        sessionStorage.removeItem('wm_auth');
+                        localStorage.removeItem('wm_auth');
                         window.location.reload();
                     }
                     return;
@@ -176,10 +177,10 @@ function resetInactivityTimer() {
     clearTimeout(inactivityTimer);
 
     // Only set timer if user is authenticated
-    if (sessionStorage.getItem('wm_auth')) {
+    if (localStorage.getItem('wm_auth')) {
         inactivityTimer = setTimeout(() => {
             console.log("Inactivity detected. Locking session...");
-            sessionStorage.removeItem('wm_auth');
+            localStorage.removeItem('wm_auth');
             window.location.reload();
         }, INACTIVITY_LIMIT);
     }
