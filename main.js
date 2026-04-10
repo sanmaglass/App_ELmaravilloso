@@ -23,24 +23,19 @@ async function init() {
     try {
         // --- AUTH CHECK ---
         // Usar localStorage para que persista entre recargas/cierres
-        const isAuth = localStorage.getItem('wm_auth');
+        let isAuth = localStorage.getItem('wm_auth');
         if (!isAuth) {
-            // Auto-login sin vista de PIN - simplemente setear como autenticado
+            // Auto-login: setear como autenticado
             localStorage.setItem('wm_auth', 'true');
             localStorage.setItem('wm_user', 'Administrador');
-
-            // Mostrar "cargando" inline sin depender de window.Views.login()
-            document.body.innerHTML = `
-                <div style="position: fixed; inset: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; z-index: 9999;">
-                    <div style="text-align: center; color: white;">
-                        <h1 style="font-size: 1.5rem; margin: 0;">El Maravilloso</h1>
-                        <p style="margin: 10px 0 0 0; opacity: 0.8;">Cargando...</p>
-                    </div>
-                </div>
-            `;
-
-            // Continuar con inicialización
+            isAuth = 'true';
         }
+
+        // Mostrar "cargando" mientras se inicializa la app
+        const appContainer = document.querySelector('.app-container');
+        const splash = document.getElementById('splash-screen');
+        if (splash) splash.style.display = 'flex';
+        if (appContainer) appContainer.style.display = 'none';
 
         // If Auth passed, ensure main layout is visible
         document.querySelector('.app-container').style.display = 'flex';
