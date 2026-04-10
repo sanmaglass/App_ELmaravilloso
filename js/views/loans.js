@@ -2,94 +2,95 @@
 window.Views = window.Views || {};
 
 window.Views.loans = async (container, filterSupplierId = null) => {
-    container.innerHTML = `
-        <div class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="mb-2 text-primary flex items-center gap-2">
-                    <i class="ph ph-hand-coins"></i> Préstamos a Proveedores
-                </h1>
-                <p class="text-muted">Control de insumos y dinero prestado</p>
+    try {
+        container.innerHTML = `
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="mb-2 text-primary flex items-center gap-2">
+                        <i class="ph ph-hand-coins"></i> Préstamos a Proveedores
+                    </h1>
+                    <p class="text-muted">Control de insumos y dinero prestado</p>
+                </div>
+                <button class="btn btn-primary" id="btn-add-loan">
+                    <i class="ph ph-plus-circle"></i> Nuevo Préstamo
+                </button>
             </div>
-            <button class="btn btn-primary" id="btn-add-loan">
-                <i class="ph ph-plus-circle"></i> Nuevo Préstamo
-            </button>
-        </div>
 
-        <!-- 📊 LOANS ANALYTICS -->
-        <div id="loans-analytics" class="grid-cols-auto gap-4 mb-6" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-            <!-- Stats cards will be injected here -->
-        </div>
-
-        <div class="filters-bar mb-4">
-            <div style="position:relative; flex: 2 1 300px;">
-                <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
-                <input type="text" id="loan-search" class="form-input" placeholder="Buscar por ítem o proveedor..." style="padding-left:36px; width:100%;">
+            <!-- 📊 LOANS ANALYTICS -->
+            <div id="loans-analytics" class="grid-cols-auto gap-4 mb-6" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <!-- Stats cards will be injected here -->
             </div>
-            <select id="filter-loan-supplier" class="form-input">
-                <option value="all">Todos los Proveedores</option>
-            </select>
-            <select id="filter-loan-status" class="form-input">
-                <option value="Pendiente">Pendientes</option>
-                <option value="Pagado">Historial (Pagados)</option>
-                <option value="all">Todos</option>
-            </select>
-            <select id="filter-loan-direction" class="form-input">
-                <option value="all">Cualquier Dirección</option>
-                <option value="to_supplier">Yo presté 📤</option>
-                <option value="from_supplier">Me prestaron 📥</option>
-            </select>
-        </div>
 
-        <div id="loans-list" class="flex flex-col gap-4">
-            <div class="loading-state">
-                <div class="spinner"></div>
-                <p>Cargando préstamos...</p>
+            <div class="filters-bar mb-4">
+                <div style="position:relative; flex: 2 1 300px;">
+                    <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
+                    <input type="text" id="loan-search" class="form-input" placeholder="Buscar por ítem o proveedor..." style="padding-left:36px; width:100%;">
+                </div>
+                <select id="filter-loan-supplier" class="form-input">
+                    <option value="all">Todos los Proveedores</option>
+                </select>
+                <select id="filter-loan-status" class="form-input">
+                    <option value="Pendiente">Pendientes</option>
+                    <option value="Pagado">Historial (Pagados)</option>
+                    <option value="all">Todos</option>
+                </select>
+                <select id="filter-loan-direction" class="form-input">
+                    <option value="all">Cualquier Dirección</option>
+                    <option value="to_supplier">Yo presté 📤</option>
+                    <option value="from_supplier">Me prestaron 📥</option>
+                </select>
             </div>
-        </div>
-    `;
 
-    // State for the view
-    const viewState = {
-        supplierId: filterSupplierId,
-        status: 'Pendiente',
-        direction: 'all'
-    };
+            <div id="loans-list" class="flex flex-col gap-4">
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Cargando préstamos...</p>
+                </div>
+            </div>
+        `;
 
-    if (filterSupplierId) {
-        document.getElementById('filter-loan-supplier').value = filterSupplierId;
-    }
+        // State for the view
+        const viewState = {
+            supplierId: filterSupplierId,
+            status: 'Pendiente',
+            direction: 'all'
+        };
 
-    // Initialize View
-    await populateLoanSuppliers();
-    await renderLoans();
-
-    // Events
-    document.getElementById('btn-add-loan').addEventListener('click', () => showLoanModal());
-    document.getElementById('loan-search').addEventListener('input', () => renderLoans());
-    document.getElementById('filter-loan-supplier').addEventListener('change', (e) => {
-        viewState.supplierId = e.target.value === 'all' ? null : Number(e.target.value);
-        renderLoans();
-    });
-    document.getElementById('filter-loan-status').addEventListener('change', (e) => {
-        viewState.status = e.target.value;
-        renderLoans();
-    });
-    document.getElementById('filter-loan-direction').addEventListener('change', (e) => {
-        viewState.direction = e.target.value;
-        renderLoans();
-    });
-
-    // Real-time listener
-    const syncHandler = () => {
-        if (!document.getElementById('loans-list')) {
-            window.removeEventListener('sync-data-updated', syncHandler);
-            return;
+        if (filterSupplierId) {
+            document.getElementById('filter-loan-supplier').value = filterSupplierId;
         }
-        renderLoans();
-    };
-    window.addEventListener('sync-data-updated', syncHandler);
 
-    // --- INTERNAL FUNCTIONS ---
+        // Initialize View
+        await populateLoanSuppliers();
+        await renderLoans();
+
+        // Events
+        document.getElementById('btn-add-loan').addEventListener('click', () => showLoanModal());
+        document.getElementById('loan-search').addEventListener('input', () => renderLoans());
+        document.getElementById('filter-loan-supplier').addEventListener('change', (e) => {
+            viewState.supplierId = e.target.value === 'all' ? null : Number(e.target.value);
+            renderLoans();
+        });
+        document.getElementById('filter-loan-status').addEventListener('change', (e) => {
+            viewState.status = e.target.value;
+            renderLoans();
+        });
+        document.getElementById('filter-loan-direction').addEventListener('change', (e) => {
+            viewState.direction = e.target.value;
+            renderLoans();
+        });
+
+        // Real-time listener
+        const syncHandler = () => {
+            if (!document.getElementById('loans-list')) {
+                window.removeEventListener('sync-data-updated', syncHandler);
+                return;
+            }
+            renderLoans();
+        };
+        window.addEventListener('sync-data-updated', syncHandler);
+
+        // --- INTERNAL FUNCTIONS ---
 
     async function populateLoanSuppliers() {
         const select = document.getElementById('filter-loan-supplier');
@@ -538,5 +539,14 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                 alert('Error: ' + e.message);
             }
         }
+    }
+    } catch (err) {
+        console.error('Error loading loans view:', err);
+        container.innerHTML = `
+            <div style="padding: 20px; text-align: center; color: var(--danger);">
+                <p>Error al cargar los préstamos</p>
+                <small>${err.message}</small>
+            </div>
+        `;
     }
 };

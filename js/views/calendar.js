@@ -2,28 +2,29 @@
 window.Views = window.Views || {};
 
 window.Views.calendar = async (container) => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    try {
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-    container.innerHTML = `
-        <div class="calendar-header-mobile" style="margin-bottom:16px;">
-            <div style="font-size:1.1rem; font-weight:700; color:var(--primary); text-transform:capitalize;">${window.Utils.formatDate(now, { month: 'long', year: 'numeric' })}</div>
-        </div>
-        
-        <div class="calendar-grid">
-            <!-- Headers -->
-            ${['D', 'L', 'M', 'M', 'J', 'V', 'S'].map(d => `<div class="calendar-header-day">${d}</div>`).join('')}
-            
-            <!-- Days injected here -->
-            <div id="calendar-days" style="display:contents;"></div>
-        </div>
-    `;
+        container.innerHTML = `
+            <div class="calendar-header-mobile" style="margin-bottom:16px;">
+                <div style="font-size:1.1rem; font-weight:700; color:var(--primary); text-transform:capitalize;">${window.Utils.formatDate(now, { month: 'long', year: 'numeric' })}</div>
+            </div>
 
-    // Generate Days
-    const daysContainer = document.getElementById('calendar-days');
-    const logs = await window.db.workLogs.toArray();
+            <div class="calendar-grid">
+                <!-- Headers -->
+                ${['D', 'L', 'M', 'M', 'J', 'V', 'S'].map(d => `<div class="calendar-header-day">${d}</div>`).join('')}
+
+                <!-- Days injected here -->
+                <div id="calendar-days" style="display:contents;"></div>
+            </div>
+        `;
+
+        // Generate Days
+        const daysContainer = document.getElementById('calendar-days');
+        const logs = await window.db.workLogs.toArray();
     const activeLogs = logs.filter(l => !l.deleted); // Filter deleted logs
 
     let htmlDays = '';
@@ -57,19 +58,29 @@ window.Views.calendar = async (container) => {
 
     daysContainer.innerHTML = htmlDays;
 
-    // Add click events
-    document.querySelectorAll('.calendar-day-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            openDayModal(e.currentTarget.dataset.date);
+        // Add click events
+        document.querySelectorAll('.calendar-day-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                openDayModal(e.currentTarget.dataset.date);
+            });
         });
-    });
+    } catch (err) {
+        console.error('Error loading calendar:', err);
+        container.innerHTML = `
+            <div style="padding: 20px; text-align: center; color: var(--danger);">
+                <p>Error al cargar el calendario</p>
+                <small>${err.message}</small>
+            </div>
+        `;
+    }
 };
 
 async function openDayModal(dateStr) {
-    const modalContainer = document.getElementById('modal-container');
-    const logs = await window.db.workLogs.where('date').equals(dateStr).toArray();
-    const activeLogs = logs.filter(l => !l.deleted); // Filter deleted
-    const employees = await window.db.employees.toArray();
+    try {
+        const modalContainer = document.getElementById('modal-container');
+        const logs = await window.db.workLogs.where('date').equals(dateStr).toArray();
+        const activeLogs = logs.filter(l => !l.deleted); // Filter deleted
+        const employees = await window.db.employees.toArray();
 
     // Helper to render
     const renderContent = () => {
@@ -354,4 +365,8 @@ async function openDayModal(dateStr) {
             alert('Error: ' + err.message);
         }
     });
+    } catch (err) {
+        console.error('Error opening day modal:', err);
+        alert('Error al abrir el registro del día: ' + err.message);
+    }
 }
