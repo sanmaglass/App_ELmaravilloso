@@ -72,12 +72,24 @@ async function renderPromos() {
             </div>
         `).join('');
 
-        // Events
-        document.querySelectorAll('.btn-launch-whatsapp').forEach(btn => btn.addEventListener('click', (e) => handleLaunchPromo(e.currentTarget.dataset.id)));
-        document.querySelectorAll('.btn-delete-promo').forEach(btn => btn.addEventListener('click', async (e) => {
-            if (confirm('¿Eliminar campaña definitivamente?')) {
+        // Events with event delegation to prevent memory leaks
+        // Remove old delegates to prevent duplicate listeners
+        if (grid._launchHandler) grid.removeEventListener('click', grid._launchHandler);
+        if (grid._deleteHandler) grid.removeEventListener('click', grid._deleteHandler);
+
+        // Event delegation for WhatsApp launch
+        grid._launchHandler = (e) => {
+            const btn = e.target.closest('.btn-launch-whatsapp');
+            if (btn) handleLaunchPromo(btn.dataset.id);
+        };
+        grid.addEventListener('click', grid._launchHandler);
+
+        // Event delegation for delete button
+        grid._deleteHandler = async (e) => {
+            const btn = e.target.closest('.btn-delete-promo');
+            if (btn && confirm('¿Eliminar campaña definitivamente?')) {
                 try {
-                    const id = Number(e.currentTarget.dataset.id);
+                    const id = Number(btn.dataset.id);
                     btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
                     await window.DataManager.deleteAndSync('promotions', id);
                     renderPromos();
@@ -85,7 +97,8 @@ async function renderPromos() {
                     alert('Error al eliminar: ' + err.message);
                 }
             }
-        }));
+        };
+        grid.addEventListener('click', grid._deleteHandler);
     } catch (e) {
         console.error(e);
         grid.innerHTML = '<div style="color:red; grid-column:1/-1;">Error cargando promociones.</div>';
