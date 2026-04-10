@@ -907,16 +907,24 @@ async function renderInvoices() {
             renderInvoices();
         };
 
-        // Attach Events
-        document.querySelectorAll('.btn-edit-invoice').forEach(btn =>
-            btn.addEventListener('click', (e) => handleEditInvoice(Number(e.currentTarget.dataset.id)))
-        );
-        document.querySelectorAll('.btn-delete-invoice').forEach(btn =>
-            btn.addEventListener('click', (e) => handleDeleteInvoice(Number(e.currentTarget.dataset.id)))
-        );
-        document.querySelectorAll('.btn-delete-invoice').forEach(btn =>
-            btn.addEventListener('click', (e) => handleDeleteInvoice(Number(e.currentTarget.dataset.id)))
-        );
+        // Attach Events with event delegation (prevent memory leaks)
+        // Remove old delegates to prevent duplicate listeners
+        if (list._editHandler) list.removeEventListener('click', list._editHandler);
+        if (list._deleteHandler) list.removeEventListener('click', list._deleteHandler);
+
+        // Event delegation: single listener for all edit buttons
+        list._editHandler = (e) => {
+            const btn = e.target.closest('.btn-edit-invoice');
+            if (btn) handleEditInvoice(Number(btn.dataset.id));
+        };
+        list.addEventListener('click', list._editHandler);
+
+        // Event delegation: single listener for all delete buttons
+        list._deleteHandler = (e) => {
+            const btn = e.target.closest('.btn-delete-invoice');
+            if (btn) handleDeleteInvoice(Number(btn.dataset.id));
+        };
+        list.addEventListener('click', list._deleteHandler);
 
     } catch (e) {
         console.error("Error in renderInvoices:", e);
