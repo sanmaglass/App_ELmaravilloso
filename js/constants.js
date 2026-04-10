@@ -2,7 +2,19 @@
 window.Constants = {
     // Mapeo de nombres de tablas locales a nombres remotos (Supabase)
     REMOTE_TABLE_MAP: {
-        'workLogs': 'worklogs'
+        'employees': 'employees',
+        'workLogs': 'worklogs',
+        'products': 'products',
+        'promotions': 'promotions',
+        'suppliers': 'suppliers',
+        'purchase_invoices': 'purchase_invoices',
+        'sales_invoices': 'sales_invoices',
+        'expenses': 'expenses',
+        'daily_sales': 'daily_sales',
+        'electronic_invoices': 'electronic_invoices',
+        'reminders': 'reminders',
+        'eleventa_sales': 'eleventa_sales',
+        'loans': 'loans'
     },
 
     // Versión actual de Dexie DB

@@ -118,8 +118,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                 window.db.suppliers.toArray()
             ]);
 
-            const supplierMap = {};
-            suppliers.forEach(s => supplierMap[s.id] = s.name);
+            const supplierMap = window.Utils.createSupplierMap(suppliers);
 
             // Filter
             let filtered = loans.filter(l => !l.deleted);

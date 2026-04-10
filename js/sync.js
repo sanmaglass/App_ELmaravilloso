@@ -568,23 +568,11 @@ window.Sync = {
     initRealtimeSync: async function () {
         if (!window.Sync.client) return;
 
-        const tableMap = [
-            'employees', 'workLogs', 'products', 'promotions', 'suppliers',
-            'purchase_invoices', 'sales_invoices', 'expenses', 'daily_sales',
-            'electronic_invoices', 'reminders', 'eleventa_sales', 'loans'
-        ];
-
-        const remoteTableMap = {
-            'employees': 'employees', 'workLogs': 'worklogs', 'products': 'products',
-            'promotions': 'promotions', 'suppliers': 'suppliers', 'purchase_invoices': 'purchase_invoices',
-            'sales_invoices': 'sales_invoices', 'expenses': 'expenses', 'daily_sales': 'daily_sales',
-            'electronic_invoices': 'electronic_invoices', 'reminders': 'reminders',
-            'eleventa_sales': 'eleventa_sales', 'loans': 'loans'
-        };
+        const tableMap = Object.keys(window.Constants.REMOTE_TABLE_MAP);
 
         try {
             for (const localTable of tableMap) {
-                const remoteTable = remoteTableMap[localTable];
+                const remoteTable = window.Constants.REMOTE_TABLE_MAP[localTable];
 
                 // Subscribe to realtime changes
                 const channel = window.Sync.client

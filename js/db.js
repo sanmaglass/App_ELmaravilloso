@@ -100,8 +100,7 @@ window.DataManager = {
      * cuando vuelva la conexión.
      */
     async saveAndSync(tableName, data) {
-        const remoteTableMap = { 'workLogs': 'worklogs' };
-        const remoteTable = remoteTableMap[tableName] || tableName;
+        const remoteTable = (window.Constants?.REMOTE_TABLE_MAP?.[tableName]) || tableName;
 
         try {
             // ── ID Coercion: evitar duplicados por IDs string ──
@@ -236,8 +235,7 @@ window.DataManager = {
 
         for (const [queueKey, entry] of entries) {
             const { tableName, data } = entry;
-            const remoteTableMap = { 'workLogs': 'worklogs' };
-            const remoteTable = remoteTableMap[tableName] || tableName;
+            const remoteTable = (window.Constants?.REMOTE_TABLE_MAP?.[tableName]) || tableName;
 
             const result = await this._syncWithRetry(tableName, remoteTable, data);
 
@@ -367,8 +365,7 @@ window.DataManager = {
      * Elimina (soft delete) una entidad y sincroniza.
      */
     async deleteAndSync(tableName, id) {
-        const remoteTableMap = { 'workLogs': 'worklogs' };
-        const remoteTable = remoteTableMap[tableName] || tableName;
+        const remoteTable = (window.Constants?.REMOTE_TABLE_MAP?.[tableName]) || tableName;
 
         try {
             // 1. Borrado local inmediato (Soft delete)

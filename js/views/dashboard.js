@@ -567,8 +567,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         const products = allProducts.filter(p => !p.deleted);
 
-        const supplierMap = {};
-        suppliers.forEach(s => supplierMap[s.id] = s.name);
+        const supplierMap = window.Utils.createSupplierMap(suppliers);
 
         const eleventaSales = (allEleventaSales || []).filter(s => !s.deleted);
 
@@ -1496,8 +1495,7 @@ async function renderReportsTab() {
             window.db.daily_sales.toArray()
         ]);
 
-        const supplierMap = {};
-        suppliers.filter(s => !s.deleted).forEach(s => supplierMap[s.id] = s.name);
+        const supplierMap = window.Utils.createSupplierMap(suppliers);
 
         const activePurchases = purchases.filter(p => !p.deleted);
         const activeSales = sales.filter(s => !s.deleted);

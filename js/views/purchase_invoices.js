@@ -331,8 +331,7 @@ async function renderPendingDocuments() {
         const invoices = await window.db.purchase_invoices.toArray();
         const suppliers = await window.db.suppliers.toArray();
 
-        const supplierMap = {};
-        suppliers.forEach(s => supplierMap[s.id] = s.name);
+        const supplierMap = window.Utils.createSupplierMap(suppliers);
 
         // Filter: Active invoices where invoice number is missing/pending
         const pending = invoices.filter(i =>
@@ -421,8 +420,7 @@ async function renderCreditAlerts() {
     try {
         const invoices = await window.db.purchase_invoices.toArray();
         const suppliers = await window.db.suppliers.toArray();
-        const supplierMap = {};
-        suppliers.forEach(s => supplierMap[s.id] = s.name);
+        const supplierMap = window.Utils.createSupplierMap(suppliers);
 
         // Filter: Active credit invoices that are still pending OR partially paid (Abonado)
         const creditPending = invoices.filter(i =>
@@ -709,10 +707,7 @@ async function renderInvoices() {
         ]);
 
         // Map supplier names
-        const supplierMap = {};
-        if (suppliers) {
-            suppliers.forEach(s => supplierMap[s.id] = s.name);
-        }
+        const supplierMap = suppliers ? window.Utils.createSupplierMap(suppliers) : {};
 
         const activeInvoices = invoices.filter(i => !i.deleted);
 
@@ -1495,8 +1490,7 @@ async function exportInvoicesToExcel() {
 
         // Get suppliers to map names
         const suppliers = await window.db.suppliers.toArray();
-        const supplierMap = {};
-        suppliers.forEach(s => supplierMap[s.id] = s.name);
+        const supplierMap = window.Utils.createSupplierMap(suppliers);
 
         const data = activeInvoices.map(inv => ({
             Fecha: inv.date,
@@ -1619,8 +1613,7 @@ async function populateSupplierFilter() {
     const activeInvoices = invoices.filter(i => !i.deleted);
     const usedSupplierIds = [...new Set(activeInvoices.map(i => i.supplierId))];
 
-    const supplierMap = {};
-    suppliers.forEach(s => supplierMap[s.id] = s.name);
+    const supplierMap = window.Utils.createSupplierMap(suppliers);
 
     // Sort suppliers alphabetically
     const supplierOptions = usedSupplierIds

@@ -915,6 +915,23 @@ window.Utils.setupHorizontalDragScroll = (el) => {
             e.stopPropagation();
         }
     }, true);
+    // --- DATA MAPPING UTILITIES ---
+
+    // Create a map of supplier IDs to supplier names
+    // Optionally filters deleted suppliers
+    createSupplierMap: (suppliers, includeDeleted = false) => {
+        const map = {};
+        const supplierList = includeDeleted
+            ? suppliers
+            : suppliers.filter(s => !s.deleted);
+
+        supplierList.forEach(s => {
+            if (s && s.id && s.name) {
+                map[s.id] = s.name;
+            }
+        });
+        return map;
+    }
 };
 
 // --- GLOBAL SHORTCUTS ---
