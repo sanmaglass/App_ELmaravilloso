@@ -123,26 +123,27 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         /* Live Sales Feed */
         .live-sales-scroller {
             display: flex;
-            gap: 12px;
-            overflow-x: auto;
-            overflow-y: hidden;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            overflow-x: hidden;
             padding: 10px 5px 20px 5px;
             scrollbar-width: thin;
             -ms-overflow-style: none;
-            scroll-snap-type: x mandatory;
+            scroll-snap-type: y mandatory;
             -webkit-overflow-scrolling: touch;
-            touch-action: pan-x;
-            cursor: grab;
-            /* Evitar que el contenido se expanda y rompa el layout */
+            touch-action: pan-y;
+            cursor: default;
+            max-height: 600px;
             max-width: 100%;
             box-sizing: border-box;
         }
-        .live-sales-scroller::-webkit-scrollbar { height: 4px; }
+        .live-sales-scroller::-webkit-scrollbar { width: 4px; }
         .live-sales-scroller::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 2px; }
         .live-sales-scroller::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
         .live-sales-scroller.dragging { cursor: grabbing; user-select: none; }
-        
-        .live-ticket-card { min-width: 200px; flex-shrink: 0; background: var(--bg-card); border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid var(--border); scroll-snap-align: start; position: relative; overflow: hidden; }
+
+        .live-ticket-card { width: 100%; flex-shrink: 0; background: var(--bg-card); border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid var(--border); scroll-snap-align: start; position: relative; overflow: hidden; }
         .live-ticket-card.new { animation: pulseNew 2s infinite; border-color: #10b981; }
         @keyframes pulseNew { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
         
@@ -192,9 +193,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .h-product-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
         .h-product-badge { margin-top: 10px; display: inline-block; padding: 4px 8px; border-radius: 8px; font-weight: 800; font-size: 0.7rem; }
 
-        /* Pista visual: indicador de scroll disponible en contenedores horizontales */
+        /* Ajustes Mobile */
         @media (max-width: 768px) {
-            .live-sales-scroller, #top-margin-list, .h-scroll-container {
+            .live-sales-scroller {
+                max-height: 800px;
+            }
+            #top-margin-list, .h-scroll-container {
                 /* En móvil nunca mostrar cursor de escritorio */
                 cursor: default;
             }
