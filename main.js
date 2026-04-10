@@ -131,18 +131,6 @@ async function init() {
         // Initial Load
         views.dashboard();
 
-        // Sincronizar datos automáticamente después de cargar la app (sin bloquear)
-        // Esto se ejecuta después de que todo esté cargado, sin afectar a la interfaz
-        setTimeout(async () => {
-            try {
-                console.log("⏲️ Ejecutando syncAll() automático después de inicialización...");
-                await window.Sync.syncAll();
-                console.log("✅ syncAll() automático completado");
-            } catch (e) {
-                console.warn("⚠️ syncAll() automático falló (no bloquea):", e);
-            }
-        }, 500);
-
         // Sincronizar cuando vuelve a primer plano
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {

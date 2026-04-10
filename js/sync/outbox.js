@@ -26,8 +26,8 @@ window.Outbox = {
   },
 
   async drain() {
-    if (!window.Sync?.client) {
-      console.warn('⚠️ Sync no está listo, drain abortado');
+    if (!window.SyncV2?.client) {
+      console.warn('⚠️ SyncV2 no está listo, drain abortado');
       return;
     }
 
@@ -45,9 +45,9 @@ window.Outbox = {
         const { tableName, op } = item;
 
         if (op === 'PUT') {
-          await window.Sync.client.from(tableName).upsert([payload], { onConflict: 'id' });
+          await window.SyncV2.client.from(tableName).upsert([payload], { onConflict: 'id' });
         } else if (op === 'DELETE') {
-          await window.Sync.client.from(tableName).update({ deleted: true }).eq('id', payload.id);
+          await window.SyncV2.client.from(tableName).update({ deleted: true }).eq('id', payload.id);
         }
 
         // Marcar como done
