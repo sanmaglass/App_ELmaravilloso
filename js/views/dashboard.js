@@ -594,17 +594,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }
 
         // ---- Módulo Ventas en Directo (Eleventa) ----
-        const nowLocal = new Date();
-        const localYear = nowLocal.getFullYear();
-        const localMonth = String(nowLocal.getMonth() + 1).padStart(2, '0');
-        const localDay = String(nowLocal.getDate()).padStart(2, '0');
-        const todayStrLocal = `${localYear}-${localMonth}-${localDay}`; // YYYY-MM-DD local
-
-        const todayEleventa = eleventaSales.filter(v => {
-            // v.date es string "YYYY-MM-DD" o timestamp
-            let dateStr = String(v.date).split('T')[0]; // Tomar solo YYYY-MM-DD si viene con hora
-            return dateStr === todayStrLocal;
-        }).sort((a, b) => new Date(b.date) - new Date(a.date));
+        // Mostrar las ÚLTIMAS 20 ventas de TODOS LOS DÍAS, no solo hoy
+        const todayEleventa = eleventaSales
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 20);
 
         const elFeed = document.getElementById('live-sales-feed');
         const validSales = todayEleventa.filter(v => v.total > 0);
