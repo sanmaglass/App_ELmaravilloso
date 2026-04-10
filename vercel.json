@@ -1,16 +1,30 @@
 {
-  "buildCommand": "echo 'Static site - no build needed'",
+  "buildCommand": "echo 'Static site'",
   "outputDirectory": ".",
   "framework": "static",
+  "public": true,
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/"
     }
   ],
   "headers": [
     {
       "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Content-Type",
+          "value": "text/html; charset=utf-8"
+        }
+      ]
+    },
+    {
+      "source": "/sw.js",
       "headers": [
         {
           "key": "Cache-Control",
@@ -33,10 +47,6 @@
         {
           "key": "Access-Control-Allow-Origin",
           "value": "*"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, OPTIONS"
         }
       ]
     }
