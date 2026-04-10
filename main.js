@@ -139,6 +139,30 @@ async function init() {
                 console.warn("⚠️ syncAll() automático falló (no bloquea):", e);
             }
         }, 500);
+
+        // Sincronizar cuando el app vuelve a primer plano (útil para móviles)
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible') {
+                console.log("📱 App vuelve a primer plano - sincronizando...");
+                try {
+                    await window.Sync.syncAll();
+                    console.log("✅ Sync por visibilitychange completado");
+                } catch (e) {
+                    console.warn("⚠️ Sync por visibilitychange falló:", e);
+                }
+            }
+        });
+
+        // Sincronizar cuando se conecta a internet
+        window.addEventListener('online', async () => {
+            console.log("🌐 Conexión a internet restaurada - sincronizando...");
+            try {
+                await window.Sync.syncAll();
+                console.log("✅ Sync por online completado");
+            } catch (e) {
+                console.warn("⚠️ Sync por online falló:", e);
+            }
+        });
     } catch (err) {
         console.error("Critical Init Error:", err);
         showError('Error de Carga',

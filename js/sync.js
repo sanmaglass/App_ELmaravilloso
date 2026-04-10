@@ -626,7 +626,17 @@ window.Sync = {
             // Re-insuflar el ID numérico en el objeto
             record.id = id;
 
-            console.log(`📡 Realtime ${payload.eventType} on ${localTableName}:`, id);
+            // Logging detallado para eleventa_sales
+            if (localTableName === 'eleventa_sales') {
+                console.log(`📡🎟️ Realtime ${payload.eventType} on ${localTableName}:`, {
+                    id,
+                    date: record.date,
+                    total: record.total,
+                    items_count: record.items_count
+                });
+            } else {
+                console.log(`📡 Realtime ${payload.eventType} on ${localTableName}:`, id);
+            }
 
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                 // Si el registro viene marcado como borrado desde la nube, lo quitamos localmente
