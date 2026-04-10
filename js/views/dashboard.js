@@ -594,10 +594,18 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }
 
         // ---- Módulo Ventas en Directo (Eleventa) ----
-        // Mostrar las ÚLTIMAS 20 ventas de TODOS LOS DÍAS, no solo hoy
-        const todayEleventa = eleventaSales
-            .sort((a, b) => new Date(b.date) - new Date(a.date))
-            .slice(0, 20);
+        // Mostrar TODAS las ventas del día completo
+        const nowLocal = new Date();
+        const localYear = nowLocal.getFullYear();
+        const localMonth = String(nowLocal.getMonth() + 1).padStart(2, '0');
+        const localDay = String(nowLocal.getDate()).padStart(2, '0');
+        const todayStrLocal = `${localYear}-${localMonth}-${localDay}`; // YYYY-MM-DD local
+
+        const todayEleventa = eleventaSales.filter(v => {
+            // v.date es string "YYYY-MM-DD" o timestamp
+            let dateStr = String(v.date).split('T')[0]; // Tomar solo YYYY-MM-DD si viene con hora
+            return dateStr === todayStrLocal;
+        }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
         const elFeed = document.getElementById('live-sales-feed');
         const validSales = todayEleventa.filter(v => v.total > 0);
@@ -606,8 +614,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             if (validSales.length === 0) {
                 elFeed.innerHTML = '<div style="width:100%; text-align:center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-glass); border-radius: 20px; border: 1px dashed rgba(0,0,0,0.1);"><i class="ph ph-receipt" style="font-size:2.5rem; opacity:0.5; margin-bottom:12px;"></i><br><span style="font-weight:600;">No hay ventas registradas aún</span></div>';
             } else {
-                // Show up to 20 tickets maximum to keep memory footprint low
-                const renderSales = validSales.slice(0, 20);
+                // Mostrar TODAS las ventas del día (sin límite de 20)
+                const renderSales = validSales;
                 elFeed.innerHTML = renderSales.map((v, index) => {
                     const dateObj = new Date(v.date);
                     const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
