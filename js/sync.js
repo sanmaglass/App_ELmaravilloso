@@ -199,6 +199,10 @@ window.Sync = {
                     const { data, error } = await query;
                     if (map.remote === 'eleventa_sales') {
                         console.log(`[Sync DEBUG] eleventa_sales result: ${data?.length || 0} registros, error: ${error?.message || 'ninguno'}`);
+                        if (data && data.length > 0) {
+                            console.log(`[Sync DEBUG] Primer registro eleventa:`, data[0]);
+                            console.log(`[Sync DEBUG] Últimas 3 fechas:`, data.slice(0, 3).map(d => ({ id: d.id, date: d.date, total: d.total })));
+                        }
                     }
                     return { map, data, error };
                 } catch (e) {
