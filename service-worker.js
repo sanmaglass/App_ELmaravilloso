@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v251';
+const CACHE_NAME = 'el-maravilloso-v252';
 // NOTA: auth.js, main.js, index.html NO se cachean (siempre red)
 const urlsToCache = [
     // NO cachear: './index.html', './main.js', './js/views/auth.js'
