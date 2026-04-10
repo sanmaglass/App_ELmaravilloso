@@ -58,19 +58,33 @@ async function init() {
 
         // Cloud sync initialization (non-blocking)
         try {
+            console.log("1️⃣ Inicializando Sync...");
             await window.Sync.init();
+            console.log("2️⃣ Sync.init() completado");
+
+            // Pequeño delay para asegurar que está listo
+            await new Promise(r => setTimeout(r, 500));
+
             // Sincronización inicial: traer todos los datos de Supabase
-            console.log("Iniciando sincronización inicial...");
-            await window.Sync.syncAll();
-            // Iniciar listener en tiempo real para cambios de Supabase (incluye eleventa_sales)
+            console.log("3️⃣ Iniciando syncAll()...");
+            const syncResult = await window.Sync.syncAll();
+            console.log("4️⃣ syncAll() completado:", syncResult);
+
+            // Iniciar listener en tiempo real
+            console.log("5️⃣ Inicializando realtime sync...");
             await window.Sync.initRealtimeSync();
-            // Fallback: Polling cada 60 segundos si el WebSocket falla
+            console.log("6️⃣ Realtime sync activado");
+
+            // Fallback: Polling cada 60 segundos
             window.Sync.startAutoSync(60000);
-            console.log("✓ Sincronización automática activada");
+            console.log("✅ Sincronización automática completamente activada");
         } catch (syncError) {
-            console.warn("Cloud sync initialization failed:", syncError);
-            // Don't block app loading if cloud sync fails
-            // User will see "Sin Nube" indicator
+            console.error("❌ Cloud sync initialization failed:", syncError);
+            // Intentar sync nuevamente en 10 segundos
+            setTimeout(() => {
+                console.log("🔄 Reintentando sincronización...");
+                window.Sync.syncAll().catch(e => console.error("Reintento falló:", e));
+            }, 10000);
         }
 
         // Navigation Logic
