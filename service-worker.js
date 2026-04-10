@@ -1,18 +1,21 @@
-const CACHE_NAME = 'el-maravilloso-v1003';
+const CACHE_NAME = 'el-maravilloso-v1004';
 // NOTA: auth.js, main.js, index.html NO se cachean (siempre red)
 const urlsToCache = [
     // NO cachear: './index.html', './main.js', './js/views/auth.js'
     './css/style.css',
     './css/components.css',
     './js/app.js',
+    './js/config.js',
+    './js/constants.js',
     './js/db.js',
+    './js/transaction-manager.js',
+    './js/error-logger.js',
+    './js/utils.js',
     './js/sync.js',
     './js/sync/device-id.js',
     './js/sync/hlc.js',
     './js/sync/outbox.js',
     './js/sync/sync-v2.js',
-    './js/utils.js',
-    './js/config.js',
     './js/sii_api.js',
     './js/notifications.js',
     // archivos (excluido auth.js)
