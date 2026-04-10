@@ -54,22 +54,29 @@ window.Views.login = (container) => {
     `;
 
     // --- AUTO LOGIN (Sin PIN) ---
-    setTimeout(async () => {
-        try {
-            // Marcar como autenticado sin pedir PIN
-            localStorage.setItem('wm_auth', 'true');
-            localStorage.setItem('wm_user', 'Administrador');
+    // Usar sessionStorage (más seguro y no persiste entre pestañas)
+    if (!sessionStorage.getItem('wm_auth')) {
+        sessionStorage.setItem('wm_auth', 'true');
+        sessionStorage.setItem('wm_user', 'Administrador');
 
-            // Limpiar datos de PIN antiguos
-            localStorage.removeItem('wm_pin_mode');
-            localStorage.removeItem('pin_attempts');
-            localStorage.removeItem('pin_lockout_until');
+        // Limpiar datos de PIN antiguos
+        localStorage.removeItem('wm_pin_mode');
+        localStorage.removeItem('pin_attempts');
+        localStorage.removeItem('pin_lockout_until');
 
-            // Redirigir a app
-            setTimeout(() => window.location.reload(), 500);
-        } catch (err) {
-            console.error("Auth error:", err);
-            alert("Error al iniciar sesión");
-        }
-    }, 1000);
+        // Esperar un momento y llamar init() directamente sin recargar
+        setTimeout(() => {
+            document.querySelector('.app-container').style.display = 'flex';
+            const loginWrapper = document.getElementById('login-wrapper');
+            if (loginWrapper) loginWrapper.remove();
+
+            // Iniciar app
+            if (typeof init === 'function') {
+                init();
+            } else {
+                console.log('Init not ready, reloading...');
+                window.location.reload();
+            }
+        }, 800);
+    }
 };
