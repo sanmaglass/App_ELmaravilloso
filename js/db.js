@@ -8,6 +8,7 @@ const db = new Dexie('ElMaravillosoApp');
 // v12:    added electronic_invoices
 // v14:    added eleventa_sales integration
 // v15:    added version field index for optimistic locking
+// v16:    added error_logs table for centralized error tracking
 db.version(14).stores({
     employees: 'id, rut, deleted',
     workLogs: 'id, employeeId, date, deleted',
@@ -40,6 +41,24 @@ db.version(15).stores({
     reminders: 'id, deleted, completed, [completed+deleted]',
     eleventa_sales: 'id, ticket_id, date, deleted',
     loans: 'id, supplierId, date, deleted, direction, status, version'
+});
+
+db.version(16).stores({
+    employees: 'id, rut, deleted',
+    workLogs: 'id, employeeId, date, deleted',
+    products: 'id, category, deleted',
+    promotions: 'id, deleted',
+    suppliers: 'id, name, deleted',
+    purchase_invoices: 'id, supplierId, date, paymentStatus, paymentMethod, invoiceNumber, deleted, version',
+    sales_invoices: 'id, date, clientName, invoiceNumber, deleted',
+    electronic_invoices: 'id, date, folio, status, deleted, version',
+    expenses: 'id, date, deleted',
+    daily_sales: 'id, date, deleted',
+    settings: 'key',
+    reminders: 'id, deleted, completed, [completed+deleted]',
+    eleventa_sales: 'id, ticket_id, date, deleted',
+    loans: 'id, supplierId, date, deleted, direction, status, version',
+    error_logs: 'id, timestamp, level, [level+timestamp]'
 });
 
 // ──────────────────────────────────────────────────────────────
