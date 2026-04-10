@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v236';
+const CACHE_NAME = 'el-maravilloso-v250';
 const urlsToCache = [
     './index.html',
     './css/style.css',
@@ -72,30 +72,60 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Network First then Cache
-    event.respondWith(
-        fetch(event.request)
-            .then((networkResponse) => {
-                if (networkResponse && networkResponse.status === 200) {
-                    const responseClone = networkResponse.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseClone);
-                    });
-                }
-                return networkResponse;
-            })
-            .catch(() => {
-                // If offline or network fails, look in cache
-                return caches.match(event.request)
-                    .then((cachedResponse) => {
-                        if (cachedResponse) return cachedResponse;
-                        // Styled offline fallback page
-                        if (event.request.headers.get('accept')?.includes('text/html')) {
-                            return caches.match('./offline.html');
-                        }
-                    });
-            })
-    );
+    // Critical files: ALWAYS fetch from network first (auth.js, main.js)
+    const criticalFiles = ['/main.js', 'main.js', '/js/views/auth.js', 'js/views/auth.js', '/index.html', 'index.html'];
+    const isCritical = criticalFiles.some(file => url.pathname.endsWith(file));
+
+    if (isCritical) {
+        // Network ONLY for critical files
+        event.respondWith(
+            fetch(event.request)
+                .then((networkResponse) => {
+                    if (networkResponse && networkResponse.status === 200) {
+                        const responseClone = networkResponse.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, responseClone);
+                        });
+                    }
+                    return networkResponse;
+                })
+                .catch(() => {
+                    // Offline fallback
+                    return caches.match(event.request)
+                        .then((cachedResponse) => {
+                            if (cachedResponse) return cachedResponse;
+                            if (event.request.headers.get('accept')?.includes('text/html')) {
+                                return caches.match('./offline.html');
+                            }
+                        });
+                })
+        );
+    } else {
+        // Network First then Cache for other files
+        event.respondWith(
+            fetch(event.request)
+                .then((networkResponse) => {
+                    if (networkResponse && networkResponse.status === 200) {
+                        const responseClone = networkResponse.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, responseClone);
+                        });
+                    }
+                    return networkResponse;
+                })
+                .catch(() => {
+                    // If offline or network fails, look in cache
+                    return caches.match(event.request)
+                        .then((cachedResponse) => {
+                            if (cachedResponse) return cachedResponse;
+                            // Styled offline fallback page
+                            if (event.request.headers.get('accept')?.includes('text/html')) {
+                                return caches.match('./offline.html');
+                            }
+                        });
+                })
+        );
+    }
 });
 
 // Listen for messages from the main app (for manual updates)
