@@ -192,9 +192,14 @@ window.Sync = {
                     if (map.remote === 'eleventa_sales') {
                         const rollingDate = new Date();
                         rollingDate.setDate(rollingDate.getDate() - 90);
-                        query = query.gte('date', rollingDate.toISOString()).limit(10000);
+                        const filterDate = rollingDate.toISOString();
+                        console.log(`[Sync DEBUG] eleventa_sales filter date: ${filterDate}`);
+                        query = query.gte('date', filterDate).limit(10000);
                     }
                     const { data, error } = await query;
+                    if (map.remote === 'eleventa_sales') {
+                        console.log(`[Sync DEBUG] eleventa_sales result: ${data?.length || 0} registros, error: ${error?.message || 'ninguno'}`);
+                    }
                     return { map, data, error };
                 } catch (e) {
                     return { map, data: null, error: e };
@@ -329,12 +334,23 @@ window.Sync = {
                             const cloudHasNew = normalizedCloudData.some(r => !localIds.has(r.id));
                             const countDiffers = normalizedCloudData.length !== localData.length;
                             if (cloudHasNew || countDiffers || toDeleteLocal.length > 0) {
-                                await window.db[localName].bulkPut(normalizedCloudData);
-                                window.Sync._syncSummary.updates += normalizedCloudData.length;
-                                dataChanged = true;
+                                try {
+                                    await window.db[localName].bulkPut(normalizedCloudData);
+                                    console.log(`[Sync DEBUG] ${localName}: bulkPut exitoso`);
+                                    window.Sync._syncSummary.updates += normalizedCloudData.length;
+                                    dataChanged = true;
+                                } catch (putErr) {
+                                    console.error(`[Sync ERROR] ${localName} bulkPut falló:`, putErr.message);
+                                    throw putErr;
+                                }
                             } else {
                                 // Mismo conteo e IDs — igual hacemos bulkPut silencioso para actualizar campos
-                                await window.db[localName].bulkPut(normalizedCloudData);
+                                try {
+                                    await window.db[localName].bulkPut(normalizedCloudData);
+                                    console.log(`[Sync DEBUG] ${localName}: bulkPut silencioso exitoso`);
+                                } catch (putErr) {
+                                    console.error(`[Sync ERROR] ${localName} bulkPut silencioso falló:`, putErr.message);
+                                }
                             }
                         }
                     }
