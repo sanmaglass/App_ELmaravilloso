@@ -67,20 +67,22 @@ async function init() {
                 console.log("3️⃣ Pull completado - iniciando Realtime...");
                 await window.SyncV2.initRealtimeSync();
 
-                // Heartbeat realtime
+                // Heartbeat realtime agresivo - reconectar cada 15s si falla
                 setInterval(() => {
                     if (!window.SyncV2.isRealtimeActive) {
                         console.log("🫀 Heartbeat: reconectando Realtime...");
                         window.SyncV2.closeRealtime().then(() => window.SyncV2.initRealtimeSync());
                     }
-                }, 30000);
+                }, 15000);
 
-                // Polling fallback cada 120s
+                // Polling cada 30s SIEMPRE (no solo si realtime falla)
+                // Esto asegura que nunca pasa más de 30s sin actualizar
                 setInterval(() => {
-                    if (!window.SyncV2.isRealtimeActive && !window.SyncV2.isSyncing) {
+                    if (!window.SyncV2.isSyncing) {
+                        console.log("📡 Polling automático...");
                         window.SyncV2.syncAll();
                     }
-                }, 120000);
+                }, 30000);
 
                 console.log("✅ SyncV2 activado (Realtime + Polling)");
             }
