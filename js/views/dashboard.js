@@ -120,30 +120,18 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             .dash-list-item { padding: 8px 0; }
         }
 
-        /* Live Sales Feed */
+        /* Live Sales Feed — Grid Responsive */
         .live-sales-scroller {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding: 10px 5px 20px 5px;
-            scrollbar-width: thin;
-            -ms-overflow-style: none;
-            scroll-snap-type: y mandatory;
-            -webkit-overflow-scrolling: touch;
-            touch-action: pan-y;
-            cursor: default;
-            max-height: 600px;
-            max-width: 100%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            padding: 10px;
             box-sizing: border-box;
+            max-width: 100%;
         }
-        .live-sales-scroller::-webkit-scrollbar { width: 4px; }
-        .live-sales-scroller::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 2px; }
-        .live-sales-scroller::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
-        .live-sales-scroller.dragging { cursor: grabbing; user-select: none; }
 
-        .live-ticket-card { width: 100%; flex-shrink: 0; background: var(--bg-card); border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid var(--border); scroll-snap-align: start; position: relative; overflow: hidden; }
+        .live-ticket-card { background: var(--bg-card); border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid var(--border); position: relative; overflow: hidden; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        .live-ticket-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); border-color: rgba(16, 185, 129, 0.3); }
         .live-ticket-card.new { animation: pulseNew 2s infinite; border-color: #10b981; }
         @keyframes pulseNew { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
         
@@ -618,8 +606,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             if (validSales.length === 0) {
                 elFeed.innerHTML = '<div style="width:100%; text-align:center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-glass); border-radius: 20px; border: 1px dashed rgba(0,0,0,0.1);"><i class="ph ph-receipt" style="font-size:2.5rem; opacity:0.5; margin-bottom:12px;"></i><br><span style="font-weight:600;">No hay ventas registradas aún</span></div>';
             } else {
-                // Mostrar TODAS las ventas del día (sin límite de 20)
-                const renderSales = validSales;
+                // Mostrar los últimos 15 tickets en grid limpio
+                const renderSales = validSales.slice(0, 15);
                 elFeed.innerHTML = renderSales.map((v, index) => {
                     const dateObj = new Date(v.date);
                     const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
@@ -1154,7 +1142,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // El scroll táctil en celular ya funciona via CSS (touch-action: pan-x)
         // Esta función solo añade la experiencia de arrastre adicional para el ratón en PC.
         if (window.Utils && window.Utils.setupHorizontalDragScroll) {
-            window.Utils.setupHorizontalDragScroll(document.getElementById('live-sales-feed'));
             window.Utils.setupHorizontalDragScroll(document.getElementById('top-margin-list'));
             window.Utils.setupHorizontalDragScroll(document.getElementById('zero-margin-list'));
         }
