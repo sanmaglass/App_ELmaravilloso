@@ -2,19 +2,13 @@
   "buildCommand": "echo 'Static site'",
   "outputDirectory": ".",
   "public": true,
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/"
-    }
-  ],
   "headers": [
     {
       "source": "/manifest.json",
       "headers": [
         {
           "key": "Content-Type",
-          "value": "application/manifest+json"
+          "value": "application/manifest+json; charset=utf-8"
         },
         {
           "key": "Cache-Control",
@@ -45,20 +39,11 @@
       ]
     },
     {
-      "source": "/js/(.*)",
+      "source": "/assets/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=3600"
-        }
-      ]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
+          "value": "public, max-age=86400"
         }
       ]
     }
