@@ -61,6 +61,43 @@ db.version(16).stores({
     error_logs: 'id, timestamp, level, [level+timestamp]'
 });
 
+// v17: HLC sync - nueva arquitectura de sincronización
+db.version(17).stores({
+    employees: 'id, rut, deleted, updated_at_hlc',
+    workLogs: 'id, employeeId, date, deleted, updated_at_hlc',
+    products: 'id, category, deleted, updated_at_hlc',
+    promotions: 'id, deleted, updated_at_hlc',
+    suppliers: 'id, name, deleted, updated_at_hlc',
+    purchase_invoices: 'id, supplierId, date, paymentStatus, paymentMethod, invoiceNumber, deleted, version, updated_at_hlc',
+    sales_invoices: 'id, date, clientName, invoiceNumber, deleted, updated_at_hlc',
+    electronic_invoices: 'id, date, folio, status, deleted, version, updated_at_hlc',
+    expenses: 'id, date, deleted, updated_at_hlc',
+    daily_sales: 'id, date, deleted, updated_at_hlc',
+    settings: 'key',
+    reminders: 'id, deleted, completed, [completed+deleted], updated_at_hlc',
+    eleventa_sales: 'id, ticket_id, date, deleted, updated_at_hlc',
+    loans: 'id, supplierId, date, deleted, direction, status, version, updated_at_hlc',
+    error_logs: 'id, timestamp, level, [level+timestamp]',
+    sync_outbox: '++id, tableName, status, created_at',
+    sync_state: 'table_name'
+}).upgrade(tx => {
+    // Migrar datos: agregar updated_at_hlc a registros existentes
+    const tables = ['employees', 'workLogs', 'products', 'promotions', 'suppliers',
+                    'purchase_invoices', 'sales_invoices', 'electronic_invoices', 'expenses',
+                    'daily_sales', 'reminders', 'eleventa_sales', 'loans'];
+    const now = Date.now();
+
+    tables.forEach(tableName => {
+        tx.table(tableName).toCollection().modify(record => {
+            if (!record.updated_at_hlc) {
+                record.updated_at_hlc = now;
+                record.updated_by_device = 'migration';
+                record.version = record.version || 1;
+            }
+        });
+    });
+});
+
 // ──────────────────────────────────────────────────────────────
 async function seedDatabase() {
     const count = await db.settings.count();

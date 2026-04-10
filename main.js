@@ -56,35 +56,36 @@ async function init() {
             return;
         }
 
-        // Cloud sync initialization (non-blocking)
+        // Cloud sync initialization v2 (non-blocking)
         try {
-            console.log("1️⃣ Inicializando Sync...");
-            await window.Sync.init();
-            console.log("2️⃣ Sync.init() completado");
+            console.log("1️⃣ Inicializando SyncV2...");
+            const synced = await window.SyncV2.init();
 
-            // Pequeño delay para asegurar que está listo
-            await new Promise(r => setTimeout(r, 500));
+            if (synced) {
+                console.log("2️⃣ SyncV2 listo - iniciando pull incremental...");
+                await window.SyncV2.syncAll();
+                console.log("3️⃣ Pull completado - iniciando Realtime...");
+                await window.SyncV2.initRealtimeSync();
 
-            // Sincronización inicial: traer todos los datos de Supabase
-            console.log("3️⃣ Iniciando syncAll()...");
-            const syncResult = await window.Sync.syncAll();
-            console.log("4️⃣ syncAll() completado:", syncResult);
+                // Heartbeat realtime
+                setInterval(() => {
+                    if (!window.SyncV2.isRealtimeActive) {
+                        console.log("🫀 Heartbeat: reconectando Realtime...");
+                        window.SyncV2.closeRealtime().then(() => window.SyncV2.initRealtimeSync());
+                    }
+                }, 30000);
 
-            // Iniciar listener en tiempo real
-            console.log("5️⃣ Inicializando realtime sync...");
-            await window.Sync.initRealtimeSync();
-            console.log("6️⃣ Realtime sync activado");
+                // Polling fallback cada 120s
+                setInterval(() => {
+                    if (!window.SyncV2.isRealtimeActive && !window.SyncV2.isSyncing) {
+                        window.SyncV2.syncAll();
+                    }
+                }, 120000);
 
-            // Fallback: Polling cada 60 segundos
-            window.Sync.startAutoSync(60000);
-            console.log("✅ Sincronización automática completamente activada");
+                console.log("✅ SyncV2 activado (Realtime + Polling)");
+            }
         } catch (syncError) {
-            console.error("❌ Cloud sync initialization failed:", syncError);
-            // Intentar sync nuevamente en 10 segundos
-            setTimeout(() => {
-                console.log("🔄 Reintentando sincronización...");
-                window.Sync.syncAll().catch(e => console.error("Reintento falló:", e));
-            }, 10000);
+            console.error("❌ SyncV2 init falló:", syncError);
         }
 
         // Navigation Logic
@@ -140,28 +141,18 @@ async function init() {
             }
         }, 500);
 
-        // Sincronizar cuando el app vuelve a primer plano (útil para móviles)
-        document.addEventListener('visibilitychange', async () => {
+        // Sincronizar cuando vuelve a primer plano
+        document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
-                console.log("📱 App vuelve a primer plano - sincronizando...");
-                try {
-                    await window.Sync.syncAll();
-                    console.log("✅ Sync por visibilitychange completado");
-                } catch (e) {
-                    console.warn("⚠️ Sync por visibilitychange falló:", e);
-                }
+                console.log("📱 Primer plano - sync...");
+                window.SyncV2.syncAll();
             }
         });
 
         // Sincronizar cuando se conecta a internet
-        window.addEventListener('online', async () => {
-            console.log("🌐 Conexión a internet restaurada - sincronizando...");
-            try {
-                await window.Sync.syncAll();
-                console.log("✅ Sync por online completado");
-            } catch (e) {
-                console.warn("⚠️ Sync por online falló:", e);
-            }
+        window.addEventListener('online', () => {
+            console.log("🌐 Online - drenando outbox...");
+            window.Outbox?.drain();
         });
     } catch (err) {
         console.error("Critical Init Error:", err);

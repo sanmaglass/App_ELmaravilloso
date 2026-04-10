@@ -5,3 +5,5 @@ build/
 .vscode/
 *.log
 .DS_Store
+
+.vercel
