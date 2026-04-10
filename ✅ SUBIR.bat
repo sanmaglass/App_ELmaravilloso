@@ -3,17 +3,17 @@ setlocal enabledelayedexpansion
 cls
 
 echo.
-echo ╔══════════════════════════════════════════════════════════════════════════╗
-echo ║              🚀 SUBIDA A GITHUB - AUTOMATICA Y MEJORADA                  ║
-echo ╚══════════════════════════════════════════════════════════════════════════╝
+echo ===============================================================================
+echo                  == SUBIDA A GITHUB - AUTOMATICA Y MEJORADA ==
+echo ===============================================================================
 echo.
 
-:: ─────────────────────────────────────────────────────────────────────────────
-:: 1. VERIFICAR STATUS ACTUAL
-:: ─────────────────────────────────────────────────────────────────────────────
+REM =============================================================================
+REM 1. VERIFICAR STATUS ACTUAL
+REM =============================================================================
 
-echo 📋 ESTADO ACTUAL
-echo ───────────────────────────────────────────────────────────────────────────
+echo [*] ESTADO ACTUAL
+echo -----------------------------------------------------------------------
 
 for /f "tokens=*" %%A in ('git rev-parse --abbrev-ref HEAD') do set BRANCH=%%A
 for /f "tokens=*" %%A in ('git rev-list --count origin/!BRANCH!..HEAD 2^>nul ^| find "."') do set AHEAD=%%A
@@ -21,7 +21,7 @@ for /f "tokens=*" %%A in ('git rev-list --count origin/!BRANCH!..HEAD 2^>nul ^| 
 if "!AHEAD!"=="" set AHEAD=0
 
 if !AHEAD! equ 0 (
-  echo   ✅ Ya está sincronizado
+  echo   [OK] Ya está sincronizado
   echo.
   timeout /t 3 >nul
   exit /b 0
@@ -31,55 +31,55 @@ echo   Rama: !BRANCH!
 echo   Commits a subir: !AHEAD!
 echo.
 
-:: ─────────────────────────────────────────────────────────────────────────────
-:: 2. MOSTRAR COMMITS
-:: ─────────────────────────────────────────────────────────────────────────────
+REM =============================================================================
+REM 2. MOSTRAR COMMITS
+REM =============================================================================
 
-echo 📦 COMMITS A SUBIR
-echo ───────────────────────────────────────────────────────────────────────────
+echo [>>] COMMITS A SUBIR
+echo -----------------------------------------------------------------------
 
 git log --oneline origin/!BRANCH!..HEAD --no-decorate
 
 echo.
 
-:: ─────────────────────────────────────────────────────────────────────────────
-:: 3. MOSTRAR ARCHIVOS MODIFICADOS
-:: ─────────────────────────────────────────────────────────────────────────────
+REM =============================================================================
+REM 3. MOSTRAR ARCHIVOS MODIFICADOS
+REM =============================================================================
 
-echo 📁 ARCHIVOS MODIFICADOS
-echo ───────────────────────────────────────────────────────────────────────────
+echo [+] ARCHIVOS MODIFICADOS
+echo -----------------------------------------------------------------------
 
 for /f "tokens=1*" %%A in ('git diff origin/!BRANCH!...HEAD --name-status') do (
   if "%%A"=="A" (
-    echo   ✨ [NUEVO]     %%B
+    echo   [+] [NUEVO]     %%B
   ) else if "%%A"=="M" (
-    echo   📝 [MODIFICADO] %%B
+    echo   [*] [MODIFICADO] %%B
   ) else if "%%A"=="D" (
-    echo   🗑️  [ELIMINADO]  %%B
+    echo   [-] [ELIMINADO]  %%B
   ) else (
-    echo   🔄 [%%A]      %%B
+    echo   [?] [%%A]      %%B
   )
 )
 
 echo.
 
-:: ─────────────────────────────────────────────────────────────────────────────
-:: 4. ESTADÍSTICAS
-:: ─────────────────────────────────────────────────────────────────────────────
+REM =============================================================================
+REM 4. ESTADÍSTICAS
+REM =============================================================================
 
-echo 📊 ESTADÍSTICAS
-echo ───────────────────────────────────────────────────────────────────────────
+echo [=] ESTADÍSTICAS
+echo -----------------------------------------------------------------------
 
 git diff origin/!BRANCH!...HEAD --stat
 
 echo.
 
-:: ─────────────────────────────────────────────────────────────────────────────
-:: 5. SUBIR AUTOMATICAMENTE
-:: ─────────────────────────────────────────────────────────────────────────────
+REM =============================================================================
+REM 5. SUBIR AUTOMATICAMENTE
+REM =============================================================================
 
-echo 🚀 SUBIENDO A GITHUB...
-echo ───────────────────────────────────────────────────────────────────────────
+echo [>>] SUBIENDO A GITHUB...
+echo -----------------------------------------------------------------------
 echo.
 
 git add . >nul 2>&1
@@ -88,23 +88,23 @@ git push origin !BRANCH! 2>&1
 
 if !ERRORLEVEL! equ 0 (
   echo.
-  echo ╔══════════════════════════════════════════════════════════════════════════╗
-  echo ║                     ✅ SUBIDA EXITOSA A GITHUB                          ║
-  echo ╚══════════════════════════════════════════════════════════════════════════╝
+  echo ===============================================================================
+  echo                        [OK] SUBIDA EXITOSA A GITHUB
+  echo ===============================================================================
   echo.
-  echo 📊 RESUMEN:
+  echo [=] RESUMEN:
   echo   Rama: !BRANCH!
   echo   Commits: !AHEAD!
   echo.
-  echo 🔗 GitHub:
+  echo [>>] GitHub:
   echo   https://github.com/sanmaglass/App_ELmaravilloso/commits/!BRANCH!
   echo.
-  echo ✅ Tu proyecto está respaldado en GitHub
+  echo [OK] Tu proyecto está respaldado en GitHub
   echo.
   timeout /t 5 >nul
 ) else (
   echo.
-  echo ❌ ERROR EN LA SUBIDA
+  echo [ERROR] ERROR EN LA SUBIDA
   echo.
   timeout /t 5 >nul
   exit /b 1
