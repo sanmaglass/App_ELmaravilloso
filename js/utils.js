@@ -864,6 +864,49 @@ window.Utils = {
                 return null;
             }
         }
+    },
+
+    // --- DATA MAPPING UTILITIES ---
+
+    // Create a map of supplier IDs to supplier names
+    // Optionally filters deleted suppliers
+    createSupplierMap: (suppliers, includeDeleted = false) => {
+        const map = {};
+        const supplierList = includeDeleted
+            ? suppliers
+            : suppliers.filter(s => !s.deleted);
+
+        supplierList.forEach(s => {
+            if (s && s.id && s.name) {
+                map[s.id] = s.name;
+            }
+        });
+        return map;
+    },
+
+    // --- ERROR LOGGING ---
+
+    // Log error to centralized error_logs table for debugging
+    logError: async (level, message, details = null, context = {}) => {
+        try {
+            const errorEntry = {
+                id: Math.floor(Math.random() * 2000000000),
+                timestamp: new Date().toISOString(),
+                level: level, // 'error', 'warn', 'info'
+                message: String(message).substring(0, 500),
+                details: details ? JSON.stringify(details).substring(0, 1000) : null,
+                context: context ? JSON.stringify(context).substring(0, 500) : null
+            };
+            if (window.db?.error_logs) {
+                await window.db.error_logs.add(errorEntry);
+            }
+            // Always log to console as well for immediate visibility
+            const logFn = { error: console.error, warn: console.warn, info: console.info }[level] || console.log;
+            logFn(`[${level.toUpperCase()}] ${message}`, details);
+        } catch (e) {
+            // Fail silently to prevent error logging from causing new errors
+            console.error('Error logging failed:', e);
+        }
     }
 };
 
@@ -915,48 +958,6 @@ window.Utils.setupHorizontalDragScroll = (el) => {
             e.stopPropagation();
         }
     }, true);
-    // --- DATA MAPPING UTILITIES ---
-
-    // Create a map of supplier IDs to supplier names
-    // Optionally filters deleted suppliers
-    createSupplierMap: (suppliers, includeDeleted = false) => {
-        const map = {};
-        const supplierList = includeDeleted
-            ? suppliers
-            : suppliers.filter(s => !s.deleted);
-
-        supplierList.forEach(s => {
-            if (s && s.id && s.name) {
-                map[s.id] = s.name;
-            }
-        });
-        return map;
-    },
-
-    // --- ERROR LOGGING ---
-
-    // Log error to centralized error_logs table for debugging
-    logError: async (level, message, details = null, context = {}) => {
-        try {
-            const errorEntry = {
-                id: Math.floor(Math.random() * 2000000000),
-                timestamp: new Date().toISOString(),
-                level: level, // 'error', 'warn', 'info'
-                message: String(message).substring(0, 500),
-                details: details ? JSON.stringify(details).substring(0, 1000) : null,
-                context: context ? JSON.stringify(context).substring(0, 500) : null
-            };
-            if (window.db?.error_logs) {
-                await window.db.error_logs.add(errorEntry);
-            }
-            // Always log to console as well for immediate visibility
-            const logFn = { error: console.error, warn: console.warn, info: console.info }[level] || console.log;
-            logFn(`[${level.toUpperCase()}] ${message}`, details);
-        } catch (e) {
-            // Fail silently to prevent error logging from causing new errors
-            console.error('Error logging failed:', e);
-        }
-    }
 };
 
 // --- GLOBAL SHORTCUTS ---

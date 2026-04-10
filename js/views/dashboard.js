@@ -601,15 +601,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const todayStrLocal = `${localYear}-${localMonth}-${localDay}`; // YYYY-MM-DD local
 
         const todayEleventa = eleventaSales.filter(v => {
-            // v.date puede venir como "2026-03-09T18:00:00Z" (UTC) o con offset.
-            // Al crear new Date(v.date), el navegador lo pasa a su zona local.
-            const saleDate = new Date(v.date);
-            const sYear = saleDate.getFullYear();
-            const sMonth = String(saleDate.getMonth() + 1).padStart(2, '0');
-            const sDay = String(saleDate.getDate()).padStart(2, '0');
-            const saleStrLocal = `${sYear}-${sMonth}-${sDay}`;
-
-            return saleStrLocal === todayStrLocal;
+            // v.date es string "YYYY-MM-DD" o timestamp
+            let dateStr = String(v.date).split('T')[0]; // Tomar solo YYYY-MM-DD si viene con hora
+            return dateStr === todayStrLocal;
         }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
         const elFeed = document.getElementById('live-sales-feed');
@@ -649,9 +643,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                         </div>
 
                         <div style="margin-top: 15px; padding-top: 12px; border-top: 1px dashed rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
-                            <span class="text-xs" style="color: var(--text-muted); font-weight: 600;">${v.items_count || 1} artículos</span>
+                            <span class="text-xs" style="color: var(--text-muted); font-weight: 600;">${(v.items_count || 1)} artículos</span>
                             <div class="text-xs" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 10px; border-radius: 8px; font-weight: 700;">
-                                Ganancia: ${window.Utils.formatCurrency(v.profit)}
+                                Ganancia: ${window.Utils.formatCurrency(v.profit || 0)}
                             </div>
                         </div>
                         
@@ -1473,6 +1467,27 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             const msg = `📊 * Reporte El Maravilloso *\n📅 ${now.toLocaleDateString('es-ES')} \n\n💰 Gasto Mes: ${window.Utils.formatCurrency(gastoMes, true)} \n💵 Ventas Mes: ${window.Utils.formatCurrency(ventasMes, true)} \n⏱ Horas: ${totalHours.toFixed(1)} h\n👥 Personal: ${employees.length} \n\n_Generado automáticamente_`;
             window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
         });
+
+        // ── LISTENER: Actualizar Dashboard en tiempo real cuando hay cambios en Supabase ──
+        const dashboardRefreshHandler = (event) => {
+            const changedTables = event.detail?.tables || [];
+            // Refrescar si cambiaron las tablas clave del dashboard
+            const relevantTables = ['daily_sales', 'expenses', 'employees', 'products', 'workLogs', 'purchase_invoices', 'eleventa_sales'];
+            if (changedTables.some(t => relevantTables.includes(t))) {
+                // Re-renderizar el dashboard completo
+                window.Views.dashboard(container, selectedMonth);
+            }
+        };
+        document.addEventListener('sync-data-updated', dashboardRefreshHandler);
+
+        // Cleanup: remover listener si el container se elimina del DOM
+        const observer = new MutationObserver(() => {
+            if (!container.isConnected) {
+                document.removeEventListener('sync-data-updated', dashboardRefreshHandler);
+                observer.disconnect();
+            }
+        });
+        observer.observe(container.parentNode || document.body, { childList: true, subtree: true });
 
     } catch (e) {
         console.error('Dashboard error:', e);
