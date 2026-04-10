@@ -67,13 +67,15 @@ async function init() {
                 console.log("3️⃣ Pull completado - iniciando Realtime...");
                 await window.SyncV2.initRealtimeSync();
 
-                // Heartbeat realtime agresivo - reconectar cada 15s si falla
+                // Heartbeat realtime - reconectar cada 60s si sigue caído.
+                // Damos 60s de gracia para que las 13 suscripciones se establezcan
+                // antes de asumir que el Realtime falló, evitando bucles de reconexión.
                 setInterval(() => {
                     if (!window.SyncV2.isRealtimeActive) {
                         console.log("🫀 Heartbeat: reconectando Realtime...");
                         window.SyncV2.closeRealtime().then(() => window.SyncV2.initRealtimeSync());
                     }
-                }, 15000);
+                }, 60000);
 
                 // Polling cada 30s SIEMPRE (no solo si realtime falla)
                 // Esto asegura que nunca pasa más de 30s sin actualizar

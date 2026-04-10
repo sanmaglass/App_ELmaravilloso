@@ -47,7 +47,7 @@ window.SyncV2 = {
     try {
       await this.pullIncremental();
       await this.drainOutbox();
-      document.dispatchEvent(new CustomEvent('sync-data-updated', { detail: { tables: [] } }));
+      this._notifyUI([]);
     } catch (e) {
       console.error('❌ SyncV2.syncAll() error:', e);
       await window.ErrorLogger?.log('sync.v2.syncAll', e, {}, false);
@@ -66,15 +66,25 @@ window.SyncV2 = {
       try {
         const syncState = await window.db.sync_state.get(remote) || { table_name: remote, last_seen_hlc: 0 };
         let lastHlc = syncState.last_seen_hlc || 0;
-        let offset = 0;
         const limit = 1000;
+        let totalFetched = 0;
+        let iterations = 0;
+        const maxIterations = 200; // tope de seguridad: hasta 200k registros por tabla por sync
 
-        while (true) {
-          let query = this.client.from(remote).select('*').gt('updated_at_hlc', lastHlc).order('updated_at_hlc', { ascending: true }).limit(limit).range(offset, offset + limit - 1);
-          const { data, error } = await query;
+        while (iterations < maxIterations) {
+          // Paginamos usando el filtro > lastHlc en lugar de offset,
+          // porque el offset con filtro dinámico se salta registros válidos.
+          const { data, error } = await this.client
+            .from(remote)
+            .select('*')
+            .gt('updated_at_hlc', lastHlc)
+            .order('updated_at_hlc', { ascending: true })
+            .limit(limit);
 
           if (error) throw error;
           if (!data || data.length === 0) break;
+
+          const hlcBefore = lastHlc;
 
           for (const remote_rec of data) {
             const local_rec = await window.db[local].get(remote_rec.id);
@@ -85,27 +95,36 @@ window.SyncV2 = {
             if (shouldApply) {
               remote_rec.updated_at_hlc = remoteHlc || HLC.encode(HLC.now());
               await window.db[local].put(remote_rec);
-            } else if (local_rec && localHlc > remoteHlc) {
-              // Conflicto: local ganó
-              if (window.db.sync_conflicts) {
-                await window.db.sync_conflicts.add({
-                  table_name: remote,
-                  record_id: remote_rec.id,
-                  remote_hlc: remoteHlc,
-                  local_hlc: localHlc,
-                  resolution: 'local_kept'
-                });
-              }
+            } else if (local_rec && localHlc > remoteHlc && window.db.sync_conflicts) {
+              await window.db.sync_conflicts.add({
+                table_name: remote,
+                record_id: remote_rec.id,
+                remote_hlc: remoteHlc,
+                local_hlc: localHlc,
+                resolution: 'local_kept'
+              });
             }
-            lastHlc = Math.max(lastHlc, remoteHlc);
+            if (remoteHlc > lastHlc) lastHlc = remoteHlc;
           }
 
+          totalFetched += data.length;
+          iterations++;
+
+          // Si el lote fue parcial, ya no hay más
           if (data.length < limit) break;
-          offset += limit;
+
+          // Seguridad: si lastHlc no avanzó, abortamos para evitar bucle infinito
+          // (caso raro donde múltiples registros comparten el mismo HLC)
+          if (lastHlc === hlcBefore) {
+            console.warn(`⚠️ ${remote}: HLC no avanzó, abortando paginación en ${totalFetched} registros`);
+            break;
+          }
         }
 
         await window.db.sync_state.put({ table_name: remote, last_seen_hlc: lastHlc, device_id: DeviceId.get(), updated_at: new Date() });
-        console.log(`✅ ${remote}: Sincronizado hasta HLC ${lastHlc}`);
+        if (totalFetched > 0) {
+          console.log(`✅ ${remote}: ${totalFetched} registros sincronizados (HLC=${lastHlc})`);
+        }
       } catch (e) {
         console.error(`❌ Pull error en ${remote}:`, e);
       } finally {
@@ -122,27 +141,31 @@ window.SyncV2 = {
     if (!this.client) return;
 
     const tables = Object.values(window.Constants.REMOTE_TABLE_MAP);
+    this._subscribedCount = 0;
+    const totalTables = tables.length;
 
     for (const table of tables) {
       const channel = this.client
         .channel(`sync-${table}`)
         .on('postgres_changes', { event: '*', schema: 'public', table },
           (payload) => this.handleRealtimeChange(table, payload))
-        .on('status', (status) => {
+        .subscribe((status, err) => {
+          // El callback de subscribe recibe el estado real del canal
           if (status === 'SUBSCRIBED') {
-            console.log(`📡 Realtime activo para ${table}`);
+            this._subscribedCount++;
             this.isRealtimeActive = true;
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.warn(`📡 Error realtime en ${table}: ${status}`);
+            console.log(`📡 Realtime activo para ${table} (${this._subscribedCount}/${totalTables})`);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.warn(`📡 Realtime ${status} en ${table}`, err || '');
+            // Si TODOS los canales fallan, marcar como inactivo
+            if (this._subscribedCount === 0) {
+              this.isRealtimeActive = false;
+            }
           }
-        })
-        .subscribe();
+        });
 
       this.realtimeChannels.push(channel);
     }
-
-    // Reconexión con backoff
-    setTimeout(() => this.heartbeatRealtime(), 30000);
   },
 
   async heartbeatRealtime() {
@@ -175,18 +198,28 @@ window.SyncV2 = {
         await window.db[local].delete(rec.id);
       }
 
-      document.dispatchEvent(new CustomEvent('sync-data-updated', { detail: { tables: [local] } }));
+      this._notifyUI([local]);
     } catch (e) {
       console.error(`❌ Realtime handler error:`, e);
     }
   },
 
+  // Despacha el evento de refresh tanto en window como en document,
+  // porque las vistas del proyecto escuchan en window pero dashboard
+  // escucha en document. Notificar a ambos cubre los dos patrones.
+  _notifyUI(tables) {
+    const detail = { tables };
+    try { window.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) {}
+    try { document.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) {}
+  },
+
   async closeRealtime() {
     for (const ch of this.realtimeChannels) {
-      await ch.unsubscribe();
+      try { await ch.unsubscribe(); } catch (e) { /* ignorar */ }
     }
     this.realtimeChannels = [];
     this.isRealtimeActive = false;
+    this._subscribedCount = 0;
   }
 };
 
