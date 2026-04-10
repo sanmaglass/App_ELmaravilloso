@@ -59,10 +59,14 @@ async function init() {
         // Cloud sync initialization (non-blocking)
         try {
             await window.Sync.init();
+            // Sincronización inicial: traer todos los datos de Supabase
+            console.log("Iniciando sincronización inicial...");
+            await window.Sync.syncAll();
             // Iniciar listener en tiempo real para cambios de Supabase (incluye eleventa_sales)
             await window.Sync.initRealtimeSync();
             // Fallback: Polling cada 60 segundos si el WebSocket falla
             window.Sync.startAutoSync(60000);
+            console.log("✓ Sincronización automática activada");
         } catch (syncError) {
             console.warn("Cloud sync initialization failed:", syncError);
             // Don't block app loading if cloud sync fails
