@@ -31,14 +31,8 @@ async function init() {
             isAuth = 'true';
         }
 
-        // Mostrar "cargando" mientras se inicializa la app
-        const appContainer = document.querySelector('.app-container');
-        const splash = document.getElementById('splash-screen');
-        if (splash) splash.style.display = 'flex';
-        if (appContainer) appContainer.style.display = 'none';
-
-        // If Auth passed, ensure main layout is visible
-        document.querySelector('.app-container').style.display = 'flex';
+        // Auth passed - continue with initialization
+        // Splash screen already visible, will hide it after DB init
 
         // Database initialization
         try {
@@ -93,6 +87,11 @@ async function init() {
                 }
             });
         });
+
+        // Ocultar splash y mostrar app
+        const splash = document.getElementById('splash-screen');
+        if (splash) splash.style.display = 'none';
+        document.querySelector('.app-container').style.display = 'flex';
 
         // Initial Load
         views.dashboard();
