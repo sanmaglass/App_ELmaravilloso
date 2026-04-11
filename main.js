@@ -62,6 +62,7 @@ async function init() {
             const synced = await window.SyncV2.init();
 
             if (synced) {
+                window.Sync?.updateIndicator?.('syncing');
                 console.log("2️⃣ SyncV2 listo - iniciando pull incremental...");
                 await window.SyncV2.syncAll();
                 console.log("3️⃣ Pull completado - iniciando Realtime...");
@@ -78,10 +79,17 @@ async function init() {
                     }
                 }, 5 * 60 * 1000); // 5 minutos
 
+                // El badge del header lo mantiene la función legacy Sync.updateIndicator.
+                // SyncV2 reemplazó al sistema viejo pero el indicador visual seguía huérfano,
+                // por eso quedaba en "Sin Nube" aunque Realtime estuviera perfectamente activo.
+                window.Sync?.updateIndicator?.('realtime');
                 console.log("✅ SyncV2 activado (Realtime + Polling 5min)");
+            } else {
+                window.Sync?.updateIndicator?.('off');
             }
         } catch (syncError) {
             console.error("❌ SyncV2 init falló:", syncError);
+            window.Sync?.updateIndicator?.('error', syncError.message || 'Error de sincronización');
         }
 
         // Navigation Logic
