@@ -120,24 +120,90 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             .dash-list-item { padding: 8px 0; }
         }
 
-        /* Live Sales Feed — Grid Responsive */
+        /* Live Sales Feed — Lista compacta responsive */
         .live-sales-scroller {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 16px;
-            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 8px;
             box-sizing: border-box;
             max-width: 100%;
         }
 
-        .live-ticket-card { background: var(--bg-card); border-radius: 16px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid var(--border); position: relative; overflow: hidden; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
-        .live-ticket-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); border-color: rgba(16, 185, 129, 0.3); }
-        .live-ticket-card.new { animation: pulseNew 2s infinite; border-color: #10b981; }
-        @keyframes pulseNew { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
-        
-        .live-ticket-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-        .live-ticket-icon { width: 32px; height: 32px; border-radius: 10px; background: rgba(16, 185, 129, 0.1); color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
-        .live-ticket-profit { position: absolute; bottom: 10px; right: 10px; font-size: 1.5rem; opacity: 0.05; color: #10b981; transform: rotate(-15deg); }
+        .live-ticket-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .live-ticket-row:hover {
+            transform: translateX(4px);
+            border-color: rgba(16, 185, 129, 0.35);
+            box-shadow: 0 6px 18px rgba(16, 185, 129, 0.08);
+        }
+        .live-ticket-row.new {
+            border-color: #10b981;
+            background: linear-gradient(90deg, rgba(16,185,129,0.06), var(--bg-card) 60%);
+            animation: pulseRow 2.4s infinite;
+        }
+        @keyframes pulseRow {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35); }
+            70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .live-ticket-badge {
+            flex-shrink: 0;
+            width: 46px; height: 46px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05));
+            color: #10b981;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.35rem;
+            border: 1px solid rgba(16,185,129,0.2);
+        }
+
+        .live-ticket-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+        .live-ticket-id {
+            font-weight: 800; font-size: 0.92rem; color: var(--text-primary);
+            display: flex; align-items: center; gap: 8px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .live-ticket-new-tag {
+            background: #10b981; color: white;
+            font-size: 0.6rem; font-weight: 800;
+            padding: 2px 7px; border-radius: 99px;
+            letter-spacing: 0.5px; text-transform: uppercase;
+        }
+        .live-ticket-meta {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 0.72rem; color: var(--text-muted); font-weight: 600;
+            flex-wrap: wrap;
+        }
+        .live-ticket-meta .dot { width: 3px; height: 3px; background: var(--text-muted); border-radius: 50%; opacity: 0.5; }
+
+        .live-ticket-amount {
+            flex-shrink: 0;
+            display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+        }
+        .live-ticket-total {
+            font-weight: 800; font-size: 1.15rem; color: #10b981;
+            line-height: 1;
+        }
+        .live-ticket-profit-pill {
+            font-size: 0.65rem; font-weight: 700;
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            padding: 3px 8px; border-radius: 99px;
+            white-space: nowrap;
+        }
 
         /* Estrellas del Negocio — scroll horizontal táctil y con ratón */
         #top-margin-list {
@@ -183,13 +249,19 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         /* Ajustes Mobile */
         @media (max-width: 768px) {
-            .live-sales-scroller {
-                max-height: 800px;
-            }
+            .live-ticket-row { padding: 12px 12px; gap: 10px; }
+            .live-ticket-badge { width: 40px; height: 40px; font-size: 1.15rem; border-radius: 12px; }
+            .live-ticket-id { font-size: 0.85rem; }
+            .live-ticket-total { font-size: 1rem; }
+            .live-ticket-profit-pill { font-size: 0.6rem; padding: 2px 6px; }
             #top-margin-list, .h-scroll-container {
-                /* En móvil nunca mostrar cursor de escritorio */
                 cursor: default;
             }
+        }
+        @media (max-width: 420px) {
+            .live-ticket-row { padding: 10px 10px; gap: 8px; }
+            .live-ticket-badge { width: 36px; height: 36px; font-size: 1rem; }
+            .live-ticket-meta { font-size: 0.68rem; gap: 6px; }
         }
     </style>
 
@@ -606,43 +678,32 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             if (validSales.length === 0) {
                 elFeed.innerHTML = '<div style="width:100%; text-align:center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-glass); border-radius: 20px; border: 1px dashed rgba(0,0,0,0.1);"><i class="ph ph-receipt" style="font-size:2.5rem; opacity:0.5; margin-bottom:12px;"></i><br><span style="font-weight:600;">No hay ventas registradas aún</span></div>';
             } else {
-                // Mostrar los últimos 15 tickets en grid limpio
-                const renderSales = validSales.slice(0, 15);
+                const renderSales = validSales.slice(0, 10);
                 elFeed.innerHTML = renderSales.map((v, index) => {
                     const dateObj = new Date(v.date);
                     const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-                    // Adding 'new' class to latest ticket for a pulsing effect
-                    const isNew = index === 0 ? 'new' : '';
+                    const isNew = index === 0;
+                    const items = v.items_count || 1;
+                    const profit = parseFloat(v.profit) || 0;
 
                     return `
-                    <div class="live-ticket-card ${isNew}">
-                        <div class="live-ticket-header">
-                            <div class="live-ticket-icon">
-                                <i class="ph ph-ticket"></i>
+                    <div class="live-ticket-row ${isNew ? 'new' : ''}">
+                        <div class="live-ticket-badge"><i class="ph ph-receipt"></i></div>
+                        <div class="live-ticket-info">
+                            <div class="live-ticket-id">
+                                #${v.ticket_id || v.id}
+                                ${isNew ? '<span class="live-ticket-new-tag">Nuevo</span>' : ''}
                             </div>
-                            <div class="text-right">
-                                <div class="font-bold text-sm text-primary">#${v.ticket_id || v.id}</div>
-                                <div class="text-xs text-muted flex items-center justify-end gap-1 mt-1">
-                                    <i class="ph ph-clock"></i> ${timeStr}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div style="margin-top: 10px;">
-                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 2px;">Venta Total</div>
-                            <div class="font-bold" style="font-size: 1.4rem; color: #10b981;">
-                                +${window.Utils.formatCurrency(v.total)}
+                            <div class="live-ticket-meta">
+                                <span><i class="ph ph-clock"></i> ${timeStr}</span>
+                                <span class="dot"></span>
+                                <span>${items} art.</span>
                             </div>
                         </div>
-
-                        <div style="margin-top: 15px; padding-top: 12px; border-top: 1px dashed rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
-                            <span class="text-xs" style="color: var(--text-muted); font-weight: 600;">${(v.items_count || 1)} artículos</span>
-                            <div class="text-xs" style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 10px; border-radius: 8px; font-weight: 700;">
-                                Ganancia: ${window.Utils.formatCurrency(v.profit || 0)}
-                            </div>
+                        <div class="live-ticket-amount">
+                            <div class="live-ticket-total">${window.Utils.formatCurrency(v.total)}</div>
+                            <div class="live-ticket-profit-pill">+${window.Utils.formatCurrency(profit)}</div>
                         </div>
-                        
-                        <i class="ph ph-trend-up live-ticket-profit"></i>
                     </div>
                     `;
                 }).join('');

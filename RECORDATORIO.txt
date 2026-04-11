@@ -1,0 +1,73 @@
+========================================
+  PENDIENTES - EL MARAVILLOSO
+  (revisar cuando tengas tiempo)
+========================================
+
+[ ] 1. BORRAR PROYECTO VERCEL ZOMBIE
+    ---------------------------------
+    Hay DOS proyectos Vercel y causa confusión:
+
+    - BUENO:  el-maravilloso-final.vercel.app (conectado a este repo)
+    - ZOMBIE: app-elmaravilloso.vercel.app    (código congelado viejo)
+
+    Cómo borrarlo:
+    1. Entrar a https://vercel.com/dashboard
+    2. Buscar el proyecto "app-elmaravilloso"
+    3. Settings → scroll hasta abajo → Delete Project
+    4. Confirmar escribiendo el nombre del proyecto
+
+    Después, si tienes guardado algún acceso directo a
+    app-elmaravilloso.vercel.app en el celular o navegador, borrarlo
+    y reemplazarlo por:
+        https://el-maravilloso-final.vercel.app
+
+
+[ ] 2. UNIFICAR LOS DOS SISTEMAS DE SYNC (refactor grande)
+    ------------------------------------------------------
+    Actualmente conviven:
+    - window.Sync    → sistema viejo, js/sync.js (659 líneas)
+    - window.SyncV2  → sistema nuevo, js/sync/sync-v2.js (con los fixes)
+
+    Problema: el viejo lo siguen usando muchas vistas (calendar,
+    calculator, settings, employees, sales_invoices, profit_monitor,
+    loans, y db.js / DataManager).
+
+    Para eliminarlo hay que migrar todas esas vistas a SyncV2.
+    No es urgente pero es deuda técnica que puede traer bugs.
+
+
+[ ] 3. ARREGLAR PRECISIÓN NUMÉRICA DEL HLC
+    ---------------------------------------
+    En js/sync/hlc.js, la función encode() hace:
+        return physical * 1000000 + logical;
+
+    En 2026, Date.now() ≈ 1.77e12, así que el resultado es ~1.77e18,
+    que supera Number.MAX_SAFE_INTEGER (9e15). Los últimos 2-3 dígitos
+    se pierden por redondeo.
+
+    En la práctica hoy no ha dado problema grave, pero eventualmente
+    puede hacer que dos HLCs distintos se vean iguales y se salten
+    actualizaciones.
+
+    Arreglo: cambiar a `physical * 1000 + logical` (asumiendo
+    logical < 1000) da ~1.77e15, dentro del rango seguro. Pero
+    requiere migración de datos en Supabase (recomputar todos los
+    HLCs existentes) porque cambia el formato.
+
+
+========================================
+  NOTAS DE LA SESIÓN DEL 10 ABRIL 2026
+========================================
+
+Arreglos aplicados hoy (commits en git log):
+- 36d4b2a fix: Simplificar vercel.json → resuelto 404 de producción
+- f6f9af7 fix: Bug crítico HLC comparison → pulls ya no descartan updates
+- a47f53d chore: Launcher muestra URLs correctas PC y móvil
+- 8e41cda fix: Realtime, paginación y UI auto-refresh
+
+Estado final:
+- PC abriendo con 🚀 ABRIR.bat → localhost:8000 → siempre última versión
+- Móvil/web → https://el-maravilloso-final.vercel.app
+- Sync funcionando: Realtime activo + polling cada 30s
+- UI se refresca sola cuando llegan cambios
+- Paginación del pull arreglada (ya no se saltan tickets)
