@@ -1,7 +1,7 @@
 // Main App Controller (Global Scope, Loaded Last)
 
 // Application State
-const state = {
+window.state = {
     currentView: 'dashboard',
     currentUser: null
 };
