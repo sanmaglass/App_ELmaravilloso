@@ -68,16 +68,36 @@ async function init() {
                 console.log("3️⃣ Pull completado - iniciando Realtime...");
                 await window.SyncV2.initRealtimeSync();
 
-                // Polling cada 5 MINUTOS como fallback cuando el Realtime se cae.
-                // Era 30s antes — demasiado agresivo en móvil: cada ciclo lanza 13 queries
-                // paralelas a Supabase + re-renderiza el dashboard completo.
-                // Con Realtime activo, los cambios llegan instantáneamente de todas formas.
+                // Polling cada 90s como red de seguridad aunque la pestaña esté oculta.
+                // Caso de uso real: un monitor que muestra el dashboard 24/7. Si la pestaña
+                // pierde el foco (otra app al frente, otra pestaña activa), el navegador la
+                // marca "hidden". No queremos dejar de refrescar en ese caso — los datos en
+                // pantalla tienen que estar siempre al día. 90s es un compromiso: suficiente
+                // para tapar caídas silenciosas del WebSocket Realtime sin saturar la red.
                 setInterval(() => {
-                    // No sincronizar si la pestaña está en segundo plano (ahorra CPU/red en móvil)
-                    if (!window.SyncV2.isSyncing && document.visibilityState === 'visible') {
+                    if (!window.SyncV2.isSyncing) {
                         window.SyncV2.syncAll();
                     }
-                }, 5 * 60 * 1000); // 5 minutos
+                }, 90 * 1000);
+
+                // Heartbeat Realtime: cada 30s revisa si todos los canales siguen "joined".
+                // Si alguno murió (timeout del proxy, blip de red, suspend del laptop),
+                // cerramos y re-suscribimos. Sin esto, un canal caído en background nunca
+                // se recupera hasta recargar la página.
+                setInterval(async () => {
+                    try {
+                        const channels = window.SyncV2.realtimeChannels || [];
+                        const alive = channels.filter(c => c?.state === 'joined').length;
+                        const expected = Object.keys(window.Constants.REMOTE_TABLE_MAP).length;
+                        if (alive < expected) {
+                            console.warn(`💔 Realtime degradado (${alive}/${expected}) — reconectando...`);
+                            await window.SyncV2.closeRealtime();
+                            await window.SyncV2.initRealtimeSync();
+                            // Pull inmediato para recuperar lo perdido mientras estuvo caído
+                            window.SyncV2.syncAll();
+                        }
+                    } catch (e) { console.error('heartbeat error:', e); }
+                }, 30 * 1000);
 
                 // El badge del header lo mantiene la función legacy Sync.updateIndicator.
                 // SyncV2 reemplazó al sistema viejo pero el indicador visual seguía huérfano,
