@@ -245,33 +245,21 @@
     <!-- Main controller - MUST be last to initialize app -->
     <script src="main.js?v=1009"></script>
 
-    <!-- PWA Service Worker Registration -->
+    <!-- Service Worker desactivado: demasiados bugs históricos con caching agresivo.
+         Este bloque ACTIVAMENTE desregistra cualquier SW viejo y borra sus cachés
+         para curar a los usuarios que tienen un SW roto instalado. -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./service-worker.js')
-                .then((reg) => {
-                    console.log('✅ Service Worker registrado');
-
-                    // Check for updates every 5 minutes (less intrusive)
-                    setInterval(() => {
-                        reg.update();
-                    }, 300000);
-
-                    // Detect when new service worker is waiting
-                    reg.addEventListener('updatefound', () => {
-                        const newWorker = reg.installing;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                // New version available!
-                                console.log('🔄 Nueva versión instalada. Se aplicará al recargar o en el siguiente inicio.');
-                                newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                // We don't force reload here anymore to avoid interrupting the user.
-                                // The preserved view logic will handle it if they manually reload.
-                            }
-                        });
-                    });
-                })
-                .catch(err => console.error('❌ Error registrando SW:', err));
+            navigator.serviceWorker.getRegistrations().then((regs) => {
+                for (const r of regs) {
+                    r.unregister().then(() => console.log('🧹 SW viejo desregistrado'));
+                }
+            }).catch(() => {});
+            if (typeof caches !== 'undefined') {
+                caches.keys().then((keys) => {
+                    for (const k of keys) caches.delete(k).catch(() => {});
+                }).catch(() => {});
+            }
         }
     </script>
 
