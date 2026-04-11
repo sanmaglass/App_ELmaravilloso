@@ -6,6 +6,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EL MARAVILLOSO</title>
 
+    <!-- ============================================================
+         CACHE NUKER — corre UNA vez por usuario.
+         Razón: hay navegadores con un Service Worker viejo instalado que
+         intercepta fetches y devuelve JS cacheado ignorando los query
+         strings ?v=. Esto dejaba a la gente ejecutando código de hace
+         varios commits sin saberlo. Al detectar que no se ha nukeado
+         todavía, desregistra SWs, borra Cache Storage, borra IndexedDB
+         (la app volverá a bajar todo de Supabase, que tiene los HLCs
+         frescos) y recarga. En recargas posteriores no hace nada.
+         ============================================================ -->
+    <script>
+    (function cacheNuker() {
+        var NUKE_VERSION = 'v1012';
+        var FLAG = 'wm_cache_nuked_' + NUKE_VERSION;
+        if (localStorage.getItem(FLAG)) return;
+
+        console.log('🧨 Cache Nuker: limpiando estado viejo para', NUKE_VERSION);
+
+        var tasks = [];
+
+        if ('serviceWorker' in navigator) {
+            tasks.push(
+                navigator.serviceWorker.getRegistrations().then(function(regs) {
+                    return Promise.all(regs.map(function(r) { return r.unregister(); }));
+                }).catch(function(){})
+            );
+        }
+
+        if (typeof caches !== 'undefined') {
+            tasks.push(
+                caches.keys().then(function(keys) {
+                    return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+                }).catch(function(){})
+            );
+        }
+
+        if (typeof indexedDB !== 'undefined') {
+            tasks.push(new Promise(function(resolve) {
+                try {
+                    var req = indexedDB.deleteDatabase('ElMaravillosoApp');
+                    req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
+                } catch (e) { resolve(); }
+            }));
+        }
+
+        Promise.all(tasks).then(function() {
+            localStorage.setItem(FLAG, Date.now().toString());
+            console.log('✅ Cache Nuker: listo, recargando con código fresco...');
+            location.reload();
+        });
+    })();
+    </script>
+
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#dc2626">
@@ -207,43 +260,43 @@
     </div>
 
     <!-- App Logic (Loaded in order) -->
-    <script src="js/config.js?v=1011"></script>
-    <script src="js/constants.js?v=1011"></script>
-    <script src="js/utils.js?v=1011"></script>
-    <script src="js/db.js?v=1011"></script>
-    <script src="js/transaction-manager.js?v=1011"></script>
-    <script src="js/error-logger.js?v=1011"></script>
+    <script src="js/config.js?v=1012"></script>
+    <script src="js/constants.js?v=1012"></script>
+    <script src="js/utils.js?v=1012"></script>
+    <script src="js/db.js?v=1012"></script>
+    <script src="js/transaction-manager.js?v=1012"></script>
+    <script src="js/error-logger.js?v=1012"></script>
     <!-- Sync v2: HLC + Outbox -->
-    <script src="js/sync/device-id.js?v=1011"></script>
-    <script src="js/sync/hlc.js?v=1011"></script>
-    <script src="js/sync/outbox.js?v=1011"></script>
-    <script src="js/sync/sync-v2.js?v=1011"></script>
+    <script src="js/sync/device-id.js?v=1012"></script>
+    <script src="js/sync/hlc.js?v=1012"></script>
+    <script src="js/sync/outbox.js?v=1012"></script>
+    <script src="js/sync/sync-v2.js?v=1012"></script>
     <!-- Legacy sync -->
-    <script src="js/sync.js?v=1011"></script>
-    <script src="js/sii_api.js?v=1011"></script>
+    <script src="js/sync.js?v=1012"></script>
+    <script src="js/sii_api.js?v=1012"></script>
     <!-- Views -->
-    <script src="js/views/auth.js?v=1011"></script>
-    <script src="js/views/dashboard.js?v=1011"></script>
-    <script src="js/views/employees.js?v=1011"></script>
-    <script src="js/views/calendar.js?v=1011"></script>
-    <script src="js/views/calculator.js?v=1011"></script>
-    <script src="js/views/marketing.js?v=1011"></script>
-    <script src="js/views/payments.js?v=1011"></script>
-    <script src="js/views/security.js?v=1011"></script>
-    <script src="js/views/suppliers.js?v=1011"></script>
-    <script src="js/views/purchase_invoices.js?v=1011"></script>
-    <script src="js/views/expenses.js?v=1011"></script>
-    <script src="js/views/daily_sales.js?v=1011"></script>
-    <script src="js/views/sales_invoices.js?v=1011"></script>
-    <script src="js/views/electronic_invoices.js?v=1011"></script>
-    <script src="js/views/reminders.js?v=1011"></script>
-    <script src="js/views/reports.js?v=1011"></script>
-    <script src="js/views/settings.js?v=1011"></script>
-    <script src="js/views/loans.js?v=1011"></script>
-    <script src="js/views/profit_monitor.js?v=1011"></script>
-    <script src="js/notifications.js?v=1011"></script>
+    <script src="js/views/auth.js?v=1012"></script>
+    <script src="js/views/dashboard.js?v=1012"></script>
+    <script src="js/views/employees.js?v=1012"></script>
+    <script src="js/views/calendar.js?v=1012"></script>
+    <script src="js/views/calculator.js?v=1012"></script>
+    <script src="js/views/marketing.js?v=1012"></script>
+    <script src="js/views/payments.js?v=1012"></script>
+    <script src="js/views/security.js?v=1012"></script>
+    <script src="js/views/suppliers.js?v=1012"></script>
+    <script src="js/views/purchase_invoices.js?v=1012"></script>
+    <script src="js/views/expenses.js?v=1012"></script>
+    <script src="js/views/daily_sales.js?v=1012"></script>
+    <script src="js/views/sales_invoices.js?v=1012"></script>
+    <script src="js/views/electronic_invoices.js?v=1012"></script>
+    <script src="js/views/reminders.js?v=1012"></script>
+    <script src="js/views/reports.js?v=1012"></script>
+    <script src="js/views/settings.js?v=1012"></script>
+    <script src="js/views/loans.js?v=1012"></script>
+    <script src="js/views/profit_monitor.js?v=1012"></script>
+    <script src="js/notifications.js?v=1012"></script>
     <!-- Main controller - MUST be last to initialize app -->
-    <script src="main.js?v=1011"></script>
+    <script src="main.js?v=1012"></script>
 
     <!-- Service Worker desactivado: demasiados bugs históricos con caching agresivo.
          Este bloque ACTIVAMENTE desregistra cualquier SW viejo y borra sus cachés
