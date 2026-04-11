@@ -1522,25 +1522,38 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         });
 
         // ── LISTENER: Actualizar Dashboard en tiempo real cuando hay cambios en Supabase ──
+        // Usa debounce de 500ms para no re-renderizar si llegan varios eventos seguidos
+        let _dashRefreshTimer = null;
         const dashboardRefreshHandler = (event) => {
             const changedTables = event.detail?.tables || [];
-            // Refrescar si cambiaron las tablas clave del dashboard
+            // Si no hay tablas especificadas, no refrescar (evita renders vacíos)
+            if (changedTables.length === 0) return;
+            // Refrescar solo si cambiaron las tablas clave del dashboard
             const relevantTables = ['daily_sales', 'expenses', 'employees', 'products', 'workLogs', 'purchase_invoices', 'eleventa_sales'];
-            if (changedTables.some(t => relevantTables.includes(t))) {
-                // Re-renderizar el dashboard completo
+            if (!changedTables.some(t => relevantTables.includes(t))) return;
+
+            // Debounce: si llegan varios eventos juntos (ej. Realtime + Polling),
+            // solo ejecutar el último render, no todos.
+            if (_dashRefreshTimer) clearTimeout(_dashRefreshTimer);
+            _dashRefreshTimer = setTimeout(() => {
+                _dashRefreshTimer = null;
+                // Verificar que el container sigue en el DOM antes de re-renderizar
+                if (!container.isConnected) return;
                 window.Views.dashboard(container, selectedMonth);
-            }
+            }, 500);
         };
         document.addEventListener('sync-data-updated', dashboardRefreshHandler);
 
         // Cleanup: remover listener si el container se elimina del DOM
+        const observerTarget = container.parentNode || document.body;
         const observer = new MutationObserver(() => {
             if (!container.isConnected) {
+                if (_dashRefreshTimer) { clearTimeout(_dashRefreshTimer); _dashRefreshTimer = null; }
                 document.removeEventListener('sync-data-updated', dashboardRefreshHandler);
                 observer.disconnect();
             }
         });
-        observer.observe(container.parentNode || document.body, { childList: true, subtree: true });
+        observer.observe(observerTarget, { childList: true, subtree: true });
 
     } catch (e) {
         console.error('Dashboard error:', e);

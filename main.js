@@ -67,16 +67,18 @@ async function init() {
                 console.log("3️⃣ Pull completado - iniciando Realtime...");
                 await window.SyncV2.initRealtimeSync();
 
-                // Polling cada 30s. No usamos heartbeat de Realtime porque las
-                // reconexiones masivas (13 canales) estaban causando crashes del tab.
-                // Si Realtime se cae, el polling cubre el gap hasta el próximo sync.
+                // Polling cada 5 MINUTOS como fallback cuando el Realtime se cae.
+                // Era 30s antes — demasiado agresivo en móvil: cada ciclo lanza 13 queries
+                // paralelas a Supabase + re-renderiza el dashboard completo.
+                // Con Realtime activo, los cambios llegan instantáneamente de todas formas.
                 setInterval(() => {
-                    if (!window.SyncV2.isSyncing) {
+                    // No sincronizar si la pestaña está en segundo plano (ahorra CPU/red en móvil)
+                    if (!window.SyncV2.isSyncing && document.visibilityState === 'visible') {
                         window.SyncV2.syncAll();
                     }
-                }, 30000);
+                }, 5 * 60 * 1000); // 5 minutos
 
-                console.log("✅ SyncV2 activado (Realtime + Polling)");
+                console.log("✅ SyncV2 activado (Realtime + Polling 5min)");
             }
         } catch (syncError) {
             console.error("❌ SyncV2 init falló:", syncError);

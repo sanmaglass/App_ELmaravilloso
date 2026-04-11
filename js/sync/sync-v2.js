@@ -6,6 +6,10 @@ window.SyncV2 = {
   isRealtimeActive: false,
   syncLocks: new Set(),
 
+  // Debounce para _notifyUI: evita re-renders en ráfaga (ej. múltiples eventos Realtime seguidos)
+  _notifyTimer: null,
+  _pendingNotifyTables: new Set(),
+
   // Normaliza cualquier HLC a un número comparable.
   // Acepta: número, objeto {physical, logical}, string numérico, o undefined.
   _toHlcNumber(value) {
@@ -45,9 +49,12 @@ window.SyncV2 = {
     console.log('🔄 SyncV2.syncAll() iniciado');
 
     try {
-      await this.pullIncremental();
+      const changed = await this.pullIncremental();
       await this.drainOutbox();
-      this._notifyUI([]);
+      // Solo notificar UI si realmente hubo datos nuevos
+      if (changed && changed.length > 0) {
+        this._notifyUI(changed);
+      }
     } catch (e) {
       console.error('❌ SyncV2.syncAll() error:', e);
       await window.ErrorLogger?.log('sync.v2.syncAll', e, {}, false);
@@ -58,6 +65,7 @@ window.SyncV2 = {
 
   async pullIncremental() {
     const tables = window.Constants.REMOTE_TABLE_MAP;
+    const changedLocalTables = [];
 
     for (const [local, remote] of Object.entries(tables)) {
       if (this.syncLocks.has(remote)) continue;
@@ -124,6 +132,7 @@ window.SyncV2 = {
         await window.db.sync_state.put({ table_name: remote, last_seen_hlc: lastHlc, device_id: DeviceId.get(), updated_at: new Date() });
         if (totalFetched > 0) {
           console.log(`✅ ${remote}: ${totalFetched} registros sincronizados (HLC=${lastHlc})`);
+          changedLocalTables.push(local);
         }
       } catch (e) {
         console.error(`❌ Pull error en ${remote}:`, e);
@@ -131,6 +140,8 @@ window.SyncV2 = {
         this.syncLocks.delete(remote);
       }
     }
+
+    return changedLocalTables;
   },
 
   async drainOutbox() {
@@ -204,13 +215,21 @@ window.SyncV2 = {
     }
   },
 
-  // Despacha el evento de refresh tanto en window como en document,
-  // porque las vistas del proyecto escuchan en window pero dashboard
-  // escucha en document. Notificar a ambos cubre los dos patrones.
+  // Despacha el evento de refresh con debounce (200ms) para agrupar múltiples
+  // cambios del Realtime que llegan en ráfaga y evitar re-renders en cascada.
   _notifyUI(tables) {
-    const detail = { tables };
-    try { window.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) {}
-    try { document.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) {}
+    if (Array.isArray(tables)) {
+      tables.forEach(t => this._pendingNotifyTables.add(t));
+    }
+    if (this._notifyTimer) return; // Ya hay un timer pendiente, solo acumulamos tablas
+    this._notifyTimer = setTimeout(() => {
+      this._notifyTimer = null;
+      const detail = { tables: [...this._pendingNotifyTables] };
+      this._pendingNotifyTables.clear();
+      if (detail.tables.length === 0) return; // Nunca disparar si no hay cambios reales
+      try { window.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) {}
+      try { document.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) {}
+    }, 200);
   },
 
   async closeRealtime() {
