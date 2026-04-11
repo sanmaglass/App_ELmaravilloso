@@ -72,27 +72,34 @@ window.SyncV2 = {
       this.syncLocks.add(remote);
 
       try {
-        const syncState = await window.db.sync_state.get(remote) || { table_name: remote, last_seen_hlc: 0 };
+        const syncState = await window.db.sync_state.get(remote) || { table_name: remote, last_seen_hlc: 0, last_seen_id: 0 };
         let lastHlc = syncState.last_seen_hlc || 0;
+        let lastId = syncState.last_seen_id || 0;
         const limit = 1000;
         let totalFetched = 0;
         let iterations = 0;
-        const maxIterations = 200; // tope de seguridad: hasta 200k registros por tabla por sync
+        const maxIterations = 200;
 
         while (iterations < maxIterations) {
-          // Paginamos usando el filtro > lastHlc en lugar de offset,
-          // porque el offset con filtro dinámico se salta registros válidos.
+          // Cursor compuesto (hlc, id): el .gt simple se saltaba filas cuando
+          // muchos registros compartían el mismo updated_at_hlc (colisiones por
+          // UPDATEs masivos de Postgres que asignan el mismo now() a todas las
+          // filas de la transacción). Con (hlc, id) ordenado, la paginación es
+          // estable aunque existan cientos de filas con HLC idéntico.
+          //
+          // Filtro: (hlc > lastHlc) OR (hlc = lastHlc AND id > lastId)
+          const orFilter = `updated_at_hlc.gt.${lastHlc},and(updated_at_hlc.eq.${lastHlc},id.gt.${lastId})`;
+
           const { data, error } = await this.client
             .from(remote)
             .select('*')
-            .gt('updated_at_hlc', lastHlc)
+            .or(orFilter)
             .order('updated_at_hlc', { ascending: true })
+            .order('id', { ascending: true })
             .limit(limit);
 
           if (error) throw error;
           if (!data || data.length === 0) break;
-
-          const hlcBefore = lastHlc;
 
           for (const remote_rec of data) {
             const local_rec = await window.db[local].get(remote_rec.id);
@@ -112,24 +119,19 @@ window.SyncV2 = {
                 resolution: 'local_kept'
               });
             }
-            if (remoteHlc > lastHlc) lastHlc = remoteHlc;
+
+            // Avanzar cursor compuesto al registro procesado
+            lastHlc = remoteHlc;
+            lastId = Number(remote_rec.id) || 0;
           }
 
           totalFetched += data.length;
           iterations++;
 
-          // Si el lote fue parcial, ya no hay más
           if (data.length < limit) break;
-
-          // Seguridad: si lastHlc no avanzó, abortamos para evitar bucle infinito
-          // (caso raro donde múltiples registros comparten el mismo HLC)
-          if (lastHlc === hlcBefore) {
-            console.warn(`⚠️ ${remote}: HLC no avanzó, abortando paginación en ${totalFetched} registros`);
-            break;
-          }
         }
 
-        await window.db.sync_state.put({ table_name: remote, last_seen_hlc: lastHlc, device_id: DeviceId.get(), updated_at: new Date() });
+        await window.db.sync_state.put({ table_name: remote, last_seen_hlc: lastHlc, last_seen_id: lastId, device_id: DeviceId.get(), updated_at: new Date() });
         if (totalFetched > 0) {
           console.log(`✅ ${remote}: ${totalFetched} registros sincronizados (HLC=${lastHlc})`);
           changedLocalTables.push(local);
