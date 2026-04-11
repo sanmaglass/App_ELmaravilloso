@@ -1,4 +1,4 @@
-const CACHE_NAME = 'el-maravilloso-v1008';
+const CACHE_NAME = 'el-maravilloso-v1009';
 // NOTA: auth.js, main.js, index.html NO se cachean (siempre red)
 const urlsToCache = [
     // NO cachear: './index.html', './main.js', './js/views/auth.js'
@@ -71,64 +71,73 @@ self.addEventListener('activate', (event) => {
 });
 
 // Fetch event - Network First Strategy
+// IMPORTANTE: toda rama DEBE devolver una Response válida, nunca undefined,
+// o Safari rompe con "FetchEvent.respondWith received an error: Returned response is null".
 self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
+    const req = event.request;
 
-    // Skip cross-origin and Supabase
+    // Solo manejamos GET. Safari y otros browsers lanzan error si intentamos
+    // cachear POST/PUT/DELETE, así que los dejamos pasar directos.
+    if (req.method !== 'GET') return;
+
+    const url = new URL(req.url);
+
+    // Ignorar cross-origin y Supabase (el browser los maneja directo).
     if (url.origin !== location.origin || url.href.includes('supabase.co')) {
         return;
     }
 
-    // Critical files: NETWORK ONLY (nunca cachear)
     const criticalFiles = ['/main.js', 'main.js', '/js/views/auth.js', 'js/views/auth.js', '/index.html', 'index.html'];
     const isCritical = criticalFiles.some(file => url.pathname.endsWith(file));
 
+    const acceptsHtml = req.headers.get('accept')?.includes('text/html');
+
+    const fallbackResponse = () => new Response('Offline', {
+        status: 503,
+        statusText: 'Service Unavailable',
+        headers: { 'Content-Type': 'text/plain' }
+    });
+
     if (isCritical) {
-        // Network ONLY for critical files - NO caching at all
-        event.respondWith(
-            fetch(event.request)
-                .then((networkResponse) => {
-                    // Return network response WITHOUT caching
-                    if (networkResponse && networkResponse.status === 200) {
-                        return networkResponse;
-                    }
-                    throw new Error('Network error');
-                })
-                .catch(() => {
-                    // ONLY use cache if truly offline, but prefer online
-                    return caches.match(event.request)
-                        .catch(() => {
-                            if (event.request.headers.get('accept')?.includes('text/html')) {
-                                return caches.match('./offline.html');
-                            }
-                        });
-                })
-        );
+        // Network-first sin caching para archivos críticos.
+        event.respondWith((async () => {
+            try {
+                const networkResponse = await fetch(req);
+                if (networkResponse) return networkResponse;
+                throw new Error('Empty network response');
+            } catch (e) {
+                const cached = await caches.match(req);
+                if (cached) return cached;
+                if (acceptsHtml) {
+                    const offline = await caches.match('./offline.html');
+                    if (offline) return offline;
+                }
+                return fallbackResponse();
+            }
+        })());
     } else {
-        // Network First then Cache for other files
-        event.respondWith(
-            fetch(event.request)
-                .then((networkResponse) => {
-                    if (networkResponse && networkResponse.status === 200) {
-                        const responseClone = networkResponse.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request, responseClone);
-                        });
-                    }
-                    return networkResponse;
-                })
-                .catch(() => {
-                    // If offline or network fails, look in cache
-                    return caches.match(event.request)
-                        .then((cachedResponse) => {
-                            if (cachedResponse) return cachedResponse;
-                            // Styled offline fallback page
-                            if (event.request.headers.get('accept')?.includes('text/html')) {
-                                return caches.match('./offline.html');
-                            }
-                        });
-                })
-        );
+        // Network-first con caching para el resto.
+        event.respondWith((async () => {
+            try {
+                const networkResponse = await fetch(req);
+                if (networkResponse && networkResponse.status === 200) {
+                    const clone = networkResponse.clone();
+                    caches.open(CACHE_NAME)
+                        .then((cache) => cache.put(req, clone))
+                        .catch(() => { /* ignorar errores de caching */ });
+                }
+                if (networkResponse) return networkResponse;
+                throw new Error('Empty network response');
+            } catch (e) {
+                const cached = await caches.match(req);
+                if (cached) return cached;
+                if (acceptsHtml) {
+                    const offline = await caches.match('./offline.html');
+                    if (offline) return offline;
+                }
+                return fallbackResponse();
+            }
+        })());
     }
 });
 
