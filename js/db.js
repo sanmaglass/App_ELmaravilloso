@@ -183,7 +183,9 @@ window.DataManager = {
             await window.db[tableName].put(data);
 
             // ── Intentar sync con retry exponencial ───────────
-            if (window.Sync?.client) {
+            // SyncV2 tiene prioridad sobre el Sync legacy
+            const activeClient = window.SyncV2?.client || window.Sync?.client;
+            if (activeClient) {
                 const syncResult = await this._syncWithRetry(tableName, remoteTable, data);
                 if (!syncResult.success) {
                     // Guardar en queue para procesar cuando vuelva conexión
@@ -207,9 +209,13 @@ window.DataManager = {
         const fallbackTables = this._getFallbackTables();
         let syncData = this._prepareSyncData(tableName, data, fallbackTables);
 
+        // Usar SyncV2 primero (es el sistema activo), con fallback al Sync legacy
+        const activeClient = window.SyncV2?.client || window.Sync?.client;
+        if (!activeClient) return { success: false, error: 'Sin cliente de sync' };
+
         for (let attempt = 0; attempt < this.MAX_RETRIES; attempt++) {
             try {
-                const { error: syncErr } = await window.Sync.client
+                const { error: syncErr } = await activeClient
                     .from(remoteTable)
                     .upsert([syncData], { onConflict: 'id' })
                     .select('id');
@@ -282,7 +288,8 @@ window.DataManager = {
     async processPendingQueue() {
         if (this._isProcessingQueue) return;
         if (this.syncQueue.size === 0) return;
-        if (!window.Sync?.client) return;
+        const activeClient = window.SyncV2?.client || window.Sync?.client;
+        if (!activeClient) return;
 
         this._isProcessingQueue = true;
 
@@ -429,13 +436,14 @@ window.DataManager = {
             await window.db[tableName].update(numericId, { deleted: true });
 
             // 2. Intentar borrar en la nube con retry
-            if (window.Sync?.client) {
+            const activeClient = window.SyncV2?.client || window.Sync?.client;
+            if (activeClient) {
                 const result = await this._syncWithRetry(tableName, remoteTable, { id: numericId, deleted: true });
 
                 if (!result.success) {
                     // Fallback: hard delete
                     try {
-                        const { error: hardDelErr } = await window.Sync.client
+                        const { error: hardDelErr } = await activeClient
                             .from(remoteTable)
                             .delete()
                             .eq('id', id);

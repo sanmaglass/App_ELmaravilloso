@@ -1523,37 +1523,66 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         // ── LISTENER: Actualizar Dashboard en tiempo real cuando hay cambios en Supabase ──
         // Usa debounce de 500ms para no re-renderizar si llegan varios eventos seguidos
-        let _dashRefreshTimer = null;
-        const dashboardRefreshHandler = (event) => {
+
+        // Limpiar listener anterior para evitar acumulación en visitas repetidas
+        if (window._dashboardSyncHandler) {
+            document.removeEventListener('sync-data-updated', window._dashboardSyncHandler);
+            window._dashboardSyncHandler = null;
+        }
+        if (window._dashRefreshTimer) {
+            clearTimeout(window._dashRefreshTimer);
+            window._dashRefreshTimer = null;
+        }
+        if (window._dashboardObserver) {
+            window._dashboardObserver.disconnect();
+            window._dashboardObserver = null;
+        }
+
+        window._dashboardSyncHandler = (event) => {
             const changedTables = event.detail?.tables || [];
             // Si no hay tablas especificadas, no refrescar (evita renders vacíos)
             if (changedTables.length === 0) return;
             // Refrescar solo si cambiaron las tablas clave del dashboard
-            const relevantTables = ['daily_sales', 'expenses', 'employees', 'products', 'workLogs', 'purchase_invoices', 'eleventa_sales'];
+            const relevantTables = ['daily_sales', 'expenses', 'employees', 'products', 'workLogs', 'purchase_invoices', 'eleventa_sales', 'suppliers', 'reminders', 'loans'];
             if (!changedTables.some(t => relevantTables.includes(t))) return;
+
+            // CRÍTICO: Verificar que el Dashboard es lo que está visible AHORA.
+            // container (#view-container) siempre está en el DOM, así que solo verificar
+            // con isConnected no es suficiente — hay que confirmar que el contenido
+            // actual es el dashboard y no otra vista (ej. facturas).
+            const isDashboardVisible = !!document.getElementById('kpi-ventas-mes') ||
+                                       !!document.getElementById('tab-resumen');
+            if (!isDashboardVisible) return;
 
             // Debounce: si llegan varios eventos juntos (ej. Realtime + Polling),
             // solo ejecutar el último render, no todos.
-            if (_dashRefreshTimer) clearTimeout(_dashRefreshTimer);
-            _dashRefreshTimer = setTimeout(() => {
-                _dashRefreshTimer = null;
-                // Verificar que el container sigue en el DOM antes de re-renderizar
-                if (!container.isConnected) return;
+            if (window._dashRefreshTimer) clearTimeout(window._dashRefreshTimer);
+            window._dashRefreshTimer = setTimeout(() => {
+                window._dashRefreshTimer = null;
+                // Re-verificar visibilidad al momento de ejecutar (puede haber cambiado)
+                if (!document.getElementById('kpi-ventas-mes') && !document.getElementById('tab-resumen')) return;
                 window.Views.dashboard(container, selectedMonth);
-            }, 500);
+            }, 800);
         };
-        document.addEventListener('sync-data-updated', dashboardRefreshHandler);
+        document.addEventListener('sync-data-updated', window._dashboardSyncHandler);
 
-        // Cleanup: remover listener si el container se elimina del DOM
+        // Cleanup: remover listener si el container cambia de vista
         const observerTarget = container.parentNode || document.body;
-        const observer = new MutationObserver(() => {
-            if (!container.isConnected) {
-                if (_dashRefreshTimer) { clearTimeout(_dashRefreshTimer); _dashRefreshTimer = null; }
-                document.removeEventListener('sync-data-updated', dashboardRefreshHandler);
-                observer.disconnect();
+        window._dashboardObserver = new MutationObserver(() => {
+            // Si los elementos del dashboard ya no están, cleanup
+            if (!document.getElementById('kpi-ventas-mes') && !document.getElementById('tab-resumen')) {
+                if (window._dashRefreshTimer) { clearTimeout(window._dashRefreshTimer); window._dashRefreshTimer = null; }
+                if (window._dashboardSyncHandler) {
+                    document.removeEventListener('sync-data-updated', window._dashboardSyncHandler);
+                    window._dashboardSyncHandler = null;
+                }
+                if (window._dashboardObserver) {
+                    window._dashboardObserver.disconnect();
+                    window._dashboardObserver = null;
+                }
             }
         });
-        observer.observe(observerTarget, { childList: true, subtree: true });
+        window._dashboardObserver.observe(container, { childList: true, subtree: false });
 
     } catch (e) {
         console.error('Dashboard error:', e);

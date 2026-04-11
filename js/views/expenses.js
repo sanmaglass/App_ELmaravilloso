@@ -71,15 +71,22 @@ window.Views.expenses = async (container) => {
     document.getElementById('filter-category').addEventListener('change', () => renderExpenses());
 
     // --- REALTIME REFRESH ---
-    const syncHandler = () => {
+    // Limpiar listener anterior para evitar acumulación en visitas repetidas
+    if (window._expensesSyncHandler) {
+        window.removeEventListener('sync-data-updated', window._expensesSyncHandler);
+        window._expensesSyncHandler = null;
+    }
+
+    window._expensesSyncHandler = () => {
         if (document.getElementById('expenses-list')) {
             console.log("🔄 Sync update detected: refreshing expenses...");
             renderExpenses();
         } else {
-            window.removeEventListener('sync-data-updated', syncHandler);
+            window.removeEventListener('sync-data-updated', window._expensesSyncHandler);
+            window._expensesSyncHandler = null;
         }
     };
-    window.addEventListener('sync-data-updated', syncHandler);
+    window.addEventListener('sync-data-updated', window._expensesSyncHandler);
 };
 
 // --- INIT DATE FILTER ---

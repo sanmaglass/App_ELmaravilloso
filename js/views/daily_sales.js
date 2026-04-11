@@ -61,15 +61,22 @@ window.Views.daily_sales = async (container) => {
     document.getElementById('btn-export-daily').addEventListener('click', exportDailySalesToExcel);
 
     // --- REALTIME REFRESH ---
-    const syncHandler = () => {
+    // Limpiar listener anterior para evitar acumulación en visitas repetidas
+    if (window._dailySalesSyncHandler) {
+        window.removeEventListener('sync-data-updated', window._dailySalesSyncHandler);
+        window._dailySalesSyncHandler = null;
+    }
+
+    window._dailySalesSyncHandler = () => {
         if (document.getElementById('daily-sales-list')) {
             console.log("🔄 Sync update detected: refreshing daily sales...");
             renderDailySales();
         } else {
-            window.removeEventListener('sync-data-updated', syncHandler);
+            window.removeEventListener('sync-data-updated', window._dailySalesSyncHandler);
+            window._dailySalesSyncHandler = null;
         }
     };
-    window.addEventListener('sync-data-updated', syncHandler);
+    window.addEventListener('sync-data-updated', window._dailySalesSyncHandler);
 };
 
 // --- INIT MONTH FILTER ---

@@ -127,15 +127,27 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     document.getElementById('btn-export-excel').addEventListener('click', exportInvoicesToExcel);
 
     // --- REALTIME REFRESH ---
+    // Limpiar listener anterior para evitar acumulación en visitas repetidas
+    if (window._invoicesSyncHandler) {
+        window.removeEventListener('sync-data-updated', window._invoicesSyncHandler);
+        window._invoicesSyncHandler = null;
+    }
+    if (window._invoicesSyncDebounce) {
+        clearTimeout(window._invoicesSyncDebounce);
+        window._invoicesSyncDebounce = null;
+    }
+
     // Debounce para evitar que múltiples eventos sync simultáneos provoquen renders en cascada
-    let syncDebounceTimer = null;
-    const syncHandler = () => {
+    window._invoicesSyncHandler = () => {
         if (!document.getElementById('invoices-list')) {
-            window.removeEventListener('sync-data-updated', syncHandler);
+            window.removeEventListener('sync-data-updated', window._invoicesSyncHandler);
+            window._invoicesSyncHandler = null;
             return;
         }
-        clearTimeout(syncDebounceTimer);
-        syncDebounceTimer = setTimeout(() => {
+        if (window._invoicesSyncDebounce) clearTimeout(window._invoicesSyncDebounce);
+        window._invoicesSyncDebounce = setTimeout(() => {
+            window._invoicesSyncDebounce = null;
+            if (!document.getElementById('invoices-list')) return;
             console.log("🔄 Sync update detected: refreshing invoices...");
             // NO llamar initDateFilter aquí — los meses solo se actualizan al guardar/cargar
             renderAnalytics();
@@ -145,7 +157,7 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
             populateSupplierFilter();
         }, 500);
     };
-    window.addEventListener('sync-data-updated', syncHandler);
+    window.addEventListener('sync-data-updated', window._invoicesSyncHandler);
 };
 
 // --- INIT FILTERS ---

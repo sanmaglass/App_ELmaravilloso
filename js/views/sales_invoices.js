@@ -43,15 +43,22 @@ window.Views.sales_invoices = async (container) => {
     document.getElementById('btn-export-sales').addEventListener('click', exportSalesToExcel);
 
     // --- REALTIME REFRESH ---
-    const syncHandler = () => {
+    // Limpiar listener anterior para evitar acumulación en visitas repetidas
+    if (window._salesInvoicesSyncHandler) {
+        window.removeEventListener('sync-data-updated', window._salesInvoicesSyncHandler);
+        window._salesInvoicesSyncHandler = null;
+    }
+
+    window._salesInvoicesSyncHandler = () => {
         if (document.getElementById('sales-list')) {
             console.log("🔄 Sync update detected: refreshing sales...");
             renderSales();
         } else {
-            window.removeEventListener('sync-data-updated', syncHandler);
+            window.removeEventListener('sync-data-updated', window._salesInvoicesSyncHandler);
+            window._salesInvoicesSyncHandler = null;
         }
     };
-    window.addEventListener('sync-data-updated', syncHandler);
+    window.addEventListener('sync-data-updated', window._salesInvoicesSyncHandler);
 };
 
 // --- RENDER LOGIC ---
