@@ -20,7 +20,7 @@ self.addEventListener('activate', (event) => {
         try {
             const clientsList = await self.clients.matchAll({ type: 'window' });
             for (const client of clientsList) {
-                client.navigate(client.url).catch(() => {});
+                client.navigate(client.url).catch((e) => { console.warn('SW client.navigate falló:', e); });
             }
         } catch (e) { /* ignorar */ }
     })());

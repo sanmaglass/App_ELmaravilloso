@@ -229,8 +229,8 @@ window.SyncV2 = {
       const detail = { tables: [...this._pendingNotifyTables] };
       this._pendingNotifyTables.clear();
       if (detail.tables.length === 0) return; // Nunca disparar si no hay cambios reales
-      try { window.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) {}
-      try { document.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) {}
+      try { window.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) { console.warn('sync-data-updated (window) dispatch falló:', e); }
+      try { document.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) { console.warn('sync-data-updated (document) dispatch falló:', e); }
     }, 200);
   },
 

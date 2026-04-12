@@ -84,7 +84,13 @@ async function init() {
                 // Si alguno murió (timeout del proxy, blip de red, suspend del laptop),
                 // cerramos y re-suscribimos. Sin esto, un canal caído en background nunca
                 // se recupera hasta recargar la página.
+                // Guard de reentrada: si un tick anterior todavía está reconectando, el
+                // siguiente se salta su ciclo. Evita que dos reconexiones se pisen si la
+                // red está lenta y close+init tarda más de 30s.
+                let _heartbeatRunning = false;
                 setInterval(async () => {
+                    if (_heartbeatRunning) return;
+                    _heartbeatRunning = true;
                     try {
                         const channels = window.SyncV2.realtimeChannels || [];
                         const alive = channels.filter(c => c?.state === 'joined').length;
@@ -97,6 +103,7 @@ async function init() {
                             window.SyncV2.syncAll();
                         }
                     } catch (e) { console.error('heartbeat error:', e); }
+                    finally { _heartbeatRunning = false; }
                 }, 30 * 1000);
 
                 // El badge del header lo mantiene la función legacy Sync.updateIndicator.
