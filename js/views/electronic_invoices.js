@@ -196,9 +196,9 @@ async function showDTEModal() {
         const iva = Math.round((neto * 0.19) * 100) / 100;
         const total = Math.round((neto + iva) * 100) / 100;
 
-        document.getElementById('dte-neto').textContent = window.Utils.formatCurrency(neto);
-        document.getElementById('dte-iva').textContent = window.Utils.formatCurrency(iva);
-        document.getElementById('dte-total').textContent = window.Utils.formatCurrency(total);
+        document.getElementById('dte-neto').innerHTML = window.Utils.formatCurrency(neto);
+        document.getElementById('dte-iva').innerHTML = window.Utils.formatCurrency(iva);
+        document.getElementById('dte-total').innerHTML = window.Utils.formatCurrency(total);
 
         document.getElementById('dte-items-body').innerHTML = items.map((it, idx) => `
             <tr>

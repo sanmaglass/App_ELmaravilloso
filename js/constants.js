@@ -14,7 +14,8 @@ window.Constants = {
         'electronic_invoices': 'electronic_invoices',
         'reminders': 'reminders',
         'eleventa_sales': 'eleventa_sales',
-        'loans': 'loans'
+        'loans': 'loans',
+        'cash_register': 'cash_register'
     },
 
     // Versión actual de Dexie DB
@@ -27,7 +28,7 @@ window.Constants = {
     SYNCED_TABLES: [
         'employees', 'workLogs', 'products', 'promotions', 'suppliers',
         'purchase_invoices', 'sales_invoices', 'expenses', 'daily_sales',
-        'electronic_invoices', 'reminders', 'eleventa_sales', 'loans'
+        'electronic_invoices', 'reminders', 'eleventa_sales', 'loans', 'cash_register'
     ],
 
     // Límites de sincronización

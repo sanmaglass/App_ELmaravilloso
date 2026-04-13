@@ -205,9 +205,8 @@ async function initDateFilter() {
             filter.appendChild(option);
         });
 
-        // Seleccionar el mes actual por defecto (hora LOCAL)
-        const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        filter.value = currentKey;
+        // Por defecto mostrar todo el historial para no generar confusión (UX)
+        filter.value = 'all';
 
     } catch (e) { console.error('Error init date filter', e); }
 }
@@ -266,6 +265,15 @@ async function renderAnalytics() {
         const yearTotal = thisYear.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
         const avgPerInvoice = monthCount > 0 ? monthTotal / monthCount : 0;
 
+        // Cash vs Bank Spent (For actual cashflow management)
+        const getRealPaid = (inv) => {
+            if (inv.paymentStatus === 'Pagado') return parseFloat(inv.amount) || 0;
+            if (inv.paymentStatus === 'Abonado') return parseFloat(inv.paidAmount) || 0;
+            return 0; 
+        };
+        const cashSpentMonth = thisMonth.filter(i => i.paymentMethod === 'Efectivo').reduce((sum, i) => sum + getRealPaid(i), 0);
+        const bankSpentMonth = thisMonth.filter(i => i.paymentMethod === 'Transferencia' || i.paymentMethod === 'Débito').reduce((sum, i) => sum + getRealPaid(i), 0);
+
         // Credit totals (all-time, not just this month) — includes Abonado
         const allCreditPending = active.filter(i => i.paymentMethod === 'Crédito' && (i.paymentStatus === 'Pendiente' || i.paymentStatus === 'Abonado'));
         const creditPendingTotal = allCreditPending.reduce((sum, i) => {
@@ -320,10 +328,12 @@ async function renderAnalytics() {
             </div>
 
             <div class="card" style="padding:16px; border-left:4px solid #6366f1;">
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Total Año ${currentYear}</div>
-                <div style="font-size:1.5rem; font-weight:700; color:#6366f1;">${formatCurrency(yearTotal)}</div>
-                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
-                    ${thisYear.length} facturas
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Flujo de Caja ${periodLabel}</div>
+                <div style="font-size:1rem; font-weight:700; color:#059669; display:flex; align-items:center; gap:6px;">
+                    <i class="ph ph-money"></i> Efectivo: ${formatCurrency(cashSpentMonth)}
+                </div>
+                <div style="font-size:1rem; font-weight:700; color:#4f46e5; display:flex; align-items:center; gap:6px; margin-top:4px;">
+                    <i class="ph ph-bank"></i> Banco: ${formatCurrency(bankSpentMonth)}
                 </div>
             </div>
         `;
@@ -1155,17 +1165,17 @@ async function showInvoiceModal(invoiceToEdit = null) {
         
         try {
             if (remaining > 0) {
-                abonoPreview.textContent = formatCurrency(remaining);
+                abonoPreview.innerHTML = formatCurrency(remaining);
                 abonoPreview.style.color = '#dc2626'; // red
             } else if (remaining <= 0 && total > 0) {
-                abonoPreview.textContent = '¡Totalmente pagado!';
+                abonoPreview.innerHTML = '¡Totalmente pagado!';
                 abonoPreview.style.color = '#10b981'; // green
             } else {
-                abonoPreview.textContent = formatCurrency(0);
+                abonoPreview.innerHTML = formatCurrency(0);
             }
         } catch (e) {
             console.error('calcAbono error:', e);
-            abonoPreview.textContent = '$' + remaining;
+            abonoPreview.innerHTML = '$' + remaining;
         }
     }
 

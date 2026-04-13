@@ -245,7 +245,7 @@ async function showSaleModal() {
         `).join('');
 
         const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-        totalDisplay.textContent = formatCurrency(total);
+        totalDisplay.innerHTML = formatCurrency(total);
         totalDisplay.dataset.value = total;
 
         // Expose remove function globally for onclick

@@ -10,7 +10,7 @@ window.Views.daily_sales = async (container) => {
                 </h1>
                 <p style="color:var(--text-muted);">Registro de cierre de caja (Efectivo, Transferencia, Débito)</p>
             </div>
-            <button class="btn btn-primary" id="btn-add-daily-sale">
+            <button class="btn btn-primary" id="btn-add-daily-sale" style="display:none;">
                 <i class="ph ph-plus-circle"></i> Nuevo Cierre
             </button>
         </div>
@@ -112,9 +112,8 @@ async function initDailyMonthFilter() {
             filter.appendChild(option);
         });
 
-        // Seleccionar mes actual en hora LOCAL
-        const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        filter.value = currentKey;
+        // Por defecto mostrar todo el historial para no generar confusión (UX)
+        filter.value = 'all';
 
     } catch (e) { console.error('Error init daily month filter', e); }
 }
@@ -154,6 +153,27 @@ async function renderDailySales() {
         });
 
         const formatCurrency = window.Utils.formatCurrency;
+
+        // --- CALCULAR SALIDAS DE EFECTIVO (GASTOS Y COMPRAS) POR FECHA ---
+        const cashOutByDate = new Map();
+        const [invs, exps] = await Promise.all([
+            window.db.purchase_invoices.toArray(),
+            window.db.expenses.toArray()
+        ]);
+        
+        invs.filter(i => !i.deleted && i.paymentMethod === 'Efectivo').forEach(i => {
+             const d = i.date?.split('T')[0];
+             let out = 0;
+             if (i.paymentStatus === 'Pagado') out += (parseFloat(i.amount) || 0);
+             if (i.paymentStatus === 'Abonado') out += (parseFloat(i.paidAmount) || 0);
+             if (d && out > 0) cashOutByDate.set(d, (cashOutByDate.get(d) || 0) + out);
+        });
+
+        exps.filter(e => !e.deleted && e.paymentMethod === 'Efectivo').forEach(e => {
+             const d = e.date?.split('T')[0];
+             const out = parseFloat(e.amount) || 0;
+             if (d && out > 0) cashOutByDate.set(d, (cashOutByDate.get(d) || 0) + out);
+        });
 
         // Filter by month and search
         let filtered = activeSales.filter(s => {
@@ -228,6 +248,13 @@ async function renderDailySales() {
                     <span style="background:rgba(139,92,246,0.15); padding:3px 10px; border-radius:20px; color:#5b21b6; font-weight:600; white-space:nowrap; border:1px solid rgba(139,92,246,0.3);">
                         <i class="ph ph-chart-line-up"></i> Utilidad: ${formatCurrency(profitByDate.get(sale.date) || 0)}
                     </span>
+                    
+                    ${cashOutByDate.get(sale.date) > 0 ? `
+                    <!-- NEW: Alerta de Salidas de Efectivo (Gastos/Compras del día) -->
+                    <span style="background:linear-gradient(135deg, #fef2f2, #fee2e2); padding:3px 12px; border-radius:20px; color:#b91c1c; font-weight:700; white-space:nowrap; border:1px solid #fca5a5; box-shadow:0 1px 3px rgba(185,28,28,0.1);" title="Atención: Hoy se registró salida de dinero de la caja fuerte para pagar gastos u otras compras.">
+                        <i class="ph ph-warning-circle"></i> Salidas Efectivo: ${formatCurrency(cashOutByDate.get(sale.date))}
+                    </span>
+                    ` : ''}
                 </div>
             </div>
         `).join('');
@@ -281,6 +308,18 @@ function showDailySaleModal(saleToEdit = null) {
                         <input type="date" id="ds-date" class="form-input" value="${isEdit ? saleToEdit.date : today}">
                     </div>
 
+                    <!-- 💡 SMART CASH OUTFLOW ALERT -->
+                    <div id="ds-cash-alert" style="display:none; background:linear-gradient(135deg, #fef3c7, #fffbeb); border-left:4px solid #f59e0b; padding:12px 16px; border-radius:8px; margin-bottom:4px; box-shadow:0 2px 8px rgba(245,158,11,0.1);">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                            <i class="ph ph-lightbulb" style="color:#d97706; font-size:1.2rem;"></i>
+                            <span style="font-weight:700; color:#92400e; font-size:0.9rem;">Recordatorio de Salidas en Efectivo</span>
+                        </div>
+                        <div style="font-size:0.8rem; color:#b45309; line-height:1.4;">
+                            Hoy registraste pagos a proveedores o gastos de local que salieron directamente de la caja por un total de <b id="ds-cash-out-amount" style="font-size:1rem; color:#dc2626;">...</b>.<br>
+                            <em>(Tenlo en cuenta al cuadrar tus billetes)</em>
+                        </div>
+                    </div>
+
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
                         <div class="form-group">
                             <label class="form-label">Efectivo ($)</label>
@@ -332,7 +371,7 @@ function showDailySaleModal(saleToEdit = null) {
         inputs.forEach(input => {
             total += parseFloat(input.value) || 0;
         });
-        totalPreview.textContent = formatCurrency(total);
+        totalPreview.innerHTML = formatCurrency(total);
         return total;
     };
 
@@ -340,6 +379,37 @@ function showDailySaleModal(saleToEdit = null) {
     calcTotal();
 
     inputs.forEach(input => input.addEventListener('input', calcTotal));
+
+    // Smart Cash Outflow Calculation
+    async function calculateCashOutflows(dateStr) {
+        if(!dateStr) return;
+        try {
+            const [invoices, expenses] = await Promise.all([
+                window.db.purchase_invoices.toArray(),
+                window.db.expenses.toArray()
+            ]);
+            let cashOut = 0;
+            invoices.filter(i => !i.deleted && i.date === dateStr && i.paymentMethod === 'Efectivo').forEach(i => {
+                if (i.paymentStatus === 'Pagado') cashOut += (parseFloat(i.amount) || 0);
+                if (i.paymentStatus === 'Abonado') cashOut += (parseFloat(i.paidAmount) || 0);
+            });
+            expenses.filter(e => !e.deleted && e.date === dateStr && e.paymentMethod === 'Efectivo').forEach(e => {
+                cashOut += (parseFloat(e.amount) || 0);
+            });
+
+            const alertBox = document.getElementById('ds-cash-alert');
+            if (cashOut > 0) {
+                alertBox.style.display = 'block';
+                document.getElementById('ds-cash-out-amount').innerHTML = window.Utils.formatCurrency(cashOut);
+            } else {
+                alertBox.style.display = 'none';
+            }
+        } catch(e) { console.error('Error calculando salidas', e); }
+    }
+
+    const dateInput = document.getElementById('ds-date');
+    dateInput.addEventListener('change', (e) => calculateCashOutflows(e.target.value));
+    calculateCashOutflows(dateInput.value);
 
     document.getElementById('btn-save-daily').addEventListener('click', async () => {
         const date = document.getElementById('ds-date').value;

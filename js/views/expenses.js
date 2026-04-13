@@ -124,9 +124,8 @@ async function initDateFilter() {
             filter.appendChild(option);
         });
 
-        // Seleccionar mes actual en hora LOCAL
-        const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        filter.value = currentKey;
+        // Por defecto mostrar todo el historial para no generar confusión (UX)
+        filter.value = 'all';
 
     } catch (e) { console.error('Error init date filter', e); }
 }
@@ -175,7 +174,7 @@ async function renderExpenses() {
             categoryCounts[e.category] = (categoryCounts[e.category] || 0) + amount;
         });
 
-        document.getElementById('total-expenses-amount').textContent = formatCurrency(total);
+        document.getElementById('total-expenses-amount').innerHTML = formatCurrency(total);
 
         // Find top category
         let topCat = '-';
@@ -186,7 +185,7 @@ async function renderExpenses() {
                 topCat = cat;
             }
         }
-        document.getElementById('top-category').textContent = topCat;
+        document.getElementById('top-category').innerHTML = topCat;
 
 
         if (filtered.length === 0) {
@@ -199,7 +198,17 @@ async function renderExpenses() {
             return;
         }
 
-        list.innerHTML = filtered.map(exp => `
+        list.innerHTML = filtered.map(exp => {
+            let pmBadge = '';
+            if (exp.paymentMethod) {
+                const isCash = exp.paymentMethod === 'Efectivo';
+                const color = isCash ? '#059669' : '#4f46e5';
+                const bg = isCash ? 'rgba(16,185,129,0.1)' : 'rgba(79,70,229,0.1)';
+                const icon = isCash ? 'ph ph-money' : 'ph ph-bank';
+                pmBadge = `<span style="color:${color}; background:${bg}; padding:2px 8px; border-radius:4px; font-weight:600;"><i class="${icon}"></i> ${exp.paymentMethod}</span>`;
+            }
+
+            return `
             <div class="card" style="padding:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                 <div style="flex: 1 1 180px; min-width:0;">
                     <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${exp.title}</div>
@@ -208,6 +217,7 @@ async function renderExpenses() {
                         <span>•</span>
                         <span style="color:var(--primary); background:rgba(255,0,0,0.05); padding:2px 8px; border-radius:4px;">${exp.category}</span>
                         ${exp.isFixed ? '<span style="color:#f59e0b; background:rgba(245,158,11,0.1); padding:2px 8px; border-radius:4px; font-weight:bold;"><i class="ph ph-push-pin"></i> Fijo Mensual</span>' : ''}
+                        ${pmBadge}
                     </div>
                 </div>
                 <div style="text-align:right; flex: 0 0 auto;">
@@ -222,7 +232,7 @@ async function renderExpenses() {
                     </div>
                 </div>
             </div>
-        `).join('');
+        `}).join('');
 
         // Attach Events
         document.querySelectorAll('.btn-edit-expense').forEach(btn =>
@@ -282,6 +292,7 @@ function showExpenseModal(expenseToEdit = null) {
                         <label class="form-label">Categoría</label>
                         <select id="exp-category" class="form-input">
                             <option value="Retiro del Dueño" ${isEdit && expenseToEdit.category === 'Retiro del Dueño' ? 'selected' : ''}>💼 Retiro del Dueño (tu sueldo)</option>
+                            <option value="Sueldos" ${isEdit && expenseToEdit.category === 'Sueldos' ? 'selected' : ''}>👷 Sueldos / Nómina</option>
                             <option value="Servicios" ${isEdit && expenseToEdit.category === 'Servicios' ? 'selected' : ''}>Servicios Básicos</option>
                             <option value="Alquiler" ${isEdit && expenseToEdit.category === 'Alquiler' ? 'selected' : ''}>Alquiler</option>
                             <option value="Contabilidad" ${isEdit && expenseToEdit.category === 'Contabilidad' ? 'selected' : ''}>Contabilidad</option>
@@ -290,6 +301,15 @@ function showExpenseModal(expenseToEdit = null) {
                             <option value="Marketing" ${isEdit && expenseToEdit.category === 'Marketing' ? 'selected' : ''}>Marketing</option>
                             <option value="Mantenimiento" ${isEdit && expenseToEdit.category === 'Mantenimiento' ? 'selected' : ''}>Mantenimiento</option>
                              <option value="Otros" ${isEdit && expenseToEdit.category === 'Otros' ? 'selected' : ''}>Otros</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Método de Pago</label>
+                        <select id="exp-method" class="form-input">
+                            <option value="Efectivo" ${isEdit && expenseToEdit.paymentMethod === 'Efectivo' ? 'selected' : ''}>Efectivo (Caja)</option>
+                            <option value="Transferencia" ${isEdit && expenseToEdit.paymentMethod === 'Transferencia' ? 'selected' : ''}>Transferencia / Banco</option>
+                            <option value="Débito" ${isEdit && expenseToEdit.paymentMethod === 'Débito' ? 'selected' : ''}>Tarjeta Débito/Crédito</option>
                         </select>
                     </div>
 
@@ -322,6 +342,7 @@ function showExpenseModal(expenseToEdit = null) {
         const title = document.getElementById('exp-title').value.trim();
         const amount = parseFloat(document.getElementById('exp-amount').value) || 0;
         const category = document.getElementById('exp-category').value;
+        const paymentMethod = document.getElementById('exp-method').value;
         const date = document.getElementById('exp-date').value;
         const isFixed = document.getElementById('exp-isfixed').checked;
 
@@ -335,6 +356,7 @@ function showExpenseModal(expenseToEdit = null) {
                 title,
                 amount,
                 category,
+                paymentMethod,
                 date,
                 isFixed,
                 deleted: false

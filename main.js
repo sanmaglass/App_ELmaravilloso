@@ -25,7 +25,8 @@ const views = {
     reports: () => window.Views.reports(document.getElementById('view-container')),
     sales_invoices: () => window.Views.sales_invoices(document.getElementById('view-container')),
     expenses: () => window.Views.expenses(document.getElementById('view-container')),
-    electronic_invoices: () => window.Views.electronic_invoices(document.getElementById('view-container'))
+    electronic_invoices: () => window.Views.electronic_invoices(document.getElementById('view-container')),
+    cash_register: () => window.Views.cash_register(document.getElementById('view-container'))
 };
 
 // Initialize App

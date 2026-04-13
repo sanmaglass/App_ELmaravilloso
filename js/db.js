@@ -98,6 +98,28 @@ db.version(17).stores({
     });
 });
 
+// v18: cash_register — Arqueo y movimientos de caja
+db.version(18).stores({
+    employees: 'id, rut, deleted, updated_at_hlc',
+    workLogs: 'id, employeeId, date, deleted, updated_at_hlc',
+    products: 'id, category, deleted, updated_at_hlc',
+    promotions: 'id, deleted, updated_at_hlc',
+    suppliers: 'id, name, deleted, updated_at_hlc',
+    purchase_invoices: 'id, supplierId, date, paymentStatus, paymentMethod, invoiceNumber, deleted, version, updated_at_hlc',
+    sales_invoices: 'id, date, clientName, invoiceNumber, deleted, updated_at_hlc',
+    electronic_invoices: 'id, date, folio, status, deleted, version, updated_at_hlc',
+    expenses: 'id, date, deleted, updated_at_hlc',
+    daily_sales: 'id, date, deleted, updated_at_hlc',
+    settings: 'key',
+    reminders: 'id, deleted, completed, [completed+deleted], updated_at_hlc',
+    eleventa_sales: 'id, ticket_id, date, deleted, updated_at_hlc',
+    loans: 'id, supplierId, date, deleted, direction, status, version, updated_at_hlc',
+    error_logs: 'id, timestamp, level, [level+timestamp]',
+    sync_outbox: '++id, tableName, status, created_at',
+    sync_state: 'table_name',
+    cash_register: 'id, date, type, category, deleted, updated_at_hlc'
+});
+
 // ──────────────────────────────────────────────────────────────
 async function seedDatabase() {
     const count = await db.settings.count();
@@ -148,6 +170,7 @@ window.DataManager = {
     _loansCoreFields: ['id', 'item', 'quantity', 'total', 'date', 'notes', 'status', 'direction', 'type', 'deleted', 'version'],
     // Full fields list (used after running migration SQL in Supabase)
     _loansFullFields: ['id', 'supplier_id', 'borrower_name', 'item', 'quantity', 'unit_price', 'total', 'date', 'notes', 'status', 'direction', 'type', 'repayment_type', 'repayment_date', 'deleted', 'version'],
+    _cashRegisterCoreFields: ['id', 'date', 'type', 'category', 'amount', 'description', 'paymentMethod', 'reference', 'notes', 'deleted'],
 
     /**
      * Guarda o actualiza una entidad, gestiona version para locking
@@ -367,7 +390,8 @@ window.DataManager = {
             'employees': this._employeesCoreFields,
             'daily_sales': this._dailySalesCoreFields,
             'electronic_invoices': this._electronicInvoicesCoreFields,
-            'loans': this._loansCoreFields
+            'loans': this._loansCoreFields,
+            'cash_register': this._cashRegisterCoreFields
         };
     },
 
