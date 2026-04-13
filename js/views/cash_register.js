@@ -114,6 +114,7 @@ async function initCajaDateFilter() {
     while (filter.options.length > 1) filter.remove(1);
 
     try {
+        if (!window.db.cash_register) return;
         const records = await window.db.cash_register.toArray();
         const active = records.filter(r => !r.deleted);
 
@@ -154,9 +155,14 @@ async function renderCajaView() {
     try {
         const formatCurrency = window.Utils.formatCurrency;
 
+        // Fallback for aggressive caching or blocked db upgrades
+        if (!window.db.cash_register) {
+            console.warn("⚠️ Tabla cash_register no encontrada en Dexie. Por favor recarga la página (Ctrl+F5) o cierra otras pestañas de la app.");
+        }
+
         // Load all data sources to compute cash flow
         const [cajaRecords, dailySales, invoices, expenses, allSuppliers] = await Promise.all([
-            window.db.cash_register.toArray(),
+            window.db.cash_register ? window.db.cash_register.toArray() : Promise.resolve([]),
             window.db.daily_sales.toArray(),
             window.db.purchase_invoices.toArray(),
             window.db.expenses.toArray(),
