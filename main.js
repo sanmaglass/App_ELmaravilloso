@@ -26,7 +26,8 @@ const views = {
     sales_invoices: () => window.Views.sales_invoices(document.getElementById('view-container')),
     expenses: () => window.Views.expenses(document.getElementById('view-container')),
     electronic_invoices: () => window.Views.electronic_invoices(document.getElementById('view-container')),
-    cash_register: () => window.Views.cash_register(document.getElementById('view-container'))
+    cash_register: () => window.Views.cash_register(document.getElementById('view-container')),
+    credits: () => window.Views.credits(document.getElementById('view-container'))
 };
 
 // Initialize App
@@ -157,6 +158,39 @@ async function init() {
         const splash = document.getElementById('splash-screen');
         if (splash) splash.style.display = 'none';
         document.querySelector('.app-container').style.display = 'flex';
+
+        // Inicializar Alertas Globales de Supabase (Créditos y Retiros)
+        // Reusar el cliente de SyncV2 para no duplicar conexiones Realtime
+        try {
+            const alertClient = window.SyncV2.client;
+            if (alertClient) {
+                console.log("🔔 Iniciando suscripción a alertas globales...");
+                alertClient.channel('global-alerts')
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'eleventa_alertas' }, payload => {
+                        const alertData = payload.new;
+                        console.log('🚨 ALERTA RECIBIDA:', alertData);
+                        const isCredit = alertData.tipo === 'CREDITO_OTORGADO';
+                        const icon = isCredit ? '<i class="ph ph-hand-holding-dollar" style="color:#f59e0b"></i>' : '<i class="ph ph-warning-circle" style="color:#dc2626"></i>';
+
+                        const toastContainer = document.getElementById('toast-container');
+                        if(!toastContainer) return;
+                        const toast = document.createElement('div');
+                        toast.className = `toast toast-${isCredit ? 'warning' : 'error'}`;
+                        toast.innerHTML = `<div style="display:flex; align-items:center; gap:8px;">${icon} <span style="font-weight:bold;">${alertData.mensaje}</span></div>`;
+                        toastContainer.appendChild(toast);
+
+                        setTimeout(() => {
+                            toast.style.opacity = '0';
+                            setTimeout(() => toast.remove(), 300);
+                        }, 6000);
+
+                        if (window.AppNotify) window.AppNotify.playChime(isCredit ? 'success' : 'error');
+                    })
+                    .subscribe();
+            }
+        } catch (e) {
+            console.error('Error suscribiendo a eleventa_alertas', e);
+        }
 
         // Initial Load
         views.dashboard();

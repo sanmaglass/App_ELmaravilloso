@@ -113,6 +113,13 @@ window.TransactionManager = {
 
         switch (op.action) {
             case 'put': {
+                // Auto-generar ID si no existe (emulando el comportamiento de DataManager)
+                if (op.data.id) op.data.id = Number(op.data.id);
+                if (!op.data.id) {
+                    op.data.id = Math.floor(Math.random() * 2000000000);
+                    if (!op.data.created_at) op.data.created_at = new Date().toISOString();
+                }
+
                 // Incrementar version si la tabla lo soporta
                 if (window.DataManager?._versionedTables?.has(op.table)) {
                     const existing = op.data.id ? await table.get(Number(op.data.id)) : null;

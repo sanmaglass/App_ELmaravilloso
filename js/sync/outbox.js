@@ -44,9 +44,18 @@ window.Outbox = {
         const { tableName, op } = item;
 
         if (op === 'PUT') {
-          await window.SyncV2.client.from(tableName).upsert([payload], { onConflict: 'id' });
+          const { error } = await window.SyncV2.client.from(tableName).upsert([payload], { onConflict: 'id' });
+          if (error) {
+              if (error.code === '23505' || error.code === '409' || String(error.message).includes('409')) {
+                  await window.db.sync_outbox.update(item.id, { status: 'error' });
+                  console.warn(`[Outbox] Conflicto 409 en ${tableName}#${payload.id}. Descartado.`);
+                  continue; // Saltar throw, ya está marcado como error
+              }
+              throw error;
+          }
         } else if (op === 'DELETE') {
-          await window.SyncV2.client.from(tableName).update({ deleted: true }).eq('id', payload.id);
+          const { error } = await window.SyncV2.client.from(tableName).update({ deleted: true }).eq('id', payload.id);
+          if (error) throw error;
         }
 
         // Marcar como done
@@ -65,7 +74,7 @@ window.Outbox = {
           console.error(`❌ Máx reintentos para ${item.tableName}, marcado como error`);
           await window.ErrorLogger?.log('sync.outbox.max_retries', e, { item });
         }
-        break; // Detener en primer error para mantener orden
+        // No hacer break: continuar con los demás items para no bloquear el outbox completo
       }
     }
   }

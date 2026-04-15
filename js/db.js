@@ -325,8 +325,11 @@ window.DataManager = {
 
             const result = await this._syncWithRetry(tableName, remoteTable, data);
 
-            if (result.success) {
+            if (result.success || result.retryable === false) {
                 this.syncQueue.delete(queueKey);
+                if (!result.success) {
+                    console.warn(`[DataManager] Sincronización descartada (no reintentable) para ${tableName} #${data.id}:`, result.error);
+                }
             } else {
                 entry.retries = (entry.retries || 0) + 1;
                 if (entry.retries >= this.MAX_RETRIES) {

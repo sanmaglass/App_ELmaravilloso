@@ -1554,15 +1554,28 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                                        !!document.getElementById('tab-resumen');
             if (!isDashboardVisible) return;
 
-            // Debounce: si llegan varios eventos juntos (ej. Realtime + Polling),
-            // solo ejecutar el último render, no todos.
-            if (window._dashRefreshTimer) clearTimeout(window._dashRefreshTimer);
-            window._dashRefreshTimer = setTimeout(() => {
-                window._dashRefreshTimer = null;
-                // Re-verificar visibilidad al momento de ejecutar (puede haber cambiado)
-                if (!document.getElementById('kpi-ventas-mes') && !document.getElementById('tab-resumen')) return;
+            // Throttle: refrescar máximo cada 3s aunque sigan llegando datos en ráfaga.
+            // El debounce puro (clearTimeout + setTimeout) nunca ejecuta si los eventos
+            // llegan más rápido que el delay, dejando el dashboard congelado.
+            const now = Date.now();
+            const MIN_INTERVAL = 3000;
+            if (!window._dashLastRefresh) window._dashLastRefresh = 0;
+
+            if (now - window._dashLastRefresh >= MIN_INTERVAL) {
+                // Ya pasó suficiente tiempo, refrescar inmediato
+                window._dashLastRefresh = now;
+                if (window._dashRefreshTimer) { clearTimeout(window._dashRefreshTimer); window._dashRefreshTimer = null; }
                 window.Views.dashboard(container, selectedMonth);
-            }, 800);
+            } else if (!window._dashRefreshTimer) {
+                // Programar un refresh para cuando se cumpla el intervalo
+                const delay = MIN_INTERVAL - (now - window._dashLastRefresh);
+                window._dashRefreshTimer = setTimeout(() => {
+                    window._dashRefreshTimer = null;
+                    window._dashLastRefresh = Date.now();
+                    if (!document.getElementById('kpi-ventas-mes') && !document.getElementById('tab-resumen')) return;
+                    window.Views.dashboard(container, selectedMonth);
+                }, delay);
+            }
         };
         document.addEventListener('sync-data-updated', window._dashboardSyncHandler);
 
