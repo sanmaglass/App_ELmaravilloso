@@ -205,25 +205,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             white-space: nowrap;
         }
 
-        /* Estrellas del Negocio — scroll horizontal táctil y con ratón */
-        #top-margin-list {
-            display: flex;
-            gap: 16px;
-            overflow-x: auto;
-            overflow-y: hidden;
-            padding-bottom: 12px;
-            -webkit-overflow-scrolling: touch;
-            touch-action: pan-x;
-            cursor: grab;
-            max-width: 100%;
-            box-sizing: border-box;
-            scrollbar-width: thin;
-        }
-        #top-margin-list::-webkit-scrollbar { height: 4px; }
-        #top-margin-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 2px; }
-        #top-margin-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 2px; }
-        #top-margin-list.dragging { cursor: grabbing; user-select: none; }
-
         /* Horizontal Product Cards (Hooks & Zero Margin) */
         .h-scroll-container {
             display: flex;
@@ -254,7 +235,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             .live-ticket-id { font-size: 0.85rem; }
             .live-ticket-total { font-size: 1rem; }
             .live-ticket-profit-pill { font-size: 0.6rem; padding: 2px 6px; }
-            #top-margin-list, .h-scroll-container {
+            .h-scroll-container {
                 cursor: default;
             }
         }
@@ -262,6 +243,85 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             .live-ticket-row { padding: 10px 10px; gap: 8px; }
             .live-ticket-badge { width: 36px; height: 36px; font-size: 1rem; }
             .live-ticket-meta { font-size: 0.68rem; gap: 6px; }
+        }
+
+        /* ============== CEO COCKPIT ============== */
+        .ceo-row-3 { display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; }
+        @media (max-width: 900px) { .ceo-row-3 { grid-template-columns: 1fr; } }
+
+        .ceo-mini { padding:16px 18px; display:flex; flex-direction:column; gap:4px; }
+        .ceo-mini-label { font-size:0.72rem; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; color:var(--text-muted); display:flex; align-items:center; gap:6px; }
+        .ceo-mini-value { font-size:1.9rem; font-weight:900; color:var(--text-primary); line-height:1.1; margin-top:4px; letter-spacing:-0.5px; }
+        .ceo-mini-sub { font-size:0.78rem; color:var(--text-muted); font-weight:600; }
+        .ceo-mini-foot { font-size:0.78rem; font-weight:700; margin-top:8px; }
+        .ceo-cash-breakdown { margin-top:10px; display:flex; flex-direction:column; gap:4px; font-size:0.78rem; }
+        .ceo-cash-breakdown .row { display:flex; justify-content:space-between; }
+        .ceo-cash-breakdown .row b { font-weight:700; }
+
+        .ceo-payment-wrap { display:flex; align-items:center; gap:14px; margin-top:6px; }
+        .ceo-payment-wrap canvas { flex-shrink:0; }
+        .ceo-payment-legend { display:flex; flex-direction:column; gap:5px; font-size:0.75rem; flex:1; min-width:0; }
+        .ceo-payment-legend .leg-row { display:flex; align-items:center; gap:6px; justify-content:space-between; }
+        .ceo-payment-legend .leg-dot { width:9px; height:9px; border-radius:50%; display:inline-block; flex-shrink:0; }
+        .ceo-payment-legend .leg-label { display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .ceo-payment-legend .leg-pct { font-weight:800; color:var(--text-primary); }
+
+        .ceo-alerts-list { display:flex; flex-direction:column; gap:8px; }
+        .ceo-alert-item { display:flex; align-items:center; gap:12px; padding:10px 12px; background:rgba(255,255,255,0.6); border-radius:10px; border-left:3px solid transparent; font-size:0.85rem; }
+        body.dark-mode .ceo-alert-item { background:rgba(255,255,255,0.04); }
+        .ceo-alert-item.sev-high { border-left-color:#dc2626; background:rgba(220,38,38,0.06); }
+        .ceo-alert-item.sev-med  { border-left-color:#f59e0b; background:rgba(245,158,11,0.06); }
+        .ceo-alert-item.sev-low  { border-left-color:#6366f1; background:rgba(99,102,241,0.06); }
+        .ceo-alert-item i.main { font-size:1.3rem; flex-shrink:0; }
+        .ceo-alert-text { flex:1; line-height:1.35; color:var(--text-primary); }
+        .ceo-alert-text b { color:var(--text-primary); }
+        .ceo-alert-meta { font-size:0.72rem; color:var(--text-muted); font-weight:700; }
+        .ceo-alerts-count { background:#f97316; color:white; border-radius:99px; min-width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:0.8rem; padding:0 9px; }
+        .ceo-alerts-count.zero { background:#10b981; }
+
+        .ceo-products-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+        .ceo-products-search { position:relative; min-width:220px; flex:0 1 280px; }
+        .ceo-products-search i { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:1rem; }
+        .ceo-products-search input { width:100%; padding:8px 10px 8px 32px; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); color:var(--text-primary); font-size:0.85rem; }
+        .ceo-products-search input:focus { outline:none; border-color:#6366f1; }
+
+        .ceo-product-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; padding:4px; background:rgba(0,0,0,0.04); border-radius:12px; width:fit-content; }
+        body.dark-mode .ceo-product-tabs { background:rgba(255,255,255,0.05); }
+        .ceo-tab { padding:7px 14px; border:none; background:transparent; border-radius:8px; font-weight:700; font-size:0.82rem; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.2s; }
+        .ceo-tab:hover { color:var(--text-primary); }
+        .ceo-tab.active { background:var(--bg-card); color:var(--text-primary); box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+        body.dark-mode .ceo-tab.active { background:#21262d; color:#e6edf3; }
+        .ceo-tab i { font-size:1rem; }
+
+        .ceo-product-table-wrap { overflow-x:auto; border-radius:10px; border:1px solid var(--border); }
+        .ceo-product-table { width:100%; border-collapse:collapse; font-size:0.85rem; background:var(--bg-card); }
+        .ceo-product-table thead th { background:rgba(0,0,0,0.03); padding:10px 12px; text-align:left; font-weight:800; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-muted); border-bottom:1px solid var(--border); white-space:nowrap; }
+        body.dark-mode .ceo-product-table thead th { background:rgba(255,255,255,0.03); }
+        .ceo-product-table th.ceo-num, .ceo-product-table td.ceo-num { text-align:right; }
+        .ceo-product-table tbody tr { border-bottom:1px solid var(--border); transition:background 0.12s; }
+        .ceo-product-table tbody tr:hover { background:rgba(99,102,241,0.05); }
+        .ceo-product-table tbody tr:last-child { border-bottom:none; }
+        .ceo-product-table td { padding:10px 12px; vertical-align:middle; }
+        .ceo-product-table td.name { font-weight:600; color:var(--text-primary); max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .ceo-product-table td.rank { font-weight:800; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+        .ceo-product-table td.money { font-variant-numeric:tabular-nums; font-weight:700; }
+        .ceo-margin-badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:0.72rem; font-weight:800; font-variant-numeric:tabular-nums; }
+        .ceo-margin-badge.good { background:rgba(16,185,129,0.12); color:#059669; }
+        .ceo-margin-badge.ok   { background:rgba(59,130,246,0.12); color:#2563eb; }
+        .ceo-margin-badge.low  { background:rgba(245,158,11,0.14); color:#b45309; }
+        .ceo-margin-badge.bad  { background:rgba(220,38,38,0.12); color:#b91c1c; }
+        .ceo-delta { font-size:0.78rem; font-weight:800; font-variant-numeric:tabular-nums; }
+        .ceo-delta.up { color:#10b981; }
+        .ceo-delta.down { color:#ef4444; }
+        .ceo-delta.flat { color:var(--text-muted); }
+        .ceo-product-foot { margin-top:10px; text-align:right; font-style:italic; }
+
+        @media (max-width: 640px) {
+            .ceo-hide-mobile { display:none; }
+            .ceo-product-table td.name { max-width:150px; }
+            .ceo-product-table td, .ceo-product-table th { padding:8px 8px; font-size:0.8rem; }
+            .ceo-mini-value { font-size:1.5rem; }
+            .ceo-payment-wrap canvas { width:90px !important; height:90px !important; }
         }
     </style>
 
@@ -450,52 +510,93 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
-        <!-- Top Productos -->
-        <!-- Estrellas del Negocio (Mayor Margen Total) -->
-        <div class="premium-card mb-8" style="background:linear-gradient(135deg, #022c22, #064e3b); color: white; border:1px solid #10b981; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);">
-             <div class="flex flex-col mb-4">
-                 <h3 class="font-bold flex items-center gap-2" style="color:#34d399; font-size:1.15rem;">
-                     <i class="ph ph-crown text-2xl pulsing-dot"></i> Estrellas del Negocio
-                 </h3>
-                 <span style="font-size:0.75rem; color:#6ee7b7; opacity:0.8; margin-left:2rem;">Mayor volumen de dinero (ganancia neta) aportado este mes — deslizá para ver más →</span>
-             </div>
-             <div id="top-margin-list">
-                 <div class="spinner m-auto border-white"></div>
-             </div>
+        <!-- ============================================================
+             CEO COCKPIT — Widgets inteligentes (mes en curso)
+             ============================================================ -->
+
+        <!-- FILA: Ticket promedio · Resumen caja · Forma de pago -->
+        <div class="ceo-row-3 mb-6">
+            <!-- Ticket promedio + Tendencia -->
+            <div class="premium-card ceo-mini">
+                <div class="ceo-mini-label"><i class="ph ph-receipt"></i> Ticket Promedio</div>
+                <div class="ceo-mini-value" id="ceo-avg-ticket">—</div>
+                <div class="ceo-mini-sub" id="ceo-avg-ticket-sub">Calculando…</div>
+                <div class="ceo-mini-foot" id="ceo-avg-ticket-foot"></div>
+            </div>
+
+            <!-- Resumen caja real -->
+            <div class="premium-card ceo-mini" style="border-left:4px solid #10b981;">
+                <div class="ceo-mini-label"><i class="ph ph-vault"></i> Caja Real del Mes</div>
+                <div class="ceo-mini-value" id="ceo-cash-net">—</div>
+                <div class="ceo-mini-sub" id="ceo-cash-sub">Ingresos − Egresos</div>
+                <div class="ceo-cash-breakdown" id="ceo-cash-breakdown"></div>
+            </div>
+
+            <!-- Forma de pago breakdown -->
+            <div class="premium-card ceo-mini">
+                <div class="ceo-mini-label"><i class="ph ph-wallet"></i> Formas de Pago</div>
+                <div class="ceo-payment-wrap">
+                    <canvas id="paymentDonut" width="110" height="110"></canvas>
+                    <div class="ceo-payment-legend" id="ceo-payment-legend"></div>
+                </div>
+            </div>
         </div>
 
-
-        <div class="responsive-grid-2 gap-6 mb-8">
-            <!-- Más Vendidos (Volumen) -->
-            <div class="premium-card">
-                <h3 class="font-bold mb-4 flex items-center gap-2" style="color:var(--primary); font-size:1.05rem;">
-                    <i class="ph ph-shopping-cart text-xl"></i> Más Vendidos (Volumen)
+        <!-- ALERTAS INTELIGENTES -->
+        <div class="premium-card mb-6" id="ceo-alerts-card" style="background:linear-gradient(135deg,#fff7ed,#fff); border-left:4px solid #f97316;">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-bold flex items-center gap-2" style="color:#c2410c; font-size:1.05rem;">
+                    <i class="ph ph-siren text-xl"></i> Alertas Inteligentes
                 </h3>
-                <div id="top-volume-list" class="flex-col gap-3"><div class="spinner m-auto"></div></div>
+                <span class="ceo-alerts-count" id="ceo-alerts-count">0</span>
             </div>
-            
-            <!-- Productos Gancho (Alta rotación, Bajo margen real) -->
-            <div class="premium-card" style="background:rgba(239, 68, 68, 0.05); border-left:4px solid #ef4444;">
-                 <h3 class="font-bold flex items-center gap-2" style="color:#ef4444; font-size:1.05rem; margin-bottom:12px;">
-                     <i class="ph ph-magnet text-xl"></i> Ganchos (Bajo Margen)
-                 </h3>
-                 <div id="low-margin-list" class="flex-col gap-3">
-                     <div class="spinner m-auto"></div>
-                 </div>
+            <div id="ceo-alerts-list" class="ceo-alerts-list">
+                <div class="spinner m-auto"></div>
             </div>
         </div>
 
-        <!-- Alerta Sin Margen / Error -->
-        <div class="premium-card mb-8" style="background:linear-gradient(135deg, #1e293b, #0f172a); border-left:4px solid #fbbf24;">
-             <h3 class="font-bold flex items-center gap-2" style="color:#fbbf24; font-size:1.05rem; margin-bottom:12px;">
-                 <i class="ph ph-warning text-xl pulsing-dot" style="animation: none;"></i> Revisión Urgente: Productos Sin Ganancia (0%)
-             </h3>
-             <div id="zero-margin-list" class="flex gap-4 overflow-x-auto pb-2" style="scrollbar-width:thin;">
-                 <div class="spinner m-auto" style="border-color:#fbbf24; border-top-color:transparent;"></div>
-             </div>
-             <p style="font-size:0.75rem; color:#94a3b8; margin-top:12px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
-                🚨 Estos productos dejaron ganancia cero (o negativa). Revisa en Eleventa si olvidaste ingresarles el costo unitario.
-             </p>
+        <!-- TABLA MAESTRA DE PRODUCTOS -->
+        <div class="premium-card mb-8" style="background:var(--bg-card); padding:18px;">
+            <div class="ceo-products-head">
+                <div>
+                    <h3 class="font-bold flex items-center gap-2" style="font-size:1.1rem; color:var(--text-primary);">
+                        <i class="ph ph-package text-xl" style="color:#6366f1;"></i> Radar de Productos
+                    </h3>
+                    <span class="text-xs text-muted">Datos del mes en curso desde Eleventa · click en una fila para detalle</span>
+                </div>
+                <div class="ceo-products-search">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <input type="text" id="ceo-products-search" placeholder="Buscar producto…">
+                </div>
+            </div>
+
+            <div class="ceo-product-tabs" id="ceo-product-tabs">
+                <button class="ceo-tab active" data-tab="profit"><i class="ph ph-crown"></i> Top Ganancia</button>
+                <button class="ceo-tab" data-tab="volume"><i class="ph ph-shopping-cart"></i> Top Volumen</button>
+                <button class="ceo-tab" data-tab="margin"><i class="ph ph-chart-line-up"></i> Mejor Margen</button>
+                <button class="ceo-tab" data-tab="low"><i class="ph ph-magnet"></i> Peor Margen</button>
+                <button class="ceo-tab" data-tab="zero"><i class="ph ph-warning"></i> Sin Ganancia</button>
+            </div>
+
+            <div class="ceo-product-table-wrap">
+                <table class="ceo-product-table" id="ceo-product-table">
+                    <thead>
+                        <tr>
+                            <th style="width:36px;">#</th>
+                            <th>Producto</th>
+                            <th class="ceo-num">Uds</th>
+                            <th class="ceo-num">Facturado</th>
+                            <th class="ceo-num">Ganancia</th>
+                            <th class="ceo-num">Margen</th>
+                            <th class="ceo-num ceo-hide-mobile">vs Mes Pasado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ceo-product-tbody">
+                        <tr><td colspan="7" class="py-6 text-center text-muted"><div class="spinner m-auto"></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="ceo-product-foot text-xs text-muted" id="ceo-product-foot"></div>
         </div>
 
         <!-- Gráfico P&L + Top Proveedores -->
@@ -1049,162 +1150,405 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         // (Resumen Operativo eliminado — no hay datos de workLogs)
 
-        // ---- Top Products and Margins (Data parsed from API Sync) ----
-        const currentMonthEleventa = eleventaSales.filter(s => s.date && s.date.startsWith(currentMonthStr));
-        const productStats = {};
-        let totalItemsFound = 0;
-
-        currentMonthEleventa.forEach(sale => {
-            if (sale.items && Array.isArray(sale.items)) {
+        // ============================================================
+        // CEO COCKPIT — Cálculos unificados del mes en curso y mes previo
+        // ============================================================
+        const buildProductStats = (salesArr) => {
+            const stats = {};
+            salesArr.forEach(sale => {
+                if (!sale.items || !Array.isArray(sale.items)) return;
                 sale.items.forEach(item => {
-                    const name = item.name || 'Desconocido';
-                    if (!productStats[name]) {
-                        productStats[name] = { qty: 0, profit: 0, revenue: 0, costUnit: 0, priceUnit: 0 };
-                    }
+                    const name = (item.name || 'Desconocido').trim();
+                    if (!stats[name]) stats[name] = { qty: 0, profit: 0, revenue: 0, tickets: new Set() };
                     const q = parseFloat(item.qty) || 1;
-
-                    // Try to get cost from local products DB if Eleventa's profit is 0
                     let profitLine = parseFloat(item.profit) || 0;
                     let priceUnitValue = parseFloat(item.price_unit) || 0;
                     let costUnitValue = parseFloat(item.cost_unit) || 0;
-
-                    // If profit is 0 or missing, try to calculate from local product DB
                     if (profitLine === 0 && priceUnitValue > 0) {
                         const localProduct = allProducts.find(p =>
-                            p.name.toLowerCase().trim() === name.toLowerCase().trim()
+                            p.name && p.name.toLowerCase().trim() === name.toLowerCase()
                         );
                         if (localProduct) {
-                            // Local product has: buyPrice (neto), units, isNeto flag, costUnit (already gross with IVA)
                             costUnitValue = localProduct.costUnit || 0;
                             priceUnitValue = parseFloat(item.price_unit) || (parseFloat(item.price) / q);
-                            // Recalculate profit per unit
                             profitLine = (priceUnitValue - costUnitValue) * q;
                         }
                     }
-
-                    productStats[name].qty += q;
-                    productStats[name].profit += profitLine;
-                    productStats[name].revenue += (parseFloat(item.price) || 0);
-                    productStats[name].costUnit = costUnitValue;
-                    productStats[name].priceUnit = priceUnitValue;
-                    totalItemsFound++;
+                    stats[name].qty += q;
+                    stats[name].profit += profitLine;
+                    stats[name].revenue += (parseFloat(item.price) || 0);
+                    if (sale.ticket_id) stats[name].tickets.add(sale.ticket_id);
                 });
-            }
+            });
+            return stats;
+        };
+
+        const currentMonthEleventa = eleventaSales.filter(s => s.date && s.date.startsWith(currentMonthStr));
+        const productStats     = buildProductStats(currentMonthEleventa);
+        const prevProductStats = buildProductStats(prevMonthEleventa);
+
+        const allProductsArr = Object.entries(productStats).map(([name, v]) => {
+            const marginPct = v.revenue > 0 ? (v.profit / v.revenue) * 100 : 0;
+            const prev = prevProductStats[name];
+            const prevProfit = prev ? prev.profit : 0;
+            return {
+                name,
+                qty: v.qty,
+                profit: v.profit,
+                revenue: v.revenue,
+                marginPct,
+                prevProfit,
+                deltaProfit: v.profit - prevProfit
+            };
         });
 
-        const allProductsArr = Object.entries(productStats);
+        // ---- Guardar en closure para reutilizar en tabs/search ----
+        const ceoState = {
+            all: allProductsArr,
+            activeTab: 'profit',
+            search: ''
+        };
 
-        const topVolume = [...allProductsArr].sort((a, b) => b[1].qty - a[1].qty).slice(0, 5);
-        const topMargin = [...allProductsArr]
-            .filter(x => x[1].qty >= 5 && x[1].revenue > 0) // Minimum 5 sales and valid revenue to show as star
-            .sort((a, b) => b[1].profit - a[1].profit).slice(0, 5);
+        const MIN_QTY = 3;
+        const getFilteredSorted = () => {
+            let arr = ceoState.all;
+            const q = ceoState.search.trim().toLowerCase();
+            if (q) arr = arr.filter(x => x.name.toLowerCase().includes(q));
+            switch (ceoState.activeTab) {
+                case 'profit':
+                    return [...arr].filter(x => x.qty >= 1).sort((a, b) => b.profit - a.profit).slice(0, 20);
+                case 'volume':
+                    return [...arr].sort((a, b) => b.qty - a.qty).slice(0, 20);
+                case 'margin':
+                    return [...arr].filter(x => x.qty >= MIN_QTY && x.revenue > 0 && x.profit > 0)
+                        .sort((a, b) => b.marginPct - a.marginPct).slice(0, 20);
+                case 'low':
+                    return [...arr].filter(x => x.qty >= MIN_QTY && x.revenue > 0 && x.profit > 0)
+                        .sort((a, b) => a.marginPct - b.marginPct).slice(0, 20);
+                case 'zero':
+                    return [...arr].filter(x => x.qty >= 1 && x.marginPct < 1)
+                        .sort((a, b) => b.qty - a.qty).slice(0, 30);
+                default:
+                    return arr.slice(0, 20);
+            }
+        };
 
-        // Hooks: At least 5 sold, lowest margin percentage, profit > 0 (to separate from errors)
-        const hooks = [...allProductsArr]
-            .filter(x => x[1].qty >= 5 && x[1].revenue > 0 && x[1].profit > 0)
-            .sort((a, b) => (a[1].profit / a[1].revenue) - (b[1].profit / b[1].revenue))
-            .slice(0, 5);
+        const marginBadge = (pct) => {
+            let cls = 'bad';
+            if (pct >= 20) cls = 'good';
+            else if (pct >= 10) cls = 'ok';
+            else if (pct >= 3) cls = 'low';
+            return `<span class="ceo-margin-badge ${cls}">${pct.toFixed(1)}%</span>`;
+        };
 
-        // Zero Margin / Possible data entry errors (products with < 1% margin)
-        const zeroMargin = [...allProductsArr]
-            .filter(x => {
-                if (x[1].qty < 1) return false;
-                // Check if margin percentage is less than 1% or negative
-                const marginPct = x[1].revenue > 0 ? (x[1].profit / x[1].revenue) : -1;
-                return marginPct < 0.01; // Less than 1% margin
-            })
-            .sort((a, b) => b[1].qty - a[1].qty)
-            .slice(0, 5);
+        const deltaPill = (cur, prev) => {
+            if (prev === 0 && cur === 0) return `<span class="ceo-delta flat">—</span>`;
+            if (prev === 0) return `<span class="ceo-delta up">nuevo</span>`;
+            const pct = ((cur - prev) / Math.abs(prev)) * 100;
+            if (Math.abs(pct) < 1) return `<span class="ceo-delta flat">=</span>`;
+            const sign = pct > 0 ? '▲' : '▼';
+            const cls = pct > 0 ? 'up' : 'down';
+            return `<span class="ceo-delta ${cls}">${sign} ${Math.abs(pct).toFixed(0)}%</span>`;
+        };
 
-        const elVol = document.getElementById('top-volume-list');
-        if (elVol) {
-            elVol.innerHTML = topVolume.length ? topVolume.map((p, idx) => `
-                <div class="dash-list-item">
-                    <div class="product-name-wrap">
-                        <span class="product-rank">${idx + 1}</span>
-                        <div class="product-info">
-                            <span class="product-name" title="${p[0]}">${p[0]}</span>
-                        </div>
-                    </div>
-                    <div class="product-stat text-primary">${p[1].qty} uds</div>
-                </div>
-            `).join('') : '<p class="text-muted text-sm text-center py-4">Faltan datos de productos detallados. La nueva API los traerá pronto.</p>';
+        const renderProductTable = () => {
+            const tbody = document.getElementById('ceo-product-tbody');
+            const foot = document.getElementById('ceo-product-foot');
+            if (!tbody) return;
+            const rows = getFilteredSorted();
+            if (rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-muted">Sin productos que coincidan con este filtro.</td></tr>`;
+                if (foot) foot.textContent = '';
+                return;
+            }
+            tbody.innerHTML = rows.map((p, idx) => `
+                <tr>
+                    <td class="rank">${idx + 1}</td>
+                    <td class="name" title="${p.name}">${p.name}</td>
+                    <td class="ceo-num money">${Math.round(p.qty)}</td>
+                    <td class="ceo-num money">${fmt(p.revenue)}</td>
+                    <td class="ceo-num money" style="color:${p.profit >= 0 ? '#059669' : '#dc2626'};">${fmt(p.profit)}</td>
+                    <td class="ceo-num">${marginBadge(p.marginPct)}</td>
+                    <td class="ceo-num ceo-hide-mobile">${deltaPill(p.profit, p.prevProfit)}</td>
+                </tr>
+            `).join('');
+            if (foot) foot.textContent = `Mostrando ${rows.length} productos · total catálogo activo este mes: ${ceoState.all.length}`;
+        };
+
+        // Inicial
+        renderProductTable();
+
+        // Event wiring para tabs y search (delegación ligera)
+        const tabsWrap = document.getElementById('ceo-product-tabs');
+        if (tabsWrap && !tabsWrap.dataset.wired) {
+            tabsWrap.dataset.wired = '1';
+            tabsWrap.addEventListener('click', (e) => {
+                const btn = e.target.closest('.ceo-tab');
+                if (!btn) return;
+                tabsWrap.querySelectorAll('.ceo-tab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                ceoState.activeTab = btn.dataset.tab;
+                renderProductTable();
+            });
+        }
+        const searchInput = document.getElementById('ceo-products-search');
+        if (searchInput && !searchInput.dataset.wired) {
+            searchInput.dataset.wired = '1';
+            searchInput.addEventListener('input', (e) => {
+                ceoState.search = e.target.value;
+                renderProductTable();
+            });
         }
 
-        const elMarg = document.getElementById('top-margin-list');
-        if (elMarg) {
-            elMarg.innerHTML = topMargin.length ? topMargin.map((p, idx) => {
-                const marginPct = p[1].revenue > 0 ? ((p[1].profit / p[1].revenue) * 100).toFixed(0) : 0;
-                if (idx === 0) {
-                    // Golden Card #1
-                    return `
-                        <div style="min-width: 220px; flex-shrink: 0; background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); border-radius: 16px; padding: 14px; color: #fff; position: relative; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.4);">
-                            <div style="position: absolute; top: -10px; right: -10px; font-size: 5rem; opacity: 0.15;"><i class="ph ph-crown"></i></div>
-                            <div style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; color: #fef3c7;">👑 Top #1 Oro</div>
-                            <div style="font-size: 1.1rem; font-weight: 800; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 4px rgba(0,0,0,0.1);" title="${p[0]}">${p[0]}</div>
-                            <div style="font-size: 1.5rem; font-weight: 900; margin-bottom: 8px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">${fmt(p[1].profit)}</div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 700; color: #fff;">
-                                <span>Rentabilidad:</span>
-                                <span style="background: rgba(0,0,0,0.2); padding: 3px 10px; border-radius: 12px; font-size: 0.85rem;">${marginPct}%</span>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    // Premium Glass Cards #2-#5
-                    return `
-                        <div style="min-width: 190px; flex-shrink: 0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 14px; position: relative; overflow: hidden;">
-                            <div style="position: absolute; bottom: 0; left: 0; height: 4px; width: ${marginPct}%; background: #34d399; border-radius: 0 4px 0 0; transition: width 1s ease-out;"></div>
-                            <div style="font-size: 0.75rem; font-weight: 600; color: #6ee7b7; margin-bottom: 4px;">RANK #${idx + 1}</div>
-                            <div style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${p[0]}">${p[0]}</div>
-                            <div style="font-size: 1.25rem; font-weight: 800; color: #34d399; margin-bottom: 8px;">${fmt(p[1].profit)}</div>
-                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #94a3b8;">
-                                <span>Margen</span>
-                                <span style="color:#fff; font-weight:700;">${marginPct}%</span>
-                            </div>
-                        </div>
-                    `;
+        // ============================================================
+        // ALERTAS INTELIGENTES
+        // ============================================================
+        const alerts = [];
+
+        // Productos con margen bajo (< 5%) y volumen relevante
+        const lowMargin = allProductsArr.filter(p => p.qty >= 5 && p.revenue > 0 && p.marginPct < 5 && p.marginPct >= 0);
+        if (lowMargin.length) {
+            alerts.push({
+                sev: 'med',
+                icon: 'ph-magnet',
+                color: '#f59e0b',
+                html: `<b>${lowMargin.length} producto${lowMargin.length > 1 ? 's' : ''}</b> con margen bajo (&lt;5%). Top: <b>${lowMargin.sort((a, b) => a.marginPct - b.marginPct)[0].name}</b> al ${lowMargin[0].marginPct.toFixed(1)}%`,
+                meta: 'Revisar precio'
+            });
+        }
+
+        // Productos sin ganancia (margen < 1%)
+        const zeroMarginAlerts = allProductsArr.filter(p => p.qty >= 1 && p.marginPct < 1);
+        if (zeroMarginAlerts.length) {
+            alerts.push({
+                sev: 'high',
+                icon: 'ph-warning',
+                color: '#dc2626',
+                html: `<b>${zeroMarginAlerts.length} producto${zeroMarginAlerts.length > 1 ? 's' : ''} sin ganancia</b> (0% margen). Posible costo mal cargado en Eleventa.`,
+                meta: 'Cargar costo'
+            });
+        }
+
+        // Productos SIN ventas >30 días (de catálogo local que tenían ventas antes)
+        const now30 = new Date();
+        now30.setDate(now30.getDate() - 30);
+        const cutoff30 = now30.toISOString().split('T')[0];
+        const soldRecently = new Set();
+        eleventaSales.forEach(s => {
+            if (s.date >= cutoff30 && s.items && Array.isArray(s.items)) {
+                s.items.forEach(it => { if (it.name) soldRecently.add(it.name.toLowerCase().trim()); });
+            }
+        });
+        const productsInCatalog = (allProducts || []).filter(p => !p.deleted && p.name && p.stock !== 0);
+        const staleProducts = productsInCatalog.filter(p =>
+            p.name && !soldRecently.has(p.name.toLowerCase().trim())
+        );
+        if (staleProducts.length > 5) {
+            alerts.push({
+                sev: 'low',
+                icon: 'ph-snowflake',
+                color: '#6366f1',
+                html: `<b>${staleProducts.length} producto${staleProducts.length > 1 ? 's' : ''} sin venta en 30 días</b>. Stock muerto posible.`,
+                meta: 'Evaluar liquidación'
+            });
+        }
+
+        // Día con caída >20% vs promedio (ventas diarias del mes)
+        const currentMonthDaily = dailySales.filter(d => d.date && d.date.startsWith(currentMonthStr));
+        if (currentMonthDaily.length >= 3) {
+            const totals = currentMonthDaily.map(d => parseFloat(d.total) || 0).filter(t => t > 0);
+            const avg = totals.reduce((s, x) => s + x, 0) / (totals.length || 1);
+            const lowDays = currentMonthDaily.filter(d => {
+                const t = parseFloat(d.total) || 0;
+                return t > 0 && avg > 0 && ((avg - t) / avg) > 0.2;
+            });
+            if (lowDays.length >= 2) {
+                alerts.push({
+                    sev: 'med',
+                    icon: 'ph-trend-down',
+                    color: '#f59e0b',
+                    html: `<b>${lowDays.length} día${lowDays.length > 1 ? 's' : ''} con caída &gt;20%</b> vs. promedio mensual (${fmt(avg)})`,
+                    meta: `Último: ${lowDays[lowDays.length - 1].date.slice(5)}`
+                });
+            }
+        }
+
+        // Si no hay alertas
+        const alertsList = document.getElementById('ceo-alerts-list');
+        const alertsCount = document.getElementById('ceo-alerts-count');
+        if (alertsList) {
+            if (alerts.length === 0) {
+                alertsList.innerHTML = `
+                    <div class="ceo-alert-item sev-low" style="border-left-color:#10b981; background:rgba(16,185,129,0.06);">
+                        <i class="ph ph-check-circle main" style="color:#10b981;"></i>
+                        <div class="ceo-alert-text">Sin alertas este mes. Todo en orden.</div>
+                    </div>`;
+                if (alertsCount) { alertsCount.textContent = '0'; alertsCount.classList.add('zero'); }
+            } else {
+                alertsList.innerHTML = alerts.map(a => `
+                    <div class="ceo-alert-item sev-${a.sev}">
+                        <i class="ph ${a.icon} main" style="color:${a.color};"></i>
+                        <div class="ceo-alert-text">${a.html}</div>
+                        <div class="ceo-alert-meta">${a.meta}</div>
+                    </div>`).join('');
+                if (alertsCount) { alertsCount.textContent = alerts.length; alertsCount.classList.remove('zero'); }
+            }
+        }
+
+        // ============================================================
+        // FORMA DE PAGO (Donut) — desde eleventa_sales del mes
+        // ============================================================
+        const pagoBuckets = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Crédito: 0, Mixto: 0 };
+        currentMonthEleventa.forEach(s => {
+            const total = parseFloat(s.total) || 0;
+            if (total <= 0) return;
+            const forma = (s.forma_pago || '').toLowerCase();
+            if (forma.includes('transfer')) pagoBuckets.Transferencia += total;
+            else if (forma.includes('tarjeta') || forma.includes('debito')) pagoBuckets.Tarjeta += total;
+            else if (forma.includes('credito') || forma.includes('fiado') || forma.includes('vale')) pagoBuckets['Crédito'] += total;
+            else if (forma.includes('mixto')) pagoBuckets.Mixto += total;
+            else pagoBuckets.Efectivo += total;
+        });
+        const pagoTotal = Object.values(pagoBuckets).reduce((s, x) => s + x, 0) || 1;
+        const pagoColors = {
+            Efectivo: '#10b981',
+            Tarjeta: '#3b82f6',
+            Transferencia: '#8b5cf6',
+            'Crédito': '#f59e0b',
+            Mixto: '#6b7280'
+        };
+
+        const pagoLegend = document.getElementById('ceo-payment-legend');
+        if (pagoLegend) {
+            const entries = Object.entries(pagoBuckets)
+                .filter(([, v]) => v > 0)
+                .sort(([, a], [, b]) => b - a);
+            if (entries.length === 0) {
+                pagoLegend.innerHTML = '<span class="text-muted text-xs">Sin datos este mes</span>';
+            } else {
+                pagoLegend.innerHTML = entries.map(([k, v]) => {
+                    const pct = (v / pagoTotal) * 100;
+                    return `<div class="leg-row">
+                        <span class="leg-label"><span class="leg-dot" style="background:${pagoColors[k]};"></span>${k}</span>
+                        <span class="leg-pct">${pct.toFixed(0)}%</span>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        // Donut con Chart.js
+        const donutCtx = document.getElementById('paymentDonut');
+        if (donutCtx) {
+            const existing = Chart.getChart('paymentDonut');
+            if (existing) existing.destroy();
+            const entries = Object.entries(pagoBuckets).filter(([, v]) => v > 0);
+            if (entries.length > 0) {
+                new Chart(donutCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: entries.map(([k]) => k),
+                        datasets: [{
+                            data: entries.map(([, v]) => v),
+                            backgroundColor: entries.map(([k]) => pagoColors[k]),
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: false,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => `${ctx.label}: ${fmt(ctx.parsed)}`
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ============================================================
+        // CAJA REAL DEL MES (Ingresos − Egresos)
+        //   Ingresos = ventas efectivo/transferencia + entradas de flujo_caja
+        //   Egresos  = salidas + devoluciones de flujo_caja
+        // ============================================================
+        let entradasTotal = 0, salidasTotal = 0, devolucionesTotal = 0;
+        try {
+            const syncClient = window.SyncV2?.client;
+            if (syncClient) {
+                const { data: flujoData } = await syncClient.from('eleventa_flujo_caja')
+                    .select('fecha,monto,tipo')
+                    .gte('fecha', `${currentMonthStr}-01`)
+                    .lt('fecha', `${currentMonthStr}-32`);
+                if (flujoData) {
+                    flujoData.forEach(f => {
+                        const monto = Math.abs(parseFloat(f.monto) || 0);
+                        const tipo = (f.tipo || '').toLowerCase();
+                        if (tipo === 'entrada') entradasTotal += monto;
+                        else if (tipo === 'salida') salidasTotal += monto;
+                        else if (tipo === 'devolucion' || tipo === 'devolución') devolucionesTotal += monto;
+                    });
                 }
-            }).join('') : '<p style="color:#94a3b8; font-size:0.9rem; padding: 20px;">Necesitas un mínimo de 5 ventas recientes de un mismo producto en el mes para generar el Salón de la Fama.</p>';
+            }
+        } catch (e) { console.warn('No se pudo cargar flujo_caja para caja real:', e); }
+
+        const ingresosCash = pagoBuckets.Efectivo + pagoBuckets.Transferencia; // dinero que entra "real"
+        const ingresosTotal = ingresosCash + entradasTotal;
+        const egresosTotal = salidasTotal + devolucionesTotal;
+        const cajaNeta = ingresosTotal - egresosTotal;
+
+        const cashValEl = document.getElementById('ceo-cash-net');
+        const cashBreakdown = document.getElementById('ceo-cash-breakdown');
+        const cashSub = document.getElementById('ceo-cash-sub');
+        if (cashValEl) {
+            cashValEl.textContent = fmt(cajaNeta);
+            cashValEl.style.color = cajaNeta >= 0 ? '#059669' : '#dc2626';
+        }
+        if (cashSub) cashSub.textContent = `${fmt(ingresosTotal)} ingresos − ${fmt(egresosTotal)} egresos`;
+        if (cashBreakdown) {
+            cashBreakdown.innerHTML = `
+                <div class="row"><span class="text-muted">Ventas efectivo + transf.</span><b style="color:#059669;">${fmt(ingresosCash)}</b></div>
+                <div class="row"><span class="text-muted">Entradas caja</span><b style="color:#059669;">${fmt(entradasTotal)}</b></div>
+                <div class="row"><span class="text-muted">Salidas caja</span><b style="color:#dc2626;">−${fmt(salidasTotal)}</b></div>
+                <div class="row"><span class="text-muted">Devoluciones</span><b style="color:#dc2626;">−${fmt(devolucionesTotal)}</b></div>
+            `;
         }
 
-        const elHooks = document.getElementById('low-margin-list');
-        if (elHooks) {
-            elHooks.innerHTML = hooks.length ? hooks.map((p) => `
-                <div class="dash-list-item" style="border: 1px solid rgba(239,68,68,0.1); padding-left:12px;">
-                    <div class="product-name-wrap">
-                        <span class="product-rank" style="background:#ef4444; color:white;"><i class="ph ph-warning"></i></span>
-                        <div class="product-info">
-                            <span class="product-name" title="${p[0]}">${p[0]}</span>
-                            <span class="product-meta text-danger" style="font-weight:600;">Deja ${fmt(p[1].profit / p[1].qty)} x unid.</span>
-                        </div>
-                    </div>
-                    <div class="badge-pct" style="background:rgba(239,68,68,0.1); color:#ef4444;">
-                        ${(p[1].revenue > 0 ? (p[1].profit / p[1].revenue) * 100 : 0).toFixed(0)}%
-                    </div>
-                </div>
-            `).join('') : '<p class="text-muted text-sm text-center py-4">Todo sano y equilibrado.</p>';
-        }
+        // ============================================================
+        // TICKET PROMEDIO + TENDENCIA
+        // ============================================================
+        const validToday = todayEleventa.filter(s => parseFloat(s.total) > 0);
+        const avgToday = validToday.length > 0
+            ? validToday.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0) / validToday.length
+            : 0;
 
-        const elZero = document.getElementById('zero-margin-list');
-        if (elZero) {
-            elZero.className = "h-scroll-container";
-            elZero.innerHTML = zeroMargin.length ? zeroMargin.map((p) => `
-                <div class="h-product-card" style="border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.03);">
-                    <div class="h-product-name" style="color:#fff;">${p[0]}</div>
-                    <div class="h-product-meta" style="color:#fbbf24;"><b>${p[1].qty} uds.</b> vendidas</div>
-                    <div class="h-product-badge" style="background:rgba(251,191,36,0.1); color:#fbbf24;">
-                        Sin Ganancia (0%)
-                    </div>
-                </div>
-            `).join('') : '<p style="color:#10b981; font-size:0.85rem; padding:0 16px;">¡Todo en orden! Sin errores este mes.</p>';
-        }
+        const validMonth = currentMonthEleventa.filter(s => parseFloat(s.total) > 0);
+        const avgMonth = validMonth.length > 0
+            ? validMonth.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0) / validMonth.length
+            : 0;
 
-        // ---- Activar arrastre con ratón (escritorio) en contenedores horizontales ----
-        // El scroll táctil en celular ya funciona via CSS (touch-action: pan-x)
-        // Esta función solo añade la experiencia de arrastre adicional para el ratón en PC.
-        if (window.Utils && window.Utils.setupHorizontalDragScroll) {
-            window.Utils.setupHorizontalDragScroll(document.getElementById('top-margin-list'));
-            window.Utils.setupHorizontalDragScroll(document.getElementById('zero-margin-list'));
+        const validPrev = prevMonthEleventa.filter(s => parseFloat(s.total) > 0);
+        const avgPrev = validPrev.length > 0
+            ? validPrev.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0) / validPrev.length
+            : 0;
+
+        const avgTicketEl = document.getElementById('ceo-avg-ticket');
+        const avgSubEl = document.getElementById('ceo-avg-ticket-sub');
+        const avgFootEl = document.getElementById('ceo-avg-ticket-foot');
+        if (avgTicketEl) avgTicketEl.textContent = fmt(avgMonth);
+        if (avgSubEl) avgSubEl.textContent = `${validMonth.length} tickets este mes · hoy ${fmt(avgToday)}`;
+        if (avgFootEl) {
+            if (avgPrev > 0) {
+                const delta = ((avgMonth - avgPrev) / avgPrev) * 100;
+                const cls = Math.abs(delta) < 1 ? 'flat' : (delta > 0 ? 'up' : 'down');
+                const arrow = Math.abs(delta) < 1 ? '=' : (delta > 0 ? '▲' : '▼');
+                avgFootEl.innerHTML = `<span class="ceo-delta ${cls}">${arrow} ${Math.abs(delta).toFixed(1)}% vs ${prevMonthDate.toLocaleDateString('es-ES', { month: 'long' })}</span>`;
+            } else {
+                avgFootEl.innerHTML = `<span class="ceo-delta flat">sin histórico previo</span>`;
+            }
         }
 
         // ---- Top Proveedores ----
