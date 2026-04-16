@@ -1479,10 +1479,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         try {
             const syncClient = window.SyncV2?.client;
             if (syncClient) {
+                const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                const nextMonthStr = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}-01`;
                 const { data: flujoData } = await syncClient.from('eleventa_flujo_caja')
                     .select('fecha,monto,tipo')
                     .gte('fecha', `${currentMonthStr}-01`)
-                    .lt('fecha', `${currentMonthStr}-32`);
+                    .lt('fecha', nextMonthStr);
                 if (flujoData) {
                     flujoData.forEach(f => {
                         const monto = Math.abs(parseFloat(f.monto) || 0);
