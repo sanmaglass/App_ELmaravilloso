@@ -126,33 +126,44 @@ async function renderDailySales() {
     if (!list) return;
 
     try {
-        const dailySales = await window.db.daily_sales.toArray();
+        const formatCurrency = window.Utils.formatCurrency;
 
-        // --- SANITY CHECK: Limpiar basura local y sincronizar borrado ---
-        // Buscamos registros irreales (ej. $8 Billones de prueba) que NO estén ya borrados
-        const anomalous = dailySales.filter(s => !s.deleted && (parseFloat(s.total) || 0) > 1000000000);
-        if (anomalous.length > 0) {
-            console.warn("🧹 Limpiando registros anómalos y sincronizando:", anomalous);
-            for (const s of anomalous) {
-                await window.DataManager.deleteAndSync('daily_sales', s.id);
-            }
-            // Re-fetch clean data and return
-            return renderDailySales();
-        }
-
-        const activeSales = dailySales.filter(s => !s.deleted);
- 
-        // --- CALCULO DE RENTABILIDAD DIARIA (ELEVENTA) ---
+        // --- AUTO-GENERAR CIERRES DESDE ELEVENTA ---
         const allEleventa = await window.db.eleventa_sales.toArray();
-        const profitByDate = new Map();
-        allEleventa.forEach(s => {
+        const activeEleventa = allEleventa.filter(s => !s.deleted && (parseFloat(s.total) || 0) > 0);
+
+        // Agrupar por fecha y forma de pago
+        const byDate = new Map();
+        activeEleventa.forEach(s => {
             const d = s.date?.split('T')[0];
-            if (d && s.profit) {
-                profitByDate.set(d, (profitByDate.get(d) || 0) + parseFloat(s.profit));
+            if (!d) return;
+            if (!byDate.has(d)) byDate.set(d, { date: d, cash: 0, transfer: 0, debit: 0, credit: 0, total: 0, profit: 0, tickets: 0 });
+            const day = byDate.get(d);
+            const total = parseFloat(s.total) || 0;
+            const profit = parseFloat(s.profit) || 0;
+            const forma = (s.forma_pago || 'Efectivo').toLowerCase();
+
+            if (forma === 'efectivo') day.cash += total;
+            else if (forma === 'tarjeta') day.debit += total;
+            else if (forma === 'vales') day.credit += total;
+            else if (forma === 'mixto') { day.cash += total / 2; day.debit += total / 2; }
+            else day.cash += total;
+
+            day.total += total;
+            day.profit += profit;
+            day.tickets++;
+        });
+
+        // Incluir cierres manuales existentes (como override si hay para esa fecha)
+        const manualSales = await window.db.daily_sales.toArray();
+        const activeManual = manualSales.filter(s => !s.deleted);
+        activeManual.forEach(s => {
+            if (s.date && !byDate.has(s.date)) {
+                byDate.set(s.date, { date: s.date, cash: s.cash || 0, transfer: s.transfer || 0, debit: s.debit || 0, credit: s.credit || 0, total: s.total || 0, profit: 0, tickets: 0, manual: true, id: s.id });
             }
         });
 
-        const formatCurrency = window.Utils.formatCurrency;
+        let allDays = Array.from(byDate.values());
 
         // --- CALCULAR SALIDAS DE EFECTIVO (GASTOS Y COMPRAS) POR FECHA ---
         const cashOutByDate = new Map();
@@ -160,7 +171,7 @@ async function renderDailySales() {
             window.db.purchase_invoices.toArray(),
             window.db.expenses.toArray()
         ]);
-        
+
         invs.filter(i => !i.deleted && i.paymentMethod === 'Efectivo').forEach(i => {
              const d = i.date?.split('T')[0];
              let out = 0;
@@ -176,27 +187,27 @@ async function renderDailySales() {
         });
 
         // Filter by month and search
-        let filtered = activeSales.filter(s => {
+        let filtered = allDays.filter(s => {
             const matchesSearch = s.date.includes(search);
             const matchesMonth = monthFilter === 'all' ? true : s.date.startsWith(monthFilter);
             return matchesSearch && matchesMonth;
         });
 
         // Sort by Date DESC
-        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+        filtered.sort((a, b) => b.date.localeCompare(a.date));
 
         // Update summary cards
         const totalAmount = filtered.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
         const totalEl = document.getElementById('daily-total-amount');
         const countEl = document.getElementById('daily-count');
-        if (totalEl) totalEl.innerHTML = window.Utils.formatCurrency(totalAmount);
+        if (totalEl) totalEl.innerHTML = formatCurrency(totalAmount);
         if (countEl) countEl.textContent = filtered.length;
 
         if (filtered.length === 0) {
             list.innerHTML = `
                 <div style="text-align:center; padding:40px; background:rgba(0,0,0,0.02); border-radius:12px; border:1px dashed var(--border);">
                     <i class="ph ph-calendar-x" style="font-size:3rem; color:var(--text-muted); margin-bottom:12px;"></i>
-                    <h3 style="color:var(--text-muted);">No hay cierres registrados</h3>
+                    <h3 style="color:var(--text-muted);">No hay ventas registradas</h3>
                 </div>
             `;
             return;
@@ -204,68 +215,45 @@ async function renderDailySales() {
 
         list.innerHTML = filtered.map(sale => `
             <div class="card" style="padding:16px;">
-                <!-- Fila principal: igual que expenses -->
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                    <!-- Izquierda: fecha -->
                     <div style="flex:1 1 160px; min-width:0;">
                         <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary); text-transform:capitalize; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                             ${new Date(sale.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}
                         </div>
-                        <div style="font-size:0.82rem; color:var(--text-muted); margin-top:2px;">${sale.date}</div>
+                        <div style="font-size:0.82rem; color:var(--text-muted); margin-top:2px;">
+                            ${sale.date}
+                            ${sale.tickets > 0 ? ` &middot; ${sale.tickets} tickets` : ''}
+                            ${sale.manual ? ' &middot; <i class="ph ph-pencil-simple"></i> Manual' : ' &middot; <i class="ph ph-lightning"></i> Auto Eleventa'}
+                        </div>
                     </div>
-                    <!-- Derecha: total + botones -->
-                    <div style="text-align:right; flex:0 0 auto; display:flex; align-items:center; gap:12px;">
-                        <div>
-                            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Total Día</div>
-                            <div style="font-weight:700; font-size:1.1rem; color:var(--primary);">${formatCurrency(sale.total)}</div>
-                        </div>
-                        <div style="display:flex; gap:8px;">
-                            <button class="btn btn-icon btn-edit-daily" data-id="${sale.id}" title="Editar" style="width:32px; height:32px; font-size:1rem;">
-                                <i class="ph ph-pencil-simple"></i>
-                            </button>
-                            <button class="btn btn-icon btn-delete-daily" data-id="${sale.id}" title="Eliminar" style="width:32px; height:32px; font-size:1rem; color:var(--error);">
-                                <i class="ph ph-trash"></i>
-                            </button>
-                        </div>
+                    <div style="text-align:right; flex:0 0 auto;">
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Total Día</div>
+                        <div style="font-weight:700; font-size:1.1rem; color:var(--primary);">${formatCurrency(sale.total)}</div>
                     </div>
                 </div>
-                <!-- Fila de badges (desglose) -->
                 <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid rgba(0,0,0,0.06); font-size:0.8rem;">
-                    <span style="background:rgba(16,185,129,0.1); padding:3px 10px; border-radius:20px; color:#065f46; white-space:nowrap;">
-                        <i class="ph ph-money"></i> Efec: ${formatCurrency(sale.cash || 0)}
-                    </span>
-                    <span style="background:rgba(59,130,246,0.1); padding:3px 10px; border-radius:20px; color:#1e3a8a; white-space:nowrap;">
-                        <i class="ph ph-bank"></i> Trans: ${formatCurrency(sale.transfer || 0)}
-                    </span>
-                    <span style="background:rgba(245,158,11,0.1); padding:3px 10px; border-radius:20px; color:#92400e; white-space:nowrap;">
-                        <i class="ph ph-credit-card"></i> Déb: ${formatCurrency(sale.debit || 0)}
-                    </span>
-                    ${sale.credit ? `<span style="background:rgba(139,92,246,0.1); padding:3px 10px; border-radius:20px; color:#5b21b6; white-space:nowrap;">
-                        <i class="ph ph-star"></i> Créd: ${formatCurrency(sale.credit)}
+                    ${sale.cash > 0 ? `<span style="background:rgba(16,185,129,0.1); padding:3px 10px; border-radius:20px; color:#065f46; white-space:nowrap;">
+                        <i class="ph ph-money"></i> Efectivo: ${formatCurrency(sale.cash)}
                     </span>` : ''}
-                    
-                    <!-- NEW: Rentabilidad Diaria -->
-                    <span style="background:rgba(139,92,246,0.15); padding:3px 10px; border-radius:20px; color:#5b21b6; font-weight:600; white-space:nowrap; border:1px solid rgba(139,92,246,0.3);">
-                        <i class="ph ph-chart-line-up"></i> Utilidad: ${formatCurrency(profitByDate.get(sale.date) || 0)}
-                    </span>
-                    
+                    ${sale.transfer > 0 ? `<span style="background:rgba(59,130,246,0.1); padding:3px 10px; border-radius:20px; color:#1e3a8a; white-space:nowrap;">
+                        <i class="ph ph-bank"></i> Transferencia: ${formatCurrency(sale.transfer)}
+                    </span>` : ''}
+                    ${sale.debit > 0 ? `<span style="background:rgba(245,158,11,0.1); padding:3px 10px; border-radius:20px; color:#92400e; white-space:nowrap;">
+                        <i class="ph ph-credit-card"></i> Tarjeta: ${formatCurrency(sale.debit)}
+                    </span>` : ''}
+                    ${sale.credit > 0 ? `<span style="background:rgba(139,92,246,0.1); padding:3px 10px; border-radius:20px; color:#5b21b6; white-space:nowrap;">
+                        <i class="ph ph-ticket"></i> Vales: ${formatCurrency(sale.credit)}
+                    </span>` : ''}
+                    ${sale.profit > 0 ? `<span style="background:rgba(139,92,246,0.15); padding:3px 10px; border-radius:20px; color:#5b21b6; font-weight:600; white-space:nowrap; border:1px solid rgba(139,92,246,0.3);">
+                        <i class="ph ph-chart-line-up"></i> Utilidad: ${formatCurrency(sale.profit)}
+                    </span>` : ''}
                     ${cashOutByDate.get(sale.date) > 0 ? `
-                    <!-- NEW: Alerta de Salidas de Efectivo (Gastos/Compras del día) -->
-                    <span style="background:linear-gradient(135deg, #fef2f2, #fee2e2); padding:3px 12px; border-radius:20px; color:#b91c1c; font-weight:700; white-space:nowrap; border:1px solid #fca5a5; box-shadow:0 1px 3px rgba(185,28,28,0.1);" title="Atención: Hoy se registró salida de dinero de la caja fuerte para pagar gastos u otras compras.">
+                    <span style="background:linear-gradient(135deg, #fef2f2, #fee2e2); padding:3px 12px; border-radius:20px; color:#b91c1c; font-weight:700; white-space:nowrap; border:1px solid #fca5a5; box-shadow:0 1px 3px rgba(185,28,28,0.1);">
                         <i class="ph ph-warning-circle"></i> Salidas Efectivo: ${formatCurrency(cashOutByDate.get(sale.date))}
-                    </span>
-                    ` : ''}
+                    </span>` : ''}
                 </div>
             </div>
         `).join('');
-
-        // Attach Events
-        document.querySelectorAll('.btn-edit-daily').forEach(btn =>
-            btn.addEventListener('click', (e) => handleEditDailySale(Number(e.currentTarget.dataset.id)))
-        );
-        document.querySelectorAll('.btn-delete-daily').forEach(btn =>
-            btn.addEventListener('click', (e) => handleDeleteDailySale(Number(e.currentTarget.dataset.id)))
-        );
 
     } catch (e) {
         console.error("Error in renderDailySales:", e);

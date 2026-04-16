@@ -42,14 +42,14 @@ window.Views.credits = async (container) => {
         </div>
     `;
 
-    const supabase = window.supabase.createClient(window.AppConfig.supabaseUrl, window.AppConfig.supabaseKey);
+    const supabase = window.SyncV2?.client || window.supabase.createClient(window.AppConfig.supabaseUrl, window.AppConfig.supabaseKey);
 
     let clientesArray = [];
 
     async function loadData() {
         const list = document.getElementById('credits-list');
         try {
-            // Obtener datos
+            // Obtener datos directo de Supabase (esta tabla no pasa por SyncV2)
             const { data, error } = await supabase.from('eleventa_clientes')
                 .select('*')
                 .order('saldo_deuda', { ascending: false });
@@ -126,11 +126,11 @@ window.Views.credits = async (container) => {
          loadData().then(() => btn.innerHTML = '<i class="ph ph-arrows-clockwise"></i> Recargar');
     });
 
-    // Suscripción Realtime a Clientes
+    // Suscripción Realtime a Clientes (reusar cliente existente)
     const channel = supabase.channel('clientes-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'eleventa_clientes' }, payload => {
             console.log('Cambio en clientes recibido!', payload);
-            loadData(); // recargar
+            loadData();
         })
         .subscribe();
 
