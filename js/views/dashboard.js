@@ -1348,7 +1348,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         );
         if (!hasPaidAccountantMonth) {
             const dueDate = new Date(now.getFullYear(), now.getMonth(), accountantDueDay);
-            const diffDays = Math.ceil((dueDate - today0) / 86400000);
+            const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
+            const diffDays = Math.ceil((dueDate - todayMidnight) / 86400000);
             if (diffDays <= 5) {
                 const msg = diffDays < 0
                     ? `<b>Pago contadora atrasado</b> ${Math.abs(diffDays)} día${Math.abs(diffDays) > 1 ? 's' : ''} (venció el 14)`
