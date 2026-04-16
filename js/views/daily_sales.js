@@ -165,7 +165,7 @@ async function renderDailySales() {
 
         let allDays = Array.from(byDate.values());
 
-        // --- CALCULAR SALIDAS DE EFECTIVO (GASTOS Y COMPRAS) POR FECHA ---
+        // --- CALCULAR SALIDAS DE EFECTIVO (Gastos locales + Flujo Eleventa) ---
         const cashOutByDate = new Map();
         const [invs, exps] = await Promise.all([
             window.db.purchase_invoices.toArray(),
@@ -185,6 +185,29 @@ async function renderDailySales() {
              const out = parseFloat(e.amount) || 0;
              if (d && out > 0) cashOutByDate.set(d, (cashOutByDate.get(d) || 0) + out);
         });
+
+        // Salidas de caja desde Eleventa (eleventa_flujo_caja)
+        const flujoByDate = new Map();
+        try {
+            const client = window.SyncV2?.client;
+            if (client) {
+                const { data: flujoData } = await client.from('eleventa_flujo_caja')
+                    .select('fecha,monto,descripcion,tipo')
+                    .eq('tipo', 'salida');
+                if (flujoData) {
+                    flujoData.forEach(f => {
+                        const d = f.fecha?.split('T')[0];
+                        const monto = Math.abs(parseFloat(f.monto) || 0);
+                        if (d && monto > 0) {
+                            if (!flujoByDate.has(d)) flujoByDate.set(d, { total: 0, detalle: [] });
+                            const entry = flujoByDate.get(d);
+                            entry.total += monto;
+                            entry.detalle.push({ desc: f.descripcion, monto });
+                        }
+                    });
+                }
+            }
+        } catch (e) { console.warn('Error cargando flujo Eleventa:', e); }
 
         // Filter by month and search
         let filtered = allDays.filter(s => {
@@ -248,8 +271,12 @@ async function renderDailySales() {
                         <i class="ph ph-chart-line-up"></i> Utilidad: ${formatCurrency(sale.profit)}
                     </span>` : ''}
                     ${cashOutByDate.get(sale.date) > 0 ? `
-                    <span style="background:linear-gradient(135deg, #fef2f2, #fee2e2); padding:3px 12px; border-radius:20px; color:#b91c1c; font-weight:700; white-space:nowrap; border:1px solid #fca5a5; box-shadow:0 1px 3px rgba(185,28,28,0.1);">
-                        <i class="ph ph-warning-circle"></i> Salidas Efectivo: ${formatCurrency(cashOutByDate.get(sale.date))}
+                    <span style="background:linear-gradient(135deg, #fef2f2, #fee2e2); padding:3px 12px; border-radius:20px; color:#b91c1c; font-weight:700; white-space:nowrap; border:1px solid #fca5a5;">
+                        <i class="ph ph-wallet"></i> Gastos App: ${formatCurrency(cashOutByDate.get(sale.date))}
+                    </span>` : ''}
+                    ${flujoByDate.has(sale.date) ? `
+                    <span style="background:linear-gradient(135deg, #fef2f2, #fee2e2); padding:3px 12px; border-radius:20px; color:#b91c1c; font-weight:700; white-space:nowrap; border:1px solid #fca5a5;" title="${flujoByDate.get(sale.date).detalle.map(d => d.desc + ': $' + d.monto).join(' | ')}">
+                        <i class="ph ph-cash-register"></i> Salidas Caja Eleventa: ${formatCurrency(flujoByDate.get(sale.date).total)}
                     </span>` : ''}
                 </div>
             </div>
