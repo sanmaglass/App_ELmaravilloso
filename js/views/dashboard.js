@@ -279,6 +279,23 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .ceo-alerts-count { background:#f97316; color:white; border-radius:99px; min-width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:0.8rem; padding:0 9px; }
         .ceo-alerts-count.zero { background:#10b981; }
 
+        .ceo-alert-wrap { display:flex; flex-direction:column; }
+        .ceo-alert-item.expandable { cursor:pointer; user-select:none; position:relative; }
+        .ceo-alert-item.expandable:hover { filter:brightness(0.98); }
+        body.dark-mode .ceo-alert-item.expandable:hover { filter:brightness(1.1); }
+        .ceo-alert-caret { color:var(--text-muted); font-size:1rem; transition:transform 0.2s; flex-shrink:0; margin-left:4px; }
+        .ceo-alert-item.expandable.open .ceo-alert-caret { transform:rotate(180deg); }
+        .ceo-alert-details { max-height:0; overflow:hidden; transition:max-height 0.3s ease; background:rgba(0,0,0,0.02); border-radius:0 0 10px 10px; margin-top:-2px; }
+        body.dark-mode .ceo-alert-details { background:rgba(255,255,255,0.02); }
+        .ceo-alert-details.open { max-height:500px; overflow-y:auto; padding:6px 0; border:1px solid var(--border); border-top:none; }
+        .ceo-alert-detail-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 14px; border-bottom:1px solid var(--border); font-size:0.82rem; }
+        .ceo-alert-detail-row:last-child { border-bottom:none; }
+        .ceo-alert-detail-row .cd-main { flex:1; min-width:0; }
+        .ceo-alert-detail-row .cd-name { font-weight:600; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .ceo-alert-detail-row .cd-sub { font-size:0.72rem; color:var(--text-muted); margin-top:2px; }
+        .ceo-alert-detail-row .cd-right { font-weight:800; font-variant-numeric:tabular-nums; color:var(--text-primary); font-size:0.82rem; white-space:nowrap; flex-shrink:0; }
+        .ceo-alert-more { padding:8px 14px; text-align:center; }
+
         .ceo-products-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
         .ceo-products-search { position:relative; min-width:220px; flex:0 1 280px; }
         .ceo-products-search i { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:1rem; }
@@ -1293,26 +1310,44 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const alerts = [];
 
         // Productos con margen bajo (< 5%) y volumen relevante
-        const lowMargin = allProductsArr.filter(p => p.qty >= 5 && p.revenue > 0 && p.marginPct < 5 && p.marginPct >= 0);
+        const lowMargin = allProductsArr.filter(p => p.qty >= 5 && p.revenue > 0 && p.marginPct < 5 && p.marginPct >= 0)
+            .sort((a, b) => a.marginPct - b.marginPct);
         if (lowMargin.length) {
             alerts.push({
                 sev: 'med',
                 icon: 'ph-magnet',
                 color: '#f59e0b',
-                html: `<b>${lowMargin.length} producto${lowMargin.length > 1 ? 's' : ''}</b> con margen bajo (&lt;5%). Top: <b>${lowMargin.sort((a, b) => a.marginPct - b.marginPct)[0].name}</b> al ${lowMargin[0].marginPct.toFixed(1)}%`,
-                meta: 'Revisar precio'
+                html: `<b>${lowMargin.length} producto${lowMargin.length > 1 ? 's' : ''}</b> con margen bajo (&lt;5%). Top: <b>${lowMargin[0].name}</b> al ${lowMargin[0].marginPct.toFixed(1)}%`,
+                meta: 'Revisar precio',
+                details: {
+                    type: 'products',
+                    items: lowMargin.slice(0, 15).map(p => ({
+                        name: p.name,
+                        right: `${p.marginPct.toFixed(1)}% · ${p.qty} uds`,
+                        sub: `Factura ${fmt(p.revenue)} · gana ${fmt(p.profit)}`
+                    }))
+                }
             });
         }
 
         // Productos sin ganancia (margen < 1%)
-        const zeroMarginAlerts = allProductsArr.filter(p => p.qty >= 1 && p.marginPct < 1);
+        const zeroMarginAlerts = allProductsArr.filter(p => p.qty >= 1 && p.marginPct < 1)
+            .sort((a, b) => b.qty - a.qty);
         if (zeroMarginAlerts.length) {
             alerts.push({
                 sev: 'high',
                 icon: 'ph-warning',
                 color: '#dc2626',
                 html: `<b>${zeroMarginAlerts.length} producto${zeroMarginAlerts.length > 1 ? 's' : ''} sin ganancia</b> (0% margen). Posible costo mal cargado en Eleventa.`,
-                meta: 'Cargar costo'
+                meta: 'Cargar costo',
+                details: {
+                    type: 'products',
+                    items: zeroMarginAlerts.slice(0, 15).map(p => ({
+                        name: p.name,
+                        right: `${p.qty} uds`,
+                        sub: `Factura ${fmt(p.revenue)} · gana ${fmt(p.profit)}`
+                    }))
+                }
             });
         }
 
@@ -1336,7 +1371,15 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 icon: 'ph-snowflake',
                 color: '#6366f1',
                 html: `<b>${staleProducts.length} producto${staleProducts.length > 1 ? 's' : ''} sin venta en 30 días</b>. Stock muerto posible.`,
-                meta: 'Evaluar liquidación'
+                meta: 'Evaluar liquidación',
+                details: {
+                    type: 'products',
+                    items: staleProducts.slice(0, 15).map(p => ({
+                        name: p.name,
+                        right: p.stock ? `stock ${p.stock}` : '',
+                        sub: p.costUnit ? `costo unit. ${fmt(p.costUnit)}` : ''
+                    }))
+                }
             });
         }
 
@@ -1376,12 +1419,25 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 return t > 0 && avg > 0 && ((avg - t) / avg) > 0.2;
             });
             if (lowDays.length >= 2) {
+                const sortedLow = [...lowDays].sort((a, b) => new Date(b.date) - new Date(a.date));
                 alerts.push({
                     sev: 'med',
                     icon: 'ph-trend-down',
                     color: '#f59e0b',
                     html: `<b>${lowDays.length} día${lowDays.length > 1 ? 's' : ''} con caída &gt;20%</b> vs. promedio mensual (${fmt(avg)})`,
-                    meta: `Último: ${lowDays[lowDays.length - 1].date.slice(5)}`
+                    meta: `Último: ${sortedLow[0].date.slice(5)}`,
+                    details: {
+                        type: 'days',
+                        items: sortedLow.slice(0, 15).map(d => {
+                            const t = parseFloat(d.total) || 0;
+                            const dropPct = ((avg - t) / avg) * 100;
+                            return {
+                                name: new Date(d.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'short' }),
+                                right: `${fmt(t)}`,
+                                sub: `caída -${dropPct.toFixed(0)}% vs. promedio`
+                            };
+                        })
+                    }
                 });
             }
         }
@@ -1398,13 +1454,45 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     </div>`;
                 if (alertsCount) { alertsCount.textContent = '0'; alertsCount.classList.add('zero'); }
             } else {
-                alertsList.innerHTML = alerts.map(a => `
-                    <div class="ceo-alert-item sev-${a.sev}">
-                        <i class="ph ${a.icon} main" style="color:${a.color};"></i>
-                        <div class="ceo-alert-text">${a.html}</div>
-                        <div class="ceo-alert-meta">${a.meta}</div>
-                    </div>`).join('');
+                alertsList.innerHTML = alerts.map((a, idx) => {
+                    const hasDetails = a.details && a.details.items && a.details.items.length > 0;
+                    const detailRows = hasDetails ? a.details.items.map(it => `
+                        <div class="ceo-alert-detail-row">
+                            <div class="cd-main">
+                                <div class="cd-name">${it.name}</div>
+                                ${it.sub ? `<div class="cd-sub">${it.sub}</div>` : ''}
+                            </div>
+                            ${it.right ? `<div class="cd-right">${it.right}</div>` : ''}
+                        </div>`).join('') : '';
+                    return `
+                    <div class="ceo-alert-wrap">
+                        <div class="ceo-alert-item sev-${a.sev} ${hasDetails ? 'expandable' : ''}" data-alert-idx="${idx}">
+                            <i class="ph ${a.icon} main" style="color:${a.color};"></i>
+                            <div class="ceo-alert-text">${a.html}</div>
+                            <div class="ceo-alert-meta">${a.meta}</div>
+                            ${hasDetails ? '<i class="ph ph-caret-down ceo-alert-caret"></i>' : ''}
+                        </div>
+                        ${hasDetails ? `
+                            <div class="ceo-alert-details" data-alert-details="${idx}">
+                                ${detailRows}
+                                ${a.details.items.length < (a.details.total || a.details.items.length) ? `<div class="ceo-alert-more text-muted text-xs">Mostrando primeros ${a.details.items.length}.</div>` : ''}
+                            </div>` : ''}
+                    </div>`;
+                }).join('');
                 if (alertsCount) { alertsCount.textContent = alerts.length; alertsCount.classList.remove('zero'); }
+
+                // Toggle expandible
+                alertsList.querySelectorAll('.ceo-alert-item.expandable').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        if (e.target.closest('a')) return; // No romper links internos
+                        const idx = item.dataset.alertIdx;
+                        const details = alertsList.querySelector(`[data-alert-details="${idx}"]`);
+                        if (details) {
+                            const open = details.classList.toggle('open');
+                            item.classList.toggle('open', open);
+                        }
+                    });
+                });
             }
         }
 
