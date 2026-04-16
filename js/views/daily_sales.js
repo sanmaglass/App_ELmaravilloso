@@ -143,10 +143,11 @@ async function renderDailySales() {
             const profit = parseFloat(s.profit) || 0;
             const forma = (s.forma_pago || 'Efectivo').toLowerCase();
 
-            if (forma === 'efectivo') day.cash += total;
-            else if (forma === 'tarjeta') day.debit += total;
-            else if (forma === 'vales') day.credit += total;
-            else if (forma === 'mixto') { day.cash += total / 2; day.debit += total / 2; }
+            if (forma.includes('transfer')) day.transfer += total;
+            else if (forma.includes('tarjeta') || forma.includes('debito')) day.debit += total;
+            else if (forma.includes('credito') || forma.includes('fiado') || forma.includes('vale')) day.credit += total;
+            else if (forma.includes('mixto')) { day.cash += total / 2; day.debit += total / 2; }
+            else if (forma.includes('efectivo')) day.cash += total;
             else day.cash += total;
 
             day.total += total;
@@ -186,24 +187,30 @@ async function renderDailySales() {
              if (d && out > 0) cashOutByDate.set(d, (cashOutByDate.get(d) || 0) + out);
         });
 
-        // Salidas de caja desde Eleventa (eleventa_flujo_caja)
-        const flujoByDate = new Map();
+        // Flujo de caja Eleventa: Salidas, Devoluciones, Entradas
+        const flujoByDate = new Map();        // Salidas (gastos)
+        const devolByDate = new Map();        // Devoluciones (ventas canceladas)
+        const entradaByDate = new Map();      // Entradas (ingresos manuales)
         try {
             const client = window.SyncV2?.client;
             if (client) {
                 const { data: flujoData } = await client.from('eleventa_flujo_caja')
-                    .select('fecha,monto,descripcion,tipo')
-                    .eq('tipo', 'salida');
+                    .select('fecha,monto,descripcion,tipo');
                 if (flujoData) {
                     flujoData.forEach(f => {
                         const d = f.fecha?.split('T')[0];
                         const monto = Math.abs(parseFloat(f.monto) || 0);
-                        if (d && monto > 0) {
-                            if (!flujoByDate.has(d)) flujoByDate.set(d, { total: 0, detalle: [] });
-                            const entry = flujoByDate.get(d);
-                            entry.total += monto;
-                            entry.detalle.push({ desc: f.descripcion, monto });
-                        }
+                        if (!d || monto <= 0) return;
+                        const tipo = (f.tipo || '').toLowerCase();
+                        let target;
+                        if (tipo === 'salida') target = flujoByDate;
+                        else if (tipo === 'devolucion' || tipo === 'devolución') target = devolByDate;
+                        else if (tipo === 'entrada') target = entradaByDate;
+                        else return;
+                        if (!target.has(d)) target.set(d, { total: 0, detalle: [] });
+                        const entry = target.get(d);
+                        entry.total += monto;
+                        entry.detalle.push({ desc: f.descripcion, monto });
                     });
                 }
             }
@@ -277,6 +284,14 @@ async function renderDailySales() {
                     ${flujoByDate.has(sale.date) ? `
                     <span style="background:linear-gradient(135deg, #fef2f2, #fee2e2); padding:3px 12px; border-radius:20px; color:#b91c1c; font-weight:700; white-space:nowrap; border:1px solid #fca5a5;" title="${flujoByDate.get(sale.date).detalle.map(d => d.desc + ': $' + d.monto).join(' | ')}">
                         <i class="ph ph-cash-register"></i> Salidas Caja Eleventa: ${formatCurrency(flujoByDate.get(sale.date).total)}
+                    </span>` : ''}
+                    ${devolByDate.has(sale.date) ? `
+                    <span style="background:linear-gradient(135deg, #fff7ed, #ffedd5); padding:3px 12px; border-radius:20px; color:#9a3412; font-weight:700; white-space:nowrap; border:1px solid #fdba74;" title="${devolByDate.get(sale.date).detalle.map(d => d.desc + ': $' + d.monto).join(' | ')}">
+                        <i class="ph ph-arrow-u-up-left"></i> Devoluciones: ${formatCurrency(devolByDate.get(sale.date).total)}
+                    </span>` : ''}
+                    ${entradaByDate.has(sale.date) ? `
+                    <span style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); padding:3px 12px; border-radius:20px; color:#166534; font-weight:700; white-space:nowrap; border:1px solid #86efac;" title="${entradaByDate.get(sale.date).detalle.map(d => d.desc + ': $' + d.monto).join(' | ')}">
+                        <i class="ph ph-plus-circle"></i> Entrada Caja: ${formatCurrency(entradaByDate.get(sale.date).total)}
                     </span>` : ''}
                 </div>
             </div>

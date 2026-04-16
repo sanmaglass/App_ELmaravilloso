@@ -74,7 +74,7 @@ window.Views.credits = async (container) => {
         const deudaTotal = clientesArray.reduce((acc, c) => acc + (Number(c.saldo_deuda) || 0), 0);
         const clientesConDeuda = clientesArray.filter(c => Number(c.saldo_deuda) > 0).length;
         
-        document.getElementById('credits-total-debt').textContent = window.Utils ? window.Utils.formatCurrency(deudaTotal) : `$${deudaTotal}`;
+        document.getElementById('credits-total-debt').innerHTML = window.Utils ? window.Utils.formatCurrency(deudaTotal) : `$${deudaTotal}`;
         document.getElementById('credits-total-clients').textContent = clientesConDeuda;
 
         if (filtered.length === 0) {
