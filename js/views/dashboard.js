@@ -296,42 +296,15 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .ceo-alert-detail-row .cd-right { font-weight:800; font-variant-numeric:tabular-nums; color:var(--text-primary); font-size:0.82rem; white-space:nowrap; flex-shrink:0; }
         .ceo-alert-more { padding:8px 14px; text-align:center; }
 
-        .ceo-products-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
-        .ceo-products-search { position:relative; min-width:220px; flex:0 1 280px; }
-        .ceo-products-search i { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:1rem; }
-        .ceo-products-search input { width:100%; padding:8px 10px 8px 32px; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); color:var(--text-primary); font-size:0.85rem; }
-        .ceo-products-search input:focus { outline:none; border-color:#6366f1; }
-
-        .ceo-product-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; padding:4px; background:rgba(0,0,0,0.04); border-radius:12px; width:fit-content; }
-        body.dark-mode .ceo-product-tabs { background:rgba(255,255,255,0.05); }
-        .ceo-tab { padding:7px 14px; border:none; background:transparent; border-radius:8px; font-weight:700; font-size:0.82rem; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.2s; }
-        .ceo-tab:hover { color:var(--text-primary); }
-        .ceo-tab.active { background:var(--bg-card); color:var(--text-primary); box-shadow:0 2px 8px rgba(0,0,0,0.06); }
-        body.dark-mode .ceo-tab.active { background:#21262d; color:#e6edf3; }
-        .ceo-tab i { font-size:1rem; }
-
-        .ceo-product-table-wrap { overflow-x:auto; border-radius:10px; border:1px solid var(--border); }
-        .ceo-product-table { width:100%; border-collapse:collapse; font-size:0.85rem; background:var(--bg-card); }
-        .ceo-product-table thead th { background:rgba(0,0,0,0.03); padding:10px 12px; text-align:left; font-weight:800; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-muted); border-bottom:1px solid var(--border); white-space:nowrap; }
-        body.dark-mode .ceo-product-table thead th { background:rgba(255,255,255,0.03); }
-        .ceo-product-table th.ceo-num, .ceo-product-table td.ceo-num { text-align:right; }
-        .ceo-product-table tbody tr { border-bottom:1px solid var(--border); transition:background 0.12s; }
-        .ceo-product-table tbody tr:hover { background:rgba(99,102,241,0.05); }
-        .ceo-product-table tbody tr:last-child { border-bottom:none; }
-        .ceo-product-table td { padding:10px 12px; vertical-align:middle; }
-        .ceo-product-table td.name { font-weight:600; color:var(--text-primary); max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .ceo-product-table td.rank { font-weight:800; color:var(--text-muted); font-variant-numeric:tabular-nums; }
-        .ceo-product-table td.money { font-variant-numeric:tabular-nums; font-weight:700; }
-        .ceo-margin-badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:0.72rem; font-weight:800; font-variant-numeric:tabular-nums; }
-        .ceo-margin-badge.good { background:rgba(16,185,129,0.12); color:#059669; }
-        .ceo-margin-badge.ok   { background:rgba(59,130,246,0.12); color:#2563eb; }
-        .ceo-margin-badge.low  { background:rgba(245,158,11,0.14); color:#b45309; }
-        .ceo-margin-badge.bad  { background:rgba(220,38,38,0.12); color:#b91c1c; }
-        .ceo-delta { font-size:0.78rem; font-weight:800; font-variant-numeric:tabular-nums; }
-        .ceo-delta.up { color:#10b981; }
-        .ceo-delta.down { color:#ef4444; }
-        .ceo-delta.flat { color:var(--text-muted); }
-        .ceo-product-foot { margin-top:10px; text-align:right; font-style:italic; }
+        /* CTA Margen banner */
+        .ceo-margins-cta { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:16px 20px; background:linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.06) 100%); border:1px solid rgba(99,102,241,0.18); border-radius:14px; cursor:pointer; transition:all 0.2s; text-decoration:none; }
+        .ceo-margins-cta:hover { background:linear-gradient(135deg, rgba(99,102,241,0.14) 0%, rgba(139,92,246,0.1) 100%); border-color:rgba(99,102,241,0.32); transform:translateY(-1px); box-shadow:0 6px 20px rgba(99,102,241,0.12); }
+        .ceo-margins-cta-left { display:flex; align-items:center; gap:12px; }
+        .ceo-margins-cta-icon { width:40px; height:40px; border-radius:10px; background:rgba(99,102,241,0.12); display:flex; align-items:center; justify-content:center; font-size:1.3rem; color:#6366f1; flex-shrink:0; }
+        .ceo-margins-cta-title { font-weight:800; color:var(--text-primary); font-size:0.95rem; margin-bottom:2px; }
+        .ceo-margins-cta-sub { font-size:0.75rem; color:var(--text-muted); font-weight:600; }
+        .ceo-margins-cta-arrow { font-size:1.4rem; color:#6366f1; opacity:0.7; transition:transform 0.2s; }
+        .ceo-margins-cta:hover .ceo-margins-cta-arrow { transform:translateX(4px); opacity:1; }
 
         @media (max-width: 640px) {
             .ceo-hide-mobile { display:none; }
@@ -559,49 +532,17 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
-        <!-- TABLA MAESTRA DE PRODUCTOS -->
-        <div class="premium-card mb-8" style="background:var(--bg-card); padding:18px;">
-            <div class="ceo-products-head">
+        <!-- CTA → Márgenes (reemplaza Radar de Productos) -->
+        <button class="ceo-margins-cta mb-8" id="ceo-margins-cta-btn" onclick="document.querySelector('[data-view=\'profit_monitor\']')?.click()">
+            <div class="ceo-margins-cta-left">
+                <div class="ceo-margins-cta-icon"><i class="ph ph-chart-line-up"></i></div>
                 <div>
-                    <h3 class="font-bold flex items-center gap-2" style="font-size:1.1rem; color:var(--text-primary);">
-                        <i class="ph ph-package text-xl" style="color:#6366f1;"></i> Radar de Productos
-                    </h3>
-                    <span class="text-xs text-muted">Datos del mes en curso desde Eleventa · click en una fila para detalle</span>
-                </div>
-                <div class="ceo-products-search">
-                    <i class="ph ph-magnifying-glass"></i>
-                    <input type="text" id="ceo-products-search" placeholder="Buscar producto…">
+                    <div class="ceo-margins-cta-title">Análisis de Márgenes por Producto</div>
+                    <div class="ceo-margins-cta-sub">Rentabilidad completa · vs Mes Pasado · Filtros por período · Sin ganancia · Export Excel</div>
                 </div>
             </div>
-
-            <div class="ceo-product-tabs" id="ceo-product-tabs">
-                <button class="ceo-tab active" data-tab="profit"><i class="ph ph-crown"></i> Top Ganancia</button>
-                <button class="ceo-tab" data-tab="volume"><i class="ph ph-shopping-cart"></i> Top Volumen</button>
-                <button class="ceo-tab" data-tab="margin"><i class="ph ph-chart-line-up"></i> Mejor Margen</button>
-                <button class="ceo-tab" data-tab="low"><i class="ph ph-magnet"></i> Peor Margen</button>
-                <button class="ceo-tab" data-tab="zero"><i class="ph ph-warning"></i> Sin Ganancia</button>
-            </div>
-
-            <div class="ceo-product-table-wrap">
-                <table class="ceo-product-table" id="ceo-product-table">
-                    <thead>
-                        <tr>
-                            <th style="width:36px;">#</th>
-                            <th>Producto</th>
-                            <th class="ceo-num">Uds</th>
-                            <th class="ceo-num">Facturado</th>
-                            <th class="ceo-num">Ganancia</th>
-                            <th class="ceo-num">Margen</th>
-                            <th class="ceo-num ceo-hide-mobile">vs Mes Pasado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ceo-product-tbody">
-                        <tr><td colspan="7" class="py-6 text-center text-muted"><div class="spinner m-auto"></div></td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="ceo-product-foot text-xs text-muted" id="ceo-product-foot"></div>
-        </div>
+            <i class="ph ph-arrow-right ceo-margins-cta-arrow"></i>
+        </button>
 
         <!-- Gráfico P&L + Top Proveedores -->
         <div class="pl-chart-grid">
@@ -1206,103 +1147,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             };
         });
 
-        // ---- Guardar en closure para reutilizar en tabs/search ----
-        const ceoState = {
-            all: allProductsArr,
-            activeTab: 'profit',
-            search: ''
-        };
+        // (Radar de Productos eliminado — ver análisis completo en Márgenes)
+        // allProductsArr permanece disponible para las Alertas Inteligentes abajo.
 
-        const MIN_QTY = 3;
-        const getFilteredSorted = () => {
-            let arr = ceoState.all;
-            const q = ceoState.search.trim().toLowerCase();
-            if (q) arr = arr.filter(x => x.name.toLowerCase().includes(q));
-            switch (ceoState.activeTab) {
-                case 'profit':
-                    return [...arr].filter(x => x.qty >= 1).sort((a, b) => b.profit - a.profit).slice(0, 20);
-                case 'volume':
-                    return [...arr].sort((a, b) => b.qty - a.qty).slice(0, 20);
-                case 'margin':
-                    return [...arr].filter(x => x.qty >= MIN_QTY && x.revenue > 0 && x.profit > 0)
-                        .sort((a, b) => b.marginPct - a.marginPct).slice(0, 20);
-                case 'low':
-                    return [...arr].filter(x => x.qty >= MIN_QTY && x.revenue > 0 && x.profit > 0)
-                        .sort((a, b) => a.marginPct - b.marginPct).slice(0, 20);
-                case 'zero':
-                    return [...arr].filter(x => x.qty >= 1 && x.marginPct < 1)
-                        .sort((a, b) => b.qty - a.qty).slice(0, 30);
-                default:
-                    return arr.slice(0, 20);
-            }
-        };
 
-        const marginBadge = (pct) => {
-            let cls = 'bad';
-            if (pct >= 20) cls = 'good';
-            else if (pct >= 10) cls = 'ok';
-            else if (pct >= 3) cls = 'low';
-            return `<span class="ceo-margin-badge ${cls}">${pct.toFixed(1)}%</span>`;
-        };
-
-        const deltaPill = (cur, prev) => {
-            if (prev === 0 && cur === 0) return `<span class="ceo-delta flat">—</span>`;
-            if (prev === 0) return `<span class="ceo-delta up">nuevo</span>`;
-            const pct = ((cur - prev) / Math.abs(prev)) * 100;
-            if (Math.abs(pct) < 1) return `<span class="ceo-delta flat">=</span>`;
-            const sign = pct > 0 ? '▲' : '▼';
-            const cls = pct > 0 ? 'up' : 'down';
-            return `<span class="ceo-delta ${cls}">${sign} ${Math.abs(pct).toFixed(0)}%</span>`;
-        };
-
-        const renderProductTable = () => {
-            const tbody = document.getElementById('ceo-product-tbody');
-            const foot = document.getElementById('ceo-product-foot');
-            if (!tbody) return;
-            const rows = getFilteredSorted();
-            if (rows.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-muted">Sin productos que coincidan con este filtro.</td></tr>`;
-                if (foot) foot.textContent = '';
-                return;
-            }
-            tbody.innerHTML = rows.map((p, idx) => `
-                <tr>
-                    <td class="rank">${idx + 1}</td>
-                    <td class="name" title="${p.name}">${p.name}</td>
-                    <td class="ceo-num money">${Math.round(p.qty)}</td>
-                    <td class="ceo-num money">${fmt(p.revenue)}</td>
-                    <td class="ceo-num money" style="color:${p.profit >= 0 ? '#059669' : '#dc2626'};">${fmt(p.profit)}</td>
-                    <td class="ceo-num">${marginBadge(p.marginPct)}</td>
-                    <td class="ceo-num ceo-hide-mobile">${deltaPill(p.profit, p.prevProfit)}</td>
-                </tr>
-            `).join('');
-            if (foot) foot.textContent = `Mostrando ${rows.length} productos · total catálogo activo este mes: ${ceoState.all.length}`;
-        };
-
-        // Inicial
-        renderProductTable();
-
-        // Event wiring para tabs y search (delegación ligera)
-        const tabsWrap = document.getElementById('ceo-product-tabs');
-        if (tabsWrap && !tabsWrap.dataset.wired) {
-            tabsWrap.dataset.wired = '1';
-            tabsWrap.addEventListener('click', (e) => {
-                const btn = e.target.closest('.ceo-tab');
-                if (!btn) return;
-                tabsWrap.querySelectorAll('.ceo-tab').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                ceoState.activeTab = btn.dataset.tab;
-                renderProductTable();
-            });
-        }
-        const searchInput = document.getElementById('ceo-products-search');
-        if (searchInput && !searchInput.dataset.wired) {
-            searchInput.dataset.wired = '1';
-            searchInput.addEventListener('input', (e) => {
-                ceoState.search = e.target.value;
-                renderProductTable();
-            });
-        }
 
         // ============================================================
         // ALERTAS INTELIGENTES
@@ -1493,6 +1341,15 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                         }
                     });
                 });
+            }
+            // CTA Márgenes al pie del panel de alertas
+            const alertsCard = document.getElementById('ceo-alerts-card');
+            if (alertsCard && !alertsCard.querySelector('.ceo-alerts-cta-link')) {
+                const ctaDiv = document.createElement('div');
+                ctaDiv.className = 'ceo-alerts-cta-link';
+                ctaDiv.style.cssText = 'margin-top:14px; padding-top:12px; border-top:1px solid rgba(0,0,0,0.07); display:flex; justify-content:flex-end;';
+                ctaDiv.innerHTML = `<button onclick="document.querySelector('[data-view=\'profit_monitor\']')?.click()" style="display:flex; align-items:center; gap:6px; background:none; border:none; font-size:0.8rem; font-weight:700; color:#6366f1; cursor:pointer; padding:4px 0; opacity:0.85; transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'"><i class="ph ph-chart-line-up"></i> Ver análisis completo en Márgenes <i class="ph ph-arrow-right"></i></button>`;
+                alertsCard.appendChild(ctaDiv);
             }
         }
 
