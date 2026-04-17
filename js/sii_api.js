@@ -290,7 +290,7 @@ window.SII_API = {
      * @returns {Object} { neto, iva, exento, total, facturas, notasCredito }
      */
     async obtenerTotalesVentas(periodo, forceRefresh = false) {
-        const cacheKey = `sii_ventas_${periodo}`;
+        const cacheKey = `sii_ventas_v2_${periodo}`;
         const now = new Date();
         const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const esMesActual = periodo === mesActual;
@@ -314,27 +314,50 @@ window.SII_API = {
         }
 
         let neto = 0, iva = 0, exento = 0, total = 0, facturas = 0, notasCredito = 0;
+        let boletas = 0, boletasTotal = 0;
+
+        // Tipos DTE de venta:
+        // 33=Factura, 34=Factura Exenta, 39=Boleta Electrónica, 41=Boleta Exenta
+        // 56=Nota Débito, 61=Nota Crédito
+        // También puede venir como resumen de boletas del día
+        const tiposVenta = [33, 34, 39, 41, 56, 61];
+        const tiposNC = [61]; // Notas de crédito restan
+
+        // Log para diagnóstico (ver qué tipos trae la API)
+        const tiposEncontrados = {};
+        result.data.datos.forEach(doc => {
+            const t = doc['Tipo Doc'];
+            tiposEncontrados[t] = (tiposEncontrados[t] || 0) + 1;
+        });
+        console.log(`[SII Ventas ${periodo}] Tipos encontrados:`, tiposEncontrados, `Total docs: ${result.data.datos.length}`);
 
         for (const doc of result.data.datos) {
             if (!doc['Nro'] || doc['Nro'] === '') continue;
             const tipoDoc = parseInt(doc['Tipo Doc']);
-            if (![33, 34, 61].includes(tipoDoc)) continue;
+
+            // Aceptar todos los tipos de venta conocidos
+            if (!tiposVenta.includes(tipoDoc)) continue;
 
             const mNeto = parseInt(doc['Monto Neto']) || 0;
             const mIva = parseInt(doc['Monto IVA']) || parseInt(doc['Monto IVA Recuperable']) || 0;
             const mExento = parseInt(doc['Monto Exento']) || 0;
             const mTotal = parseInt(doc['Monto Total']) || 0;
 
-            if (tipoDoc === 61) {
+            if (tiposNC.includes(tipoDoc)) {
                 neto -= mNeto; iva -= mIva; exento -= mExento; total -= mTotal;
                 notasCredito++;
+            } else if (tipoDoc === 39 || tipoDoc === 41) {
+                // Boletas: suman al total de ventas
+                neto += mNeto; iva += mIva; exento += mExento; total += mTotal;
+                boletas++;
+                boletasTotal += mTotal;
             } else {
                 neto += mNeto; iva += mIva; exento += mExento; total += mTotal;
                 facturas++;
             }
         }
 
-        const datos = { neto, iva, exento, total, facturas, notasCredito, _ts: Date.now() };
+        const datos = { neto, iva, exento, total, facturas, notasCredito, boletas, boletasTotal, _ts: Date.now() };
         localStorage.setItem(cacheKey, JSON.stringify(datos));
         return datos;
     }

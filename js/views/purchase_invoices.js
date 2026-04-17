@@ -593,7 +593,7 @@ async function renderContadorDigital(periodoOverride = null) {
         const ivaDebito = ventas.iva;       // IVA Débito real del SII
         const ivaCredito = totalIva;         // IVA Crédito de compras
         const balanceIva = ivaDebito - ivaCredito;  // Lo que debes pagar
-        const tieneVentas = ventas.total > 0 || ventas.facturas > 0;
+        const tieneVentas = ventas.total > 0 || ventas.facturas > 0 || ventas.boletas > 0;
 
         // PPM: se calcula sobre el neto de VENTAS, no de compras
         const ppmSobreVentas = Math.round(ventas.neto * 0.01);
@@ -667,9 +667,9 @@ async function renderContadorDigital(periodoOverride = null) {
                         <div class="sub">IVA recuperable</div>
                     </div>
                     <div class="sii-cell">
-                        <div class="lbl">Neto Ventas (SII)</div>
-                        <div class="val" style="color:#7c3aed;">${fmt(ventas.neto)}</div>
-                        <div class="sub">${ventas.facturas} fact. emitidas${ventas.notasCredito > 0 ? ` · ${ventas.notasCredito} NC` : ''}</div>
+                        <div class="lbl">Ventas SII</div>
+                        <div class="val" style="color:#7c3aed;">${fmt(ventas.total)}</div>
+                        <div class="sub">${ventas.boletas || 0} boletas${ventas.facturas ? ` · ${ventas.facturas} fact.` : ''}${ventas.notasCredito > 0 ? ` · ${ventas.notasCredito} NC` : ''}</div>
                     </div>
                     <div class="sii-cell">
                         <div class="lbl">PPM (1% Ventas)</div>
