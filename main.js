@@ -30,10 +30,16 @@ const views = {
     credits: () => window.Views.credits(document.getElementById('view-container'))
 };
 
-// --- EMAIL GATE: Correos autorizados ---
-const AUTHORIZED_EMAILS = [
-    'sanmaglass@gmail.com'
-];
+// --- AUTH GATE: Credenciales hasheadas (SHA-256) ---
+// Hash pre-calculado de email+password para que nadie pueda leerlos en el código
+// sha256("sanmaglass@gmail.com:sanma123")
+const AUTH_HASH = '3116f6b417a96bd88af00cd66a352106f0f9c55f3a6b43382de61360ec2e2f82';
+
+async function sha256(text) {
+    const data = new TextEncoder().encode(text);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 function showEmailGate() {
     const splash = document.getElementById('splash-screen');
@@ -45,9 +51,14 @@ function showEmailGate() {
                 <img src="icons/icon-192x192.png" alt="Logo" style="width:80px; height:80px; border-radius:20px; margin-bottom:24px; box-shadow:0 12px 40px rgba(220,38,38,0.3);">
                 <h1 style="color:#fff; font-size:1.4rem; font-weight:700; margin:0 0 6px;">El Maravilloso</h1>
                 <p style="color:rgba(255,255,255,0.4); font-size:0.75rem; margin:0 0 32px; letter-spacing:0.1em; text-transform:uppercase;">Acceso Autorizado</p>
+                <input id="gate-email" type="email" placeholder="Correo" autocomplete="email" autofocus
+                    style="width:100%; padding:14px 18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:#fff; font-size:1rem; font-family:inherit; outline:none; transition:border-color 0.2s; margin-bottom:12px;">
                 <div style="position:relative;">
-                    <input id="gate-email" type="email" placeholder="Tu correo electr\u00f3nico" autocomplete="email" autofocus
-                        style="width:100%; padding:14px 18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:#fff; font-size:1rem; font-family:inherit; outline:none; transition:border-color 0.2s;">
+                    <input id="gate-pass" type="password" placeholder="Contrase\u00f1a" autocomplete="current-password"
+                        style="width:100%; padding:14px 18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:#fff; font-size:1rem; font-family:inherit; outline:none; transition:border-color 0.2s; padding-right:48px;">
+                    <button id="gate-toggle-pass" type="button" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:rgba(255,255,255,0.4); cursor:pointer; font-size:1.1rem; padding:4px;">
+                        <i class="ph ph-eye"></i>
+                    </button>
                 </div>
                 <div id="gate-error" style="color:#ff6b6b; font-size:0.82rem; margin-top:10px; min-height:1.2em;"></div>
                 <button id="gate-btn" style="width:100%; margin-top:16px; padding:14px; background:linear-gradient(135deg,#e60000,#990000); color:#fff; border:none; border-radius:12px; font-size:0.95rem; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.2s; box-shadow:0 6px 20px rgba(230,0,0,0.3);">
@@ -59,25 +70,50 @@ function showEmailGate() {
     `;
 
     const emailInput = document.getElementById('gate-email');
+    const passInput = document.getElementById('gate-pass');
     const errorEl = document.getElementById('gate-error');
     const btn = document.getElementById('gate-btn');
+    const toggleBtn = document.getElementById('gate-toggle-pass');
 
-    function attemptLogin() {
+    // Toggle ver/ocultar contraseña
+    toggleBtn.addEventListener('click', () => {
+        const isPass = passInput.type === 'password';
+        passInput.type = isPass ? 'text' : 'password';
+        toggleBtn.innerHTML = isPass ? '<i class="ph ph-eye-slash"></i>' : '<i class="ph ph-eye"></i>';
+    });
+
+    async function attemptLogin() {
         const email = (emailInput.value || '').trim().toLowerCase();
+        const pass = passInput.value || '';
+
         if (!email || !email.includes('@')) {
             errorEl.textContent = 'Ingresa un correo v\u00e1lido';
             emailInput.style.borderColor = '#ff6b6b';
             return;
         }
-        if (!AUTHORIZED_EMAILS.includes(email)) {
-            errorEl.textContent = 'Correo no autorizado. Contacta al administrador.';
+        if (!pass) {
+            errorEl.textContent = 'Ingresa tu contrase\u00f1a';
+            passInput.style.borderColor = '#ff6b6b';
+            return;
+        }
+
+        btn.textContent = 'Verificando...';
+        btn.disabled = true;
+
+        const hash = await sha256(email + ':' + pass);
+        if (hash !== AUTH_HASH) {
+            errorEl.textContent = 'Correo o contrase\u00f1a incorrectos';
             emailInput.style.borderColor = '#ff6b6b';
-            // Log intento no autorizado
+            passInput.style.borderColor = '#ff6b6b';
+            btn.textContent = 'Ingresar';
+            btn.disabled = false;
             console.warn('Acceso denegado:', email);
             return;
         }
-        // Acceso concedido
+
+        // Acceso concedido — guardar token hasheado (no el password)
         localStorage.setItem('wm_auth', 'true');
+        localStorage.setItem('wm_auth_token', hash);
         localStorage.setItem('wm_auth_email', email);
         localStorage.setItem('wm_user', email.split('@')[0]);
         window.location.reload();
@@ -91,19 +127,20 @@ function showEmailGate() {
 // Initialize App
 async function init() {
     try {
-        // --- AUTH CHECK (Email Gate) ---
+        // --- AUTH CHECK (Email + Password Gate) ---
         const isAuth = localStorage.getItem('wm_auth');
-        const authEmail = localStorage.getItem('wm_auth_email');
+        const authToken = localStorage.getItem('wm_auth_token');
 
-        if (!isAuth || !authEmail || !AUTHORIZED_EMAILS.includes(authEmail.toLowerCase())) {
-            // Limpiar auth corrupto/viejo
+        if (!isAuth || authToken !== AUTH_HASH) {
             localStorage.removeItem('wm_auth');
+            localStorage.removeItem('wm_auth_token');
             localStorage.removeItem('wm_auth_email');
+            localStorage.removeItem('wm_user');
             showEmailGate();
-            return; // No inicializar la app
+            return;
         }
 
-        window.state.currentUser = authEmail;
+        window.state.currentUser = localStorage.getItem('wm_auth_email');
 
         // Auth passed - continue with initialization
 
@@ -190,6 +227,7 @@ async function init() {
                 if (btn.dataset.view === 'logout') {
                     if (confirm('¿Cerrar sesión?')) {
                         localStorage.removeItem('wm_auth');
+                        localStorage.removeItem('wm_auth_token');
                         localStorage.removeItem('wm_auth_email');
                         localStorage.removeItem('wm_user');
                         window.location.reload();
