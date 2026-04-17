@@ -37,7 +37,8 @@ window.SII_API = {
             throw new Error('Faltan credenciales SII. Configúralas en Ajustes → Integración SII.');
         }
 
-        const url = `https://api.baseapi.cl/api/v1/sii/rcv/${periodo}/${tipo}`;
+        // Proxy via Vercel rewrite para evitar CORS
+        const url = `/api/sii/rcv/${periodo}/${tipo}`;
 
         const response = await fetch(url, {
             method: 'POST',

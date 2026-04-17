@@ -1,6 +1,12 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/api/sii/:path*",
+      "destination": "https://api.baseapi.cl/api/v1/sii/:path*"
+    }
+  ],
   "headers": [
     {
       "source": "/index.html",
