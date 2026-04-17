@@ -140,6 +140,54 @@ window.Views.settings = async (container) => {
                     </div>
                 </div>
 
+                <!-- SII INTEGRATION SECTION -->
+                <div class="card" style="border: 1px solid #2563eb; background: linear-gradient(to bottom, rgba(37,99,235,0.05), transparent);">
+                    <h3 style="margin-bottom:16px; display:flex; align-items:center; gap:8px; color:var(--text-primary);">
+                        <i class="ph ph-buildings" style="color:#2563eb;"></i>
+                        Integración SII (Facturas Automáticas)
+                    </h3>
+                    <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:16px;">
+                        Conecta con el Servicio de Impuestos Internos para importar facturas de compra automáticamente desde el Registro de Compras y Ventas (RCV).
+                    </p>
+
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label class="form-label">API Key (BaseAPI.cl)</label>
+                        <div style="display:flex; gap:8px;">
+                            <input type="password" id="sii-api-key" class="form-input" placeholder="sk_..." style="flex:1;">
+                            <button id="btn-toggle-sii-key" class="btn btn-secondary" style="padding:0 12px;" title="Mostrar/Ocultar">
+                                <i class="ph ph-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                        <div class="form-group">
+                            <label class="form-label">RUT Contribuyente</label>
+                            <input type="text" id="sii-rut" class="form-input" placeholder="12345678-9">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Clave SII</label>
+                            <div style="display:flex; gap:8px;">
+                                <input type="password" id="sii-password" class="form-input" placeholder="Clave tributaria" style="flex:1;">
+                                <button id="btn-toggle-sii-pass" class="btn btn-secondary" style="padding:0 12px;" title="Mostrar/Ocultar">
+                                    <i class="ph ph-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:12px; margin-bottom:12px;">
+                        <button id="btn-save-sii" class="btn btn-primary" style="flex:1;">
+                            <i class="ph ph-floppy-disk"></i> Guardar
+                        </button>
+                        <button id="btn-test-sii" class="btn btn-secondary" style="flex:1;">
+                            <i class="ph ph-plugs-connected"></i> Probar Conexión
+                        </button>
+                    </div>
+
+                    <div id="sii-status" style="font-size:0.85rem; padding:8px; border-radius:6px; background:rgba(0,0,0,0.03); display:none;"></div>
+                </div>
+
                 <!-- NOTIFICATIONS SECTION -->
                 <div class="card" style="border: 1px solid var(--primary); background: rgba(59, 130, 246, 0.02);">
                     <h3 style="margin-bottom:16px; display:flex; align-items:center; gap:8px; color:var(--text-primary);">
@@ -520,6 +568,84 @@ window.Views.settings = async (container) => {
                 alert('Configuración de empresa guardada con éxito.');
             });
         }
+
+        // --- SII INTEGRATION HANDLERS ---
+        const siiApiKey = document.getElementById('sii-api-key');
+        const siiRut = document.getElementById('sii-rut');
+        const siiPassword = document.getElementById('sii-password');
+        const siiStatus = document.getElementById('sii-status');
+
+        // Load saved SII values
+        if (siiApiKey) siiApiKey.value = localStorage.getItem('sii_baseapi_key') || '';
+        if (siiRut) siiRut.value = localStorage.getItem('sii_rut') || '';
+        if (siiPassword) siiPassword.value = localStorage.getItem('sii_password') || '';
+
+        // Toggle visibility buttons
+        document.getElementById('btn-toggle-sii-key')?.addEventListener('click', () => {
+            siiApiKey.type = siiApiKey.type === 'password' ? 'text' : 'password';
+        });
+        document.getElementById('btn-toggle-sii-pass')?.addEventListener('click', () => {
+            siiPassword.type = siiPassword.type === 'password' ? 'text' : 'password';
+        });
+
+        const updateSiiStatus = (msg, type = 'info') => {
+            if (!siiStatus) return;
+            siiStatus.style.display = 'block';
+            siiStatus.innerHTML = msg;
+            siiStatus.style.color = type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : 'var(--text-muted)');
+        };
+
+        document.getElementById('btn-save-sii')?.addEventListener('click', () => {
+            const key = siiApiKey.value.trim();
+            const rut = siiRut.value.trim();
+            const pass = siiPassword.value.trim();
+
+            if (!key || !rut || !pass) {
+                updateSiiStatus('<i class="ph ph-warning"></i> Completa los 3 campos.', 'error');
+                return;
+            }
+
+            localStorage.setItem('sii_baseapi_key', key);
+            localStorage.setItem('sii_rut', rut);
+            localStorage.setItem('sii_password', pass);
+            updateSiiStatus('<i class="ph ph-check-circle"></i> Credenciales guardadas correctamente.', 'success');
+        });
+
+        document.getElementById('btn-test-sii')?.addEventListener('click', async () => {
+            const btn = document.getElementById('btn-test-sii');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Probando...';
+            updateSiiStatus('<i class="ph ph-spinner-gap ph-spin"></i> Conectando con SII...', 'info');
+
+            try {
+                // Guardar primero
+                localStorage.setItem('sii_baseapi_key', siiApiKey.value.trim());
+                localStorage.setItem('sii_rut', siiRut.value.trim());
+                localStorage.setItem('sii_password', siiPassword.value.trim());
+
+                const now = new Date();
+                const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                const result = await window.SII_API.consultarRCV(periodo, 'compra');
+
+                if (result.success) {
+                    const total = result.data.totalRegistros || 0;
+                    const resumen = (result.data.resumenPorTipo || []).map(r =>
+                        `${r.tipoDocumento}: ${r.totalDocumentos}`
+                    ).join(', ');
+                    updateSiiStatus(
+                        `<i class="ph ph-check-circle"></i> <b>Conexión exitosa.</b> ${total} documentos en ${periodo}. ${resumen ? '(' + resumen + ')' : ''}`,
+                        'success'
+                    );
+                } else {
+                    updateSiiStatus('<i class="ph ph-x-circle"></i> La API respondió pero sin datos.', 'error');
+                }
+            } catch (err) {
+                updateSiiStatus(`<i class="ph ph-x-circle"></i> Error: ${err.message}`, 'error');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ph ph-plugs-connected"></i> Probar Conexión';
+        });
 
         // --- INIT STATE ---
         // Load saved values

@@ -34,17 +34,25 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
 
     // === TAB: COMPRAS (original content) ===
     tabContainer.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
             <div>
                 <h1 style="margin-bottom:8px; color:var(--text-primary); display:flex; align-items:center; gap:10px;">
                     <i class="ph ph-receipt" style="color:var(--primary);"></i> Facturas de Compra
                 </h1>
-                <p style="color:var(--text-muted);">Registro de gastos y compras a proveedores</p>
+                <p style="color:var(--text-muted);">Sincronizado automáticamente desde el SII</p>
             </div>
-            <button class="btn btn-primary" id="btn-add-invoice">
-                <i class="ph ph-plus-circle"></i> Nueva Factura
-            </button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-primary" id="btn-sync-sii" title="Importar facturas desde el SII">
+                    <i class="ph ph-cloud-arrow-down"></i> Sincronizar SII
+                </button>
+                <button class="btn btn-secondary" id="btn-add-invoice">
+                    <i class="ph ph-plus-circle"></i> Manual
+                </button>
+            </div>
         </div>
+
+        <!-- SII SYNC STATUS BANNER -->
+        <div id="sii-sync-banner" style="display:none; margin-bottom:20px;"></div>
 
         <!-- 📊 ANALYTICS PANEL -->
         <div id="invoice-analytics" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;">
@@ -118,6 +126,28 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     await renderCreditAlerts();
     renderInvoices();
 
+    // SII Sync Button
+    document.getElementById('btn-sync-sii').addEventListener('click', () => syncFromSII());
+
+    // Auto-sync SII on view load (if configured)
+    if (window.SII_API.isConfigured()) {
+        autoSyncSII();
+    } else {
+        const banner = document.getElementById('sii-sync-banner');
+        if (banner) {
+            banner.style.display = 'block';
+            banner.innerHTML = `
+                <div style="background:linear-gradient(135deg, #eff6ff, #dbeafe); border:2px solid #3b82f6; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <i class="ph ph-info" style="font-size:1.5rem; color:#2563eb;"></i>
+                    <div style="flex:1; min-width:200px;">
+                        <div style="font-weight:700; color:#1e40af;">Conecta con el SII para importar facturas automáticamente</div>
+                        <div style="font-size:0.85rem; color:#3b82f6; margin-top:4px;">Ve a <b>Ajustes → Integración SII</b> y configura tus credenciales de BaseAPI.</div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
     // Events
     document.getElementById('btn-add-invoice').addEventListener('click', () => showInvoiceModal());
     document.getElementById('invoice-search').addEventListener('input', () => { window.state.invoicesPage = 1; renderInvoices(); });
@@ -159,6 +189,157 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     };
     window.addEventListener('sync-data-updated', window._invoicesSyncHandler);
 };
+
+// --- SII SYNC FUNCTIONS ---
+async function syncFromSII(silent = false) {
+    const banner = document.getElementById('sii-sync-banner');
+    const btn = document.getElementById('btn-sync-sii');
+
+    if (!window.SII_API.isConfigured()) {
+        if (!silent) alert('Configura tus credenciales SII en Ajustes → Integración SII.');
+        return;
+    }
+
+    // UI: loading state
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Sincronizando...';
+    }
+    if (banner) {
+        banner.style.display = 'block';
+        banner.innerHTML = `
+            <div style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); border:2px solid #22c55e; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px;">
+                <div class="spinner" style="width:24px; height:24px; border-width:3px;"></div>
+                <div>
+                    <div style="font-weight:700; color:#166534;">Conectando con el SII...</div>
+                    <div style="font-size:0.85rem; color:#16a34a;">Descargando facturas del Registro de Compras y Ventas</div>
+                </div>
+            </div>
+        `;
+    }
+
+    try {
+        // Importar últimos 2 meses (mes actual + mes anterior)
+        const results = await window.SII_API.importarMultiplesPeriodos(2);
+
+        let totalImported = 0;
+        let totalSkipped = 0;
+        let totalNewSuppliers = 0;
+        let totalErrors = [];
+
+        results.forEach(r => {
+            if (r.error) {
+                totalErrors.push(`${r.periodo}: ${r.error}`);
+            } else {
+                totalImported += r.imported;
+                totalSkipped += r.skipped;
+                totalNewSuppliers += r.newSuppliers;
+                if (r.errors?.length) totalErrors.push(...r.errors);
+            }
+        });
+
+        // UI: resultado
+        if (banner) {
+            if (totalImported > 0) {
+                banner.innerHTML = `
+                    <div style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); border:2px solid #22c55e; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <i class="ph ph-check-circle" style="font-size:2rem; color:#16a34a;"></i>
+                        <div style="flex:1; min-width:200px;">
+                            <div style="font-weight:700; color:#166534;">SII Sincronizado</div>
+                            <div style="font-size:0.85rem; color:#16a34a; margin-top:4px;">
+                                <b>${totalImported}</b> facturas importadas ·
+                                ${totalSkipped} ya existían ·
+                                ${totalNewSuppliers > 0 ? `<b>${totalNewSuppliers} proveedores nuevos</b> · ` : ''}
+                                Última sync: ${new Date().toLocaleTimeString('es-CL')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (totalSkipped > 0) {
+                banner.innerHTML = `
+                    <div style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); border:2px solid #22c55e; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px;">
+                        <i class="ph ph-check-circle" style="font-size:1.5rem; color:#16a34a;"></i>
+                        <div>
+                            <div style="font-weight:700; color:#166534;">Todo al día</div>
+                            <div style="font-size:0.85rem; color:#16a34a;">No hay facturas nuevas. ${totalSkipped} facturas ya sincronizadas. Última sync: ${new Date().toLocaleTimeString('es-CL')}</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                banner.innerHTML = `
+                    <div style="background:#fefce8; border:2px solid #eab308; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px;">
+                        <i class="ph ph-info" style="font-size:1.5rem; color:#ca8a04;"></i>
+                        <div style="font-weight:600; color:#854d0e;">No se encontraron facturas en el SII para este período.</div>
+                    </div>
+                `;
+            }
+
+            if (totalErrors.length > 0) {
+                banner.innerHTML += `
+                    <div style="margin-top:8px; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:10px; font-size:0.8rem; color:#991b1b;">
+                        <b>Errores (${totalErrors.length}):</b> ${totalErrors.slice(0, 3).join(' | ')}${totalErrors.length > 3 ? '...' : ''}
+                    </div>
+                `;
+            }
+        }
+
+        // Refrescar vista si hubo cambios
+        if (totalImported > 0 || totalNewSuppliers > 0) {
+            await initDateFilter();
+            await populateSupplierFilter();
+            await renderAnalytics();
+            await renderPendingDocuments();
+            await renderCreditAlerts();
+            renderInvoices();
+        }
+
+    } catch (err) {
+        console.error('Error sync SII:', err);
+        if (banner) {
+            banner.innerHTML = `
+                <div style="background:#fef2f2; border:2px solid #dc2626; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px;">
+                    <i class="ph ph-warning-circle" style="font-size:1.5rem; color:#dc2626;"></i>
+                    <div>
+                        <div style="font-weight:700; color:#991b1b;">Error al conectar con SII</div>
+                        <div style="font-size:0.85rem; color:#dc2626;">${err.message}</div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // Restaurar botón
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ph ph-cloud-arrow-down"></i> Sincronizar SII';
+    }
+}
+
+// Auto-sync silencioso al cargar la vista (máx 1 vez cada 5 minutos)
+async function autoSyncSII() {
+    const lastSync = parseInt(localStorage.getItem('sii_last_auto_sync') || '0');
+    const now = Date.now();
+    const FIVE_MIN = 5 * 60 * 1000;
+
+    if (now - lastSync < FIVE_MIN) {
+        // Mostrar banner de última sync
+        const banner = document.getElementById('sii-sync-banner');
+        if (banner) {
+            const lastDate = new Date(lastSync);
+            banner.style.display = 'block';
+            banner.innerHTML = `
+                <div style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); border:1px solid #bbf7d0; border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:10px;">
+                    <i class="ph ph-check-circle" style="font-size:1.2rem; color:#16a34a;"></i>
+                    <span style="font-size:0.85rem; color:#166534;">SII sincronizado · Última vez: ${lastDate.toLocaleTimeString('es-CL')}</span>
+                </div>
+            `;
+        }
+        return;
+    }
+
+    localStorage.setItem('sii_last_auto_sync', String(now));
+    await syncFromSII(true);
+}
 
 // --- INIT FILTERS ---
 async function initDateFilter() {
