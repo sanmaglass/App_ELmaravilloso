@@ -1390,8 +1390,8 @@ async function renderInvoices() {
                 const found = suppliers.find(s => s.name.toLowerCase() === inv.supplierName.toLowerCase() && !s.deleted);
                 if (found) {
                     supplierName = found.name;
-                    // Auto-fix ID in background (non-blocking)
-                    window.db.purchase_invoices.update(inv.id, { supplierId: found.id });
+                    // Auto-fix ID in background (sync to Supabase)
+                    window.DataManager.saveAndSync('purchase_invoices', { ...inv, supplierId: found.id });
                     console.log(`[Fix] Vinculando factura ${inv.invoiceNumber} al proveedor ${found.name} (ID recuperado)`);
                 } else {
                     supplierName = inv.supplierName;
@@ -2125,6 +2125,7 @@ async function exportInvoicesToExcel() {
 }
 
 function formatDate(dateString) {
+    if (window.Utils?.formatDate) return window.Utils.formatDate(dateString);
     if (!dateString) return '-';
     const parts = dateString.split('-');
     if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
@@ -2132,6 +2133,7 @@ function formatDate(dateString) {
 }
 
 function formatCurrency(amount) {
+    if (window.Utils?.formatCurrency) return window.Utils.formatCurrency(amount);
     return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(amount);
 }
 
