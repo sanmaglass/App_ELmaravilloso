@@ -392,30 +392,9 @@ if (localStorage.getItem('wm_privacy') === 'true') {
     document.getElementById('btn-toggle-privacy').innerHTML = '<i class="ph ph-eye-slash"></i>';
 }
 
-// --- AUTO-LOCK SYSTEM (5 Minutes) ---
-let inactivityTimer;
-const INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 minutes in ms
-
-function resetInactivityTimer() {
-    clearTimeout(inactivityTimer);
-
-    // Only set timer if user is authenticated
-    if (localStorage.getItem('wm_auth')) {
-        inactivityTimer = setTimeout(() => {
-            console.log("Inactivity detected. Locking session...");
-            localStorage.removeItem('wm_auth');
-            window.location.reload();
-        }, INACTIVITY_LIMIT);
-    }
-}
-
-// User interactions to monitor
-['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
-    window.addEventListener(evt, resetInactivityTimer, { passive: true });
-});
-
-// Initial start
-resetInactivityTimer();
+// Auto-lock eliminado: la sesión persiste indefinidamente en el dispositivo.
+// El usuario solo vuelve a ver login si cierra sesión manualmente (botón logout)
+// o si se incrementa SESSION_VERSION para forzar re-login global.
 
 // Start
 init();
