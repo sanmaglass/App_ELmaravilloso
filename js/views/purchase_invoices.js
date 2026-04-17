@@ -1281,14 +1281,20 @@ async function renderInvoices() {
             return;
         }
 
-        // Totals (Calculate on filtered total, not just page)
+        // Totals (facturas suman, NC restan)
         let totalAmount = 0;
         let totalPending = 0;
+        let totalFacturas = 0;
+        let totalNC = 0;
 
-        // Calculate totals for ALL matches (not just visible page) to be useful
         filtered.forEach(inv => {
             const amount = parseFloat(inv.amount) || 0;
             totalAmount += amount;
+            if (inv.siiTipoDoc === 61 || amount < 0) {
+                totalNC += Math.abs(amount);
+            } else {
+                totalFacturas += amount;
+            }
             if (inv.paymentStatus === 'Pendiente') totalPending += amount;
         });
 
@@ -1316,24 +1322,37 @@ async function renderInvoices() {
             const amount = parseFloat(inv.amount) || 0;
             const paidAmt = parseFloat(inv.paidAmount) || 0;
             const abonoPct = amount > 0 ? Math.min(100, (paidAmt / amount) * 100) : 0;
+            const isNC = inv.siiTipoDoc === 61 || amount < 0;
+            const displayAmount = Math.abs(amount);
 
-            // Border color: green=paid, indigo=abonado, amber=credit pending, yellow=other pending
-            const borderColor = !isPending && !isAbonado ? '#10b981'
+            // Border color: purple=NC, green=paid, indigo=abonado, amber=credit, yellow=pending
+            const borderColor = isNC ? '#a855f7'
+                : !isPending && !isAbonado ? '#10b981'
                 : isAbonado ? '#6366f1'
                 : inv.paymentMethod === 'Crédito' ? '#d97706' : '#f59e0b';
 
+            // Tipo de documento
+            const tipoDocLabel = isNC ? 'Nota de Crédito'
+                : inv.siiTipoDoc === 34 ? 'Factura Exenta'
+                : inv.siiTipoDoc === 33 ? 'Factura' : '';
+
             return `
-            <div class="card" style="padding:16px; display:flex; flex-wrap:wrap; align-items:center; gap:12px; border-left: 4px solid ${borderColor};">
-                
+            <div class="card" style="padding:16px; display:flex; flex-wrap:wrap; align-items:center; gap:12px; border-left: 4px solid ${borderColor}; ${isNC ? 'background:rgba(168,85,247,0.03);' : ''}">
+
                 <!-- Supplier & Invoice No -->
                 <div style="flex:1 1 200px; min-width:0;">
-                    <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary);">${escapeHTML(supplierName)}</div>
+                    <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+                        ${escapeHTML(supplierName)}
+                        ${isNC ? '<span style="background:#a855f7; color:white; font-size:0.65rem; padding:2px 7px; border-radius:6px; font-weight:700;">NC</span>' : ''}
+                        ${tipoDocLabel && !isNC ? `<span style="font-size:0.7rem; color:var(--text-muted); font-weight:400;">${tipoDocLabel}</span>` : ''}
+                    </div>
                     <div style="font-size:0.85rem; color:var(--text-muted); display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                         <span style="display:flex; align-items:center; gap:4px;">
                             <i class="ph ph-hash"></i> ${escapeHTML(inv.invoiceNumber)}
                         </span>
                         <span>•</span>
                         <span><i class="ph ph-calendar-blank"></i> ${formatDate(inv.date)}</span>
+                        ${inv.siiRutProveedor ? `<span>•</span><span style="font-size:0.78rem;">${escapeHTML(inv.siiRutProveedor)}</span>` : ''}
                     </div>
                     ${inv.paymentMethod === 'Crédito' && inv.dueDate ? (() => {
                     const due = new Date(inv.dueDate);
@@ -1367,8 +1386,11 @@ async function renderInvoices() {
 
                 <!-- Amount & Period -->
                 <div style="flex:1 1 120px;">
-                    <div style="font-weight:700; font-size:1.1rem; color:var(--text-primary);">${formatCurrency(amount)}</div>
+                    <div style="font-weight:700; font-size:1.1rem; color:${isNC ? '#a855f7' : 'var(--text-primary)'};">
+                        ${isNC ? '-' : ''}${formatCurrency(displayAmount)}
+                    </div>
                     <div style="font-size:0.8rem; color:var(--text-muted);">${escapeHTML(inv.period) || 'Sin período'}</div>
+                    ${inv.notes && inv.siiImportado ? `<div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">${escapeHTML(inv.notes)}</div>` : ''}
                 </div>
 
                 <!-- Status -->
