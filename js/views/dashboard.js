@@ -770,6 +770,20 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const ventasMes  = thisMonthSales.reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
         const ventasPrev = prevMonthSales.reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
 
+        // 1b. Comisión MercadoPago (2% sobre ventas con tarjeta)
+        const COMISION_MP = 0.02;
+        const tarjetaMes = thisMonthSales.filter(s => {
+            const f = (s.forma_pago || '').toLowerCase();
+            return f.includes('tarjeta') || f.includes('debito');
+        }).reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
+        const comisionMPMes = Math.round(tarjetaMes * COMISION_MP);
+
+        const tarjetaPrev = prevMonthSales.filter(s => {
+            const f = (s.forma_pago || '').toLowerCase();
+            return f.includes('tarjeta') || f.includes('debito');
+        }).reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
+        const comisionMPPrev = Math.round(tarjetaPrev * COMISION_MP);
+
         // 2. Gross Profit (From Eleventa API)
         const thisMonthEleventa = eleventaSales.filter(s => s.date && s.date.startsWith(currentMonthStr));
         const prevMonthEleventa = eleventaSales.filter(s => s.date && s.date.startsWith(prevMonthStr));
@@ -822,9 +836,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         // console.log(`[Rentabilidad] G.Bruta: ${gananciaBrutaMes} | Retiros(Adelantos): ${gastosRetiroDueno} | Base Dueño: ${sueldoBaseDuenoMensual} | Prorrateo Hoy: ${gastoTotalProrrateado}`);
 
-        // The *total* accumulated cost for the month so far is Prorated Fixed Costs + Variable Costs + Extra Draw (beyond base salary)
-        const gastoTotal = gastoTotalProrrateado + gastosVariablesMes + ownerExtraDraw;
-        const gastoPrev = gastosOperativosPrev;
+        // The *total* accumulated cost for the month so far is Prorated Fixed Costs + Variable Costs + Extra Draw + Comisión MP
+        const gastoTotal = gastoTotalProrrateado + gastosVariablesMes + ownerExtraDraw + comisionMPMes;
+        const gastoPrev = gastosOperativosPrev + comisionMPPrev;
 
         // 6. Invoices (Cashflow only, informational. Mercadería comprada)
         const thisMonthInvoices = invoices.filter(i => i.date && i.date.startsWith(currentMonthStr));
@@ -1018,7 +1032,16 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     ` : ''}
 
                     ${gastosVariablesMes > 0 ? fmtRow('Gastos Variables', -gastosVariablesMes, '#f59e0b', 'ph ph-receipt') : ''}
-                    
+
+                    ${comisionMPMes > 0 ? `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed rgba(0,0,0,0.06);">
+                        <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                            <i class="ph ph-credit-card"></i> Comisión MercadoPago (2%)
+                            <span style="font-size:0.65rem; opacity:0.6;">sobre ${window.Utils.formatCurrency(tarjetaMes)}</span>
+                        </span>
+                        <span style="font-weight:700; font-size:0.9rem; color:#e11d48;">-${window.Utils.formatCurrency(comisionMPMes)}</span>
+                    </div>` : ''}
+
                     <!-- Cuenta Dueño (Compacta) -->
                     ${ownerEmployees.length > 0 ? `
                     <details style="margin: 4px 0;">
@@ -1368,16 +1391,20 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // FORMA DE PAGO (Donut) — desde eleventa_sales del mes
         // ============================================================
         const pagoBuckets = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Crédito: 0, Mixto: 0 };
+        let tarjetaBrutaDonut = 0;
         currentMonthEleventa.forEach(s => {
             const total = parseFloat(s.total) || 0;
             if (total <= 0) return;
             const forma = (s.forma_pago || '').toLowerCase();
             if (forma.includes('transfer')) pagoBuckets.Transferencia += total;
-            else if (forma.includes('tarjeta') || forma.includes('debito')) pagoBuckets.Tarjeta += total;
+            else if (forma.includes('tarjeta') || forma.includes('debito')) { pagoBuckets.Tarjeta += total; tarjetaBrutaDonut += total; }
             else if (forma.includes('credito') || forma.includes('fiado') || forma.includes('vale')) pagoBuckets['Crédito'] += total;
             else if (forma.includes('mixto')) pagoBuckets.Mixto += total;
             else pagoBuckets.Efectivo += total;
         });
+        // Descontar comisión MP del bucket Tarjeta para reflejar ingreso real
+        const comisionDonut = Math.round(tarjetaBrutaDonut * COMISION_MP);
+        pagoBuckets.Tarjeta = Math.max(0, pagoBuckets.Tarjeta - comisionDonut);
         const pagoTotal = Object.values(pagoBuckets).reduce((s, x) => s + x, 0) || 1;
         const pagoColors = {
             Efectivo: '#10b981',

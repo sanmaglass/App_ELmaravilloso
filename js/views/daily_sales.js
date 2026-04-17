@@ -56,8 +56,8 @@ window.Views.daily_sales = async (container) => {
 
     // Events
     document.getElementById('btn-add-daily-sale').addEventListener('click', () => showDailySaleModal());
-    document.getElementById('daily-search').addEventListener('input', () => renderDailySales());
-    document.getElementById('daily-filter-month').addEventListener('change', () => renderDailySales());
+    document.getElementById('daily-search').addEventListener('input', () => { window._dailyShowAll = false; renderDailySales(); });
+    document.getElementById('daily-filter-month').addEventListener('change', () => { window._dailyShowAll = false; renderDailySales(); });
     document.getElementById('btn-export-daily').addEventListener('click', exportDailySalesToExcel);
 
     // --- REALTIME REFRESH ---
@@ -112,8 +112,9 @@ async function initDailyMonthFilter() {
             filter.appendChild(option);
         });
 
-        // Por defecto mostrar todo el historial para no generar confusión (UX)
-        filter.value = 'all';
+        // Por defecto mostrar el mes actual (menos carga visual)
+        const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        filter.value = curMonth;
 
     } catch (e) { console.error('Error init daily month filter', e); }
 }
@@ -144,9 +145,9 @@ async function renderDailySales() {
             const forma = (s.forma_pago || 'Efectivo').toLowerCase();
 
             if (forma.includes('transfer')) day.transfer += total;
-            else if (forma.includes('tarjeta') || forma.includes('debito')) day.debit += total;
+            else if (forma.includes('tarjeta') || forma.includes('debito')) { day.debit += total; day.debitBruto = (day.debitBruto || 0) + total; }
             else if (forma.includes('credito') || forma.includes('fiado') || forma.includes('vale')) day.credit += total;
-            else if (forma.includes('mixto')) { day.cash += total / 2; day.debit += total / 2; }
+            else if (forma.includes('mixto')) { day.cash += total / 2; day.debit += total / 2; day.debitBruto = (day.debitBruto || 0) + total / 2; }
             else if (forma.includes('efectivo')) day.cash += total;
             else day.cash += total;
 
@@ -162,6 +163,15 @@ async function renderDailySales() {
             if (s.date && !byDate.has(s.date)) {
                 byDate.set(s.date, { date: s.date, cash: s.cash || 0, transfer: s.transfer || 0, debit: s.debit || 0, credit: s.credit || 0, total: s.total || 0, profit: 0, tickets: 0, manual: true, id: s.id });
             }
+        });
+
+        // Calcular comisión MercadoPago (2%) y descontar de tarjeta
+        const COMISION_MP = 0.02;
+        byDate.forEach(day => {
+            const bruto = day.debitBruto || 0;
+            day.comisionMP = Math.round(bruto * COMISION_MP);
+            day.debit = Math.max(0, day.debit - day.comisionMP);
+            day.total = Math.max(0, day.total - day.comisionMP);
         });
 
         let allDays = Array.from(byDate.values());
@@ -226,7 +236,13 @@ async function renderDailySales() {
         // Sort by Date DESC
         filtered.sort((a, b) => b.date.localeCompare(a.date));
 
-        // Update summary cards
+        // Limitar a 7 días visibles por defecto (última semana)
+        const MAX_VISIBLE = 7;
+        const showAll = window._dailyShowAll || false;
+        const hasMoreDays = filtered.length > MAX_VISIBLE && !search && !showAll;
+        const visible = (!search && !showAll && filtered.length > MAX_VISIBLE) ? filtered.slice(0, MAX_VISIBLE) : filtered;
+
+        // Update summary cards (sobre el total filtrado, no solo los visibles)
         const totalAmount = filtered.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
         const totalEl = document.getElementById('daily-total-amount');
         const countEl = document.getElementById('daily-count');
@@ -243,7 +259,7 @@ async function renderDailySales() {
             return;
         }
 
-        list.innerHTML = filtered.map(sale => `
+        list.innerHTML = visible.map(sale => `
             <div class="card" style="padding:16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                     <div style="flex:1 1 160px; min-width:0;">
@@ -268,8 +284,11 @@ async function renderDailySales() {
                     ${sale.transfer > 0 ? `<span style="background:rgba(59,130,246,0.1); padding:3px 10px; border-radius:20px; color:#1e3a8a; white-space:nowrap;">
                         <i class="ph ph-bank"></i> Transferencia: ${formatCurrency(sale.transfer)}
                     </span>` : ''}
-                    ${sale.debit > 0 ? `<span style="background:rgba(245,158,11,0.1); padding:3px 10px; border-radius:20px; color:#92400e; white-space:nowrap;">
+                    ${sale.debit > 0 || sale.comisionMP > 0 ? `<span style="background:rgba(245,158,11,0.1); padding:3px 10px; border-radius:20px; color:#92400e; white-space:nowrap;">
                         <i class="ph ph-credit-card"></i> Tarjeta: ${formatCurrency(sale.debit)}
+                    </span>` : ''}
+                    ${sale.comisionMP > 0 ? `<span style="background:rgba(225,29,72,0.1); padding:3px 10px; border-radius:20px; color:#be123c; white-space:nowrap; font-weight:600;" title="2% sobre ${formatCurrency(sale.debitBruto || 0)} en tarjetas">
+                        <i class="ph ph-percent"></i> Comisión MP: -${formatCurrency(sale.comisionMP)}
                     </span>` : ''}
                     ${sale.credit > 0 ? `<span style="background:rgba(139,92,246,0.1); padding:3px 10px; border-radius:20px; color:#5b21b6; white-space:nowrap;">
                         <i class="ph ph-ticket"></i> Vales: ${formatCurrency(sale.credit)}
@@ -295,7 +314,19 @@ async function renderDailySales() {
                     </span>` : ''}
                 </div>
             </div>
-        `).join('');
+        `).join('') + (hasMoreDays ? `
+            <button id="btn-show-all-daily" style="width:100%; padding:12px; border:1px dashed var(--border); border-radius:12px; background:rgba(0,0,0,0.02); color:var(--text-muted); cursor:pointer; font-size:0.9rem; font-weight:600; transition:all 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='rgba(0,0,0,0.02)'">
+                <i class="ph ph-caret-down"></i> Ver ${filtered.length - MAX_VISIBLE} días más
+            </button>` : '');
+
+        // Listener para "Ver más" — mostrar todos los días del filtro actual
+        const btnShowAll = document.getElementById('btn-show-all-daily');
+        if (btnShowAll) {
+            btnShowAll.addEventListener('click', () => {
+                window._dailyShowAll = true;
+                renderDailySales();
+            });
+        }
 
     } catch (e) {
         console.error("Error in renderDailySales:", e);
