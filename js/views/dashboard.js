@@ -533,7 +533,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         </div>
 
         <!-- CTA → Márgenes (reemplaza Radar de Productos) -->
-        <button class="ceo-margins-cta mb-8" id="ceo-margins-cta-btn" onclick="document.querySelector('[data-view=\'profit_monitor\']')?.click()">
+        <button class="ceo-margins-cta mb-8" id="ceo-margins-cta-btn" onclick="window._goToMargenes()">
             <div class="ceo-margins-cta-left">
                 <div class="ceo-margins-cta-icon"><i class="ph ph-chart-line-up"></i></div>
                 <div>
@@ -617,6 +617,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             `;
         }
     } // End if(!isAlreadyRendered)
+
+    // Helper global para navegación — evita escape de comillas en onclick inline
+    window._goToMargenes = () => { document.querySelector('[data-view="profit_monitor"]')?.click(); };
 
     // (Tab switching removed as only Resumen exists now)
 
@@ -1356,7 +1359,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 const ctaDiv = document.createElement('div');
                 ctaDiv.className = 'ceo-alerts-cta-link';
                 ctaDiv.style.cssText = 'margin-top:14px; padding-top:12px; border-top:1px solid rgba(0,0,0,0.07); display:flex; justify-content:flex-end;';
-                ctaDiv.innerHTML = `<button onclick="document.querySelector('[data-view=\'profit_monitor\']')?.click()" style="display:flex; align-items:center; gap:6px; background:none; border:none; font-size:0.8rem; font-weight:700; color:#6366f1; cursor:pointer; padding:4px 0; opacity:0.85; transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'"><i class="ph ph-chart-line-up"></i> Ver análisis completo en Márgenes <i class="ph ph-arrow-right"></i></button>`;
+                ctaDiv.innerHTML = `<button onclick="window._goToMargenes()" style="display:flex; align-items:center; gap:6px; background:none; border:none; font-size:0.8rem; font-weight:700; color:#6366f1; cursor:pointer; padding:4px 0; opacity:0.85; transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'"><i class="ph ph-chart-line-up"></i> Ver análisis completo en Márgenes <i class="ph ph-arrow-right"></i></button>`;
                 alertsCard.appendChild(ctaDiv);
             }
         }
