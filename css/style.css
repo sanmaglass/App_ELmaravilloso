@@ -1,27 +1,41 @@
 :root {
     /* --- Living Red Theme Variables --- */
 
-    /* Colores Principales (Más Intensos) */
+    /* Colores Principales */
     --primary: #e60000;
-    /* Rojo Puro Brillante */
     --primary-dark: #990000;
-    /* Sangre Oscura */
     --primary-glow: rgba(255, 0, 0, 0.5);
-    /* Resplandor */
-
     --accent: #0044ff;
-    /* Azul Eléctrico (Contraste Logo) */
 
+    /* Colores Semánticos (Light Mode base) */
+    --text-primary: #1a1a2e;
+    --text-secondary: #4a5568;
+    --text-muted: #94a3b8;
+    --bg-card: #ffffff;
+    --bg-input: #f8fafc;
+    --bg-app: #f1f5f9;
+    --border: rgba(0, 0, 0, 0.08);
+    --danger: #dc2626;
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-info: #3b82f6;
+
+    /* Radii */
+    --radius-sm: 12px;
+    --radius-md: 20px;
+    --radius-lg: 28px;
+
+    /* Glass */
     --bg-glass: rgba(255, 255, 255, 0.75);
-    --bg-glass-hover: rgba(255, 255, 255, 0.9);
+    --bg-glass-hover: rgba(255, 255, 255, 0.92);
     --bg-glass-dark: rgba(30, 41, 59, 0.7);
 
     /* Vibrant Gradients Palette */
-    --grad-primary: linear-gradient(135deg, #ff0000 0%, #990000 100%);
-    --grad-success: linear-gradient(135deg, #00c853 0%, #007e33 100%);
-    --grad-info: linear-gradient(135deg, #0044ff 0%, #002288 100%);
+    --grad-primary: linear-gradient(135deg, #e60000 0%, #990000 100%);
+    --grad-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --grad-info: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
     --grad-warning: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
-    --grad-danger: linear-gradient(135deg, #ff1744 0%, #b2102f 100%);
+    --grad-danger: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
     --grad-purple: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
 
     --font-main: 'Outfit', sans-serif;
@@ -36,8 +50,15 @@
     --step-4: clamp(1.4rem, calc(1.06rem + 1.71vw), 2.33rem);
     --step-5: clamp(1.58rem, calc(1.13rem + 2.25vw), 2.80rem);
 
-    /* Animation Speeds */
+    /* Shadows */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.08);
+    --shadow-glow: 0 8px 24px rgba(230, 0, 0, 0.15);
+
+    /* Animation */
     --ease-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * {
@@ -59,18 +80,15 @@ body {
 }
 
     /* --- ATMÓSFERA 'EL MARAVILLOSO' --- */
-    background-color: #0f0202;
-    /* Base oscura profunda */
-    /* Mesh Gradient simulado con radiales */
+    background-color: #f8f6f4;
     background-image:
-        radial-gradient(circle at 10% 20%, rgba(220, 38, 38, 0.4) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(185, 28, 28, 0.3) 0%, transparent 40%),
-        radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.8) 0%, transparent 60%),
-        /* Luz central suave */
-        linear-gradient(135deg, #fff0f0 0%, #ffe4e4 100%);
-    /* Tinte base */
+        radial-gradient(ellipse at 15% 10%, rgba(220, 38, 38, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 90%, rgba(185, 28, 28, 0.04) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.9) 0%, transparent 70%),
+        linear-gradient(160deg, #faf8f7 0%, #f3efed 50%, #f8f6f4 100%);
     background-size: 200% 200%;
-    animation: atmosphereMove 20s ease-in-out infinite alternate;
+    background-attachment: fixed;
+    animation: atmosphereMove 25s ease-in-out infinite alternate;
 }
 
 @keyframes atmosphereMove {
@@ -108,27 +126,21 @@ body {
 
 /* SIDEBAR: Glass & Floating */
 .sidebar {
-    width: 290px;
-    background: rgba(255, 255, 255, 0.65);
-    /* Más transparente */
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
-    border-right: 1px solid rgba(255, 255, 255, 0.8);
+    width: 280px;
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(30px) saturate(1.4);
+    -webkit-backdrop-filter: blur(30px) saturate(1.4);
+    border-right: 1px solid rgba(0, 0, 0, 0.04);
     display: flex;
     flex-direction: column;
-    padding: 30px 24px;
-    box-shadow: 10px 0 40px rgba(230, 0, 0, 0.05);
+    padding: 24px 20px;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.03);
     z-index: 2000;
-    transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-
-    /* SCROLL FIXES */
+    transition: 0.4s var(--ease-smooth);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    /* Suavidad en iOS */
     height: 100vh;
-    /* Asegurar altura completa */
     touch-action: pan-y;
-    /* Optimizar scroll táctil */
 }
 
 .sidebar-logo-img {
@@ -202,13 +214,12 @@ body {
     flex: 1;
     height: 100vh;
     overflow-y: auto;
-    overflow-x: clip; /* 'clip' recorta visualmente sin bloquear el scroll horizontal de los hijos */
-    /* El contenido se desplaza aquí */
-    padding: 40px;
+    overflow-x: clip;
+    padding: clamp(14px, 4vw, 40px);
+    padding-top: clamp(8px, 2vw, 40px);
     position: relative;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
-    /* Asegurar que nada se desborde horizontalmente */
     max-width: 100%;
 }
 
@@ -234,23 +245,21 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-bottom: 50px;
+    margin-bottom: 32px;
     position: relative;
     perspective: 1000px;
-    /* Para efecto 3D si se requiere */
 }
 
 .brand img {
-    max-height: 110px;
-    border-radius: 20px;
-    /* Sombra roja intensa (Glow) */
-    box-shadow: 0 15px 35px -5px rgba(230, 0, 0, 0.5);
-    animation: floatLogo 5s ease-in-out infinite;
+    max-height: 90px;
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 32px -4px rgba(230, 0, 0, 0.3);
+    animation: floatLogo 6s ease-in-out infinite;
     transition: transform 0.3s var(--ease-elastic);
 }
 
 .brand:hover img {
-    transform: scale(1.1) rotate(2deg);
+    transform: scale(1.06) rotate(1deg);
     cursor: pointer;
 }
 
@@ -272,39 +281,37 @@ body {
 .nav-menu {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 4px;
     flex: 1;
 }
 
 .nav-item {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 16px 24px;
-    border-radius: 50px;
-    /* Full Pill */
+    gap: 14px;
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
     color: var(--text-secondary);
     background: transparent;
-    /* Ver a través */
     border: 1px solid transparent;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.92rem;
     font-weight: 600;
-    transition: all 0.4s var(--ease-elastic);
+    transition: all 0.25s var(--ease-smooth);
     position: relative;
     overflow: hidden;
 }
 
 .nav-item i {
-    font-size: 1.4rem;
+    font-size: 1.25rem;
     transition: 0.3s;
     color: var(--text-muted);
 }
 
 .nav-item:hover {
-    background: rgba(255, 255, 255, 0.8);
-    transform: translateX(8px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    background: rgba(230, 0, 0, 0.05);
+    transform: translateX(4px);
+    color: var(--text-primary);
 }
 
 /* Fix for iOS double-tap (hover) */
@@ -318,13 +325,13 @@ body {
 
 .nav-item:hover i {
     color: var(--primary);
-    transform: scale(1.2) rotate(10deg);
+    transform: scale(1.1);
 }
 
 .nav-item.active {
-    background: linear-gradient(135deg, var(--primary), #b30000);
+    background: var(--grad-primary);
     color: white;
-    box-shadow: 0 10px 20px rgba(230, 0, 0, 0.4);
+    box-shadow: 0 6px 20px rgba(230, 0, 0, 0.3);
     border: none;
 }
 
@@ -353,12 +360,12 @@ body {
 .user-profile {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding-top: 24px;
-    background: rgba(255, 0, 0, 0.03);
-    padding: 16px;
-    border-radius: 20px;
+    gap: 14px;
+    background: rgba(0, 0, 0, 0.02);
+    padding: 14px;
+    border-radius: var(--radius-sm);
     margin-top: auto;
+    border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .avatar {
@@ -392,7 +399,7 @@ body {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -400,12 +407,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 99px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.15);
 }
 
 /* Top Bar */
@@ -480,13 +487,10 @@ body {
 }
 
 #page-title {
-    font-size: 2.2rem;
+    font-size: var(--step-4);
     font-weight: 800;
-    letter-spacing: -1px;
-    background: -webkit-linear-gradient(45deg, var(--text-primary), #555);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
 }
 
 /* RESPONSIVE UTILITIES */
