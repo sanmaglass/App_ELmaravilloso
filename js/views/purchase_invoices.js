@@ -549,6 +549,34 @@ async function renderContadorDigital(periodoOverride = null) {
         }, 0);
         const diffNeto = prevNeto > 0 ? (((totalNeto - prevNeto) / prevNeto) * 100).toFixed(0) : null;
 
+        // --- BALANCE IVA: Cruzar ventas vs compras ---
+        // Obtener ventas del mismo período desde daily_sales y eleventa_sales
+        let ventasBrutoMes = 0;
+        try {
+            const allEleventa = await window.db.eleventa_sales.toArray();
+            const eleventaMes = allEleventa.filter(s => !s.deleted && s.date && s.date.startsWith(currentPeriodo));
+            ventasBrutoMes += eleventaMes.reduce((s, e) => s + (parseFloat(e.total) || 0), 0);
+
+            const manualSales = await window.db.daily_sales.toArray();
+            const manualMes = manualSales.filter(s => !s.deleted && s.date && s.date.startsWith(currentPeriodo));
+            // Solo sumar manuales si no hay eleventa para esa fecha (evitar doble conteo)
+            const eleventaDates = new Set(eleventaMes.map(e => e.date?.split('T')[0]));
+            manualMes.forEach(s => {
+                if (!eleventaDates.has(s.date)) {
+                    ventasBrutoMes += (parseFloat(s.total) || 0);
+                }
+            });
+        } catch (e) { console.error('Error cargando ventas para balance:', e); }
+
+        // IVA Débito = ventas brutas / 1.19 * 0.19 (ventas al consumidor incluyen IVA)
+        const ventasNeto = Math.round(ventasBrutoMes / 1.19);
+        const ivaDebito = Math.round(ventasBrutoMes - ventasNeto);
+        const ivaCredito = totalIva;
+
+        // Balance: positivo = debes pagar al SII, negativo = remanente a favor
+        const balanceIva = ivaDebito - ivaCredito;
+        const tieneVentas = ventasBrutoMes > 0;
+
         // Options del selector de meses
         const mesesOptions = mesesDisponibles.map(m => {
             const [y2, m2] = m.split('-').map(Number);
@@ -559,6 +587,40 @@ async function renderContadorDigital(periodoOverride = null) {
 
         const fmt = (n) => '$' + Math.abs(n).toLocaleString('es-CL');
         const sign = (n) => n < 0 ? '-' : '';
+
+        // Determinar mensaje y color del balance
+        let balanceMsg, balanceColor, balanceBg, balanceIcon;
+        if (!tieneVentas) {
+            balanceMsg = 'Sin datos de ventas para este mes';
+            balanceColor = '#6b7280';
+            balanceBg = 'rgba(107,114,128,0.08)';
+            balanceIcon = 'ph-info';
+        } else if (balanceIva > 0) {
+            balanceMsg = `Debes pagar ${fmt(balanceIva)} de IVA al SII este mes`;
+            balanceColor = '#dc2626';
+            balanceBg = 'rgba(220,38,38,0.08)';
+            balanceIcon = 'ph-arrow-up-right';
+        } else if (balanceIva < 0) {
+            balanceMsg = `Tienes ${fmt(Math.abs(balanceIva))} de remanente IVA a favor`;
+            balanceColor = '#16a34a';
+            balanceBg = 'rgba(22,163,106,0.08)';
+            balanceIcon = 'ph-arrow-down-right';
+        } else {
+            balanceMsg = 'IVA equilibrado — compras y ventas están parejas';
+            balanceColor = '#2563eb';
+            balanceBg = 'rgba(37,99,235,0.08)';
+            balanceIcon = 'ph-equals';
+        }
+
+        // Consejo práctico
+        let consejo = '';
+        if (tieneVentas && balanceIva > 50000) {
+            consejo = 'Tip: Podrías adelantar compras con factura para aumentar tu crédito fiscal y reducir el pago de IVA.';
+        } else if (tieneVentas && balanceIva < -50000) {
+            consejo = 'Tu remanente crece — tus compras superan las ventas. Revisa si puedes vender más o reducir compras.';
+        } else if (tieneVentas) {
+            consejo = 'Buen equilibrio entre compras y ventas.';
+        }
 
         panel.innerHTML = `
             <style>
@@ -599,8 +661,8 @@ async function renderContadorDigital(periodoOverride = null) {
                     border-right: 1px solid var(--border);
                     border-bottom: 1px solid var(--border);
                 }
-                .sii-counter-cell:nth-child(3n+1) { border-right: 1px solid var(--border); }
-                .sii-counter-cell:last-child, .sii-counter-cell:nth-child(3n) { border-right: none; }
+                .sii-counter-cell:last-child, .sii-counter-cell:nth-child(3n+1) { border-right: 1px solid var(--border); }
+                .sii-counter-cell:nth-child(3n) { border-right: none; }
                 .sii-counter-label {
                     font-size: 0.72rem;
                     font-weight: 600;
@@ -621,6 +683,15 @@ async function renderContadorDigital(periodoOverride = null) {
                     color: var(--text-muted);
                     margin-top: 4px;
                 }
+                .sii-balance-bar {
+                    grid-column: 1 / -1;
+                    padding: 16px 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 14px;
+                    flex-wrap: wrap;
+                    border-top: 2px solid var(--border);
+                }
                 @media (max-width: 640px) {
                     .sii-contador-grid { grid-template-columns: 1fr 1fr; }
                     .sii-counter-value { font-size: 1.1rem; }
@@ -638,8 +709,39 @@ async function renderContadorDigital(periodoOverride = null) {
                     </div>
                 </div>
 
+                <!-- BALANCE IVA — la fila más importante -->
+                <div class="sii-balance-bar" style="background:${balanceBg};">
+                    <div style="width:48px; height:48px; border-radius:50%; background:${balanceColor}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <i class="ph ${balanceIcon}" style="font-size:1.4rem; color:white;"></i>
+                    </div>
+                    <div style="flex:1; min-width:200px;">
+                        <div style="font-weight:800; font-size:1.05rem; color:${balanceColor};">${balanceMsg}</div>
+                        ${consejo ? `<div style="font-size:0.82rem; color:var(--text-muted); margin-top:3px;">${consejo}</div>` : ''}
+                    </div>
+                    ${tieneVentas ? `
+                    <div style="display:flex; gap:20px; flex-wrap:wrap; font-size:0.82rem;">
+                        <div style="text-align:center;">
+                            <div style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; font-weight:600;">Ventas Brutas</div>
+                            <div style="font-weight:700; color:var(--text-primary);">${fmt(ventasBrutoMes)}</div>
+                        </div>
+                        <div style="text-align:center;">
+                            <div style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; font-weight:600;">IVA Débito</div>
+                            <div style="font-weight:700; color:#dc2626;">${fmt(ivaDebito)}</div>
+                        </div>
+                        <div style="text-align:center;">
+                            <div style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; font-weight:600;">IVA Crédito</div>
+                            <div style="font-weight:700; color:#16a34a;">${fmt(ivaCredito)}</div>
+                        </div>
+                        <div style="text-align:center;">
+                            <div style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; font-weight:600;">Diferencia</div>
+                            <div style="font-weight:800; color:${balanceColor};">${balanceIva >= 0 ? '' : '-'}${fmt(balanceIva)}</div>
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+
                 <div class="sii-counter-cell">
-                    <div class="sii-counter-label">Neto del Mes</div>
+                    <div class="sii-counter-label">Neto Compras</div>
                     <div class="sii-counter-value" style="color:#2563eb;">${sign(totalNeto)}${fmt(totalNeto)}</div>
                     <div class="sii-counter-sub">${diffNeto !== null ? `${diffNeto > 0 ? '+' : ''}${diffNeto}% vs mes anterior` : 'Sin datos previos'}</div>
                 </div>
