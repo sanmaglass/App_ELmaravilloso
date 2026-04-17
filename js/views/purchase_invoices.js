@@ -54,7 +54,12 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
         <!-- SII SYNC STATUS BANNER -->
         <div id="sii-sync-banner" style="display:none; margin-bottom:20px;"></div>
 
-        <!-- 📊 ANALYTICS PANEL -->
+        <!-- CONTADOR DIGITAL TRIBUTARIO -->
+        <div id="sii-contador" style="margin-bottom:24px;">
+            <!-- Injected by renderContadorDigital() -->
+        </div>
+
+        <!-- 📊 ANALYTICS PANEL (cards resumen) -->
         <div id="invoice-analytics" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;">
             <!-- Stats cards will be injected here -->
         </div>
@@ -121,6 +126,7 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     // Initialize component
     await initDateFilter();
     await populateSupplierFilter();
+    await renderContadorDigital();
     await renderAnalytics();
     await renderPendingDocuments();
     await renderCreditAlerts();
@@ -474,6 +480,211 @@ async function initDateFilter() {
         filter.value = 'all';
 
     } catch (e) { console.error('Error init date filter', e); }
+}
+
+// --- CONTADOR DIGITAL TRIBUTARIO ---
+async function renderContadorDigital(periodoOverride = null) {
+    const panel = document.getElementById('sii-contador');
+    if (!panel) return;
+
+    try {
+        const invoices = (await window.db.purchase_invoices.toArray()).filter(i => !i.deleted && i.siiImportado);
+
+        // Determinar período actual y generar lista de meses disponibles
+        const now = new Date();
+        const currentPeriodo = periodoOverride || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        // Meses disponibles (de los datos reales)
+        const mesesSet = new Set();
+        invoices.forEach(inv => {
+            if (inv.date) mesesSet.add(inv.date.substring(0, 7));
+        });
+        const mesesDisponibles = [...mesesSet].sort().reverse();
+
+        // Facturas del período seleccionado
+        const del_mes = invoices.filter(i => i.date && i.date.startsWith(currentPeriodo));
+
+        // Calcular totales tributarios desde campos SII
+        let totalNeto = 0, totalIva = 0, totalExento = 0, totalBruto = 0;
+        let countFacturas = 0, countNC = 0;
+
+        del_mes.forEach(inv => {
+            const neto = inv.siiMontoNeto || 0;
+            const iva = inv.siiMontoIva || 0;
+            const exento = inv.siiMontoExento || 0;
+            const total = Math.abs(inv.amount || 0);
+
+            if (inv.siiTipoDoc === 61) {
+                // Nota de Crédito: resta
+                totalNeto -= neto;
+                totalIva -= iva;
+                totalExento -= exento;
+                totalBruto -= total;
+                countNC++;
+            } else {
+                totalNeto += neto;
+                totalIva += iva;
+                totalExento += exento;
+                totalBruto += total;
+                countFacturas++;
+            }
+        });
+
+        // PPM: ~1% del neto (tasa estándar para PyMEs en Chile)
+        const ppmEstimado = Math.round(totalNeto * 0.01);
+
+        // Nombre del período
+        const [pY, pM] = currentPeriodo.split('-').map(Number);
+        const periodoNombre = new Date(pY, pM - 1, 1)
+            .toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+        const periodoLabel = periodoNombre.charAt(0).toUpperCase() + periodoNombre.slice(1);
+
+        // Mes anterior para comparación
+        const prevDate = new Date(pY, pM - 2, 1);
+        const prevPeriodo = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+        const del_prev = invoices.filter(i => i.date && i.date.startsWith(prevPeriodo));
+        const prevNeto = del_prev.reduce((s, i) => {
+            const n = i.siiMontoNeto || 0;
+            return s + (i.siiTipoDoc === 61 ? -n : n);
+        }, 0);
+        const diffNeto = prevNeto > 0 ? (((totalNeto - prevNeto) / prevNeto) * 100).toFixed(0) : null;
+
+        // Options del selector de meses
+        const mesesOptions = mesesDisponibles.map(m => {
+            const [y2, m2] = m.split('-').map(Number);
+            const label = new Date(y2, m2 - 1, 1).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+            const labelCap = label.charAt(0).toUpperCase() + label.slice(1);
+            return `<option value="${m}" ${m === currentPeriodo ? 'selected' : ''}>${labelCap}</option>`;
+        }).join('');
+
+        const fmt = (n) => '$' + Math.abs(n).toLocaleString('es-CL');
+        const sign = (n) => n < 0 ? '-' : '';
+
+        panel.innerHTML = `
+            <style>
+                .sii-contador-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr 1fr;
+                    gap: 0;
+                    border-radius: 16px;
+                    overflow: hidden;
+                    border: 2px solid var(--border);
+                    background: var(--bg-card);
+                }
+                .sii-contador-header {
+                    grid-column: 1 / -1;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 16px 20px;
+                    background: linear-gradient(135deg, #1e293b, #0f172a);
+                    color: white;
+                    flex-wrap: wrap;
+                    gap: 12px;
+                }
+                .dark-mode .sii-contador-header {
+                    background: linear-gradient(135deg, #0f172a, #020617);
+                }
+                .sii-contador-header h2 {
+                    font-size: 1.1rem;
+                    font-weight: 700;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin: 0;
+                }
+                .sii-counter-cell {
+                    padding: 20px;
+                    text-align: center;
+                    border-right: 1px solid var(--border);
+                    border-bottom: 1px solid var(--border);
+                }
+                .sii-counter-cell:nth-child(3n+1) { border-right: 1px solid var(--border); }
+                .sii-counter-cell:last-child, .sii-counter-cell:nth-child(3n) { border-right: none; }
+                .sii-counter-label {
+                    font-size: 0.72rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    color: var(--text-muted);
+                    margin-bottom: 6px;
+                }
+                .sii-counter-value {
+                    font-size: 1.5rem;
+                    font-weight: 800;
+                    font-variant-numeric: tabular-nums;
+                    font-family: 'Outfit', monospace;
+                    line-height: 1.2;
+                }
+                .sii-counter-sub {
+                    font-size: 0.72rem;
+                    color: var(--text-muted);
+                    margin-top: 4px;
+                }
+                @media (max-width: 640px) {
+                    .sii-contador-grid { grid-template-columns: 1fr 1fr; }
+                    .sii-counter-value { font-size: 1.1rem; }
+                    .sii-counter-cell { padding: 14px 10px; }
+                }
+            </style>
+            <div class="sii-contador-grid">
+                <div class="sii-contador-header">
+                    <h2><i class="ph ph-calculator"></i> Contador Tributario</h2>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <select id="contador-periodo-select" style="background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.3); border-radius:8px; padding:6px 12px; font-size:0.85rem; font-weight:600; cursor:pointer;">
+                            ${mesesOptions}
+                        </select>
+                        <span style="font-size:0.8rem; opacity:0.7;">${countFacturas} fact. · ${countNC} NC</span>
+                    </div>
+                </div>
+
+                <div class="sii-counter-cell">
+                    <div class="sii-counter-label">Neto del Mes</div>
+                    <div class="sii-counter-value" style="color:#2563eb;">${sign(totalNeto)}${fmt(totalNeto)}</div>
+                    <div class="sii-counter-sub">${diffNeto !== null ? `${diffNeto > 0 ? '+' : ''}${diffNeto}% vs mes anterior` : 'Sin datos previos'}</div>
+                </div>
+
+                <div class="sii-counter-cell">
+                    <div class="sii-counter-label">IVA Crédito Fiscal</div>
+                    <div class="sii-counter-value" style="color:#16a34a;">${sign(totalIva)}${fmt(totalIva)}</div>
+                    <div class="sii-counter-sub">IVA recuperable de compras</div>
+                </div>
+
+                <div class="sii-counter-cell">
+                    <div class="sii-counter-label">Total Bruto</div>
+                    <div class="sii-counter-value" style="color:var(--text-primary);">${sign(totalBruto)}${fmt(totalBruto)}</div>
+                    <div class="sii-counter-sub">${totalExento > 0 ? `Exento: ${fmt(totalExento)}` : 'Sin montos exentos'}</div>
+                </div>
+
+                <div class="sii-counter-cell">
+                    <div class="sii-counter-label">PPM Estimado</div>
+                    <div class="sii-counter-value" style="color:#f59e0b;">${fmt(ppmEstimado)}</div>
+                    <div class="sii-counter-sub">~1% sobre neto</div>
+                </div>
+
+                <div class="sii-counter-cell">
+                    <div class="sii-counter-label">Pendiente de Pago</div>
+                    <div class="sii-counter-value" style="color:#dc2626;">${fmt(del_mes.filter(i => i.paymentStatus === 'Pendiente' || i.paymentStatus === 'Abonado').reduce((s, i) => s + Math.max(0, (parseFloat(i.amount) || 0) - (parseFloat(i.paidAmount) || 0)), 0))}</div>
+                    <div class="sii-counter-sub">${del_mes.filter(i => i.paymentStatus === 'Pendiente').length} facturas sin pagar</div>
+                </div>
+
+                <div class="sii-counter-cell">
+                    <div class="sii-counter-label">Proveedores</div>
+                    <div class="sii-counter-value" style="color:#7c3aed;">${new Set(del_mes.map(i => i.siiRutProveedor).filter(Boolean)).size}</div>
+                    <div class="sii-counter-sub">RUTs distintos del mes</div>
+                </div>
+            </div>
+        `;
+
+        // Listener para cambiar de mes
+        document.getElementById('contador-periodo-select')?.addEventListener('change', (e) => {
+            renderContadorDigital(e.target.value);
+        });
+
+    } catch (e) {
+        console.error('Error renderContadorDigital:', e);
+        panel.innerHTML = '';
+    }
 }
 
 // --- ANALYTICS PANEL ---
