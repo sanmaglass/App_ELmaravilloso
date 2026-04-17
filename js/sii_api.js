@@ -1,15 +1,22 @@
 /**
  * SII API Service — Consulta RCV vía BaseAPI.cl
- * Credenciales en localStorage (misma pattern que Supabase config)
+ * Defaults hardcodeados para la cuenta principal.
+ * Se pueden sobreescribir desde Settings (localStorage).
  */
 window.SII_API = {
 
-    // Credenciales (almacenadas en localStorage desde Settings)
+    // Defaults de la cuenta principal (sobreescribibles desde Settings)
+    _defaults: {
+        apiKey: 'sk_8bc5fa1e06cb022e94f09760069cedd3cb3709af8622ea46',
+        rut: '14061423-8',
+        password: 'Ubiobio56!'
+    },
+
     getConfig() {
         return {
-            apiKey: localStorage.getItem('sii_baseapi_key') || '',
-            rut: localStorage.getItem('sii_rut') || '',
-            password: localStorage.getItem('sii_password') || ''
+            apiKey: localStorage.getItem('sii_baseapi_key') || this._defaults.apiKey,
+            rut: localStorage.getItem('sii_rut') || this._defaults.rut,
+            password: localStorage.getItem('sii_password') || this._defaults.password
         };
     },
 
