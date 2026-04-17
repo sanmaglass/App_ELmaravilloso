@@ -234,8 +234,9 @@ async function syncFromSII(silent = false) {
     }
 
     try {
-        // Importar últimos 2 meses (mes actual + mes anterior)
-        const results = await window.SII_API.importarMultiplesPeriodos(2);
+        // Manual: 2 meses, Auto (silent): solo mes actual
+        const meses = silent ? 1 : 2;
+        const results = await window.SII_API.importarMultiplesPeriodos(meses);
 
         let totalImported = 0;
         let totalSkipped = 0;
@@ -408,12 +409,12 @@ async function autoSyncSII() {
         return;
     }
 
-    // Sync normal (no primera vez): últimos 2 meses, máx cada 5 min
+    // Sync normal (no primera vez): solo mes actual, máx cada 30 min
     const lastSync = parseInt(localStorage.getItem('sii_last_auto_sync') || '0');
     const now = Date.now();
-    const FIVE_MIN = 5 * 60 * 1000;
+    const THIRTY_MIN = 30 * 60 * 1000;
 
-    if (now - lastSync < FIVE_MIN) {
+    if (now - lastSync < THIRTY_MIN) {
         if (banner) {
             const lastDate = new Date(lastSync);
             banner.style.display = 'block';

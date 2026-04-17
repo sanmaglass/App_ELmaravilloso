@@ -282,15 +282,30 @@ window.SII_API = {
 
     /**
      * Obtiene totales tributarios de ventas (RCV Ventas) para un período.
-     * Cachea en sessionStorage para no llamar a la API cada vez.
+     * Caché inteligente:
+     *   - Meses pasados → localStorage permanente (no cambian)
+     *   - Mes actual → localStorage con TTL de 30 minutos
      * @param {string} periodo - Formato YYYY-MM
+     * @param {boolean} forceRefresh - Forzar recarga desde API
      * @returns {Object} { neto, iva, exento, total, facturas, notasCredito }
      */
-    async obtenerTotalesVentas(periodo) {
-        // Cache en sessionStorage (dura la sesión del browser)
+    async obtenerTotalesVentas(periodo, forceRefresh = false) {
         const cacheKey = `sii_ventas_${periodo}`;
-        const cached = sessionStorage.getItem(cacheKey);
-        if (cached) return JSON.parse(cached);
+        const now = new Date();
+        const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const esMesActual = periodo === mesActual;
+
+        // Revisar caché
+        if (!forceRefresh) {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                const data = JSON.parse(cached);
+                // Meses pasados: caché permanente
+                if (!esMesActual) return data;
+                // Mes actual: válido por 30 min
+                if (data._ts && (Date.now() - data._ts) < 30 * 60 * 1000) return data;
+            }
+        }
 
         const result = await this.consultarRCV(periodo, 'venta');
 
@@ -319,8 +334,8 @@ window.SII_API = {
             }
         }
 
-        const datos = { neto, iva, exento, total, facturas, notasCredito };
-        sessionStorage.setItem(cacheKey, JSON.stringify(datos));
+        const datos = { neto, iva, exento, total, facturas, notasCredito, _ts: Date.now() };
+        localStorage.setItem(cacheKey, JSON.stringify(datos));
         return datos;
     }
 };
