@@ -35,6 +35,10 @@ const views = {
 // sha256("sanmaglass@gmail.com:sanma123")
 const AUTH_HASH = '3116f6b417a96bd88af00cd66a352106f0f9c55f3a6b43382de61360ec2e2f82';
 
+// Versión de sesión — incrementar para forzar re-login en TODOS los dispositivos
+// Cualquier sesión guardada con una versión distinta se invalida automáticamente
+const SESSION_VERSION = '2';
+
 async function sha256(text) {
     const data = new TextEncoder().encode(text);
     const hash = await crypto.subtle.digest('SHA-256', data);
@@ -48,7 +52,7 @@ function showEmailGate() {
     document.body.innerHTML = `
         <div id="email-gate" style="position:fixed; inset:0; background:#080a0c; display:flex; align-items:center; justify-content:center; font-family:'Outfit',sans-serif; z-index:99999;">
             <div style="width:90%; max-width:380px; text-align:center;">
-                <img src="icons/icon-192x192.png" alt="Logo" style="width:80px; height:80px; border-radius:20px; margin-bottom:24px; box-shadow:0 12px 40px rgba(220,38,38,0.3);">
+                <img src="assets/logo-dark.png" alt="Logo" style="width:80px; height:80px; border-radius:20px; margin-bottom:24px; box-shadow:0 12px 40px rgba(220,38,38,0.3);">
                 <h1 style="color:#fff; font-size:1.4rem; font-weight:700; margin:0 0 6px;">El Maravilloso</h1>
                 <p style="color:rgba(255,255,255,0.4); font-size:0.75rem; margin:0 0 32px; letter-spacing:0.1em; text-transform:uppercase;">Acceso Autorizado</p>
                 <input id="gate-email" type="email" placeholder="Correo" autocomplete="email" autofocus
@@ -116,26 +120,31 @@ function showEmailGate() {
         localStorage.setItem('wm_auth_token', hash);
         localStorage.setItem('wm_auth_email', email);
         localStorage.setItem('wm_user', email.split('@')[0]);
+        localStorage.setItem('wm_session_version', SESSION_VERSION);
         window.location.reload();
     }
 
     btn.addEventListener('click', attemptLogin);
-    emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptLogin(); });
+    emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passInput.focus(); });
+    passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptLogin(); });
     emailInput.addEventListener('input', () => { errorEl.textContent = ''; emailInput.style.borderColor = 'rgba(255,255,255,0.1)'; });
+    passInput.addEventListener('input', () => { errorEl.textContent = ''; passInput.style.borderColor = 'rgba(255,255,255,0.1)'; });
 }
 
 // Initialize App
 async function init() {
     try {
-        // --- AUTH CHECK (Email + Password Gate) ---
+        // --- AUTH CHECK (Email + Password Gate + Session Version) ---
         const isAuth = localStorage.getItem('wm_auth');
         const authToken = localStorage.getItem('wm_auth_token');
+        const sessionVer = localStorage.getItem('wm_session_version');
 
-        if (!isAuth || authToken !== AUTH_HASH) {
+        if (!isAuth || authToken !== AUTH_HASH || sessionVer !== SESSION_VERSION) {
             localStorage.removeItem('wm_auth');
             localStorage.removeItem('wm_auth_token');
             localStorage.removeItem('wm_auth_email');
             localStorage.removeItem('wm_user');
+            localStorage.removeItem('wm_session_version');
             showEmailGate();
             return;
         }
