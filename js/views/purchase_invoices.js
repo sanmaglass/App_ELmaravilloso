@@ -315,15 +315,90 @@ async function syncFromSII(silent = false) {
     }
 }
 
-// Auto-sync silencioso al cargar la vista (máx 1 vez cada 5 minutos)
+// Auto-sync al cargar la vista
+// Primera vez: importa 12 meses de historial
+// Después: solo últimos 2 meses, máx cada 5 minutos
 async function autoSyncSII() {
+    const banner = document.getElementById('sii-sync-banner');
+    const btn = document.getElementById('btn-sync-sii');
+
+    // ¿Primera vez? → Importar historial completo (12 meses)
+    const historicoHecho = localStorage.getItem('sii_historico_importado');
+    if (!historicoHecho) {
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Importando historial...'; }
+        if (banner) {
+            banner.style.display = 'block';
+            banner.innerHTML = `
+                <div style="background:linear-gradient(135deg, #eff6ff, #dbeafe); border:2px solid #3b82f6; border-radius:12px; padding:20px; text-align:center;">
+                    <div class="spinner" style="width:32px; height:32px; border-width:3px; margin:0 auto 12px;"></div>
+                    <div style="font-weight:700; color:#1e40af; font-size:1.1rem;">Primera sincronización con el SII</div>
+                    <div id="sii-progress" style="font-size:0.9rem; color:#3b82f6; margin-top:8px;">Preparando importación de 12 meses...</div>
+                    <div style="font-size:0.8rem; color:#93c5fd; margin-top:4px;">Esto solo ocurre una vez. Tus proveedores y facturas se cargarán automáticamente.</div>
+                </div>
+            `;
+        }
+
+        try {
+            const results = await window.SII_API.importarHistorico((periodo, idx, total) => {
+                const progress = document.getElementById('sii-progress');
+                if (progress) progress.textContent = `Importando ${periodo}... (${idx}/${total})`;
+            });
+
+            if (results) {
+                let totalImported = 0, totalSuppliers = 0, totalUpdated = 0;
+                results.forEach(r => {
+                    if (!r.error) {
+                        totalImported += r.imported;
+                        totalSuppliers += r.newSuppliers;
+                        totalUpdated += (r.updatedSuppliers || 0);
+                    }
+                });
+
+                if (banner) {
+                    banner.innerHTML = `
+                        <div style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); border:2px solid #22c55e; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <i class="ph ph-check-circle" style="font-size:2rem; color:#16a34a;"></i>
+                            <div style="flex:1; min-width:200px;">
+                                <div style="font-weight:700; color:#166534; font-size:1.05rem;">Historial SII importado con éxito</div>
+                                <div style="font-size:0.85rem; color:#16a34a; margin-top:4px;">
+                                    <b>${totalImported}</b> facturas · <b>${totalSuppliers}</b> proveedores nuevos${totalUpdated > 0 ? ` · ${totalUpdated} actualizados` : ''} · 12 meses de historial
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Refrescar toda la vista
+                await initDateFilter();
+                await populateSupplierFilter();
+                await renderAnalytics();
+                await renderPendingDocuments();
+                await renderCreditAlerts();
+                renderInvoices();
+            }
+        } catch (err) {
+            console.error('Error importando historial SII:', err);
+            if (banner) {
+                banner.innerHTML = `
+                    <div style="background:#fef2f2; border:2px solid #dc2626; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px;">
+                        <i class="ph ph-warning-circle" style="font-size:1.5rem; color:#dc2626;"></i>
+                        <div><b style="color:#991b1b;">Error:</b> <span style="color:#dc2626;">${err.message}</span></div>
+                    </div>
+                `;
+            }
+        }
+
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ph ph-cloud-arrow-down"></i> Sincronizar SII'; }
+        localStorage.setItem('sii_last_auto_sync', String(Date.now()));
+        return;
+    }
+
+    // Sync normal (no primera vez): últimos 2 meses, máx cada 5 min
     const lastSync = parseInt(localStorage.getItem('sii_last_auto_sync') || '0');
     const now = Date.now();
     const FIVE_MIN = 5 * 60 * 1000;
 
     if (now - lastSync < FIVE_MIN) {
-        // Mostrar banner de última sync
-        const banner = document.getElementById('sii-sync-banner');
         if (banner) {
             const lastDate = new Date(lastSync);
             banner.style.display = 'block';

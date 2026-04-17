@@ -60,9 +60,52 @@ window.SII_API = {
     },
 
     /**
-     * Importa facturas del RCV a la BD local, auto-crea proveedores
+     * Normaliza un nombre para comparación (quita tildes, puntos, mayúsculas, etc.)
+     */
+    _normalizeName(name) {
+        return (name || '')
+            .toUpperCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita tildes
+            .replace(/[.\-,]/g, '') // quita puntos, guiones, comas
+            .replace(/\s+/g, ' ')   // colapsa espacios
+            .replace(/\b(S\.?A\.?|SPA|LTDA\.?|LIMITADA|E\.?I\.?R\.?L\.?|CIA\.?)\b/g, '') // quita sufijos legales
+            .trim();
+    },
+
+    /**
+     * Busca un proveedor existente por RUT o por nombre similar.
+     * Si lo encuentra sin RUT, lo actualiza con el RUT del SII.
+     * @returns {Object|null} El proveedor encontrado o null
+     */
+    _findSupplier(rutSII, nombreSII, activeSuppliers, supplierByRut, supplierByName) {
+        // 1. Buscar por RUT exacto (prioridad máxima)
+        if (rutSII && supplierByRut[rutSII]) {
+            return supplierByRut[rutSII];
+        }
+
+        // 2. Buscar por nombre normalizado (para proveedores creados manualmente sin RUT)
+        const normalizedSII = this._normalizeName(nombreSII);
+        if (normalizedSII && supplierByName[normalizedSII]) {
+            return supplierByName[normalizedSII];
+        }
+
+        // 3. Buscar parcial: si el nombre SII contiene el nombre local o viceversa
+        for (const s of activeSuppliers) {
+            const normalizedLocal = this._normalizeName(s.name);
+            if (normalizedLocal && normalizedSII) {
+                if (normalizedLocal.includes(normalizedSII) || normalizedSII.includes(normalizedLocal)) {
+                    return s;
+                }
+            }
+        }
+
+        return null;
+    },
+
+    /**
+     * Importa facturas del RCV a la BD local, auto-crea/actualiza proveedores
      * @param {string} periodo - Formato YYYY-MM
-     * @returns {Object} { imported, skipped, newSuppliers, errors }
+     * @returns {Object} { imported, skipped, newSuppliers, updatedSuppliers, errors }
      */
     async importarFacturas(periodo) {
         const result = await this.consultarRCV(periodo, 'compra');
@@ -72,7 +115,7 @@ window.SII_API = {
         }
 
         const datos = result.data.datos;
-        const stats = { imported: 0, skipped: 0, newSuppliers: 0, errors: [] };
+        const stats = { imported: 0, skipped: 0, newSuppliers: 0, updatedSuppliers: 0, errors: [] };
 
         // Cargar proveedores y facturas existentes
         const [existingSuppliers, existingInvoices] = await Promise.all([
@@ -80,20 +123,29 @@ window.SII_API = {
             window.db.purchase_invoices.toArray()
         ]);
 
+        const activeSuppliers = existingSuppliers.filter(s => !s.deleted);
         const activeInvoices = existingInvoices.filter(i => !i.deleted);
 
         // Índice de facturas existentes por folio+rut para evitar duplicados
         const invoiceIndex = new Set();
         activeInvoices.forEach(inv => {
+            // Detectar por folio+rut SII o por invoiceNumber solo
             if (inv.invoiceNumber && inv.siiRutProveedor) {
                 invoiceIndex.add(`${inv.invoiceNumber}_${inv.siiRutProveedor}`);
             }
+            // También indexar por invoiceNumber + supplierId (para facturas manuales)
+            if (inv.invoiceNumber && inv.supplierId) {
+                invoiceIndex.add(`manual_${inv.invoiceNumber}_${inv.supplierId}`);
+            }
         });
 
-        // Índice de proveedores por RUT
+        // Índices de proveedores por RUT y por nombre normalizado
         const supplierByRut = {};
-        existingSuppliers.filter(s => !s.deleted).forEach(s => {
+        const supplierByName = {};
+        activeSuppliers.forEach(s => {
             if (s.rut) supplierByRut[s.rut.toUpperCase()] = s;
+            const norm = this._normalizeName(s.name);
+            if (norm) supplierByName[norm] = s;
         });
 
         for (const factura of datos) {
@@ -101,27 +153,49 @@ window.SII_API = {
                 // Saltar filas sin Nro (son sub-líneas de impuestos adicionales)
                 if (!factura['Nro'] || factura['Nro'] === '') continue;
 
-                // Solo importar facturas (33) y facturas exentas (34)
-                // Las notas de crédito (61) se importan como referencia
                 const tipoDoc = parseInt(factura['Tipo Doc']);
                 if (![33, 34, 61].includes(tipoDoc)) continue;
 
                 const folio = factura['Folio'];
                 const rutProveedor = (factura['RUT Proveedor'] || '').toUpperCase();
-                const razonSocial = factura['Razon Social'] || '';
+                const razonSocial = (factura['Razon Social'] || '').trim();
 
-                // Verificar si ya existe
+                // Verificar si ya existe por folio+rut
                 const key = `${folio}_${rutProveedor}`;
                 if (invoiceIndex.has(key)) {
                     stats.skipped++;
                     continue;
                 }
 
-                // Auto-crear proveedor si no existe
-                let supplier = supplierByRut[rutProveedor];
-                if (!supplier && rutProveedor) {
+                // --- BUSCAR O CREAR PROVEEDOR ---
+                let supplier = this._findSupplier(rutProveedor, razonSocial, activeSuppliers, supplierByRut, supplierByName);
+
+                if (supplier) {
+                    // Proveedor existente: actualizar con datos del SII si le faltan
+                    let needsUpdate = false;
+                    const updates = { ...supplier };
+
+                    if (!supplier.rut && rutProveedor) {
+                        updates.rut = rutProveedor;
+                        needsUpdate = true;
+                    }
+                    // Actualizar nombre si el del SII es más completo (razón social oficial)
+                    if (razonSocial && supplier.name !== razonSocial && razonSocial.length > supplier.name.length) {
+                        updates.name = razonSocial;
+                        needsUpdate = true;
+                    }
+
+                    if (needsUpdate) {
+                        await window.DataManager.saveAndSync('suppliers', updates);
+                        // Actualizar índices
+                        if (updates.rut) supplierByRut[updates.rut.toUpperCase()] = updates;
+                        supplierByName[this._normalizeName(updates.name)] = updates;
+                        stats.updatedSuppliers++;
+                    }
+                } else if (rutProveedor) {
+                    // Proveedor nuevo: crear desde datos del SII
                     const newSupplier = {
-                        name: razonSocial.trim() || rutProveedor,
+                        name: razonSocial || rutProveedor,
                         rut: rutProveedor,
                         deleted: false
                     };
@@ -129,11 +203,24 @@ window.SII_API = {
                     // Re-leer para obtener el ID generado
                     const allSup = await window.db.suppliers.toArray();
                     supplier = allSup.find(s => s.rut === rutProveedor && !s.deleted);
-                    supplierByRut[rutProveedor] = supplier;
+                    if (supplier) {
+                        supplierByRut[rutProveedor] = supplier;
+                        supplierByName[this._normalizeName(supplier.name)] = supplier;
+                        activeSuppliers.push(supplier);
+                    }
                     stats.newSuppliers++;
                 }
 
-                // Parsear montos (vienen como string)
+                // También verificar por factura manual con mismo número + proveedor
+                if (supplier) {
+                    const manualKey = `manual_${folio}_${supplier.id}`;
+                    if (invoiceIndex.has(manualKey)) {
+                        stats.skipped++;
+                        continue;
+                    }
+                }
+
+                // Parsear montos
                 const montoNeto = parseInt(factura['Monto Neto']) || 0;
                 const montoIva = parseInt(factura['Monto IVA Recuperable']) || 0;
                 const montoExento = parseInt(factura['Monto Exento']) || 0;
@@ -145,19 +232,17 @@ window.SII_API = {
                     ? `${fechaParts[2]}-${fechaParts[1]}-${fechaParts[0]}`
                     : periodo + '-01';
 
-                // Nombre del tipo de documento
                 const tipoDocNombre = tipoDoc === 33 ? 'Factura'
                     : tipoDoc === 34 ? 'Factura Exenta'
                     : tipoDoc === 61 ? 'Nota de Crédito' : `DTE ${tipoDoc}`;
 
-                // Generar período legible
                 const [y, m] = periodo.split('-');
                 const periodoLabel = new Date(Number(y), Number(m) - 1, 1)
                     .toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 
                 const invoiceData = {
                     supplierId: supplier?.id || null,
-                    supplierName: razonSocial.trim(),
+                    supplierName: razonSocial,
                     invoiceNumber: String(folio),
                     date: fechaISO,
                     amount: tipoDoc === 61 ? -montoTotal : montoTotal,
@@ -167,7 +252,6 @@ window.SII_API = {
                     paidAmount: 0,
                     notes: `${tipoDocNombre} · Neto: $${montoNeto.toLocaleString('es-CL')} · IVA: $${montoIva.toLocaleString('es-CL')}${montoExento > 0 ? ` · Exento: $${montoExento.toLocaleString('es-CL')}` : ''}`,
                     deleted: false,
-                    // Campos SII para rastreo
                     siiTipoDoc: tipoDoc,
                     siiRutProveedor: rutProveedor,
                     siiFolio: folio,
@@ -192,15 +276,18 @@ window.SII_API = {
 
     /**
      * Importa múltiples períodos de una vez
-     * @param {number} meses - Cantidad de meses hacia atrás (default: 1 = solo mes actual)
+     * @param {number} meses - Cantidad de meses hacia atrás
+     * @param {Function} onProgress - Callback de progreso (periodo, index, total)
      */
-    async importarMultiplesPeriodos(meses = 1) {
+    async importarMultiplesPeriodos(meses = 2, onProgress = null) {
         const results = [];
         const now = new Date();
 
         for (let i = 0; i < meses; i++) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const periodo = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+            if (onProgress) onProgress(periodo, i + 1, meses);
 
             try {
                 const stats = await this.importarFacturas(periodo);
@@ -210,6 +297,19 @@ window.SII_API = {
             }
         }
 
+        return results;
+    },
+
+    /**
+     * Primera sincronización completa: importa últimos 12 meses
+     * Solo se ejecuta una vez (guarda flag en localStorage)
+     */
+    async importarHistorico(onProgress = null) {
+        const flag = localStorage.getItem('sii_historico_importado');
+        if (flag) return null; // Ya se hizo
+
+        const results = await this.importarMultiplesPeriodos(12, onProgress);
+        localStorage.setItem('sii_historico_importado', new Date().toISOString());
         return results;
     }
 };
