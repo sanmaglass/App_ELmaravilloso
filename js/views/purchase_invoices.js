@@ -572,8 +572,6 @@ async function renderContadorDigital(periodoOverride = null) {
             }
         });
 
-        const ppmEstimado = Math.round(totalNeto * 0.01);
-
         // Mes anterior
         const [pY, pM] = currentPeriodo.split('-').map(Number);
         const prevPeriodo = `${new Date(pY, pM - 2, 1).getFullYear()}-${String(new Date(pY, pM - 2, 1).getMonth() + 1).padStart(2, '0')}`;
@@ -581,21 +579,23 @@ async function renderContadorDigital(periodoOverride = null) {
             .reduce((s, i) => s + ((i.siiTipoDoc === 61 ? -1 : 1) * (i.siiMontoNeto || 0)), 0);
         const diffNeto = prevNeto > 0 ? (((totalNeto - prevNeto) / prevNeto) * 100).toFixed(0) : null;
 
-        // Balance IVA: ventas vs compras
-        let ventasBrutoMes = 0;
+        // Balance IVA: datos REALES del SII (RCV Ventas)
+        let ventas = { neto: 0, iva: 0, exento: 0, total: 0, facturas: 0, notasCredito: 0 };
+        let ventasError = false;
         try {
-            const allEleventa = await window.db.eleventa_sales.toArray();
-            const eleventaMes = allEleventa.filter(s => !s.deleted && s.date && s.date.startsWith(currentPeriodo));
-            ventasBrutoMes += eleventaMes.reduce((s, e) => s + (parseFloat(e.total) || 0), 0);
-            const eleventaDates = new Set(eleventaMes.map(e => e.date?.split('T')[0]));
-            const manualMes = (await window.db.daily_sales.toArray()).filter(s => !s.deleted && s.date && s.date.startsWith(currentPeriodo));
-            manualMes.forEach(s => { if (!eleventaDates.has(s.date)) ventasBrutoMes += (parseFloat(s.total) || 0); });
-        } catch (e) { /* sin ventas */ }
+            ventas = await window.SII_API.obtenerTotalesVentas(currentPeriodo);
+        } catch (e) {
+            console.warn('No se pudieron obtener ventas del SII:', e.message);
+            ventasError = true;
+        }
 
-        const ivaDebito = Math.round(ventasBrutoMes - Math.round(ventasBrutoMes / 1.19));
-        const ivaCredito = totalIva;
-        const balanceIva = ivaDebito - ivaCredito;
-        const tieneVentas = ventasBrutoMes > 0;
+        const ivaDebito = ventas.iva;       // IVA Débito real del SII
+        const ivaCredito = totalIva;         // IVA Crédito de compras
+        const balanceIva = ivaDebito - ivaCredito;  // Lo que debes pagar
+        const tieneVentas = ventas.total > 0 || ventas.facturas > 0;
+
+        // PPM: se calcula sobre el neto de VENTAS, no de compras
+        const ppmSobreVentas = Math.round(ventas.neto * 0.01);
 
         // Selector de meses
         const mesesOptions = mesesDisponibles.map(m => {
@@ -606,16 +606,20 @@ async function renderContadorDigital(periodoOverride = null) {
 
         const fmt = (n) => '$' + Math.abs(n).toLocaleString('es-CL');
 
+        // Total F29 estimado = IVA neto + PPM
+        const f29Estimado = Math.max(0, balanceIva) + ppmSobreVentas;
+
         // Balance visual
         let bMsg, bColor, bBg, bIcon;
-        if (!tieneVentas) { bMsg='Sin datos de ventas para este mes'; bColor='#6b7280'; bBg='rgba(107,114,128,0.06)'; bIcon='ph-info'; }
-        else if (balanceIva > 0) { bMsg=`Debes pagar ${fmt(balanceIva)} de IVA al SII`; bColor='#dc2626'; bBg='rgba(220,38,38,0.06)'; bIcon='ph-arrow-up-right'; }
-        else if (balanceIva < 0) { bMsg=`Remanente IVA a favor: ${fmt(Math.abs(balanceIva))}`; bColor='#16a34a'; bBg='rgba(22,163,106,0.06)'; bIcon='ph-arrow-down-right'; }
-        else { bMsg='IVA equilibrado'; bColor='#2563eb'; bBg='rgba(37,99,235,0.06)'; bIcon='ph-equals'; }
+        if (ventasError) { bMsg='No se pudieron cargar ventas del SII'; bColor='#f59e0b'; bBg='rgba(245,158,11,0.06)'; bIcon='ph-warning'; }
+        else if (!tieneVentas) { bMsg='Sin ventas registradas en el SII para este mes'; bColor='#6b7280'; bBg='rgba(107,114,128,0.06)'; bIcon='ph-info'; }
+        else if (f29Estimado > 0) { bMsg=`Impuesto estimado (F29): ${fmt(f29Estimado)}`; bColor='#dc2626'; bBg='rgba(220,38,38,0.06)'; bIcon='ph-arrow-up-right'; }
+        else { bMsg=`Remanente IVA a favor: ${fmt(Math.abs(balanceIva))}`; bColor='#16a34a'; bBg='rgba(22,163,106,0.06)'; bIcon='ph-arrow-down-right'; }
 
         let tip = '';
-        if (tieneVentas && balanceIva > 50000) tip = 'Podrías adelantar compras con factura para reducir el IVA a pagar.';
-        else if (tieneVentas && balanceIva < -50000) tip = 'Tus compras superan las ventas. Busca vender más o reducir compras.';
+        if (tieneVentas && f29Estimado > 50000) tip = `IVA: ${fmt(Math.max(0, balanceIva))} + PPM: ${fmt(ppmSobreVentas)} = ${fmt(f29Estimado)} · Podrías adelantar compras con factura para reducir el IVA.`;
+        else if (tieneVentas && balanceIva < 0) tip = `Remanente de ${fmt(Math.abs(balanceIva))} se arrastra al mes siguiente. PPM: ${fmt(ppmSobreVentas)}.`;
+        else if (tieneVentas) tip = `IVA: ${fmt(Math.max(0, balanceIva))} + PPM: ${fmt(ppmSobreVentas)}`;
 
         // Pendientes
         const pendMonto = del_mes.filter(i => i.paymentStatus === 'Pendiente' || i.paymentStatus === 'Abonado')
@@ -641,12 +645,12 @@ async function renderContadorDigital(periodoOverride = null) {
                         <div style="font-weight:800; font-size:1rem; color:${bColor};">${bMsg}</div>
                         ${tip ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">${tip}</div>` : ''}
                     </div>
-                    ${tieneVentas ? `
+                    ${tieneVentas || ventasError ? `
                     <div class="sii-balance-stats">
-                        <div><div class="lbl">Ventas</div><div class="val" style="color:var(--text-primary);">${fmt(ventasBrutoMes)}</div></div>
+                        <div><div class="lbl">Ventas Neto</div><div class="val" style="color:var(--text-primary);">${fmt(ventas.neto)}</div></div>
                         <div><div class="lbl">IVA Débito</div><div class="val" style="color:#dc2626;">${fmt(ivaDebito)}</div></div>
                         <div><div class="lbl">IVA Crédito</div><div class="val" style="color:#16a34a;">${fmt(ivaCredito)}</div></div>
-                        <div><div class="lbl">Diferencia</div><div class="val" style="color:${bColor};">${balanceIva >= 0 ? '' : '-'}${fmt(balanceIva)}</div></div>
+                        <div><div class="lbl">PPM</div><div class="val" style="color:#f59e0b;">${fmt(ppmSobreVentas)}</div></div>
                     </div>` : ''}
                 </div>
 
@@ -662,14 +666,14 @@ async function renderContadorDigital(periodoOverride = null) {
                         <div class="sub">IVA recuperable</div>
                     </div>
                     <div class="sii-cell">
-                        <div class="lbl">Total Bruto</div>
-                        <div class="val" style="color:var(--text-primary);">${totalBruto < 0 ? '-' : ''}${fmt(totalBruto)}</div>
-                        <div class="sub">${totalExento > 0 ? `Exento: ${fmt(totalExento)}` : 'Neto + IVA'}</div>
+                        <div class="lbl">Neto Ventas (SII)</div>
+                        <div class="val" style="color:#7c3aed;">${fmt(ventas.neto)}</div>
+                        <div class="sub">${ventas.facturas} fact. emitidas${ventas.notasCredito > 0 ? ` · ${ventas.notasCredito} NC` : ''}</div>
                     </div>
                     <div class="sii-cell">
-                        <div class="lbl">PPM Estimado</div>
-                        <div class="val" style="color:#f59e0b;">${fmt(ppmEstimado)}</div>
-                        <div class="sub">~1% sobre neto</div>
+                        <div class="lbl">PPM (1% Ventas)</div>
+                        <div class="val" style="color:#f59e0b;">${fmt(ppmSobreVentas)}</div>
+                        <div class="sub">Sobre neto de ventas</div>
                     </div>
                     <div class="sii-cell">
                         <div class="lbl">Pendiente de Pago</div>

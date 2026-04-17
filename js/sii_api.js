@@ -278,5 +278,49 @@ window.SII_API = {
         localStorage.setItem(FLAG, new Date().toISOString());
         console.log(`🧹 Limpieza SII: ${stats.invoicesDeleted} facturas manuales eliminadas, ${stats.suppliersDeleted} proveedores sin RUT eliminados`);
         return stats;
+    },
+
+    /**
+     * Obtiene totales tributarios de ventas (RCV Ventas) para un período.
+     * Cachea en sessionStorage para no llamar a la API cada vez.
+     * @param {string} periodo - Formato YYYY-MM
+     * @returns {Object} { neto, iva, exento, total, facturas, notasCredito }
+     */
+    async obtenerTotalesVentas(periodo) {
+        // Cache en sessionStorage (dura la sesión del browser)
+        const cacheKey = `sii_ventas_${periodo}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) return JSON.parse(cached);
+
+        const result = await this.consultarRCV(periodo, 'venta');
+
+        if (!result.success || !result.data?.datos) {
+            return { neto: 0, iva: 0, exento: 0, total: 0, facturas: 0, notasCredito: 0 };
+        }
+
+        let neto = 0, iva = 0, exento = 0, total = 0, facturas = 0, notasCredito = 0;
+
+        for (const doc of result.data.datos) {
+            if (!doc['Nro'] || doc['Nro'] === '') continue;
+            const tipoDoc = parseInt(doc['Tipo Doc']);
+            if (![33, 34, 61].includes(tipoDoc)) continue;
+
+            const mNeto = parseInt(doc['Monto Neto']) || 0;
+            const mIva = parseInt(doc['Monto IVA']) || parseInt(doc['Monto IVA Recuperable']) || 0;
+            const mExento = parseInt(doc['Monto Exento']) || 0;
+            const mTotal = parseInt(doc['Monto Total']) || 0;
+
+            if (tipoDoc === 61) {
+                neto -= mNeto; iva -= mIva; exento -= mExento; total -= mTotal;
+                notasCredito++;
+            } else {
+                neto += mNeto; iva += mIva; exento += mExento; total += mTotal;
+                facturas++;
+            }
+        }
+
+        const datos = { neto, iva, exento, total, facturas, notasCredito };
+        sessionStorage.setItem(cacheKey, JSON.stringify(datos));
+        return datos;
     }
 };
