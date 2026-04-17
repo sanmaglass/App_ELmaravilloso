@@ -60,50 +60,8 @@ window.SII_API = {
     },
 
     /**
-     * Normaliza un nombre para comparación (quita tildes, puntos, mayúsculas, etc.)
-     */
-    _normalizeName(name) {
-        return (name || '')
-            .toUpperCase()
-            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita tildes
-            .replace(/[.\-,]/g, '') // quita puntos, guiones, comas
-            .replace(/\s+/g, ' ')   // colapsa espacios
-            .replace(/\b(S\.?A\.?|SPA|LTDA\.?|LIMITADA|E\.?I\.?R\.?L\.?|CIA\.?)\b/g, '') // quita sufijos legales
-            .trim();
-    },
-
-    /**
-     * Busca un proveedor existente por RUT o por nombre similar.
-     * Si lo encuentra sin RUT, lo actualiza con el RUT del SII.
-     * @returns {Object|null} El proveedor encontrado o null
-     */
-    _findSupplier(rutSII, nombreSII, activeSuppliers, supplierByRut, supplierByName) {
-        // 1. Buscar por RUT exacto (prioridad máxima)
-        if (rutSII && supplierByRut[rutSII]) {
-            return supplierByRut[rutSII];
-        }
-
-        // 2. Buscar por nombre normalizado (para proveedores creados manualmente sin RUT)
-        const normalizedSII = this._normalizeName(nombreSII);
-        if (normalizedSII && supplierByName[normalizedSII]) {
-            return supplierByName[normalizedSII];
-        }
-
-        // 3. Buscar parcial: si el nombre SII contiene el nombre local o viceversa
-        for (const s of activeSuppliers) {
-            const normalizedLocal = this._normalizeName(s.name);
-            if (normalizedLocal && normalizedSII) {
-                if (normalizedLocal.includes(normalizedSII) || normalizedSII.includes(normalizedLocal)) {
-                    return s;
-                }
-            }
-        }
-
-        return null;
-    },
-
-    /**
-     * Importa facturas del RCV a la BD local, auto-crea/actualiza proveedores
+     * Importa facturas del RCV a la BD local.
+     * SII es la fuente de verdad: RUT identifica al proveedor, nombre viene del SII.
      * @param {string} periodo - Formato YYYY-MM
      * @returns {Object} { imported, skipped, newSuppliers, updatedSuppliers, errors }
      */
@@ -123,29 +81,20 @@ window.SII_API = {
             window.db.purchase_invoices.toArray()
         ]);
 
-        const activeSuppliers = existingSuppliers.filter(s => !s.deleted);
         const activeInvoices = existingInvoices.filter(i => !i.deleted);
 
-        // Índice de facturas existentes por folio+rut para evitar duplicados
+        // Índice de facturas por folio+rut para evitar duplicados
         const invoiceIndex = new Set();
         activeInvoices.forEach(inv => {
-            // Detectar por folio+rut SII o por invoiceNumber solo
             if (inv.invoiceNumber && inv.siiRutProveedor) {
                 invoiceIndex.add(`${inv.invoiceNumber}_${inv.siiRutProveedor}`);
             }
-            // También indexar por invoiceNumber + supplierId (para facturas manuales)
-            if (inv.invoiceNumber && inv.supplierId) {
-                invoiceIndex.add(`manual_${inv.invoiceNumber}_${inv.supplierId}`);
-            }
         });
 
-        // Índices de proveedores por RUT y por nombre normalizado
+        // Índice de proveedores por RUT — el RUT es el identificador único
         const supplierByRut = {};
-        const supplierByName = {};
-        activeSuppliers.forEach(s => {
+        existingSuppliers.filter(s => !s.deleted).forEach(s => {
             if (s.rut) supplierByRut[s.rut.toUpperCase()] = s;
-            const norm = this._normalizeName(s.name);
-            if (norm) supplierByName[norm] = s;
         });
 
         for (const factura of datos) {
@@ -167,57 +116,31 @@ window.SII_API = {
                     continue;
                 }
 
-                // --- BUSCAR O CREAR PROVEEDOR ---
-                let supplier = this._findSupplier(rutProveedor, razonSocial, activeSuppliers, supplierByRut, supplierByName);
+                // --- PROVEEDOR: RUT es la clave, nombre del SII es la verdad ---
+                let supplier = supplierByRut[rutProveedor];
 
                 if (supplier) {
-                    // Proveedor existente: actualizar con datos del SII si le faltan
-                    let needsUpdate = false;
-                    const updates = { ...supplier };
-
-                    if (!supplier.rut && rutProveedor) {
-                        updates.rut = rutProveedor;
-                        needsUpdate = true;
-                    }
-                    // Actualizar nombre si el del SII es más completo (razón social oficial)
-                    if (razonSocial && supplier.name !== razonSocial && razonSocial.length > supplier.name.length) {
-                        updates.name = razonSocial;
-                        needsUpdate = true;
-                    }
-
-                    if (needsUpdate) {
-                        await window.DataManager.saveAndSync('suppliers', updates);
-                        // Actualizar índices
-                        if (updates.rut) supplierByRut[updates.rut.toUpperCase()] = updates;
-                        supplierByName[this._normalizeName(updates.name)] = updates;
+                    // Existe: actualizar nombre al del SII (ellos saben el nombre correcto)
+                    if (razonSocial && supplier.name !== razonSocial) {
+                        await window.DataManager.saveAndSync('suppliers', {
+                            ...supplier,
+                            name: razonSocial,
+                            rut: rutProveedor
+                        });
+                        supplier.name = razonSocial;
                         stats.updatedSuppliers++;
                     }
                 } else if (rutProveedor) {
-                    // Proveedor nuevo: crear desde datos del SII
-                    const newSupplier = {
+                    // No existe: crear con datos del SII
+                    await window.DataManager.saveAndSync('suppliers', {
                         name: razonSocial || rutProveedor,
                         rut: rutProveedor,
                         deleted: false
-                    };
-                    await window.DataManager.saveAndSync('suppliers', newSupplier);
-                    // Re-leer para obtener el ID generado
+                    });
                     const allSup = await window.db.suppliers.toArray();
                     supplier = allSup.find(s => s.rut === rutProveedor && !s.deleted);
-                    if (supplier) {
-                        supplierByRut[rutProveedor] = supplier;
-                        supplierByName[this._normalizeName(supplier.name)] = supplier;
-                        activeSuppliers.push(supplier);
-                    }
+                    if (supplier) supplierByRut[rutProveedor] = supplier;
                     stats.newSuppliers++;
-                }
-
-                // También verificar por factura manual con mismo número + proveedor
-                if (supplier) {
-                    const manualKey = `manual_${folio}_${supplier.id}`;
-                    if (invoiceIndex.has(manualKey)) {
-                        stats.skipped++;
-                        continue;
-                    }
                 }
 
                 // Parsear montos
