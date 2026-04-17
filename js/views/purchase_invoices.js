@@ -147,6 +147,8 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     // Auto-sync SII on view load (if configured)
     if (window.SII_API.isConfigured()) {
         autoSyncSII();
+        // Precargar ventas de todos los meses con datos en background
+        precargarVentasBackground();
     } else {
         const banner = document.getElementById('sii-sync-banner');
         if (banner) {
@@ -483,6 +485,20 @@ async function initDateFilter() {
     } catch (e) { console.error('Error init date filter', e); }
 }
 
+// --- PRECARGA DE VENTAS EN BACKGROUND ---
+async function precargarVentasBackground() {
+    try {
+        const invoices = (await window.db.purchase_invoices.toArray()).filter(i => !i.deleted && i.siiImportado);
+        const meses = [...new Set(invoices.map(i => i.date?.substring(0, 7)).filter(Boolean))];
+        if (meses.length === 0) return;
+
+        // Precargar en background sin bloquear la UI
+        window.SII_API.precargarVentas(meses).then(() => {
+            console.log('[SII] Ventas precargadas para', meses.length, 'meses');
+        }).catch(e => console.warn('Error precarga ventas:', e.message));
+    } catch (e) { /* silent */ }
+}
+
 // --- CONTADOR DIGITAL TRIBUTARIO ---
 // Inyectar estilos una sola vez (fuera del render)
 (function injectContadorStyles() {
@@ -580,14 +596,24 @@ async function renderContadorDigital(periodoOverride = null) {
             .reduce((s, i) => s + ((i.siiTipoDoc === 61 ? -1 : 1) * (i.siiMontoNeto || 0)), 0);
         const diffNeto = prevNeto > 0 ? (((totalNeto - prevNeto) / prevNeto) * 100).toFixed(0) : null;
 
-        // Balance IVA: datos REALES del SII (RCV Ventas)
-        let ventas = { neto: 0, iva: 0, exento: 0, total: 0, facturas: 0, notasCredito: 0 };
+        // Balance IVA: leer caché local primero (instantáneo), API solo si falta
+        let ventas = { neto: 0, iva: 0, exento: 0, total: 0, facturas: 0, notasCredito: 0, boletas: 0, boletasTotal: 0 };
         let ventasError = false;
-        try {
-            ventas = await window.SII_API.obtenerTotalesVentas(currentPeriodo);
-        } catch (e) {
-            console.warn('No se pudieron obtener ventas del SII:', e.message);
-            ventasError = true;
+        let ventasCargando = false;
+
+        // Intento 1: caché local (instantáneo)
+        const ventasCache = localStorage.getItem(`sii_ventas_v3_${currentPeriodo}`);
+        if (ventasCache) {
+            ventas = JSON.parse(ventasCache);
+        } else {
+            // No hay caché: marcar como "cargando" y lanzar fetch en background
+            ventasCargando = true;
+            window.SII_API.obtenerTotalesVentas(currentPeriodo).then(() => {
+                // Cuando termine, re-renderizar el contador con los datos frescos
+                renderContadorDigital(currentPeriodo);
+            }).catch(e => {
+                console.warn('No se pudieron obtener ventas del SII:', e.message);
+            });
         }
 
         const ivaDebito = ventas.iva;       // IVA Débito real del SII
@@ -612,7 +638,8 @@ async function renderContadorDigital(periodoOverride = null) {
 
         // Balance visual
         let bMsg, bColor, bBg, bIcon;
-        if (ventasError) { bMsg='No se pudieron cargar ventas del SII'; bColor='#f59e0b'; bBg='rgba(245,158,11,0.06)'; bIcon='ph-warning'; }
+        if (ventasCargando) { bMsg='Cargando ventas del SII...'; bColor='#3b82f6'; bBg='rgba(59,130,246,0.06)'; bIcon='ph-spinner-gap ph-spin'; }
+        else if (ventasError) { bMsg='No se pudieron cargar ventas del SII'; bColor='#f59e0b'; bBg='rgba(245,158,11,0.06)'; bIcon='ph-warning'; }
         else if (!tieneVentas) { bMsg='Sin ventas registradas en el SII para este mes'; bColor='#6b7280'; bBg='rgba(107,114,128,0.06)'; bIcon='ph-info'; }
         else if (f29Estimado > 0) { bMsg=`Impuesto estimado (F29): ${fmt(f29Estimado)}`; bColor='#dc2626'; bBg='rgba(220,38,38,0.06)'; bIcon='ph-arrow-up-right'; }
         else { bMsg=`Remanente IVA a favor: ${fmt(Math.abs(balanceIva))}`; bColor='#16a34a'; bBg='rgba(22,163,106,0.06)'; bIcon='ph-arrow-down-right'; }

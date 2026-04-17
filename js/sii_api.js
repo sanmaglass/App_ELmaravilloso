@@ -281,61 +281,15 @@ window.SII_API = {
     },
 
     /**
-     * Obtiene totales tributarios de ventas (RCV Ventas) para un período.
-     * Caché inteligente:
-     *   - Meses pasados → localStorage permanente (no cambian)
-     *   - Mes actual → localStorage con TTL de 30 minutos
-     * @param {string} periodo - Formato YYYY-MM
-     * @param {boolean} forceRefresh - Forzar recarga desde API
-     * @returns {Object} { neto, iva, exento, total, facturas, notasCredito }
+     * Procesa el resultado crudo del RCV ventas y devuelve totales.
      */
-    async obtenerTotalesVentas(periodo, forceRefresh = false) {
-        const cacheKey = `sii_ventas_v2_${periodo}`;
-        const now = new Date();
-        const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const esMesActual = periodo === mesActual;
-
-        // Revisar caché
-        if (!forceRefresh) {
-            const cached = localStorage.getItem(cacheKey);
-            if (cached) {
-                const data = JSON.parse(cached);
-                // Meses pasados: caché permanente
-                if (!esMesActual) return data;
-                // Mes actual: válido por 30 min
-                if (data._ts && (Date.now() - data._ts) < 30 * 60 * 1000) return data;
-            }
-        }
-
-        const result = await this.consultarRCV(periodo, 'venta');
-
-        if (!result.success || !result.data?.datos) {
-            return { neto: 0, iva: 0, exento: 0, total: 0, facturas: 0, notasCredito: 0 };
-        }
-
-        let neto = 0, iva = 0, exento = 0, total = 0, facturas = 0, notasCredito = 0;
-        let boletas = 0, boletasTotal = 0;
-
-        // Tipos DTE de venta:
-        // 33=Factura, 34=Factura Exenta, 39=Boleta Electrónica, 41=Boleta Exenta
-        // 56=Nota Débito, 61=Nota Crédito
-        // También puede venir como resumen de boletas del día
+    _parsearVentas(datos) {
         const tiposVenta = [33, 34, 39, 41, 56, 61];
-        const tiposNC = [61]; // Notas de crédito restan
+        let neto = 0, iva = 0, exento = 0, total = 0, facturas = 0, notasCredito = 0, boletas = 0, boletasTotal = 0;
 
-        // Log para diagnóstico (ver qué tipos trae la API)
-        const tiposEncontrados = {};
-        result.data.datos.forEach(doc => {
-            const t = doc['Tipo Doc'];
-            tiposEncontrados[t] = (tiposEncontrados[t] || 0) + 1;
-        });
-        console.log(`[SII Ventas ${periodo}] Tipos encontrados:`, tiposEncontrados, `Total docs: ${result.data.datos.length}`);
-
-        for (const doc of result.data.datos) {
+        for (const doc of datos) {
             if (!doc['Nro'] || doc['Nro'] === '') continue;
             const tipoDoc = parseInt(doc['Tipo Doc']);
-
-            // Aceptar todos los tipos de venta conocidos
             if (!tiposVenta.includes(tipoDoc)) continue;
 
             const mNeto = parseInt(doc['Monto Neto']) || 0;
@@ -343,22 +297,81 @@ window.SII_API = {
             const mExento = parseInt(doc['Monto Exento']) || 0;
             const mTotal = parseInt(doc['Monto Total']) || 0;
 
-            if (tiposNC.includes(tipoDoc)) {
-                neto -= mNeto; iva -= mIva; exento -= mExento; total -= mTotal;
-                notasCredito++;
+            if (tipoDoc === 61) {
+                neto -= mNeto; iva -= mIva; exento -= mExento; total -= mTotal; notasCredito++;
             } else if (tipoDoc === 39 || tipoDoc === 41) {
-                // Boletas: suman al total de ventas
-                neto += mNeto; iva += mIva; exento += mExento; total += mTotal;
-                boletas++;
-                boletasTotal += mTotal;
+                neto += mNeto; iva += mIva; exento += mExento; total += mTotal; boletas++; boletasTotal += mTotal;
             } else {
-                neto += mNeto; iva += mIva; exento += mExento; total += mTotal;
-                facturas++;
+                neto += mNeto; iva += mIva; exento += mExento; total += mTotal; facturas++;
+            }
+        }
+        return { neto, iva, exento, total, facturas, notasCredito, boletas, boletasTotal };
+    },
+
+    /**
+     * Obtiene totales de ventas para un período.
+     * Caché en localStorage: meses pasados = permanente, mes actual = 30 min.
+     */
+    async obtenerTotalesVentas(periodo, forceRefresh = false) {
+        const cacheKey = `sii_ventas_v3_${periodo}`;
+        const now = new Date();
+        const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const esMesActual = periodo === mesActual;
+
+        if (!forceRefresh) {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                const data = JSON.parse(cached);
+                if (!esMesActual) return data;
+                if (data._ts && (Date.now() - data._ts) < 30 * 60 * 1000) return data;
             }
         }
 
-        const datos = { neto, iva, exento, total, facturas, notasCredito, boletas, boletasTotal, _ts: Date.now() };
+        const result = await this.consultarRCV(periodo, 'venta');
+        if (!result.success || !result.data?.datos) {
+            return { neto: 0, iva: 0, exento: 0, total: 0, facturas: 0, notasCredito: 0, boletas: 0, boletasTotal: 0 };
+        }
+
+        const datos = { ...this._parsearVentas(result.data.datos), _ts: Date.now() };
         localStorage.setItem(cacheKey, JSON.stringify(datos));
         return datos;
+    },
+
+    /**
+     * Precarga ventas de múltiples períodos en paralelo.
+     * Solo llama a la API para los que NO tienen caché.
+     * @param {string[]} periodos - Lista de períodos YYYY-MM
+     * @param {Function} onProgress - Callback opcional
+     */
+    async precargarVentas(periodos, onProgress = null) {
+        const now = new Date();
+        const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const faltantes = [];
+
+        for (const p of periodos) {
+            const cacheKey = `sii_ventas_v3_${p}`;
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                const data = JSON.parse(cached);
+                // Mes pasado con caché → OK
+                if (p !== mesActual) continue;
+                // Mes actual con caché fresco → OK
+                if (data._ts && (Date.now() - data._ts) < 30 * 60 * 1000) continue;
+            }
+            faltantes.push(p);
+        }
+
+        if (faltantes.length === 0) return;
+
+        // Cargar los faltantes secuencialmente (la API no soporta paralelo)
+        for (let i = 0; i < faltantes.length; i++) {
+            const p = faltantes[i];
+            if (onProgress) onProgress(p, i + 1, faltantes.length);
+            try {
+                await this.obtenerTotalesVentas(p, true);
+            } catch (e) {
+                console.warn(`Error precargando ventas ${p}:`, e.message);
+            }
+        }
     }
 };
