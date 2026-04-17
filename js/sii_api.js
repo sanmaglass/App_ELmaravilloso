@@ -12,6 +12,59 @@ window.SII_API = {
         password: 'Ubiobio56!'
     },
 
+    // --- Rate Limiter: max 5 req/min = 1 cada 13s ---
+    _queue: [],
+    _queueRunning: false,
+    _lastRequestTime: 0,
+    _MIN_INTERVAL: 13000, // 13 segundos entre requests (5/min con margen)
+
+    /** Encola una llamada a la API y la ejecuta respetando el rate limit */
+    _enqueue(fn) {
+        return new Promise((resolve, reject) => {
+            this._queue.push({ fn, resolve, reject });
+            this._processQueue();
+        });
+    },
+
+    async _processQueue() {
+        if (this._queueRunning) return;
+        this._queueRunning = true;
+
+        while (this._queue.length > 0) {
+            const { fn, resolve, reject } = this._queue.shift();
+            const elapsed = Date.now() - this._lastRequestTime;
+            const wait = Math.max(0, this._MIN_INTERVAL - elapsed);
+
+            if (wait > 0) {
+                console.log(`⏳ Rate limiter: esperando ${Math.ceil(wait / 1000)}s antes de siguiente request...`);
+                await new Promise(r => setTimeout(r, wait));
+            }
+
+            try {
+                this._lastRequestTime = Date.now();
+                const result = await fn();
+                resolve(result);
+            } catch (err) {
+                // Si es 429, esperar 60s y reintentar una vez
+                if (err.message && err.message.includes('429')) {
+                    console.warn('🚫 429 recibido, esperando 60s para reintentar...');
+                    await new Promise(r => setTimeout(r, 60000));
+                    try {
+                        this._lastRequestTime = Date.now();
+                        const result = await fn();
+                        resolve(result);
+                    } catch (retryErr) {
+                        reject(retryErr);
+                    }
+                } else {
+                    reject(err);
+                }
+            }
+        }
+
+        this._queueRunning = false;
+    },
+
     getConfig() {
         return {
             apiKey: localStorage.getItem('sii_baseapi_key') || this._defaults.apiKey,
@@ -27,6 +80,7 @@ window.SII_API = {
 
     /**
      * Consulta el Registro de Compras y Ventas (RCV) del SII
+     * Todas las llamadas pasan por un rate limiter (max 5 req/min).
      * @param {string} periodo - Formato YYYY-MM (ej: "2026-04")
      * @param {string} tipo - "compra" o "venta"
      * @returns {Object} { success, data: { totalRegistros, datos[], resumenPorTipo[] } }
@@ -37,27 +91,32 @@ window.SII_API = {
             throw new Error('Faltan credenciales SII. Configúralas en Ajustes → Integración SII.');
         }
 
-        // Proxy via Vercel rewrite para evitar CORS
-        const url = `/api/sii/rcv/${periodo}/${tipo}`;
+        // Cada request pasa por la cola rate-limited
+        return this._enqueue(async () => {
+            const url = `/api/sii/rcv/${periodo}/${tipo}`;
+            console.log(`📡 SII API: consultando ${tipo} ${periodo}...`);
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': config.apiKey
-            },
-            body: JSON.stringify({
-                rut: config.rut,
-                password: config.password
-            })
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': config.apiKey
+                },
+                body: JSON.stringify({
+                    rut: config.rut,
+                    password: config.password
+                })
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`Error BaseAPI (${response.status}): ${text}`);
+            }
+
+            const data = await response.json();
+            console.log(`✅ SII API: ${tipo} ${periodo} OK`);
+            return data;
         });
-
-        if (!response.ok) {
-            const text = await response.text();
-            throw new Error(`Error BaseAPI (${response.status}): ${text}`);
-        }
-
-        return await response.json();
     },
 
     /**
@@ -379,12 +438,14 @@ window.SII_API = {
     },
 
     /**
-     * Precarga ventas de múltiples períodos en paralelo.
-     * Solo llama a la API para los que NO tienen caché.
+     * Precarga ventas de múltiples períodos secuencialmente.
+     * Respeta el rate limiter global. Solo llama a la API para los que NO tienen caché.
+     * Prioriza mes actual y anterior, luego carga el resto en background.
      * @param {string[]} periodos - Lista de períodos YYYY-MM
      * @param {Function} onProgress - Callback opcional
+     * @param {number} maxPeriodos - Máximo de períodos a cargar (default 3, para no bloquear la cola)
      */
-    async precargarVentas(periodos, onProgress = null) {
+    async precargarVentas(periodos, onProgress = null, maxPeriodos = 3) {
         const now = new Date();
         const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const faltantes = [];
@@ -394,9 +455,7 @@ window.SII_API = {
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
                 const data = JSON.parse(cached);
-                // Mes pasado con caché → OK
                 if (p !== mesActual) continue;
-                // Mes actual con caché fresco → OK
                 if (data._ts && (Date.now() - data._ts) < 30 * 60 * 1000) continue;
             }
             faltantes.push(p);
@@ -404,10 +463,20 @@ window.SII_API = {
 
         if (faltantes.length === 0) return;
 
-        // Cargar los faltantes secuencialmente (la API no soporta paralelo)
-        for (let i = 0; i < faltantes.length; i++) {
-            const p = faltantes[i];
-            if (onProgress) onProgress(p, i + 1, faltantes.length);
+        // Priorizar: mes actual primero, luego mes anterior, luego el resto
+        faltantes.sort((a, b) => {
+            if (a === mesActual) return -1;
+            if (b === mesActual) return 1;
+            return b.localeCompare(a); // Más reciente primero
+        });
+
+        // Limitar cuántos cargamos para no saturar la cola
+        const toLoad = faltantes.slice(0, maxPeriodos);
+        console.log(`📦 Precargando ventas: ${toLoad.length} de ${faltantes.length} períodos faltantes`);
+
+        for (let i = 0; i < toLoad.length; i++) {
+            const p = toLoad[i];
+            if (onProgress) onProgress(p, i + 1, toLoad.length);
             try {
                 await this.obtenerTotalesVentas(p, true);
             } catch (e) {

@@ -145,10 +145,13 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     }).catch(err => console.error('Error limpieza:', err));
 
     // Auto-sync SII on view load (if configured)
+    // IMPORTANTE: NO lanzar ambos en paralelo — comparten el rate limiter (5 req/min)
+    // Primero sync compras, DESPUÉS precarga ventas
     if (window.SII_API.isConfigured()) {
-        autoSyncSII();
-        // Precargar ventas de todos los meses con datos en background
-        precargarVentasBackground();
+        autoSyncSII().then(() => {
+            // Solo precargar ventas DESPUÉS de que termine el sync de compras
+            precargarVentasBackground();
+        });
     } else {
         const banner = document.getElementById('sii-sync-banner');
         if (banner) {
@@ -488,12 +491,17 @@ async function initDateFilter() {
 // --- PRECARGA DE VENTAS EN BACKGROUND ---
 async function precargarVentasBackground() {
     try {
-        const invoices = (await window.db.purchase_invoices.toArray()).filter(i => !i.deleted && i.siiImportado);
-        const meses = [...new Set(invoices.map(i => i.date?.substring(0, 7)).filter(Boolean))];
-        if (meses.length === 0) return;
+        // Solo precargar mes actual y anterior (los más importantes)
+        // El resto se carga bajo demanda cuando el usuario navega a ese mes
+        const now = new Date();
+        const meses = [];
+        for (let i = 0; i < 2; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            meses.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
 
-        // Precargar en background sin bloquear la UI
-        window.SII_API.precargarVentas(meses).then(() => {
+        // Precargar en background sin bloquear la UI (max 2 meses)
+        window.SII_API.precargarVentas(meses, null, 2).then(() => {
             console.log('[SII] Ventas precargadas para', meses.length, 'meses');
         }).catch(e => console.warn('Error precarga ventas:', e.message));
     } catch (e) { /* silent */ }
