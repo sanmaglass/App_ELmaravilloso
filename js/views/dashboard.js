@@ -760,10 +760,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }
 
         // ---- KPI Calculations (True Profitability Engine) ----
-        // 1. Sales (Total Revenue)
-        const thisMonthSales = dailySales.filter(d => d.date && d.date.startsWith(currentMonthStr));
-        const prevMonthSales = dailySales.filter(d => d.date && d.date.startsWith(prevMonthStr));
-        const ventasMes = thisMonthSales.reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
+        // 1. Sales (Total Revenue) — directo desde Eleventa (fuente real)
+        //    daily_sales se sigue cargando para la gráfica histórica (antes de Eleventa)
+        const thisMonthSales = eleventaSales.filter(s => s.date && s.date.startsWith(currentMonthStr));
+        const prevMonthSales = eleventaSales.filter(s => s.date && s.date.startsWith(prevMonthStr));
+        const ventasMes  = thisMonthSales.reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
         const ventasPrev = prevMonthSales.reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
 
         // 2. Gross Profit (From Eleventa API)
@@ -774,10 +775,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const gananciaBrutaMes = thisMonthEleventa.reduce((s, t) => s + (parseFloat(t.profit) || 0), 0);
         const gananciaBrutaPrev = prevMonthEleventa.reduce((s, t) => s + (parseFloat(t.profit) || 0), 0);
 
-        // --- VALIDACIÓN DE COHERENCIA (Ventas Caja vs Tickets) ---
-        const totalVentasEleventa = thisMonthEleventa.reduce((s, t) => s + (parseFloat(t.total) || 0), 0);
-        const diffRatio = ventasMes > 0 ? (totalVentasEleventa / ventasMes) : 1;
-        const isDataIncomplete = diffRatio < 0.85 && ventasMes > 500000; // Si falta más del 15% y hay ventas significativas
+        // --- VALIDACIÓN DE COHERENCIA (ahora siempre coherente: ambos vienen de Eleventa) ---
+        const totalVentasEleventa = ventasMes; // misma fuente
+        const diffRatio = 1; // siempre coherente
+        const isDataIncomplete = false;
 
         // 3. Operational Expenses (Local Bills, etc.)
         // Separamos el Retiro del Dueño de los gastos generales para el desglose
@@ -797,7 +798,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const burnRateInfo = await window.Utils.calculateDailyBurnRate(allExpenses, employees, now);
         
         // Carga prorrateada al día de hoy
-        const currentDayOfMoth = Array.from(thisMonthSales).length > 0 ? now.getDate() : 1; 
+        const currentDayOfMoth = thisMonthSales.length > 0 ? now.getDate() : 1;
+
         const gastoTotalProrrateado = burnRateInfo.dailyBurnRate * currentDayOfMoth;
         
         // Sumar también cualquier gasto operativo del mes *no fijo* (variable)
@@ -1257,8 +1259,14 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             }
         }
 
-        // Día con caída >20% vs promedio (ventas diarias del mes)
-        const currentMonthDaily = dailySales.filter(d => d.date && d.date.startsWith(currentMonthStr));
+        // Días con caída — desde Eleventa (agrupado por fecha)
+        const eleventaByDay = new Map();
+        eleventaSales.filter(s => s.date && s.date.startsWith(currentMonthStr)).forEach(s => {
+            const d = s.date.split('T')[0];
+            eleventaByDay.set(d, (eleventaByDay.get(d) || 0) + (parseFloat(s.total) || 0));
+        });
+        const currentMonthDaily = Array.from(eleventaByDay.entries()).map(([date, total]) => ({ date, total }));
+
         if (currentMonthDaily.length >= 3) {
             const totals = currentMonthDaily.map(d => parseFloat(d.total) || 0).filter(t => t > 0);
             const avg = totals.reduce((s, x) => s + x, 0) / (totals.length || 1);
@@ -1545,6 +1553,14 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }, 200);
 
         // ---- P&L 6 Months Chart (PRO EDITION) ----
+        // Pre-agrupar eleventa_sales por mes (una sola pasada)
+        const elevByMonth = new Map();
+        eleventaSales.forEach(s => {
+            if (!s.date) return;
+            const ms = s.date.substring(0, 7);
+            elevByMonth.set(ms, (elevByMonth.get(ms) || 0) + (parseFloat(s.total) || 0));
+        });
+
         const months6Labels = [];
         const months6Sales = [];
         const months6Costs = [];
@@ -1552,9 +1568,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             months6Labels.push(d.toLocaleDateString('es-ES', { month: 'short' }));
-            months6Sales.push(dailySales.filter(s => s.date && s.date.startsWith(mStr)).reduce((s, d) => s + (parseFloat(d.total) || 0), 0));
+            // Eleventa primero; fallback a daily_sales para meses históricos previos a Eleventa
+            months6Sales.push(elevByMonth.get(mStr) || dailySales.filter(s => s.date && s.date.startsWith(mStr)).reduce((s, d) => s + (parseFloat(d.total) || 0), 0));
             months6Costs.push(invoices.filter(inv => inv.date && inv.date.startsWith(mStr)).reduce((s, inv) => s + (parseFloat(inv.amount) || 0), 0));
         }
+
 
         const plCtx = document.getElementById('plChart').getContext('2d');
         const plGradientV = plCtx.createLinearGradient(0, 0, 0, 250);
