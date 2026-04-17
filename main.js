@@ -32,9 +32,7 @@ const views = {
 
 // --- EMAIL GATE: Correos autorizados ---
 const AUTHORIZED_EMAILS = [
-    'luis@elmaravilloso.cl',
-    'admin@elmaravilloso.cl',
-    'luissanmartin@elmaravilloso.cl'
+    'sanmaglass@gmail.com'
 ];
 
 function showEmailGate() {
