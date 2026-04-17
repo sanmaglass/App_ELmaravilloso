@@ -281,6 +281,47 @@ window.SII_API = {
     },
 
     /**
+     * Diagnóstico: muestra qué devuelve la API para un período y tipo.
+     * Ejecutar desde consola: SII_API.diagnostico('2026-04', 'venta')
+     */
+    async diagnostico(periodo, tipo = 'venta') {
+        console.log(`🔍 Consultando RCV ${tipo} para ${periodo}...`);
+        try {
+            const result = await this.consultarRCV(periodo, tipo);
+            console.log('📦 Respuesta completa:', result);
+            console.log('✅ success:', result.success);
+
+            if (result.data) {
+                console.log('📊 totalRegistros:', result.data.totalRegistros);
+                console.log('📋 resumenPorTipo:', result.data.resumenPorTipo);
+
+                if (result.data.datos && result.data.datos.length > 0) {
+                    // Contar tipos de documento
+                    const tipos = {};
+                    result.data.datos.forEach(d => {
+                        const t = d['Tipo Doc'] || 'SIN_TIPO';
+                        tipos[t] = (tipos[t] || 0) + 1;
+                    });
+                    console.log('📄 Tipos de documento encontrados:', tipos);
+                    console.log('📝 Primer documento de ejemplo:', result.data.datos[0]);
+                    console.log('📝 Campos disponibles:', Object.keys(result.data.datos[0]));
+                    console.log(`📑 Total documentos: ${result.data.datos.length}`);
+                } else {
+                    console.log('⚠️ datos vacío o no existe');
+                    console.log('🔑 Claves en data:', Object.keys(result.data));
+                }
+            } else {
+                console.log('⚠️ No hay campo data en la respuesta');
+                console.log('🔑 Claves en respuesta:', Object.keys(result));
+            }
+            return result;
+        } catch (e) {
+            console.error('❌ Error:', e.message);
+            return null;
+        }
+    },
+
+    /**
      * Procesa el resultado crudo del RCV ventas y devuelve totales.
      */
     _parsearVentas(datos) {
