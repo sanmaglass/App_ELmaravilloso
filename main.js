@@ -30,21 +30,84 @@ const views = {
     credits: () => window.Views.credits(document.getElementById('view-container'))
 };
 
+// --- EMAIL GATE: Correos autorizados ---
+const AUTHORIZED_EMAILS = [
+    'luis@elmaravilloso.cl',
+    'admin@elmaravilloso.cl',
+    'luissanmartin@elmaravilloso.cl'
+];
+
+function showEmailGate() {
+    const splash = document.getElementById('splash-screen');
+    if (splash) splash.style.display = 'none';
+
+    document.body.innerHTML = `
+        <div id="email-gate" style="position:fixed; inset:0; background:#080a0c; display:flex; align-items:center; justify-content:center; font-family:'Outfit',sans-serif; z-index:99999;">
+            <div style="width:90%; max-width:380px; text-align:center;">
+                <img src="icons/icon-192x192.png" alt="Logo" style="width:80px; height:80px; border-radius:20px; margin-bottom:24px; box-shadow:0 12px 40px rgba(220,38,38,0.3);">
+                <h1 style="color:#fff; font-size:1.4rem; font-weight:700; margin:0 0 6px;">El Maravilloso</h1>
+                <p style="color:rgba(255,255,255,0.4); font-size:0.75rem; margin:0 0 32px; letter-spacing:0.1em; text-transform:uppercase;">Acceso Autorizado</p>
+                <div style="position:relative;">
+                    <input id="gate-email" type="email" placeholder="Tu correo electr\u00f3nico" autocomplete="email" autofocus
+                        style="width:100%; padding:14px 18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:#fff; font-size:1rem; font-family:inherit; outline:none; transition:border-color 0.2s;">
+                </div>
+                <div id="gate-error" style="color:#ff6b6b; font-size:0.82rem; margin-top:10px; min-height:1.2em;"></div>
+                <button id="gate-btn" style="width:100%; margin-top:16px; padding:14px; background:linear-gradient(135deg,#e60000,#990000); color:#fff; border:none; border-radius:12px; font-size:0.95rem; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.2s; box-shadow:0 6px 20px rgba(230,0,0,0.3);">
+                    Ingresar
+                </button>
+                <p style="color:rgba(255,255,255,0.2); font-size:0.65rem; margin-top:24px;">Solo personal autorizado</p>
+            </div>
+        </div>
+    `;
+
+    const emailInput = document.getElementById('gate-email');
+    const errorEl = document.getElementById('gate-error');
+    const btn = document.getElementById('gate-btn');
+
+    function attemptLogin() {
+        const email = (emailInput.value || '').trim().toLowerCase();
+        if (!email || !email.includes('@')) {
+            errorEl.textContent = 'Ingresa un correo v\u00e1lido';
+            emailInput.style.borderColor = '#ff6b6b';
+            return;
+        }
+        if (!AUTHORIZED_EMAILS.includes(email)) {
+            errorEl.textContent = 'Correo no autorizado. Contacta al administrador.';
+            emailInput.style.borderColor = '#ff6b6b';
+            // Log intento no autorizado
+            console.warn('Acceso denegado:', email);
+            return;
+        }
+        // Acceso concedido
+        localStorage.setItem('wm_auth', 'true');
+        localStorage.setItem('wm_auth_email', email);
+        localStorage.setItem('wm_user', email.split('@')[0]);
+        window.location.reload();
+    }
+
+    btn.addEventListener('click', attemptLogin);
+    emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptLogin(); });
+    emailInput.addEventListener('input', () => { errorEl.textContent = ''; emailInput.style.borderColor = 'rgba(255,255,255,0.1)'; });
+}
+
 // Initialize App
 async function init() {
     try {
-        // --- AUTH CHECK ---
-        // Usar localStorage para que persista entre recargas/cierres
-        let isAuth = localStorage.getItem('wm_auth');
-        if (!isAuth) {
-            // Auto-login: setear como autenticado
-            localStorage.setItem('wm_auth', 'true');
-            localStorage.setItem('wm_user', 'Administrador');
-            isAuth = 'true';
+        // --- AUTH CHECK (Email Gate) ---
+        const isAuth = localStorage.getItem('wm_auth');
+        const authEmail = localStorage.getItem('wm_auth_email');
+
+        if (!isAuth || !authEmail || !AUTHORIZED_EMAILS.includes(authEmail.toLowerCase())) {
+            // Limpiar auth corrupto/viejo
+            localStorage.removeItem('wm_auth');
+            localStorage.removeItem('wm_auth_email');
+            showEmailGate();
+            return; // No inicializar la app
         }
 
+        window.state.currentUser = authEmail;
+
         // Auth passed - continue with initialization
-        // Splash screen already visible, will hide it after DB init
 
         // Database initialization
         try {
@@ -129,6 +192,8 @@ async function init() {
                 if (btn.dataset.view === 'logout') {
                     if (confirm('¿Cerrar sesión?')) {
                         localStorage.removeItem('wm_auth');
+                        localStorage.removeItem('wm_auth_email');
+                        localStorage.removeItem('wm_user');
                         window.location.reload();
                     }
                     return;
