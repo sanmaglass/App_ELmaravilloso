@@ -129,6 +129,15 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     // SII Sync Button
     document.getElementById('btn-sync-sii').addEventListener('click', () => syncFromSII());
 
+    // Limpieza única: eliminar facturas manuales y proveedores sin RUT
+    // (SII es la fuente de verdad)
+    window.SII_API.limpiarDatosManuales().then(stats => {
+        if (stats && (stats.invoicesDeleted > 0 || stats.suppliersDeleted > 0)) {
+            // Refrescar vista después de limpieza
+            window.Views.purchase_invoices(container, _tab);
+        }
+    }).catch(err => console.error('Error limpieza:', err));
+
     // Auto-sync SII on view load (if configured)
     if (window.SII_API.isConfigured()) {
         autoSyncSII();

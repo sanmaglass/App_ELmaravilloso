@@ -235,5 +235,48 @@ window.SII_API = {
         const results = await this.importarMultiplesPeriodos(12, onProgress);
         localStorage.setItem('sii_historico_importado', new Date().toISOString());
         return results;
+    },
+
+    /**
+     * Limpieza: elimina facturas manuales (no-SII) y proveedores sin RUT.
+     * SII es la fuente de verdad — todo lo manual queda como deleted.
+     * Se ejecuta una sola vez (flag en localStorage).
+     * @returns {Object} { invoicesDeleted, suppliersDeleted }
+     */
+    async limpiarDatosManuales() {
+        const FLAG = 'sii_limpieza_manuales_v1';
+        if (localStorage.getItem(FLAG)) return null;
+
+        const stats = { invoicesDeleted: 0, suppliersDeleted: 0 };
+
+        // 1. Soft-delete facturas que NO vienen del SII
+        const invoices = await window.db.purchase_invoices.toArray();
+        for (const inv of invoices) {
+            if (inv.deleted) continue;
+            if (inv.siiImportado) continue; // Es del SII, se queda
+            // Es manual → borrar
+            await window.DataManager.saveAndSync('purchase_invoices', {
+                ...inv,
+                deleted: true
+            });
+            stats.invoicesDeleted++;
+        }
+
+        // 2. Soft-delete proveedores sin RUT (fueron creados manualmente)
+        const suppliers = await window.db.suppliers.toArray();
+        for (const sup of suppliers) {
+            if (sup.deleted) continue;
+            if (sup.rut && sup.rut.trim()) continue; // Tiene RUT (del SII), se queda
+            // Sin RUT → manual → borrar
+            await window.DataManager.saveAndSync('suppliers', {
+                ...sup,
+                deleted: true
+            });
+            stats.suppliersDeleted++;
+        }
+
+        localStorage.setItem(FLAG, new Date().toISOString());
+        console.log(`🧹 Limpieza SII: ${stats.invoicesDeleted} facturas manuales eliminadas, ${stats.suppliersDeleted} proveedores sin RUT eliminados`);
+        return stats;
     }
 };
