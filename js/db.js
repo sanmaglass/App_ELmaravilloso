@@ -158,8 +158,9 @@ window.DataManager = {
     // Optional columns added by Pro migration — not all Supabase tables have them
     _remindersCoreFields: ['id', 'title', 'type', 'frequency_unit', 'frequency_value',
         'next_run', 'completed', 'deleted', 'priority', 'notes', 'snoozed_until', 'created_at'],
-    _purchaseInvoicesCoreFields: ['id', 'supplierId', 'invoiceNumber', 'date', 'amount',
-        'paymentMethod', 'paymentStatus', 'dueDate', 'creditDays', 'paidAmount', 'notes', 'deleted', 'version'],
+    _purchaseInvoicesCoreFields: ['id', 'supplierId', 'supplierName', 'invoiceNumber', 'date', 'amount', 'period',
+        'paymentMethod', 'paymentStatus', 'dueDate', 'creditDays', 'paidAmount', 'notes', 'deleted', 'version',
+        'siiTipoDoc', 'siiRutProveedor', 'siiFolio', 'siiMontoNeto', 'siiMontoIva', 'siiMontoExento', 'siiImportado', 'siiImportDate'],
     _suppliersCoreFields: ['id', 'name', 'rut', 'giro', 'address', 'contact', 'phone', 'email', 'deleted'],
     _expensesCoreFields: ['id', 'title', 'amount', 'category', 'date', 'deleted'],
     _employeesCoreFields: ['id', 'name', 'role', 'startDate', 'paymentMode', 'paymentFrequency', 'baseSalary',
