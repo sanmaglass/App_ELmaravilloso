@@ -483,297 +483,204 @@ async function initDateFilter() {
 }
 
 // --- CONTADOR DIGITAL TRIBUTARIO ---
+// Inyectar estilos una sola vez (fuera del render)
+(function injectContadorStyles() {
+    if (document.getElementById('sii-contador-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'sii-contador-styles';
+    style.textContent = `
+        .sii-panel { border-radius:16px; overflow:hidden; border:2px solid var(--border); background:var(--bg-card); margin-bottom:0; }
+        .sii-header {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:14px 20px; background:linear-gradient(135deg,#1e293b,#0f172a);
+            color:white; flex-wrap:wrap; gap:10px;
+        }
+        .dark-mode .sii-header { background:linear-gradient(135deg,#0f172a,#020617); }
+        .sii-header h2 { font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px; margin:0; }
+        .sii-header select {
+            background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.25);
+            border-radius:8px; padding:6px 12px; font-size:0.85rem; font-weight:600; cursor:pointer;
+        }
+        .sii-header select option { color:#1e293b; }
+        .sii-balance {
+            display:flex; align-items:center; gap:14px; padding:14px 20px;
+            flex-wrap:wrap; border-bottom:1px solid var(--border);
+        }
+        .sii-balance-icon {
+            width:42px; height:42px; border-radius:50%; display:flex;
+            align-items:center; justify-content:center; flex-shrink:0;
+        }
+        .sii-balance-icon i { font-size:1.3rem; color:white; }
+        .sii-balance-stats { display:flex; gap:16px; flex-wrap:wrap; font-size:0.8rem; }
+        .sii-balance-stats > div { text-align:center; }
+        .sii-balance-stats .lbl { color:var(--text-muted); font-size:0.68rem; text-transform:uppercase; font-weight:600; letter-spacing:0.3px; }
+        .sii-balance-stats .val { font-weight:700; margin-top:2px; }
+        .sii-cells { display:grid; grid-template-columns:repeat(3,1fr); }
+        .sii-cell {
+            padding:16px 12px; text-align:center;
+            border-right:1px solid var(--border); border-bottom:1px solid var(--border);
+        }
+        .sii-cell:nth-child(3n) { border-right:none; }
+        .sii-cell:nth-last-child(-n+3) { border-bottom:none; }
+        .sii-cell .lbl {
+            font-size:0.7rem; font-weight:600; text-transform:uppercase;
+            letter-spacing:0.4px; color:var(--text-muted); margin-bottom:5px;
+        }
+        .sii-cell .val {
+            font-size:1.4rem; font-weight:800; font-variant-numeric:tabular-nums;
+            font-family:'Outfit',monospace; line-height:1.2;
+        }
+        .sii-cell .sub { font-size:0.7rem; color:var(--text-muted); margin-top:3px; }
+        @media(max-width:640px) {
+            .sii-cells { grid-template-columns:1fr 1fr; }
+            .sii-cell:nth-child(3n) { border-right:1px solid var(--border); }
+            .sii-cell:nth-child(2n) { border-right:none; }
+            .sii-cell .val { font-size:1.05rem; }
+            .sii-cell { padding:12px 8px; }
+            .sii-balance { gap:10px; padding:12px 14px; }
+        }
+    `;
+    document.head.appendChild(style);
+})();
+
 async function renderContadorDigital(periodoOverride = null) {
     const panel = document.getElementById('sii-contador');
     if (!panel) return;
 
     try {
         const invoices = (await window.db.purchase_invoices.toArray()).filter(i => !i.deleted && i.siiImportado);
-
-        // Determinar período actual y generar lista de meses disponibles
         const now = new Date();
         const currentPeriodo = periodoOverride || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-        // Meses disponibles (de los datos reales)
+        // Meses disponibles
         const mesesSet = new Set();
-        invoices.forEach(inv => {
-            if (inv.date) mesesSet.add(inv.date.substring(0, 7));
-        });
+        invoices.forEach(inv => { if (inv.date) mesesSet.add(inv.date.substring(0, 7)); });
         const mesesDisponibles = [...mesesSet].sort().reverse();
 
-        // Facturas del período seleccionado
+        // Facturas del período
         const del_mes = invoices.filter(i => i.date && i.date.startsWith(currentPeriodo));
 
-        // Calcular totales tributarios desde campos SII
-        let totalNeto = 0, totalIva = 0, totalExento = 0, totalBruto = 0;
-        let countFacturas = 0, countNC = 0;
-
+        // Totales tributarios
+        let totalNeto = 0, totalIva = 0, totalExento = 0, totalBruto = 0, countFacturas = 0, countNC = 0;
         del_mes.forEach(inv => {
-            const neto = inv.siiMontoNeto || 0;
-            const iva = inv.siiMontoIva || 0;
-            const exento = inv.siiMontoExento || 0;
-            const total = Math.abs(inv.amount || 0);
-
+            const neto = inv.siiMontoNeto || 0, iva = inv.siiMontoIva || 0;
+            const exento = inv.siiMontoExento || 0, total = Math.abs(inv.amount || 0);
             if (inv.siiTipoDoc === 61) {
-                // Nota de Crédito: resta
-                totalNeto -= neto;
-                totalIva -= iva;
-                totalExento -= exento;
-                totalBruto -= total;
-                countNC++;
+                totalNeto -= neto; totalIva -= iva; totalExento -= exento; totalBruto -= total; countNC++;
             } else {
-                totalNeto += neto;
-                totalIva += iva;
-                totalExento += exento;
-                totalBruto += total;
-                countFacturas++;
+                totalNeto += neto; totalIva += iva; totalExento += exento; totalBruto += total; countFacturas++;
             }
         });
 
-        // PPM: ~1% del neto (tasa estándar para PyMEs en Chile)
         const ppmEstimado = Math.round(totalNeto * 0.01);
 
-        // Nombre del período
+        // Mes anterior
         const [pY, pM] = currentPeriodo.split('-').map(Number);
-        const periodoNombre = new Date(pY, pM - 1, 1)
-            .toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
-        const periodoLabel = periodoNombre.charAt(0).toUpperCase() + periodoNombre.slice(1);
-
-        // Mes anterior para comparación
-        const prevDate = new Date(pY, pM - 2, 1);
-        const prevPeriodo = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
-        const del_prev = invoices.filter(i => i.date && i.date.startsWith(prevPeriodo));
-        const prevNeto = del_prev.reduce((s, i) => {
-            const n = i.siiMontoNeto || 0;
-            return s + (i.siiTipoDoc === 61 ? -n : n);
-        }, 0);
+        const prevPeriodo = `${new Date(pY, pM - 2, 1).getFullYear()}-${String(new Date(pY, pM - 2, 1).getMonth() + 1).padStart(2, '0')}`;
+        const prevNeto = invoices.filter(i => i.date && i.date.startsWith(prevPeriodo))
+            .reduce((s, i) => s + ((i.siiTipoDoc === 61 ? -1 : 1) * (i.siiMontoNeto || 0)), 0);
         const diffNeto = prevNeto > 0 ? (((totalNeto - prevNeto) / prevNeto) * 100).toFixed(0) : null;
 
-        // --- BALANCE IVA: Cruzar ventas vs compras ---
-        // Obtener ventas del mismo período desde daily_sales y eleventa_sales
+        // Balance IVA: ventas vs compras
         let ventasBrutoMes = 0;
         try {
             const allEleventa = await window.db.eleventa_sales.toArray();
             const eleventaMes = allEleventa.filter(s => !s.deleted && s.date && s.date.startsWith(currentPeriodo));
             ventasBrutoMes += eleventaMes.reduce((s, e) => s + (parseFloat(e.total) || 0), 0);
-
-            const manualSales = await window.db.daily_sales.toArray();
-            const manualMes = manualSales.filter(s => !s.deleted && s.date && s.date.startsWith(currentPeriodo));
-            // Solo sumar manuales si no hay eleventa para esa fecha (evitar doble conteo)
             const eleventaDates = new Set(eleventaMes.map(e => e.date?.split('T')[0]));
-            manualMes.forEach(s => {
-                if (!eleventaDates.has(s.date)) {
-                    ventasBrutoMes += (parseFloat(s.total) || 0);
-                }
-            });
-        } catch (e) { console.error('Error cargando ventas para balance:', e); }
+            const manualMes = (await window.db.daily_sales.toArray()).filter(s => !s.deleted && s.date && s.date.startsWith(currentPeriodo));
+            manualMes.forEach(s => { if (!eleventaDates.has(s.date)) ventasBrutoMes += (parseFloat(s.total) || 0); });
+        } catch (e) { /* sin ventas */ }
 
-        // IVA Débito = ventas brutas / 1.19 * 0.19 (ventas al consumidor incluyen IVA)
-        const ventasNeto = Math.round(ventasBrutoMes / 1.19);
-        const ivaDebito = Math.round(ventasBrutoMes - ventasNeto);
+        const ivaDebito = Math.round(ventasBrutoMes - Math.round(ventasBrutoMes / 1.19));
         const ivaCredito = totalIva;
-
-        // Balance: positivo = debes pagar al SII, negativo = remanente a favor
         const balanceIva = ivaDebito - ivaCredito;
         const tieneVentas = ventasBrutoMes > 0;
 
-        // Options del selector de meses
+        // Selector de meses
         const mesesOptions = mesesDisponibles.map(m => {
             const [y2, m2] = m.split('-').map(Number);
-            const label = new Date(y2, m2 - 1, 1).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
-            const labelCap = label.charAt(0).toUpperCase() + label.slice(1);
-            return `<option value="${m}" ${m === currentPeriodo ? 'selected' : ''}>${labelCap}</option>`;
+            const lb = new Date(y2, m2 - 1, 1).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+            return `<option value="${m}" ${m === currentPeriodo ? 'selected' : ''}>${lb.charAt(0).toUpperCase() + lb.slice(1)}</option>`;
         }).join('');
 
         const fmt = (n) => '$' + Math.abs(n).toLocaleString('es-CL');
-        const sign = (n) => n < 0 ? '-' : '';
 
-        // Determinar mensaje y color del balance
-        let balanceMsg, balanceColor, balanceBg, balanceIcon;
-        if (!tieneVentas) {
-            balanceMsg = 'Sin datos de ventas para este mes';
-            balanceColor = '#6b7280';
-            balanceBg = 'rgba(107,114,128,0.08)';
-            balanceIcon = 'ph-info';
-        } else if (balanceIva > 0) {
-            balanceMsg = `Debes pagar ${fmt(balanceIva)} de IVA al SII este mes`;
-            balanceColor = '#dc2626';
-            balanceBg = 'rgba(220,38,38,0.08)';
-            balanceIcon = 'ph-arrow-up-right';
-        } else if (balanceIva < 0) {
-            balanceMsg = `Tienes ${fmt(Math.abs(balanceIva))} de remanente IVA a favor`;
-            balanceColor = '#16a34a';
-            balanceBg = 'rgba(22,163,106,0.08)';
-            balanceIcon = 'ph-arrow-down-right';
-        } else {
-            balanceMsg = 'IVA equilibrado — compras y ventas están parejas';
-            balanceColor = '#2563eb';
-            balanceBg = 'rgba(37,99,235,0.08)';
-            balanceIcon = 'ph-equals';
-        }
+        // Balance visual
+        let bMsg, bColor, bBg, bIcon;
+        if (!tieneVentas) { bMsg='Sin datos de ventas para este mes'; bColor='#6b7280'; bBg='rgba(107,114,128,0.06)'; bIcon='ph-info'; }
+        else if (balanceIva > 0) { bMsg=`Debes pagar ${fmt(balanceIva)} de IVA al SII`; bColor='#dc2626'; bBg='rgba(220,38,38,0.06)'; bIcon='ph-arrow-up-right'; }
+        else if (balanceIva < 0) { bMsg=`Remanente IVA a favor: ${fmt(Math.abs(balanceIva))}`; bColor='#16a34a'; bBg='rgba(22,163,106,0.06)'; bIcon='ph-arrow-down-right'; }
+        else { bMsg='IVA equilibrado'; bColor='#2563eb'; bBg='rgba(37,99,235,0.06)'; bIcon='ph-equals'; }
 
-        // Consejo práctico
-        let consejo = '';
-        if (tieneVentas && balanceIva > 50000) {
-            consejo = 'Tip: Podrías adelantar compras con factura para aumentar tu crédito fiscal y reducir el pago de IVA.';
-        } else if (tieneVentas && balanceIva < -50000) {
-            consejo = 'Tu remanente crece — tus compras superan las ventas. Revisa si puedes vender más o reducir compras.';
-        } else if (tieneVentas) {
-            consejo = 'Buen equilibrio entre compras y ventas.';
-        }
+        let tip = '';
+        if (tieneVentas && balanceIva > 50000) tip = 'Podrías adelantar compras con factura para reducir el IVA a pagar.';
+        else if (tieneVentas && balanceIva < -50000) tip = 'Tus compras superan las ventas. Busca vender más o reducir compras.';
+
+        // Pendientes
+        const pendMonto = del_mes.filter(i => i.paymentStatus === 'Pendiente' || i.paymentStatus === 'Abonado')
+            .reduce((s, i) => s + Math.max(0, (parseFloat(i.amount) || 0) - (parseFloat(i.paidAmount) || 0)), 0);
+        const pendCount = del_mes.filter(i => i.paymentStatus === 'Pendiente').length;
+        const provCount = new Set(del_mes.map(i => i.siiRutProveedor).filter(Boolean)).size;
 
         panel.innerHTML = `
-            <style>
-                .sii-contador-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr 1fr;
-                    gap: 0;
-                    border-radius: 16px;
-                    overflow: hidden;
-                    border: 2px solid var(--border);
-                    background: var(--bg-card);
-                }
-                .sii-contador-header {
-                    grid-column: 1 / -1;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 16px 20px;
-                    background: linear-gradient(135deg, #1e293b, #0f172a);
-                    color: white;
-                    flex-wrap: wrap;
-                    gap: 12px;
-                }
-                .dark-mode .sii-contador-header {
-                    background: linear-gradient(135deg, #0f172a, #020617);
-                }
-                .sii-contador-header h2 {
-                    font-size: 1.1rem;
-                    font-weight: 700;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    margin: 0;
-                }
-                .sii-counter-cell {
-                    padding: 20px;
-                    text-align: center;
-                    border-right: 1px solid var(--border);
-                    border-bottom: 1px solid var(--border);
-                }
-                .sii-counter-cell:last-child, .sii-counter-cell:nth-child(3n+1) { border-right: 1px solid var(--border); }
-                .sii-counter-cell:nth-child(3n) { border-right: none; }
-                .sii-counter-label {
-                    font-size: 0.72rem;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    color: var(--text-muted);
-                    margin-bottom: 6px;
-                }
-                .sii-counter-value {
-                    font-size: 1.5rem;
-                    font-weight: 800;
-                    font-variant-numeric: tabular-nums;
-                    font-family: 'Outfit', monospace;
-                    line-height: 1.2;
-                }
-                .sii-counter-sub {
-                    font-size: 0.72rem;
-                    color: var(--text-muted);
-                    margin-top: 4px;
-                }
-                .sii-balance-bar {
-                    grid-column: 1 / -1;
-                    padding: 16px 20px;
-                    display: flex;
-                    align-items: center;
-                    gap: 14px;
-                    flex-wrap: wrap;
-                    border-top: 2px solid var(--border);
-                }
-                @media (max-width: 640px) {
-                    .sii-contador-grid { grid-template-columns: 1fr 1fr; }
-                    .sii-counter-value { font-size: 1.1rem; }
-                    .sii-counter-cell { padding: 14px 10px; }
-                }
-            </style>
-            <div class="sii-contador-grid">
-                <div class="sii-contador-header">
+            <div class="sii-panel">
+                <div class="sii-header">
                     <h2><i class="ph ph-calculator"></i> Contador Tributario</h2>
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <select id="contador-periodo-select" style="background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.3); border-radius:8px; padding:6px 12px; font-size:0.85rem; font-weight:600; cursor:pointer;">
-                            ${mesesOptions}
-                        </select>
-                        <span style="font-size:0.8rem; opacity:0.7;">${countFacturas} fact. · ${countNC} NC</span>
+                        <select id="contador-periodo-select">${mesesOptions}</select>
+                        <span style="font-size:0.78rem; opacity:0.7;">${countFacturas} fact. · ${countNC} NC</span>
                     </div>
                 </div>
 
-                <!-- BALANCE IVA — la fila más importante -->
-                <div class="sii-balance-bar" style="background:${balanceBg};">
-                    <div style="width:48px; height:48px; border-radius:50%; background:${balanceColor}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                        <i class="ph ${balanceIcon}" style="font-size:1.4rem; color:white;"></i>
+                <div class="sii-balance" style="background:${bBg};">
+                    <div class="sii-balance-icon" style="background:${bColor};">
+                        <i class="ph ${bIcon}"></i>
                     </div>
-                    <div style="flex:1; min-width:200px;">
-                        <div style="font-weight:800; font-size:1.05rem; color:${balanceColor};">${balanceMsg}</div>
-                        ${consejo ? `<div style="font-size:0.82rem; color:var(--text-muted); margin-top:3px;">${consejo}</div>` : ''}
+                    <div style="flex:1; min-width:180px;">
+                        <div style="font-weight:800; font-size:1rem; color:${bColor};">${bMsg}</div>
+                        ${tip ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">${tip}</div>` : ''}
                     </div>
                     ${tieneVentas ? `
-                    <div style="display:flex; gap:20px; flex-wrap:wrap; font-size:0.82rem;">
-                        <div style="text-align:center;">
-                            <div style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; font-weight:600;">Ventas Brutas</div>
-                            <div style="font-weight:700; color:var(--text-primary);">${fmt(ventasBrutoMes)}</div>
-                        </div>
-                        <div style="text-align:center;">
-                            <div style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; font-weight:600;">IVA Débito</div>
-                            <div style="font-weight:700; color:#dc2626;">${fmt(ivaDebito)}</div>
-                        </div>
-                        <div style="text-align:center;">
-                            <div style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; font-weight:600;">IVA Crédito</div>
-                            <div style="font-weight:700; color:#16a34a;">${fmt(ivaCredito)}</div>
-                        </div>
-                        <div style="text-align:center;">
-                            <div style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; font-weight:600;">Diferencia</div>
-                            <div style="font-weight:800; color:${balanceColor};">${balanceIva >= 0 ? '' : '-'}${fmt(balanceIva)}</div>
-                        </div>
+                    <div class="sii-balance-stats">
+                        <div><div class="lbl">Ventas</div><div class="val" style="color:var(--text-primary);">${fmt(ventasBrutoMes)}</div></div>
+                        <div><div class="lbl">IVA Débito</div><div class="val" style="color:#dc2626;">${fmt(ivaDebito)}</div></div>
+                        <div><div class="lbl">IVA Crédito</div><div class="val" style="color:#16a34a;">${fmt(ivaCredito)}</div></div>
+                        <div><div class="lbl">Diferencia</div><div class="val" style="color:${bColor};">${balanceIva >= 0 ? '' : '-'}${fmt(balanceIva)}</div></div>
+                    </div>` : ''}
+                </div>
+
+                <div class="sii-cells">
+                    <div class="sii-cell">
+                        <div class="lbl">Neto Compras</div>
+                        <div class="val" style="color:#2563eb;">${totalNeto < 0 ? '-' : ''}${fmt(totalNeto)}</div>
+                        <div class="sub">${diffNeto !== null ? `${diffNeto > 0 ? '+' : ''}${diffNeto}% vs mes anterior` : 'Sin datos previos'}</div>
                     </div>
-                    ` : ''}
-                </div>
-
-                <div class="sii-counter-cell">
-                    <div class="sii-counter-label">Neto Compras</div>
-                    <div class="sii-counter-value" style="color:#2563eb;">${sign(totalNeto)}${fmt(totalNeto)}</div>
-                    <div class="sii-counter-sub">${diffNeto !== null ? `${diffNeto > 0 ? '+' : ''}${diffNeto}% vs mes anterior` : 'Sin datos previos'}</div>
-                </div>
-
-                <div class="sii-counter-cell">
-                    <div class="sii-counter-label">IVA Crédito Fiscal</div>
-                    <div class="sii-counter-value" style="color:#16a34a;">${sign(totalIva)}${fmt(totalIva)}</div>
-                    <div class="sii-counter-sub">IVA recuperable de compras</div>
-                </div>
-
-                <div class="sii-counter-cell">
-                    <div class="sii-counter-label">Total Bruto</div>
-                    <div class="sii-counter-value" style="color:var(--text-primary);">${sign(totalBruto)}${fmt(totalBruto)}</div>
-                    <div class="sii-counter-sub">${totalExento > 0 ? `Exento: ${fmt(totalExento)}` : 'Sin montos exentos'}</div>
-                </div>
-
-                <div class="sii-counter-cell">
-                    <div class="sii-counter-label">PPM Estimado</div>
-                    <div class="sii-counter-value" style="color:#f59e0b;">${fmt(ppmEstimado)}</div>
-                    <div class="sii-counter-sub">~1% sobre neto</div>
-                </div>
-
-                <div class="sii-counter-cell">
-                    <div class="sii-counter-label">Pendiente de Pago</div>
-                    <div class="sii-counter-value" style="color:#dc2626;">${fmt(del_mes.filter(i => i.paymentStatus === 'Pendiente' || i.paymentStatus === 'Abonado').reduce((s, i) => s + Math.max(0, (parseFloat(i.amount) || 0) - (parseFloat(i.paidAmount) || 0)), 0))}</div>
-                    <div class="sii-counter-sub">${del_mes.filter(i => i.paymentStatus === 'Pendiente').length} facturas sin pagar</div>
-                </div>
-
-                <div class="sii-counter-cell">
-                    <div class="sii-counter-label">Proveedores</div>
-                    <div class="sii-counter-value" style="color:#7c3aed;">${new Set(del_mes.map(i => i.siiRutProveedor).filter(Boolean)).size}</div>
-                    <div class="sii-counter-sub">RUTs distintos del mes</div>
+                    <div class="sii-cell">
+                        <div class="lbl">IVA Crédito Fiscal</div>
+                        <div class="val" style="color:#16a34a;">${totalIva < 0 ? '-' : ''}${fmt(totalIva)}</div>
+                        <div class="sub">IVA recuperable</div>
+                    </div>
+                    <div class="sii-cell">
+                        <div class="lbl">Total Bruto</div>
+                        <div class="val" style="color:var(--text-primary);">${totalBruto < 0 ? '-' : ''}${fmt(totalBruto)}</div>
+                        <div class="sub">${totalExento > 0 ? `Exento: ${fmt(totalExento)}` : 'Neto + IVA'}</div>
+                    </div>
+                    <div class="sii-cell">
+                        <div class="lbl">PPM Estimado</div>
+                        <div class="val" style="color:#f59e0b;">${fmt(ppmEstimado)}</div>
+                        <div class="sub">~1% sobre neto</div>
+                    </div>
+                    <div class="sii-cell">
+                        <div class="lbl">Pendiente de Pago</div>
+                        <div class="val" style="color:#dc2626;">${fmt(pendMonto)}</div>
+                        <div class="sub">${pendCount} factura${pendCount !== 1 ? 's' : ''} sin pagar</div>
+                    </div>
+                    <div class="sii-cell">
+                        <div class="lbl">Proveedores</div>
+                        <div class="val" style="color:#7c3aed;">${provCount}</div>
+                        <div class="sub">RUTs distintos</div>
+                    </div>
                 </div>
             </div>
         `;
