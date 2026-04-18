@@ -88,6 +88,11 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
                 <option value="all">Todo el Historial</option>
                 <!-- Dynamic Months will be injected here -->
             </select>
+            <select id="filter-tipo-doc" class="form-input" title="Tipo de documento">
+                <option value="facturas" selected>Solo Facturas</option>
+                <option value="nc">Solo Notas de Crédito</option>
+                <option value="all">Todas</option>
+            </select>
             <select id="filter-status" class="form-input">
                 <option value="all">Todos los Estados</option>
                 <option value="Pendiente">Pendiente</option>
@@ -171,6 +176,7 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     // Events
     document.getElementById('btn-add-invoice').addEventListener('click', () => showInvoiceModal());
     document.getElementById('invoice-search').addEventListener('input', () => { window.state.invoicesPage = 1; renderInvoices(); });
+    document.getElementById('filter-tipo-doc').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('filter-status').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('filter-date').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('filter-supplier').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
@@ -1241,6 +1247,7 @@ async function renderInvoices() {
 
     // Get Filter Values
     const search = document.getElementById('invoice-search').value.toLowerCase();
+    const tipoDocFilter = document.getElementById('filter-tipo-doc')?.value || 'facturas';
     const statusFilter = document.getElementById('filter-status').value;
     const dateFilter = document.getElementById('filter-date').value;
     const supplierFilter = (document.getElementById('filter-supplier')?.value) || 'all';
@@ -1287,7 +1294,13 @@ async function renderInvoices() {
             // Supplier filter
             const matchesSupplier = supplierFilter === 'all' || String(i.supplierId) === String(supplierFilter);
 
-            return matchesSearch && matchesStatus && matchesDate && matchesSupplier;
+            // Tipo documento filter (facturas vs NC)
+            const isNC = i.siiTipoDoc === 61 || (parseFloat(i.amount) || 0) < 0;
+            let matchesTipoDoc = true;
+            if (tipoDocFilter === 'facturas') matchesTipoDoc = !isNC;
+            else if (tipoDocFilter === 'nc') matchesTipoDoc = isNC;
+
+            return matchesSearch && matchesStatus && matchesDate && matchesSupplier && matchesTipoDoc;
         });
 
         // Render supplier history if a specific supplier is selected
@@ -1322,19 +1335,27 @@ async function renderInvoices() {
         let totalPending = 0;
         let totalFacturas = 0;
         let totalNC = 0;
+        let countFact = 0, countNC = 0;
 
         filtered.forEach(inv => {
             const amount = parseFloat(inv.amount) || 0;
             totalAmount += amount;
             if (inv.siiTipoDoc === 61 || amount < 0) {
-                totalNC += Math.abs(amount);
+                totalNC += Math.abs(amount); countNC++;
             } else {
-                totalFacturas += amount;
+                totalFacturas += amount; countFact++;
             }
             if (inv.paymentStatus === 'Pendiente') totalPending += amount;
         });
 
-        const html = paginatedItems.map(inv => {
+        // Resumen compacto arriba de la lista
+        const resumenLabel = tipoDocFilter === 'nc'
+            ? `${countNC} Notas de Crédito · Total: -${formatCurrency(totalNC)}`
+            : tipoDocFilter === 'facturas'
+            ? `${countFact} Facturas · Total: ${formatCurrency(totalFacturas)}${totalPending > 0 ? ` · Pendiente: ${formatCurrency(totalPending)}` : ''}`
+            : `${countFact} Facturas (${formatCurrency(totalFacturas)}) · ${countNC} NC (-${formatCurrency(totalNC)}) · Neto: ${formatCurrency(totalAmount)}`;
+
+        const html = `<div style="font-size:0.82rem; color:var(--text-muted); font-weight:600; margin-bottom:8px; padding:0 4px;">${resumenLabel}</div>` + paginatedItems.map(inv => {
             let supplierName = supplierMap[inv.supplierId];
 
             // --- SELF-HEALING FALLBACK ---
