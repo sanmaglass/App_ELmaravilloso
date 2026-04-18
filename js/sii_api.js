@@ -3,19 +3,18 @@
  * Defaults hardcodeados para la cuenta principal.
  * Se pueden sobreescribir desde Settings (localStorage).
  */
-// Limpiar caché viejo de ventas (v3 no leía resumenPorTipo → datos vacíos)
-// Se ejecuta una vez, luego el flag impide que se repita
+// Limpiar caché viejo de ventas — v3 y anteriores tenían bug (NC no se restaban)
+// Ahora v4 usa resumenPorTipo como fuente única con NC correctas
 (function() {
-    const FLAG = 'sii_ventas_cache_v4_migrated';
+    const FLAG = 'sii_ventas_cache_v5_clean';
     if (localStorage.getItem(FLAG)) return;
-    // Borrar todas las claves sii_ventas_v3_* para forzar recarga desde API
     const toDelete = [];
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('sii_ventas_v3_')) toDelete.push(key);
+        if (key && (key.startsWith('sii_ventas_v3_') || key.startsWith('sii_ventas_v4_'))) toDelete.push(key);
     }
     toDelete.forEach(k => localStorage.removeItem(k));
-    if (toDelete.length > 0) console.log(`🧹 Caché ventas v3 limpiado: ${toDelete.length} períodos borrados (se recargarán con resumenPorTipo)`);
+    if (toDelete.length > 0) console.log(`🧹 Caché ventas limpiado: ${toDelete.length} períodos (NC ahora se restan correctamente)`);
     localStorage.setItem(FLAG, Date.now().toString());
 })();
 
@@ -398,54 +397,36 @@ window.SII_API = {
 
     /**
      * Procesa el resultado crudo del RCV ventas y devuelve totales.
-     * Usa DOS fuentes:
-     *   1) datos[] — registros individuales (facturas, NC). Las boletas NO vienen aquí.
-     *   2) resumenPorTipo[] — totales mensuales por tipo de DTE. Las BOLETAS sí vienen aquí.
+     * Fuente ÚNICA: resumenPorTipo[] — totales mensuales por tipo de DTE.
+     * Incluye TODOS los tipos: facturas, boletas, comprobantes pago y NC.
+     * (datos[] tiene registros individuales pero genera duplicados con el resumen)
      */
     _parsearVentas(datos, resumenPorTipo) {
         let neto = 0, iva = 0, exento = 0, total = 0, facturas = 0, notasCredito = 0, boletas = 0, boletasTotal = 0;
 
-        // 1) Registros individuales (facturas y NC — las boletas NO aparecen aquí)
-        if (datos && datos.length > 0) {
-            for (const doc of datos) {
-                if (!doc['Nro'] || doc['Nro'] === '') continue;
-                const tipoDoc = parseInt(doc['Tipo Doc']);
-                // Solo facturas (33,34) y NC (61) vienen como registros individuales
-                if (![33, 34, 56, 61].includes(tipoDoc)) continue;
-
-                const mNeto = parseInt(doc['Monto Neto']) || 0;
-                const mIva = parseInt(doc['Monto IVA']) || parseInt(doc['Monto IVA Recuperable']) || 0;
-                const mExento = parseInt(doc['Monto Exento']) || 0;
-                const mTotal = parseInt(doc['Monto Total']) || 0;
-
-                if (tipoDoc === 61) {
-                    neto -= mNeto; iva -= mIva; exento -= mExento; total -= mTotal; notasCredito++;
-                } else {
-                    neto += mNeto; iva += mIva; exento += mExento; total += mTotal; facturas++;
-                }
-            }
-        }
-
-        // 2) Resumen por tipo: boletas y otros DTE que solo vienen como resumen mensual
         if (resumenPorTipo && resumenPorTipo.length > 0) {
             for (const res of resumenPorTipo) {
-                const tipo = res.codigoTipoDoc || parseInt(res.tipoDocumento) || 0;
+                const tipo = res.codigoTipoDoc || 0;
                 const rNeto = res.montoNeto || 0;
                 const rIva = res.montoIva || 0;
                 const rExento = res.montoExento || 0;
                 const rTotal = res.montoTotal || 0;
                 const rCount = res.totalDocumentos || 0;
 
-                if (tipo === 39 || tipo === 41) {
-                    // Boletas electrónicas — solo vienen en resumen
+                if (tipo === 61) {
+                    // Nota de Crédito — RESTA de todo
+                    neto -= rNeto; iva -= rIva; exento -= rExento; total -= rTotal;
+                    notasCredito += rCount;
+                } else if (tipo === 39 || tipo === 41) {
+                    // Boletas electrónicas
                     neto += rNeto; iva += rIva; exento += rExento; total += rTotal;
                     boletas += rCount; boletasTotal += rTotal;
-                } else if (tipo === 48) {
-                    // Comprobante de Pago Electrónico — también suma a ventas
+                } else if (tipo === 33 || tipo === 34 || tipo === 48 || tipo === 56) {
+                    // Facturas, Facturas Exentas, Comprobantes de Pago, Notas Débito
                     neto += rNeto; iva += rIva; exento += rExento; total += rTotal;
                     facturas += rCount;
                 }
-                // Tipos 33, 34, 61 ya se procesaron arriba desde datos[]
+                // Otros tipos se ignoran
             }
         }
 
@@ -457,7 +438,7 @@ window.SII_API = {
      * Caché en localStorage: meses pasados = permanente, mes actual = 30 min.
      */
     async obtenerTotalesVentas(periodo, forceRefresh = false) {
-        const cacheKey = `sii_ventas_v3_${periodo}`;
+        const cacheKey = `sii_ventas_v4_${periodo}`;
         const now = new Date();
         const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const esMesActual = periodo === mesActual;
@@ -499,7 +480,7 @@ window.SII_API = {
         const faltantes = [];
 
         for (const p of periodos) {
-            const cacheKey = `sii_ventas_v3_${p}`;
+            const cacheKey = `sii_ventas_v4_${p}`;
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
                 const data = JSON.parse(cached);

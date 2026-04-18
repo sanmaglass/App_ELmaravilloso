@@ -616,7 +616,7 @@ async function renderContadorDigital(periodoOverride = null) {
         let ventasCargando = false;
 
         // Intento 1: caché local (instantáneo)
-        const ventasCache = localStorage.getItem(`sii_ventas_v3_${currentPeriodo}`);
+        const ventasCache = localStorage.getItem(`sii_ventas_v4_${currentPeriodo}`);
         if (ventasCache) {
             ventas = JSON.parse(ventasCache);
         } else {
