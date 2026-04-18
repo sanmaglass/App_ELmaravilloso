@@ -615,19 +615,24 @@ async function renderContadorDigital(periodoOverride = null) {
         let ventasError = false;
         let ventasCargando = false;
 
-        // Intento 1: caché local (instantáneo)
-        const ventasCache = localStorage.getItem(`sii_ventas_v4_${currentPeriodo}`);
+        // Intento 1: caché local v4 o v3 (instantáneo)
+        const ventasCache = localStorage.getItem(`sii_ventas_v4_${currentPeriodo}`)
+            || localStorage.getItem(`sii_ventas_v3_${currentPeriodo}`);
         if (ventasCache) {
             ventas = JSON.parse(ventasCache);
-        } else {
-            // No hay caché: marcar como "cargando" y lanzar fetch en background
+        } else if (!window.SII_API._apiLimitExceeded) {
+            // No hay caché y hay cupo: lanzar fetch en background
             ventasCargando = true;
-            window.SII_API.obtenerTotalesVentas(currentPeriodo).then(() => {
-                // Cuando termine, re-renderizar el contador con los datos frescos
-                renderContadorDigital(currentPeriodo);
+            window.SII_API.obtenerTotalesVentas(currentPeriodo).then((data) => {
+                if (data && (data.total > 0 || data.boletas > 0)) {
+                    renderContadorDigital(currentPeriodo);
+                }
             }).catch(e => {
                 console.warn('No se pudieron obtener ventas del SII:', e.message);
             });
+        } else {
+            // Sin cupo API — mostrar aviso
+            ventasError = true;
         }
 
         const ivaDebito = ventas.iva;       // IVA Débito real del SII
@@ -653,6 +658,7 @@ async function renderContadorDigital(periodoOverride = null) {
         // Balance visual
         let bMsg, bColor, bBg, bIcon;
         if (ventasCargando) { bMsg='Cargando ventas del SII...'; bColor='#3b82f6'; bBg='rgba(59,130,246,0.06)'; bIcon='ph-spinner-gap ph-spin'; }
+        else if (ventasError && window.SII_API._apiLimitExceeded) { bMsg='Cupo mensual de API agotado (50/50) — ventas no disponibles hasta el próximo mes'; bColor='#f59e0b'; bBg='rgba(245,158,11,0.06)'; bIcon='ph-warning'; }
         else if (ventasError) { bMsg='No se pudieron cargar ventas del SII'; bColor='#f59e0b'; bBg='rgba(245,158,11,0.06)'; bIcon='ph-warning'; }
         else if (!tieneVentas) { bMsg='Sin ventas registradas en el SII para este mes'; bColor='#6b7280'; bBg='rgba(107,114,128,0.06)'; bIcon='ph-info'; }
         else if (f29Estimado > 0) { bMsg=`Impuesto estimado (F29): ${fmt(f29Estimado)}`; bColor='#dc2626'; bBg='rgba(220,38,38,0.06)'; bIcon='ph-arrow-up-right'; }

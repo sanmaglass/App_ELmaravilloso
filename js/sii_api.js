@@ -3,21 +3,6 @@
  * Defaults hardcodeados para la cuenta principal.
  * Se pueden sobreescribir desde Settings (localStorage).
  */
-// Limpiar caché viejo de ventas — v3 y anteriores tenían bug (NC no se restaban)
-// Ahora v4 usa resumenPorTipo como fuente única con NC correctas
-(function() {
-    const FLAG = 'sii_ventas_cache_v5_clean';
-    if (localStorage.getItem(FLAG)) return;
-    const toDelete = [];
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.startsWith('sii_ventas_v3_') || key.startsWith('sii_ventas_v4_'))) toDelete.push(key);
-    }
-    toDelete.forEach(k => localStorage.removeItem(k));
-    if (toDelete.length > 0) console.log(`🧹 Caché ventas limpiado: ${toDelete.length} períodos (NC ahora se restan correctamente)`);
-    localStorage.setItem(FLAG, Date.now().toString());
-})();
-
 window.SII_API = {
 
     // Defaults de la cuenta principal (sobreescribibles desde Settings)
@@ -101,6 +86,11 @@ window.SII_API = {
      * @returns {Object} { success, data: { totalRegistros, datos[], resumenPorTipo[] } }
      */
     async consultarRCV(periodo, tipo = 'compra') {
+        // Si ya se detectó que se acabó el cupo, no gastar más requests
+        if (this._apiLimitExceeded) {
+            throw new Error('Cupo mensual de BaseAPI agotado (50/50). Se renueva el próximo mes.');
+        }
+
         const config = this.getConfig();
         if (!config.apiKey || !config.rut || !config.password) {
             throw new Error('Faltan credenciales SII. Configúralas en Ajustes → Integración SII.');
@@ -125,6 +115,11 @@ window.SII_API = {
 
             if (!response.ok) {
                 const text = await response.text();
+                // Si se acabó el cupo mensual, marcar para no seguir intentando
+                if (response.status === 403 && text.includes('limit exceeded')) {
+                    this._apiLimitExceeded = true;
+                    console.warn('🚫 Cupo mensual de BaseAPI agotado (50/50). No se harán más consultas hasta el próximo mes.');
+                }
                 throw new Error(`Error BaseAPI (${response.status}): ${text}`);
             }
 
@@ -437,33 +432,53 @@ window.SII_API = {
      * Obtiene totales de ventas para un período.
      * Caché en localStorage: meses pasados = permanente, mes actual = 30 min.
      */
+    /** Lee caché de ventas (v4 o v3 como fallback) */
+    _leerCacheVentas(periodo) {
+        const v4 = localStorage.getItem(`sii_ventas_v4_${periodo}`);
+        if (v4) return JSON.parse(v4);
+        // Fallback: leer caché v3 si existe (datos viejos mejor que nada)
+        const v3 = localStorage.getItem(`sii_ventas_v3_${periodo}`);
+        if (v3) return JSON.parse(v3);
+        return null;
+    },
+
     async obtenerTotalesVentas(periodo, forceRefresh = false) {
         const cacheKey = `sii_ventas_v4_${periodo}`;
         const now = new Date();
         const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const esMesActual = periodo === mesActual;
+        const empty = { neto: 0, iva: 0, exento: 0, total: 0, facturas: 0, notasCredito: 0, boletas: 0, boletasTotal: 0 };
 
         if (!forceRefresh) {
-            const cached = localStorage.getItem(cacheKey);
+            const cached = this._leerCacheVentas(periodo);
             if (cached) {
-                const data = JSON.parse(cached);
-                if (!esMesActual) return data;
-                if (data._ts && (Date.now() - data._ts) < 30 * 60 * 1000) return data;
+                if (!esMesActual) return cached;
+                if (cached._ts && (Date.now() - cached._ts) < 30 * 60 * 1000) return cached;
             }
         }
 
-        const result = await this.consultarRCV(periodo, 'venta');
-        if (!result.success || !result.data) {
-            return { neto: 0, iva: 0, exento: 0, total: 0, facturas: 0, notasCredito: 0, boletas: 0, boletasTotal: 0 };
-        }
+        try {
+            const result = await this.consultarRCV(periodo, 'venta');
+            if (!result.success || !result.data) {
+                return this._leerCacheVentas(periodo) || empty;
+            }
 
-        // Pasar AMBAS fuentes: datos individuales + resumen por tipo
-        const datos = {
-            ...this._parsearVentas(result.data.datos || [], result.data.resumenPorTipo || []),
-            _ts: Date.now()
-        };
-        localStorage.setItem(cacheKey, JSON.stringify(datos));
-        return datos;
+            const datos = {
+                ...this._parsearVentas(result.data.datos || [], result.data.resumenPorTipo || []),
+                _ts: Date.now()
+            };
+            localStorage.setItem(cacheKey, JSON.stringify(datos));
+            return datos;
+        } catch (err) {
+            // Si falla (403 sin cupo, 429 rate limit, red), usar caché viejo
+            console.warn(`⚠️ API falló para ventas ${periodo}: ${err.message}. Usando caché local.`);
+            const fallback = this._leerCacheVentas(periodo);
+            if (fallback) {
+                fallback._fromCache = true;
+                return fallback;
+            }
+            return empty;
+        }
     },
 
     /**
