@@ -491,8 +491,32 @@ window.DataManager = {
     }
 };
 
+// One-time migration: mark all Pendiente purchase invoices as Pagado
+// Uses DataManager.saveAndSync so changes propagate to Supabase and other devices
+async function migratePendienteToPagado() {
+    const flag = 'migration_pendiente_to_pagado_done';
+    if (localStorage.getItem(flag)) return;
+    try {
+        const all = await db.purchase_invoices.toArray();
+        const pendientes = all.filter(i => !i.deleted && i.paymentStatus === 'Pendiente');
+        if (pendientes.length > 0) {
+            for (const inv of pendientes) {
+                inv.paymentStatus = 'Pagado';
+                if (inv.paymentMethod === 'Pendiente') inv.paymentMethod = 'Transferencia';
+                inv.paidAmount = parseFloat(inv.amount) || 0;
+                await window.DataManager.saveAndSync('purchase_invoices', inv);
+            }
+            console.log(`✅ Migración: ${pendientes.length} facturas cambiadas de Pendiente a Pagado`);
+        }
+        localStorage.setItem(flag, Date.now().toString());
+    } catch (e) {
+        console.error('Error en migración Pendiente→Pagado:', e);
+    }
+}
+
 window.seedDatabase = seedDatabase;
 window.seedSuppliersIfNeeded = seedSuppliersIfNeeded;
+window.migratePendienteToPagado = migratePendienteToPagado;
 
 // Inicializar queue processor al cargar el módulo
 window.DataManager.initQueueProcessor();
