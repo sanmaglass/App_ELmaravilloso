@@ -1031,7 +1031,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     </div>` : ''}
 
                     <!-- Cuenta Dueño (Compacta) -->
-                    ${ownerEmployees.length > 0 ? `
+                    ${ownerExtraDraw > 0 ? `
                     <details style="margin: 4px 0;">
                         <summary style="list-style:none; cursor:pointer; outline:none;">
                             <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
