@@ -301,7 +301,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <!-- KPI Cards con Estética Premium -->
         <div class="grid grid-cols-auto gap-6 mb-8">
             <!-- Ventas mes -->
-            <div class="premium-card card-anim" style="border-top:5px solid #10b981; background: linear-gradient(180deg, rgba(16,185,129,0.05) 0%, white 100%);">
+            <div class="premium-card card-anim" style="border-top:5px solid #10b981; background: linear-gradient(180deg, rgba(16,185,129,0.05) 0%, var(--bg-card, white) 100%);">
                 <div class="flex justify-between items-start mb-6">
                     <div class="p-3 rounded-2xl" style="background:rgba(16,185,129,0.1); color:#10b981;">
                         <i class="ph ph-chart-line-up text-3xl"></i>
@@ -314,7 +314,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
 
             <!-- Gasto mes -->
-            <div class="premium-card card-anim delay-1" style="border-top:5px solid var(--primary); background: linear-gradient(180deg, rgba(230,0,0,0.03) 0%, white 100%);">
+            <div class="premium-card card-anim delay-1" style="border-top:5px solid var(--primary); background: linear-gradient(180deg, rgba(230,0,0,0.03) 0%, var(--bg-card, white) 100%);">
                 <div class="flex justify-between items-start mb-6">
                     <div class="p-3 rounded-2xl" style="background:rgba(230,0,0,0.1); color:var(--primary);" title="Incluye: Sueldos confirmados y Gastos del Local. NO incluye facturas de mercadería.">
                         <i class="ph ph-hand-coins text-3xl"></i>
@@ -327,7 +327,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
 
             <!-- Margen Neto / Salud -->
-            <div class="premium-card card-anim delay-2" style="border-top:5px solid #84cc16; background: linear-gradient(180deg, rgba(132,204,22,0.05) 0%, white 100%);">
+            <div class="premium-card card-anim delay-2" style="border-top:5px solid #84cc16; background: linear-gradient(180deg, rgba(132,204,22,0.05) 0%, var(--bg-card, white) 100%);">
                 <div class="flex justify-between items-start mb-6">
                     <div class="p-3 rounded-2xl" style="background:rgba(132,204,22,0.1); color:#84cc16;">
                         <i class="ph ph-heartbeat text-3xl"></i>
@@ -426,7 +426,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         </div>
 
         <!-- ALERTAS INTELIGENTES -->
-        <div class="premium-card mb-6" id="ceo-alerts-card" style="background:linear-gradient(135deg,#fff7ed,#fff); border-left:4px solid #f97316;">
+        <div class="premium-card mb-6" id="ceo-alerts-card" style="background:linear-gradient(135deg, rgba(249,115,22,0.06), var(--bg-card, #fff)); border-left:4px solid #f97316;">
             <div class="flex justify-between items-center mb-3">
                 <h3 class="font-bold flex items-center gap-2" style="color:#c2410c; font-size:1.05rem;">
                     <i class="ph ph-siren text-xl"></i> Alertas
@@ -514,7 +514,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <!-- Widgets fila inferior -->
         <div class="bottom-widgets-grid">
             <!-- Próximos pagos empleados -->
-            <div class="card card-anim p-5" style="background:linear-gradient(135deg,#fff0f0,#fff); border-bottom:4px solid #ffcccc;">
+            <div class="card card-anim p-5" style="background:linear-gradient(135deg, rgba(239,68,68,0.05), var(--bg-card, #fff)); border-bottom:4px solid #ffcccc;">
                 <h3 class="mb-3 font-bold flex items-center gap-2" style="color:#b91c1c; font-size:1rem;">
                     <i class="ph ph-money text-xl"></i> Próximos Pagos a Equipo
                 </h3>
@@ -523,7 +523,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 </div>
             </div>
             <!-- Facturas a crédito -->
-            <div class="card card-anim p-5" id="credit-widget" style="background:linear-gradient(135deg,#fffbeb,#fff); border-bottom:4px solid #fde68a; cursor:pointer;" onclick="document.querySelector('[data-view=\\'purchase_invoices\\']')?.click()">
+            <div class="card card-anim p-5" id="credit-widget" style="background:linear-gradient(135deg, rgba(245,158,11,0.05), var(--bg-card, #fff)); border-bottom:4px solid #fde68a; cursor:pointer;">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="font-bold flex items-center gap-2" style="color:#92400e; font-size:1rem;">
                         <i class="ph ph-clock-countdown text-xl"></i> Facturas por Pagar (Crédito)
@@ -1083,7 +1083,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     items: lowMargin.slice(0, 15).map(p => ({
                         name: p.name,
                         right: `${p.marginPct.toFixed(1)}% · ${p.qty} uds`,
-                        sub: `Factura ${fmt(p.revenue)} · gana ${fmt(p.profit)}`
+                        sub: `Factura ${window.Utils.formatCurrency(p.revenue, true)} · gana ${window.Utils.formatCurrency(p.profit, true)}`
                     }))
                 }
             });
@@ -1104,7 +1104,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     items: zeroMarginAlerts.slice(0, 15).map(p => ({
                         name: p.name,
                         right: `${p.qty} uds`,
-                        sub: `Factura ${fmt(p.revenue)} · gana ${fmt(p.profit)}`
+                        sub: `Factura ${window.Utils.formatCurrency(p.revenue, true)} · gana ${window.Utils.formatCurrency(p.profit, true)}`
                     }))
                 }
             });
@@ -1136,7 +1136,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     items: staleProducts.slice(0, 15).map(p => ({
                         name: p.name,
                         right: p.stock ? `stock ${p.stock}` : '',
-                        sub: p.costUnit ? `costo unit. ${fmt(p.costUnit)}` : ''
+                        sub: p.costUnit ? `costo unit. ${window.Utils.formatCurrency(p.costUnit, true)}` : ''
                     }))
                 }
             });
@@ -1682,8 +1682,19 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             });
         };
 
-        createSpark('spark-ventas', [10, 25, 15, 30, 45, 40, 35, 55], '#10b981');
-        createSpark('spark-gastos', [40, 35, 30, 45, 50, 40, 45, 35], '#ef4444');
+        // Build real sparkline data from last 6 months
+        const sparkMonths = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            sparkMonths.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
+        const sparkVentas = sparkMonths.map(m => elevByMonth.get(m) || 0);
+        const sparkGastos = sparkMonths.map(m => {
+            return allExpenses.filter(e => !e.deleted && e.date && e.date.startsWith(m))
+                .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+        });
+        createSpark('spark-ventas', sparkVentas, '#10b981');
+        createSpark('spark-gastos', sparkGastos, '#ef4444');
 
         // ---- Payments widget ----
         try {
@@ -1744,7 +1755,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             document.getElementById('expiry-alerts-list').innerHTML = expiringSoon.map(p => {
                 const diff = Math.ceil((new Date(p.expiryDate) - now) / 86400000);
                 const col = diff <= 7 ? 'var(--danger)' : '#f59e0b';
-                return `<div style="padding:10px;border:1px solid rgba(0,0,0,0.05);border-radius:8px;display:flex;align-items:center;gap:10px;background:white;">
+                return `<div style="padding:10px;border:1px solid rgba(0,0,0,0.05);border-radius:8px;display:flex;align-items:center;gap:10px;background:var(--bg-card);">
                     <i class="ph ${diff <= 7 ? 'ph-prohibit' : 'ph-clock-countdown'}" style="font-size:1.4rem;color:${col};"></i>
                     <div>
                         <div style="font-weight:700;font-size:0.88rem;">${window.Utils.escapeHTML(p.name)}</div>
@@ -1795,7 +1806,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         // ---- WhatsApp Report ----
         document.getElementById('btn-whatsapp-report').addEventListener('click', () => {
-            const msg = `📊 * Reporte El Maravilloso *\n📅 ${now.toLocaleDateString('es-ES')} \n\n💰 Gasto Mes: ${window.Utils.formatCurrency(gastoMes, true)} \n💵 Ventas Mes: ${window.Utils.formatCurrency(ventasMes, true)} \n⏱ Horas: ${totalHours.toFixed(1)} h\n👥 Personal: ${employees.length} \n\n_Generado automáticamente_`;
+            const msg = `📊 * Reporte El Maravilloso *\n📅 ${now.toLocaleDateString('es-ES')} \n\n💰 Gasto Mes: ${window.Utils.formatCurrency(gastoTotal, true)} \n💵 Ventas Mes: ${window.Utils.formatCurrency(ventasMes, true)} \n⏱ Horas: ${totalHours.toFixed(1)} h\n👥 Personal: ${employees.length} \n\n_Generado automáticamente_`;
             window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
         });
 
