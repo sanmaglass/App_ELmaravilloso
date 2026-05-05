@@ -80,23 +80,29 @@ window.SyncV2 = {
         let iterations = 0;
         const maxIterations = 200;
 
-        while (iterations < maxIterations) {
-          // Cursor compuesto (hlc, id): el .gt simple se saltaba filas cuando
-          // muchos registros compartían el mismo updated_at_hlc (colisiones por
-          // UPDATEs masivos de Postgres que asignan el mismo now() a todas las
-          // filas de la transacción). Con (hlc, id) ordenado, la paginación es
-          // estable aunque existan cientos de filas con HLC idéntico.
-          //
-          // Filtro: (hlc > lastHlc) OR (hlc = lastHlc AND id > lastId)
-          const orFilter = `updated_at_hlc.gt.${lastHlc},and(updated_at_hlc.eq.${lastHlc},id.gt.${lastId})`;
+        // Si es sync inicial (HLC=0), traer TODO paginando por id.
+        // Registros antiguos pueden tener updated_at_hlc = NULL o 0,
+        // y el filtro .gt(0) los excluiría, causando pérdida de datos.
+        const isInitialSync = lastHlc === 0 && lastId === 0;
 
-          const { data, error } = await this.client
-            .from(remote)
-            .select('*')
-            .or(orFilter)
-            .order('updated_at_hlc', { ascending: true })
-            .order('id', { ascending: true })
-            .limit(limit);
+        while (iterations < maxIterations) {
+          let query = this.client.from(remote).select('*');
+
+          if (isInitialSync) {
+            // Sync inicial: paginar solo por id, sin filtro de HLC
+            if (lastId > 0) {
+              query = query.gt('id', lastId);
+            }
+            query = query.order('id', { ascending: true });
+          } else {
+            // Sync incremental: cursor compuesto (hlc, id) para paginación estable
+            const orFilter = `updated_at_hlc.gt.${lastHlc},and(updated_at_hlc.eq.${lastHlc},id.gt.${lastId})`;
+            query = query.or(orFilter)
+              .order('updated_at_hlc', { ascending: true })
+              .order('id', { ascending: true });
+          }
+
+          const { data, error } = await query.limit(limit);
 
           if (error) throw error;
           if (!data || data.length === 0) break;
@@ -239,6 +245,14 @@ window.SyncV2 = {
       try { window.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) { console.warn('sync-data-updated (window) dispatch falló:', e); }
       try { document.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) { console.warn('sync-data-updated (document) dispatch falló:', e); }
     }, 200);
+  },
+
+  // Forzar resync completo: borra sync_state para que pullIncremental
+  // descargue TODOS los registros desde cero (sin borrar datos locales).
+  async forceFullResync() {
+    console.log('🔄 Forzando resync completo...');
+    await window.db.sync_state.clear();
+    return this.syncAll();
   },
 
   async closeRealtime() {
