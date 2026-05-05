@@ -214,7 +214,10 @@ async function renderDailySales() {
                         const tipo = (f.tipo || '').toLowerCase();
                         let target;
                         if (tipo === 'salida') target = flujoByDate;
-                        else if (tipo === 'devolucion' || tipo === 'devolución') target = devolByDate;
+                        // Ignorar devoluciones/repasados: son tickets cancelados y repasados
+                        // en otra forma de pago, el ticket viejo ya queda con total=0 (excluido)
+                        // y el nuevo ticket ya se suma en ventas.
+                        else if (tipo === 'repasado' || tipo === 'devolucion' || tipo === 'devolución') return;
                         else if (tipo === 'entrada') target = entradaByDate;
                         else return;
                         if (!target.has(d)) target.set(d, { total: 0, detalle: [] });
@@ -303,10 +306,6 @@ async function renderDailySales() {
                     ${flujoByDate.has(sale.date) ? `
                     <span style="background:linear-gradient(135deg, #fef2f2, #fee2e2); padding:3px 12px; border-radius:20px; color:#b91c1c; font-weight:700; white-space:nowrap; border:1px solid #fca5a5;" title="${flujoByDate.get(sale.date).detalle.map(d => d.desc + ': $' + d.monto).join(' | ')}">
                         <i class="ph ph-cash-register"></i> Salidas Caja Eleventa: ${formatCurrency(flujoByDate.get(sale.date).total)}
-                    </span>` : ''}
-                    ${devolByDate.has(sale.date) ? `
-                    <span style="background:linear-gradient(135deg, #fff7ed, #ffedd5); padding:3px 12px; border-radius:20px; color:#9a3412; font-weight:700; white-space:nowrap; border:1px solid #fdba74;" title="${devolByDate.get(sale.date).detalle.map(d => d.desc + ': $' + d.monto).join(' | ')}">
-                        <i class="ph ph-arrow-u-up-left"></i> Devoluciones: ${formatCurrency(devolByDate.get(sale.date).total)}
                     </span>` : ''}
                     ${entradaByDate.has(sale.date) ? `
                     <span style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); padding:3px 12px; border-radius:20px; color:#166534; font-weight:700; white-space:nowrap; border:1px solid #86efac;" title="${entradaByDate.get(sale.date).detalle.map(d => d.desc + ': $' + d.monto).join(' | ')}">

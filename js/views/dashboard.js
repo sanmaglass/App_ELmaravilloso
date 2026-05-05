@@ -66,6 +66,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         /* ---- MOBILE OVERRIDES ---- */
         @media (max-width: 768px) {
+            .decision-grid { grid-template-columns: 1fr !important; }
             .pl-chart-grid { grid-template-columns: 1fr; }
             .bottom-widgets-grid { grid-template-columns: 1fr; }
             .dash-header { margin-bottom: 1rem; }
@@ -124,86 +125,27 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .live-sales-scroller {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            padding: 8px;
-            box-sizing: border-box;
+            gap: 0;
             max-width: 100%;
         }
 
         .live-ticket-row {
             display: flex;
             align-items: center;
-            gap: 14px;
-            padding: 14px 16px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-            transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
-            position: relative;
-            overflow: hidden;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+            font-size: 0.8rem;
         }
-        .live-ticket-row:hover {
-            transform: translateX(4px);
-            border-color: rgba(16, 185, 129, 0.35);
-            box-shadow: 0 6px 18px rgba(16, 185, 129, 0.08);
-        }
-        .live-ticket-row.new {
-            border-color: #10b981;
-            background: linear-gradient(90deg, rgba(16,185,129,0.06), var(--bg-card) 60%);
-            animation: pulseRow 2.4s infinite;
-        }
-        @keyframes pulseRow {
-            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35); }
-            70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-        }
+        .live-ticket-row:last-child { border-bottom: none; }
+        .live-ticket-row.new { background: rgba(16,185,129,0.04); }
 
-        .live-ticket-badge {
-            flex-shrink: 0;
-            width: 46px; height: 46px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05));
-            color: #10b981;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.35rem;
-            border: 1px solid rgba(16,185,129,0.2);
-        }
-
-        .live-ticket-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-        .live-ticket-id {
-            font-weight: 800; font-size: 0.92rem; color: var(--text-primary);
-            display: flex; align-items: center; gap: 8px;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .live-ticket-new-tag {
-            background: #10b981; color: white;
-            font-size: 0.6rem; font-weight: 800;
-            padding: 2px 7px; border-radius: 99px;
-            letter-spacing: 0.5px; text-transform: uppercase;
-        }
-        .live-ticket-meta {
-            display: flex; align-items: center; gap: 10px;
-            font-size: 0.72rem; color: var(--text-muted); font-weight: 600;
-            flex-wrap: wrap;
-        }
-        .live-ticket-meta .dot { width: 3px; height: 3px; background: var(--text-muted); border-radius: 50%; opacity: 0.5; }
-
-        .live-ticket-amount {
-            flex-shrink: 0;
-            display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
-        }
-        .live-ticket-total {
-            font-weight: 800; font-size: 1.15rem; color: #10b981;
-            line-height: 1;
-        }
-        .live-ticket-profit-pill {
-            font-size: 0.65rem; font-weight: 700;
-            background: rgba(16, 185, 129, 0.1);
-            color: #10b981;
-            padding: 3px 8px; border-radius: 99px;
-            white-space: nowrap;
-        }
+        .live-ticket-left { display:flex; align-items:center; gap:8px; min-width:0; }
+        .live-ticket-id { font-weight:700; color:var(--text-primary); white-space:nowrap; }
+        .live-ticket-time { color:var(--text-muted); font-size:0.7rem; }
+        .live-ticket-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+        .live-ticket-total { font-weight:800; color:#10b981; }
+        .live-ticket-profit { font-size:0.7rem; color:var(--text-muted); }
 
         /* Horizontal Product Cards (Hooks & Zero Margin) */
         .h-scroll-container {
@@ -230,19 +172,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         /* Ajustes Mobile */
         @media (max-width: 768px) {
-            .live-ticket-row { padding: 12px 12px; gap: 10px; }
-            .live-ticket-badge { width: 40px; height: 40px; font-size: 1.15rem; border-radius: 12px; }
-            .live-ticket-id { font-size: 0.85rem; }
-            .live-ticket-total { font-size: 1rem; }
-            .live-ticket-profit-pill { font-size: 0.6rem; padding: 2px 6px; }
-            .h-scroll-container {
-                cursor: default;
-            }
-        }
-        @media (max-width: 420px) {
-            .live-ticket-row { padding: 10px 10px; gap: 8px; }
-            .live-ticket-badge { width: 36px; height: 36px; font-size: 1rem; }
-            .live-ticket-meta { font-size: 0.68rem; gap: 6px; }
+            .live-ticket-row { padding: 6px 8px; }
+            .h-scroll-container { cursor: default; }
         }
 
         /* ============== CEO COCKPIT ============== */
@@ -318,14 +249,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
     <!-- Header -->
     <div class="dash-header">
         <div>
-            <h1 class="text-primary font-bold flex items-center gap-3 text-2xl">
-                <i class="ph ph-squares-four"></i> Resumen de Negocio
-                <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(16,185,129,0.1); padding:4px 10px; border-radius:8px; border:1px solid rgba(16,185,129,0.2); margin-left:10px;">
-                    <i class="ph ph-shield-check" style="color:#10b981; font-size:1rem;"></i>
-                    <span style="font-size:0.65rem; color:#10b981; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;">Protegido</span>
-                </div>
+            <h1 class="text-primary font-bold flex items-center gap-2 text-xl">
+                <i class="ph ph-squares-four"></i> Dashboard
             </h1>
-            <p class="text-muted text-sm mt-1">Sincronización en tiempo real activa 🛰️</p>
         </div>
         <div class="dash-header-btns">
             <select id="dash-month-selector" class="btn bg-glass" style="border:1px solid rgba(0,0,0,0.1); font-weight:bold; cursor:pointer; color:var(--text-primary);">
@@ -420,71 +346,51 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
-        <!-- 🧠 IA PREDICTIVE PANEL (Secondary Priority) -->
-        <div id="prediction-container" class="hidden" style="margin-bottom:24px;">
-            <div class="premium-card card-anim" style="background: var(--ia-panel-bg); color: var(--ia-panel-text); border: none; position: relative; overflow: hidden; padding: 18px;">
-                <!-- Decorative background elements -->
-                <div style="position: absolute; top: -30px; right: -30px; width: 150px; height: 150px; background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%); border-radius: 50%; filter: blur(40px);"></div>
-                
-                <div class="predict-header" style="gap: 8px;">
-                    <div style="flex: 1;">
-                        <div id="label-ia-title" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 0.65rem; color: var(--ia-accent); font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
-                            <i class="ph ph-sparkle-fill"></i> Inteligencia Predictiva
+        <!-- Proyección Mes -->
+        <div id="prediction-container" class="hidden" style="margin-bottom:16px;">
+            <div class="premium-card" style="background: var(--ia-panel-bg); color: var(--ia-panel-text); border: none; padding: 14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div id="label-ia-title" style="font-size:0.65rem; color:var(--ia-accent); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
+                            <i class="ph ph-chart-line-up"></i> Proyección Mes
                         </div>
-                        <h2 class="predict-title" style="font-size: 1.8rem; margin-bottom: 4px;">
-                            <span id="predict-total" style="background: linear-gradient(to right, var(--ia-panel-text), var(--ia-muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">...</span>
-                            <span id="predict-month-label" style="font-size: 0.8rem; font-weight: 500; color: var(--ia-muted); opacity: 0.8;">est. Abril</span>
-                        </h2>
-                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                            <div id="predict-comparison" style="font-size: 0.8rem; display: flex; align-items: center; gap: 6px;"></div>
-                            <div id="predict-record" style="font-size: 0.7rem; color: var(--ia-muted); font-weight: 500;">
-                                Récord: <span id="predict-record-value" style="color: #fbbf24; font-weight: 700;">...</span>
-                            </div>
+                        <div style="display:flex; align-items:baseline; gap:8px;">
+                            <span id="predict-total" style="font-size:1.6rem; font-weight:900; color:var(--ia-panel-text);">...</span>
+                            <span id="predict-month-label" style="font-size:0.75rem; color:var(--ia-muted);">est.</span>
                         </div>
                     </div>
-                    <div class="predict-badge-container" style="text-align: right; flex-shrink: 0;">
-                        <div id="predict-confidence" class="predict-badge" style="font-size: 0.6rem; padding: 4px 10px;">
-                            Calc...
-                        </div>
+                    <div style="text-align:right;">
+                        <div id="predict-confidence" class="predict-badge" style="font-size:0.6rem; padding:3px 8px;">...</div>
+                        <div id="predict-comparison" style="font-size:0.75rem; margin-top:4px;"></div>
                     </div>
                 </div>
-
-                <!-- AI Strategic Insight (Compact) -->
-                <div id="predict-insight-box" style="margin-top: 16px; padding: 10px 14px; background: rgba(99, 102, 241, 0.06); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.1); display: flex; align-items: center; gap: 8px; position: relative; z-index: 1;">
-                    <div id="predict-insight-dot" style="width: 5px; height: 5px; border-radius: 50%; background: #6366f1; box-shadow: 0 0 6px #6366f1;"></div>
-                    <span id="predict-insight-text" style="color: var(--ia-panel-text); font-size: 0.8rem; font-weight: 600; line-height: 1.2;">Analizando datos...</span>
-                </div>
-
-                <!-- Growth Progress (Thin) -->
-                <div style="margin-top: 16px; position: relative; z-index: 1;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--ia-muted); margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px;">
-                        <span id="label-ia-meta">AVANCE MENSUAL</span>
-                        <span id="predict-percent" style="color: var(--ia-accent); font-weight: 800;">0%</span>
+                <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+                    <div style="flex:1; height:5px; background:var(--ia-glass); border-radius:99px; overflow:hidden;">
+                        <div id="predict-progress-bar" style="height:100%; width:0%; background:linear-gradient(90deg, #6366f1, #a855f7); border-radius:99px; transition:width 1s ease;"></div>
                     </div>
-                    <div style="height: 6px; background: var(--ia-glass); border-radius: 99px; overflow: hidden; border: 1px solid rgba(255,255,255,0.03);">
-                        <div id="predict-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #6366f1, #a855f7, #6366f1); background-size: 200% 100%; animation: shimmer 3s infinite linear; border-radius: 99px; transition: width 1.5s ease-out;"></div>
-                    </div>
+                    <span id="predict-percent" style="font-size:0.7rem; font-weight:800; color:var(--ia-accent);">0%</span>
                 </div>
+                <div id="predict-insight-box" style="margin-top:8px; display:flex; align-items:center; gap:6px;">
+                    <div id="predict-insight-dot" style="width:5px; height:5px; border-radius:50%; background:#6366f1;"></div>
+                    <span id="predict-insight-text" style="font-size:0.75rem; font-weight:600; color:var(--ia-muted);">Calculando...</span>
+                </div>
+                <div id="predict-record" style="display:none;"><span id="predict-record-value"></span></div>
+                <span id="label-ia-meta" style="display:none;">AVANCE MENSUAL</span>
             </div>
         </div>
 
-        <div class="dash-header flex justify-between items-center mb-4 mt-8">
-            <h3 class="text-primary font-bold text-lg flex items-center gap-2">
-                <div class="pulsing-dot" style="width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 10px #ef4444;"></div>
-                Ventas en Directo (Caja)
-            </h3>
-            <button class="btn btn-secondary" onclick="document.querySelector('[data-view=\\'daily_sales\\']')?.click()" style="padding: 6px 12px; font-size: 0.85rem;">
-                <i class="ph ph-calendar-check"></i> Ver Cierres de Caja Diarios
-            </button>
-        </div>
-        <div class="card p-0 mb-8 overflow-hidden" style="border: 1px solid rgba(239, 68, 68, 0.2); background: transparent; backdrop-filter: none; box-shadow: none;">
-            <div id="live-sales-feed" class="live-sales-scroller">
-                <!-- Tarjetas cargadas por JS -->
+        <div class="premium-card mb-6" style="padding:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h3 style="font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:6px; margin:0;">
+                    <div style="width:7px;height:7px;background:#ef4444;border-radius:50%;box-shadow:0 0 6px #ef4444;"></div>
+                    Hoy
+                </h3>
+                <div style="display:flex; align-items:center; gap:12px; font-size:0.8rem;">
+                    <span class="text-muted"><b id="live-sales-count">0</b> tickets</span>
+                    <b id="live-sales-total" style="color:#10b981; font-size:0.95rem;">$0</b>
+                </div>
             </div>
-            <div class="p-3 bg-glass flex justify-between items-center text-sm" style="border-radius: 12px; margin-top: 10px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
-                <span class="text-muted" style="font-weight:600;">Tickets: <b id="live-sales-count" class="text-primary" style="font-size:1.1rem;">0</b></span>
-                <span class="text-muted" style="font-weight:600;">Total Cajas: <b id="live-sales-total" style="color:#10b981; font-size:1.2rem;">$0</b></span>
-            </div>
+            <div id="live-sales-feed" class="live-sales-scroller"></div>
         </div>
 
         <!-- ============================================================
@@ -523,7 +429,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <div class="premium-card mb-6" id="ceo-alerts-card" style="background:linear-gradient(135deg,#fff7ed,#fff); border-left:4px solid #f97316;">
             <div class="flex justify-between items-center mb-3">
                 <h3 class="font-bold flex items-center gap-2" style="color:#c2410c; font-size:1.05rem;">
-                    <i class="ph ph-siren text-xl"></i> Alertas Inteligentes
+                    <i class="ph ph-siren text-xl"></i> Alertas
                 </h3>
                 <span class="ceo-alerts-count" id="ceo-alerts-count">0</span>
             </div>
@@ -532,13 +438,51 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
-        <!-- CTA → Márgenes (reemplaza Radar de Productos) -->
-        <button class="ceo-margins-cta mb-8" id="ceo-margins-cta-btn" onclick="window._goToMargenes()">
+        <!-- PANEL DECISIONES -->
+        <div class="decision-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:24px;">
+            <div class="premium-card" style="padding:14px;" id="dec-buy">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                    <i class="ph ph-shopping-cart" style="color:#3b82f6; font-size:1.1rem;"></i>
+                    <span style="font-weight:700; font-size:0.8rem;">Qué comprar</span>
+                </div>
+                <div id="dec-buy-list" style="font-size:0.75rem; display:flex; flex-direction:column; gap:4px;">
+                    <span class="text-muted">Cargando...</span>
+                </div>
+            </div>
+            <div class="premium-card" style="padding:14px;" id="dec-price">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                    <i class="ph ph-arrow-fat-up" style="color:#f59e0b; font-size:1.1rem;"></i>
+                    <span style="font-weight:700; font-size:0.8rem;">Subir precio</span>
+                </div>
+                <div id="dec-price-list" style="font-size:0.75rem; display:flex; flex-direction:column; gap:4px;">
+                    <span class="text-muted">Cargando...</span>
+                </div>
+            </div>
+            <div class="premium-card" style="padding:14px;" id="dec-day">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                    <i class="ph ph-calendar-x" style="color:#ef4444; font-size:1.1rem;"></i>
+                    <span style="font-weight:700; font-size:0.8rem;">Día más flojo</span>
+                </div>
+                <div id="dec-day-content" style="font-size:0.75rem;">
+                    <span class="text-muted">Cargando...</span>
+                </div>
+            </div>
+            <div class="premium-card" style="padding:14px;" id="dec-cash">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                    <i class="ph ph-piggy-bank" style="color:#10b981; font-size:1.1rem;"></i>
+                    <span style="font-weight:700; font-size:0.8rem;">Flujo próximo</span>
+                </div>
+                <div id="dec-cash-content" style="font-size:0.75rem;">
+                    <span class="text-muted">Cargando...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA → Márgenes -->
+        <button class="ceo-margins-cta mb-6" id="ceo-margins-cta-btn" onclick="window._goToMargenes()" style="padding:12px 16px;">
             <div class="ceo-margins-cta-left">
-                <div class="ceo-margins-cta-icon"><i class="ph ph-chart-line-up"></i></div>
                 <div>
-                    <div class="ceo-margins-cta-title">Análisis de Márgenes por Producto</div>
-                    <div class="ceo-margins-cta-sub">Rentabilidad completa · vs Mes Pasado · Filtros por período · Sin ganancia · Export Excel</div>
+                    <div class="ceo-margins-cta-title" style="font-size:0.85rem;">Márgenes por Producto</div>
                 </div>
             </div>
             <i class="ph ph-arrow-right ceo-margins-cta-arrow"></i>
@@ -593,29 +537,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         </div>
     </div>
     `;
-    } else {
-        // Force update labels and structure if already rendered (Fixing "Old Labels/Icons" bug due to Smart Refresh)
-        const elTitleIA = document.getElementById('label-ia-title');
-        if (elTitleIA) elTitleIA.innerHTML = '<i class="ph ph-sparkle-fill"></i> IA';
-
-        const elMetaIA = document.getElementById('label-ia-meta');
-        if (elMetaIA) elMetaIA.textContent = 'META IA';
-
-        const elRecordBox = document.getElementById('predict-record');
-        if (elRecordBox) {
-            const vSpan = document.getElementById('predict-record-value');
-            elRecordBox.innerHTML = `Récord: <span id="predict-record-value" style="color: #fbbf24; font-weight: 700;">${vSpan?.innerHTML || '...'}</span>`;
-        }
-
-        // FORCE REDESIGN OF INSIGHT BOX (Removing lightbulb/rocket)
-        const elInsightBox = document.getElementById('predict-insight-box');
-        if (elInsightBox && !document.getElementById('predict-insight-dot')) {
-            elInsightBox.style.cssText = "margin-top: 24px; padding: 12px 16px; background: rgba(99, 102, 241, 0.08); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.15); display: flex; align-items: center; gap: 10px; position: relative; z-index: 1;";
-            elInsightBox.innerHTML = `
-                <div id="predict-insight-dot" style="width: 6px; height: 6px; border-radius: 50%; background: #6366f1; box-shadow: 0 0 8px #6366f1;"></div>
-                <span id="predict-insight-text" style="color: var(--ia-panel-text); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.3px;">Actualizando...</span>
-            `;
-        }
     } // End if(!isAlreadyRendered)
 
     // Helper global para navegación — evita escape de comillas en onclick inline
@@ -725,36 +646,24 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         if (elFeed) {
             if (validSales.length === 0) {
-                elFeed.innerHTML = '<div style="width:100%; text-align:center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-glass); border-radius: 20px; border: 1px dashed rgba(0,0,0,0.1);"><i class="ph ph-receipt" style="font-size:2.5rem; opacity:0.5; margin-bottom:12px;"></i><br><span style="font-weight:600;">No hay ventas registradas aún</span></div>';
+                elFeed.innerHTML = '<div style="text-align:center; padding:16px; color:var(--text-muted); font-size:0.8rem;">Sin ventas hoy</div>';
             } else {
-                const renderSales = validSales.slice(0, 10);
+                const renderSales = validSales.slice(0, 5);
                 elFeed.innerHTML = renderSales.map((v, index) => {
                     const dateObj = new Date(v.date);
                     const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-                    const isNew = index === 0;
-                    const items = v.items_count || 1;
                     const profit = parseFloat(v.profit) || 0;
-
                     return `
-                    <div class="live-ticket-row ${isNew ? 'new' : ''}">
-                        <div class="live-ticket-badge"><i class="ph ph-receipt"></i></div>
-                        <div class="live-ticket-info">
-                            <div class="live-ticket-id">
-                                #${v.ticket_id || v.id}
-                                ${isNew ? '<span class="live-ticket-new-tag">Nuevo</span>' : ''}
-                            </div>
-                            <div class="live-ticket-meta">
-                                <span><i class="ph ph-clock"></i> ${timeStr}</span>
-                                <span class="dot"></span>
-                                <span>${items} art.</span>
-                            </div>
+                    <div class="live-ticket-row ${index === 0 ? 'new' : ''}">
+                        <div class="live-ticket-left">
+                            <span class="live-ticket-id">#${v.ticket_id || v.id}</span>
+                            <span class="live-ticket-time">${timeStr}</span>
                         </div>
-                        <div class="live-ticket-amount">
-                            <div class="live-ticket-total">${window.Utils.formatCurrency(v.total)}</div>
-                            <div class="live-ticket-profit-pill">+${window.Utils.formatCurrency(profit)}</div>
+                        <div class="live-ticket-right">
+                            <span class="live-ticket-profit">+${window.Utils.formatCurrency(profit)}</span>
+                            <span class="live-ticket-total">${window.Utils.formatCurrency(v.total)}</span>
                         </div>
-                    </div>
-                    `;
+                    </div>`;
                 }).join('');
             }
             document.getElementById('live-sales-count').textContent = validSales.length;
@@ -886,7 +795,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     window.Utils.animateNumber(elPredictTotal, 0, total, 2000, true);
 
                     // 2. Update Confidence Badge (Removed Emojis)
-                    const confLabels = { high: 'Confianza Alta', medium: 'Confianza Media', low: 'Confianza Inicial' };
+                    const confLabels = { high: '+60 días datos', medium: '+20 días datos', low: 'Pocos datos aún' };
                     if (elPredictConfidence) {
                         elPredictConfidence.textContent = confLabels[prediction.confidence] || 'Analizando...';
                         elPredictConfidence.style.color = prediction.confidence === 'high' ? '#10b981' : prediction.confidence === 'medium' ? '#fbbf24' : '#f43f5e';
@@ -921,7 +830,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                                 <span style="color:#64748b; font-size:0.85rem;">vs mes anterior (${fmt(prediction.prevMonthTotal)})</span>
                             `;
                         } else {
-                            elPredictComparison.innerHTML = `<span style="color:#64748b; font-size:0.85rem;">Esperando más historial para comparar</span>`;
+                            elPredictComparison.innerHTML = `<span style="color:#64748b; font-size:0.85rem;">Sin mes anterior para comparar</span>`;
                         }
                     }
 
@@ -934,7 +843,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 } else {
                     // Si la IA no tiene suficientes datos (vuelve null)
                     const elInsight = document.getElementById('predict-insight-text');
-                    if (elInsight) elInsight.textContent = "La IA necesita al menos 2 días de ventas para iniciar proyecciones.";
+                    if (elInsight) elInsight.textContent = "Faltan datos (mín. 2 días de ventas)";
                 }
             } catch (err) {
                 console.error("Dashboard IA Error:", err);
@@ -1167,8 +1076,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 sev: 'med',
                 icon: 'ph-magnet',
                 color: '#f59e0b',
-                html: `<b>${lowMargin.length} producto${lowMargin.length > 1 ? 's' : ''}</b> con margen bajo (&lt;5%). Top: <b>${window.Utils.escapeHTML(lowMargin[0].name)}</b> al ${lowMargin[0].marginPct.toFixed(1)}%`,
-                meta: 'Revisar precio',
+                html: `<b>${lowMargin.length}</b> con margen &lt;5%`,
+                meta: `Peor: ${lowMargin[0].marginPct.toFixed(1)}%`,
                 details: {
                     type: 'products',
                     items: lowMargin.slice(0, 15).map(p => ({
@@ -1188,8 +1097,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 sev: 'high',
                 icon: 'ph-warning',
                 color: '#dc2626',
-                html: `<b>${zeroMarginAlerts.length} producto${zeroMarginAlerts.length > 1 ? 's' : ''} sin ganancia</b> (0% margen). Posible costo mal cargado en Eleventa.`,
-                meta: 'Cargar costo',
+                html: `<b>${zeroMarginAlerts.length}</b> sin costo cargado`,
+                meta: 'Revisar Eleventa',
                 details: {
                     type: 'products',
                     items: zeroMarginAlerts.slice(0, 15).map(p => ({
@@ -1220,8 +1129,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 sev: 'low',
                 icon: 'ph-snowflake',
                 color: '#6366f1',
-                html: `<b>${staleProducts.length} producto${staleProducts.length > 1 ? 's' : ''} sin venta en 30 días</b>. Stock muerto posible.`,
-                meta: 'Evaluar liquidación',
+                html: `<b>${staleProducts.length}</b> sin venta en 30 días`,
+                meta: 'Ver detalle',
                 details: {
                     type: 'products',
                     items: staleProducts.slice(0, 15).map(p => ({
@@ -1280,7 +1189,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     sev: 'med',
                     icon: 'ph-trend-down',
                     color: '#f59e0b',
-                    html: `<b>${lowDays.length} día${lowDays.length > 1 ? 's' : ''} con caída &gt;20%</b> vs. promedio mensual (${fmt(avg)})`,
+                    html: `<b>${lowDays.length} día${lowDays.length > 1 ? 's' : ''}</b> bajo promedio (${fmt(avg)}/día)`,
                     meta: `Último: ${sortedLow[0].date.slice(5)}`,
                     details: {
                         type: 'days',
@@ -1306,7 +1215,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 alertsList.innerHTML = `
                     <div class="ceo-alert-item sev-low" style="border-left-color:#10b981; background:rgba(16,185,129,0.06);">
                         <i class="ph ph-check-circle main" style="color:#10b981;"></i>
-                        <div class="ceo-alert-text">Sin alertas este mes. Todo en orden.</div>
+                        <div class="ceo-alert-text">Sin alertas</div>
                     </div>`;
                 if (alertsCount) { alertsCount.textContent = '0'; alertsCount.classList.add('zero'); }
             } else {
@@ -1360,6 +1269,113 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 alertsCard.appendChild(ctaDiv);
             }
         }
+
+        // ============================================================
+        // PANEL DE DECISIONES (4 widgets compactos)
+        // ============================================================
+        try {
+
+            // 1. QUÉ COMPRAR — productos con más ventas este mes (alto volumen)
+            const topSellers = [...allProductsArr].sort((a, b) => b.qty - a.qty).slice(0, 5);
+            const decBuyEl = document.getElementById('dec-buy-list');
+            if (decBuyEl) {
+                decBuyEl.innerHTML = topSellers.length ? topSellers.map(p =>
+                    `<div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:65%;">${window.Utils.escapeHTML(p.name)}</span>
+                        <b>${p.qty} uds</b>
+                    </div>`
+                ).join('') : '<span class="text-muted">Sin datos</span>';
+            }
+
+            // 2. SUBIR PRECIO — alto volumen + margen bajo (oportunidad)
+            const priceUp = allProductsArr
+                .filter(p => p.qty >= 5 && p.marginPct > 0 && p.marginPct < 15)
+                .sort((a, b) => b.qty - a.qty)
+                .slice(0, 5);
+            const decPriceEl = document.getElementById('dec-price-list');
+            if (decPriceEl) {
+                decPriceEl.innerHTML = priceUp.length ? priceUp.map(p =>
+                    `<div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60%;">${window.Utils.escapeHTML(p.name)}</span>
+                        <span style="color:#f59e0b; font-weight:700;">${p.marginPct.toFixed(0)}%</span>
+                    </div>`
+                ).join('') : '<span class="text-muted">Todos sobre 15%</span>';
+            }
+
+            // 3. DÍA MÁS FLOJO — promedio por día de la semana
+            const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            const dayTotals = [0,0,0,0,0,0,0], dayCounts = [0,0,0,0,0,0,0];
+            eleventaSales.forEach(s => {
+                if (!s.date) return;
+                const d = window.Utils.parseLocalDate(s.date);
+                if (d) {
+                    const total = parseFloat(s.total) || 0;
+                    if (total > 0) { dayTotals[d.getDay()] += total; dayCounts[d.getDay()]++; }
+                }
+            });
+            const dayAvgs = dayTotals.map((t, i) => dayCounts[i] > 0 ? t / dayCounts[i] : 0);
+            const bestDay = dayAvgs.indexOf(Math.max(...dayAvgs));
+            const worstDay = dayAvgs.indexOf(Math.min(...dayAvgs.filter(a => a > 0)));
+            const decDayEl = document.getElementById('dec-day-content');
+            if (decDayEl && dayAvgs.some(a => a > 0)) {
+                decDayEl.innerHTML = `
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:#ef4444; font-weight:700; font-size:1.1rem;">${dayNames[worstDay]}</span>
+                            <span>${fmt(Math.round(dayAvgs[worstDay]))}/día</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; opacity:0.7;">
+                            <span style="color:#10b981; font-weight:600;">Mejor: ${dayNames[bestDay]}</span>
+                            <span>${fmt(Math.round(dayAvgs[bestDay]))}/día</span>
+                        </div>
+                        <div style="display:flex; gap:2px; margin-top:4px;">
+                            ${dayAvgs.map((avg, i) => {
+                                const maxAvg = Math.max(...dayAvgs);
+                                const pct = maxAvg > 0 ? (avg / maxAvg * 100) : 0;
+                                const color = i === worstDay ? '#ef4444' : i === bestDay ? '#10b981' : '#cbd5e1';
+                                return `<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;">
+                                    <div style="width:100%; height:30px; background:#f1f5f9; border-radius:3px; position:relative; overflow:hidden;">
+                                        <div style="position:absolute; bottom:0; width:100%; height:${pct}%; background:${color}; border-radius:3px;"></div>
+                                    </div>
+                                    <span style="font-size:0.6rem; color:var(--text-muted);">${dayNames[i][0]}</span>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>`;
+            }
+
+            // 4. FLUJO PRÓXIMO — caja neta proyectada (ventas promedio - pagos pendientes)
+            const avgDailySales = dayAvgs.reduce((a, b) => a + b, 0) / 7;
+            const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
+            const projectedIncome = Math.round(avgDailySales * daysLeft);
+            // Pagos pendientes: facturas crédito + sueldos estimados
+            const pendingInvoices = invoices.filter(i => i.paymentMethod === 'Crédito' && i.paymentStatus === 'Pendiente');
+            const pendingTotal = pendingInvoices.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+            const monthlyPayroll = employees.reduce((s, e) => s + (parseFloat(e.salary) || 0), 0);
+            const netFlow = projectedIncome - pendingTotal - monthlyPayroll;
+            const decCashEl = document.getElementById('dec-cash-content');
+            if (decCashEl) {
+                decCashEl.innerHTML = `
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        <div style="display:flex; justify-content:space-between;">
+                            <span>Ingreso est. (${daysLeft}d)</span>
+                            <b style="color:#10b981;">${fmt(projectedIncome)}</b>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span>Facturas pend.</span>
+                            <b style="color:#ef4444;">-${fmt(pendingTotal)}</b>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span>Sueldos</span>
+                            <b style="color:#ef4444;">-${fmt(monthlyPayroll)}</b>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; border-top:1px solid rgba(0,0,0,0.1); padding-top:4px; margin-top:2px;">
+                            <span style="font-weight:700;">Neto est.</span>
+                            <b style="color:${netFlow >= 0 ? '#10b981' : '#ef4444'}; font-size:0.9rem;">${fmt(netFlow)}</b>
+                        </div>
+                    </div>`;
+            }
+        } catch (e) { console.warn('Error panel decisiones:', e); }
 
         // ============================================================
         // FORMA DE PAGO (Donut) — desde eleventa_sales del mes
@@ -1461,7 +1477,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                         const tipo = (f.tipo || '').toLowerCase();
                         if (tipo === 'entrada') entradasTotal += monto;
                         else if (tipo === 'salida') salidasTotal += monto;
-                        else if (tipo === 'devolucion' || tipo === 'devolución') devolucionesTotal += monto;
+                        // Ignorar devoluciones/repasados: tickets cancelados cuyo total=0
+                        // ya se excluye de ventas, no hay que restar nada adicional.
+                        else if (tipo === 'repasado' || tipo === 'devolucion' || tipo === 'devolución') { /* ignorar */ }
                     });
                 }
             }
@@ -1485,7 +1503,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 <div class="row"><span class="text-muted">Ventas efectivo + transf.</span><b style="color:#059669;">${fmt(ingresosCash)}</b></div>
                 <div class="row"><span class="text-muted">Entradas caja</span><b style="color:#059669;">${fmt(entradasTotal)}</b></div>
                 <div class="row"><span class="text-muted">Salidas caja</span><b style="color:#dc2626;">−${fmt(salidasTotal)}</b></div>
-                <div class="row"><span class="text-muted">Devoluciones</span><b style="color:#dc2626;">−${fmt(devolucionesTotal)}</b></div>
             `;
         }
 

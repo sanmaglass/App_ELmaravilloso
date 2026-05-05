@@ -900,21 +900,21 @@ window.Utils = {
                 const growthPct = prevMonthTotal > 0 ? ((projection / prevMonthTotal - 1) * 100) : 0;
 
                 // 6. Insight Generator
-                let insight = "Analizando tus datos para darte la mejor estrategia...";
+                let insight = "Calculando...";
                 let color = "#94a3b8";
 
                 if (allSales.length > 5) {
                     if (growthPct > 10) {
-                        insight = `+${growthPct.toFixed(0)}% proyectado vs mes ant.`;
+                        insight = `+${growthPct.toFixed(0)}% vs mes pasado`;
                         color = "#10b981";
                     } else if (growthPct < -5) {
-                        insight = `${growthPct.toFixed(0)}% proyectado (Baja detectada)`;
+                        insight = `${growthPct.toFixed(0)}% vs mes pasado`;
                         color = "#f43f5e";
                     } else if (projection > Math.max(...monthValues.slice(0, -1), 0)) {
-                        insight = "Récord histórico de facturación a la vista";
+                        insight = `Mes va para récord`;
                         color = "#fbbf24";
                     } else {
-                        insight = "Patrón de ventas estable detectado";
+                        insight = `Mes estable, sin cambios grandes`;
                         color = "#60a5fa";
                     }
                 }
