@@ -99,18 +99,8 @@ window.ErrorLogger = {
      * Crear tabla de errores en Dexie si no existe
      */
     _initErrorDB: async function () {
-        try {
-            // Agregar versión si no existe
-            const currentVersion = window.db.verno || 0;
-            if (!window.db.tables.find(t => t.name === 'error_logs')) {
-                window.db.version(currentVersion + 1).stores({
-                    error_logs: 'id, timestamp, context, isTransient'
-                });
-            }
-            this.DB_INITIALIZED = true;
-        } catch (e) {
-            console.warn('[ErrorLogger] Could not init DB:', e.message);
-        }
+        // La tabla error_logs ya está declarada en db.js (v16+)
+        this.DB_INITIALIZED = !!(window.db?.error_logs);
     },
 
     /**

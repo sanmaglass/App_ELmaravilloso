@@ -7,9 +7,9 @@ window.SII_API = {
 
     // Defaults de la cuenta principal (sobreescribibles desde Settings)
     _defaults: {
-        apiKey: 'sk_8bc5fa1e06cb022e94f09760069cedd3cb3709af8622ea46',
-        rut: '14061423-8',
-        password: 'Ubiobio56!'
+        apiKey: '',
+        rut: '',
+        password: ''
     },
 
     // --- Rate Limiter: max 5 req/min = 1 cada 13s ---
@@ -241,8 +241,8 @@ window.SII_API = {
                     amount: tipoDoc === 61 ? -montoTotal : montoTotal,
                     period: periodoLabel.charAt(0).toUpperCase() + periodoLabel.slice(1),
                     paymentMethod: 'Transferencia',
-                    paymentStatus: 'Pagado',
-                    paidAmount: montoTotal,
+                    paymentStatus: 'Pendiente',
+                    paidAmount: 0,
                     notes: `${tipoDocNombre} · Neto: $${montoNeto.toLocaleString('es-CL')} · IVA: $${montoIva.toLocaleString('es-CL')}${montoExento > 0 ? ` · Exento: $${montoExento.toLocaleString('es-CL')}` : ''}`,
                     deleted: false,
                     siiTipoDoc: tipoDoc,

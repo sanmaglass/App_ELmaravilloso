@@ -390,7 +390,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             <!-- Gasto mes -->
             <div class="premium-card card-anim delay-1" style="border-top:5px solid var(--primary); background: linear-gradient(180deg, rgba(230,0,0,0.03) 0%, white 100%);">
                 <div class="flex justify-between items-start mb-6">
-                    <div class="p-3 rounded-2xl" style="background:rgba(230,0,0,0.1); color:var(--primary);" title="Incluye: Sueldos de Yamileth/Personal y Gastos del Local. NO incluye facturas de mercadería.">
+                    <div class="p-3 rounded-2xl" style="background:rgba(230,0,0,0.1); color:var(--primary);" title="Incluye: Sueldos confirmados y Gastos del Local. NO incluye facturas de mercadería.">
                         <i class="ph ph-hand-coins text-3xl"></i>
                     </div>
                     <div id="kpi-gasto-mes-badge" class="status-badge status-overdue">Fijos + Sueldos</div>
@@ -810,33 +810,21 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             .filter(e => e.category !== 'Retiro del Due\u00f1o')
             .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 
-        // 4. PRORATEO DE RENTABILIDAD
-        // Calculate the daily burn rate (Fixed expenses + Salaries)
+        // 4. CÁLCULO DE RENTABILIDAD (basado en gastos REALES confirmados)
+        // Burn rate solo prorratea gastos fijos (arriendos, servicios, etc.)
         const burnRateInfo = await window.Utils.calculateDailyBurnRate(allExpenses, employees, now);
-        
-        // Carga prorrateada al día de hoy
         const currentDayOfMoth = thisMonthSales.length > 0 ? now.getDate() : 1;
-
         const gastoTotalProrrateado = burnRateInfo.dailyBurnRate * currentDayOfMoth;
-        
-        // Sumar también cualquier gasto operativo del mes *no fijo* (variable)
+
+        // Gastos variables del mes (incluye Sueldos y Adelantos confirmados)
         const gastosVariablesMes = thisMonthExpenses
-            .filter(e => !e.isFixed && e.category !== 'Retiro del Due\u00f1o')
+            .filter(e => !e.isFixed && e.category !== 'Retiro del Dueño')
             .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 
-        // 5. CUENTA CORRIENTE DEL DUEÑO (Reparto vs Sueldo)
-        const ownerEmployees = employees.filter(e => e.isOwner || (e.name && e.name.toLowerCase().includes('due\u00f1o')));
-        const ownerPaymentsInfo = await window.Utils.calculateMonthlyPayments(ownerEmployees, logs, now);
-        const sueldoBaseDuenoMensual = ownerPaymentsInfo.totalProjected || 0;
-        
-        // El negocio asume pagarte tu sueldo (Ya está prorrateado). 
-        // Si retiras MÁS de tu sueldo base en el mes, eso es un Retiro de Utilidades y castiga la salud final.
-        const ownerExtraDraw = Math.max(0, gastosRetiroDueno - sueldoBaseDuenoMensual);
-        const ownerBalance = sueldoBaseDuenoMensual - gastosRetiroDueno;
+        // 5. RETIROS DEL DUEÑO (van directo como gasto)
+        const ownerExtraDraw = gastosRetiroDueno;
 
-        // console.log(`[Rentabilidad] G.Bruta: ${gananciaBrutaMes} | Retiros(Adelantos): ${gastosRetiroDueno} | Base Dueño: ${sueldoBaseDuenoMensual} | Prorrateo Hoy: ${gastoTotalProrrateado}`);
-
-        // The *total* accumulated cost for the month so far is Prorated Fixed Costs + Variable Costs + Extra Draw + Comisión MP
+        // Gasto Total = Fijos prorrateados + Variables (sueldos, adelantos, etc.) + Retiros dueño + Comisión MP
         const gastoTotal = gastoTotalProrrateado + gastosVariablesMes + ownerExtraDraw + comisionMPMes;
         const gastoPrev = gastosOperativosPrev + comisionMPPrev;
 
@@ -987,22 +975,22 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
             const netColor = utilidadNetaMonto >= 0 ? '#16a34a' : '#dc2626';
 
-            let balanceMsg = ownerBalance >= 0 
-                ? `Te faltan percibir ${window.Utils.formatCurrency(ownerBalance)}`
-                : `¡Cobraste de más! Sobregiro de ${window.Utils.formatCurrency(Math.abs(ownerBalance))}`;
-            let balanceColor = ownerBalance >= 0 ? 'var(--text-muted)' : '#dc2626';
+            let balanceMsg = gastosRetiroDueno > 0
+                ? `Total retirado este mes`
+                : `Sin retiros este mes`;
+            let balanceColor = 'var(--text-muted)';
 
             // --- Generar sub-lista del Prorrateo ---
             const factorProrrateo = currentDayOfMoth / burnRateInfo.daysInMonth;
             const prorrateoItemsHtml = [
                ...(burnRateInfo.salariesDetails || []).map(s => `
                     <div style="display:flex; justify-content:space-between; margin-bottom:4px; opacity:0.8;">
-                        <span>• ${s.name}</span>
+                        <span>• ${window.Utils.escapeHTML(s.name)}</span>
                         <span>-${window.Utils.formatCurrency(s.amount * factorProrrateo)}</span>
                     </div>`),
                ...(burnRateInfo.fixedExpensesDetails || []).map(e => `
                     <div style="display:flex; justify-content:space-between; margin-bottom:4px; opacity:0.8;">
-                        <span>• ${e.title}</span>
+                        <span>• ${window.Utils.escapeHTML(e.title)}</span>
                         <span>-${window.Utils.formatCurrency(e.amount * factorProrrateo)}</span>
                     </div>`)
             ].join('');
@@ -1057,27 +1045,13 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                             </div>
                         </summary>
                         <div style="padding: 10px; background: rgba(59,130,246,0.03); border-radius:10px; margin-bottom:8px; border:1px solid rgba(59,130,246,0.1);">
-                           ${sueldoBaseDuenoMensual > 0 ? `
                            <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
-                               <span style="color:var(--text-muted);">Sueldo Base:</span>
-                               <span style="font-weight:600;">${window.Utils.formatCurrency(sueldoBaseDuenoMensual)}</span>
-                           </div>
-                           <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
-                               <span style="color:var(--text-muted);">Anticipos tomados:</span>
+                               <span style="color:var(--text-muted);">Retiros del Dueño:</span>
                                <span style="font-weight:600;">${window.Utils.formatCurrency(gastosRetiroDueno)}</span>
                            </div>
                            <div style="font-size:0.7rem; color:${balanceColor}; font-weight:700; text-align:right; margin-top:6px; border-top:1px solid rgba(0,0,0,0.03); padding-top:6px;">
                                 ${balanceMsg}
                            </div>
-                           ` : `
-                           <div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">
-                               No tienes un "Sueldo Fijo" configurado en Personal. Todo retiro será considerado Utilidad Extra.
-                           </div>
-                           <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-top:6px;">
-                               <span style="color:var(--text-muted);">Retiros Acumulados:</span>
-                               <span style="font-weight:600; color:#dc2626;">-${window.Utils.formatCurrency(gastosRetiroDueno)}</span>
-                           </div>
-                           `}
                         </div>
                     </details>` : ''}
 
@@ -1193,7 +1167,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 sev: 'med',
                 icon: 'ph-magnet',
                 color: '#f59e0b',
-                html: `<b>${lowMargin.length} producto${lowMargin.length > 1 ? 's' : ''}</b> con margen bajo (&lt;5%). Top: <b>${lowMargin[0].name}</b> al ${lowMargin[0].marginPct.toFixed(1)}%`,
+                html: `<b>${lowMargin.length} producto${lowMargin.length > 1 ? 's' : ''}</b> con margen bajo (&lt;5%). Top: <b>${window.Utils.escapeHTML(lowMargin[0].name)}</b> al ${lowMargin[0].marginPct.toFixed(1)}%`,
                 meta: 'Revisar precio',
                 details: {
                     type: 'products',
@@ -1341,8 +1315,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     const detailRows = hasDetails ? a.details.items.map(it => `
                         <div class="ceo-alert-detail-row">
                             <div class="cd-main">
-                                <div class="cd-name">${it.name}</div>
-                                ${it.sub ? `<div class="cd-sub">${it.sub}</div>` : ''}
+                                <div class="cd-name">${window.Utils.escapeHTML(it.name)}</div>
+                                ${it.sub ? `<div class="cd-sub">${window.Utils.escapeHTML(it.sub)}</div>` : ''}
                             </div>
                             ${it.right ? `<div class="cd-right">${it.right}</div>` : ''}
                         </div>`).join('') : '';
@@ -1756,7 +1730,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 return `<div style="padding:10px;border:1px solid rgba(0,0,0,0.05);border-radius:8px;display:flex;align-items:center;gap:10px;background:white;">
                     <i class="ph ${diff <= 7 ? 'ph-prohibit' : 'ph-clock-countdown'}" style="font-size:1.4rem;color:${col};"></i>
                     <div>
-                        <div style="font-weight:700;font-size:0.88rem;">${p.name}</div>
+                        <div style="font-weight:700;font-size:0.88rem;">${window.Utils.escapeHTML(p.name)}</div>
                         <div style="font-size:0.75rem;color:${col};font-weight:600;">Vence en ${diff} días</div>
                     </div>
                 </div>`;
@@ -1791,10 +1765,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             const btn = document.getElementById('btn-export-excel');
             btn.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Preparando...'; btn.disabled = true;
             try {
-                const [emps, lgs, prods] = await Promise.all([window.db.employees.toArray(), window.db.workLogs.toArray(), window.db.products.toArray()]);
+                const [allEmps, lgs, prods] = await Promise.all([window.db.employees.toArray(), window.db.workLogs.toArray(), window.db.products.toArray()]);
+                const emps = allEmps.filter(e => !e.deleted);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(emps.map(e => ({ ID: e.id, Nombre: e.name, Rol: e.role, Salario: e.baseSalary || 0 }))), 'Personal');
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lgs.map(l => { const e = emps.find(x => x.id === l.employeeId); return { Empleado: e?.name, Fecha: l.date, Horas: l.totalHours, Pago: l.payAmount }; })), 'Asistencia');
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lgs.filter(l => !l.deleted).map(l => { const e = emps.find(x => x.id === l.employeeId); return { Empleado: e?.name || 'Eliminado', Fecha: l.date, Horas: l.totalHours, Pago: l.payAmount }; })), 'Asistencia');
                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prods.map(p => ({ Nombre: p.name, Costo: p.costUnit, Precio: p.salePrice, Stock: p.stock || 0 }))), 'Inventario');
                 XLSX.writeFile(wb, `Reporte_ElMaravilloso_${todayStr}.xlsx`);
             } catch (err) { alert('Error: ' + err.message); }
@@ -1886,7 +1861,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
     } catch (e) {
         console.error('Dashboard error:', e);
         if (container && container.isConnected) {
-            container.innerHTML += `<p style="color:red;">Error cargando datos: ${e.message}</p>`;
+            container.innerHTML += `<p style="color:red;">Error cargando datos: ${window.Utils.escapeHTML(e.message)}</p>`;
         }
     }
 };
@@ -1951,13 +1926,11 @@ async function renderReportsTab() {
         const totalPurchases = fPurchases.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
         const totalGenExp = fExpenses.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
 
+        // Sueldos = expenses confirmados con categoría Sueldos + Adelantos
         let totalSalaries = 0;
-        if (period === 'month') {
-            const ms = await window.Utils.calculateMonthlyPayments(activeEmployees, activeLogs, now);
-            totalSalaries = ms.totalPaid;
-        } else {
-            activeLogs.forEach(l => { if (filterDate(l.date)) totalSalaries += (l.payAmount || 0); });
-        }
+        const allExp = await window.db.expenses.toArray();
+        allExp.filter(e => !e.deleted && (e.category === 'Sueldos' || e.category === 'Adelantos') && e.date && filterDate(e.date))
+            .forEach(e => { totalSalaries += (parseFloat(e.amount) || 0); });
 
         const totalCosts = totalPurchases + totalGenExp + totalSalaries;
         const profit = totalSales - totalCosts;

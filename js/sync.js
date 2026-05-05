@@ -175,7 +175,8 @@ window.Sync = {
                 { local: 'electronic_invoices', remote: 'electronic_invoices', orderBy: 'date' },
                 { local: 'reminders', remote: 'reminders', orderBy: 'id' },
                 { local: 'eleventa_sales', remote: 'eleventa_sales', orderBy: 'date', descending: true },
-                { local: 'loans', remote: 'loans', orderBy: 'date', descending: true }
+                { local: 'loans', remote: 'loans', orderBy: 'date', descending: true },
+                { local: 'advances', remote: 'advances', orderBy: 'date', descending: true }
             ];
 
             let dataChanged = false;
@@ -303,32 +304,10 @@ window.Sync = {
                         const nowMs = Date.now();
                         const tenMinutesAgo = nowMs - 60 * 60 * 1000;
                         
-                        const toDeleteLocal = localData
-                            .filter(item => {
-                                if (cloudIds.has(Number(item.id || item.key))) return false;
-                                
-                                // Regla 1: No borrar si se creó hace menos de 1 hora (evitar race conditions)
-                                const createdAt = item.created_at ? new Date(item.created_at).getTime() : 0;
-                                if (createdAt > tenMinutesAgo) return false;
-
-                                // Regla 2: PROTECCIÓN CRÍTICA DE HISTORIAL
-                                // Si es Eleventa, solo borramos si el ticket es de hace menos de 3 días.
-                                // Todo lo que sea más viejo se queda localmente para SIEMPRE, aunque no venga en el query incremental.
-                                if (localName === 'eleventa_sales' && item.date) {
-                                    const itemDateMs = new Date(item.date).getTime();
-                                    if (nowMs - itemDateMs > orphanSafetyWindow) return false; // Proteger histórico
-                                }
-
-                                return true;
-                            })
-                            .map(item => item.id);
-
-                        if (toDeleteLocal.length > 0) {
-                            console.log(`[Sync] Limpiando ${toDeleteLocal.length} huérfanos locales en ${localName}`);
-                            await window.db[localName].bulkDelete(toDeleteLocal);
-                            window.Sync._syncSummary.deletes += toDeleteLocal.length;
-                            dataChanged = true;
-                        }
+                        // DESACTIVADO: la eliminación de huérfanos causa pérdida de datos offline
+                        // Los cambios locales que no se sincronizaron se borrarían al no estar en la nube.
+                        // SyncV2 (incremental + outbox) maneja esto correctamente.
+                        // Ver auditoría issue #7.
 
                         // Actualizar local con datos oficiales de la nube
                         if (normalizedCloudData.length > 0) {
@@ -501,12 +480,17 @@ window.Sync = {
 
         const toast = document.createElement('div');
         toast.className = `sync-toast toast-${type}`;
-        toast.innerHTML = `
-            <div class="toast-content" style="display:flex; align-items:center; gap:8px;">
-                <i class="ph ${type === 'success' ? 'ph-check-circle' : 'ph-info'}" style="font-size:1.2rem;"></i>
-                <span>${message}</span>
-            </div>
-        `;
+        const icon = document.createElement('i');
+        icon.className = `ph ${type === 'success' ? 'ph-check-circle' : 'ph-info'}`;
+        icon.style.fontSize = '1.2rem';
+        const span = document.createElement('span');
+        span.textContent = message;
+        const div = document.createElement('div');
+        div.className = 'toast-content';
+        div.style.cssText = 'display:flex; align-items:center; gap:8px;';
+        div.appendChild(icon);
+        div.appendChild(span);
+        toast.appendChild(div);
         document.body.appendChild(toast);
 
         // Wait before showing next or removing

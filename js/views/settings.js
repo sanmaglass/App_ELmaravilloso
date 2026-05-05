@@ -787,6 +787,6 @@ window.Views.settings = async (container) => {
     } catch (err) {
 
         console.error("Critical Settings Error:", err);
-        container.innerHTML += `<div style="padding:20px; color:red;">Error cargando scripts de ajustes: ${err.message}</div>`;
+        container.innerHTML += `<div style="padding:20px; color:red;">Error cargando scripts de ajustes: ${window.Utils.escapeHTML(err.message)}</div>`;
     }
 };

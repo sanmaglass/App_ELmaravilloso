@@ -71,13 +71,13 @@ async function renderSuppliers(filterText = '') {
             <div class="card flex justify-between items-center p-4">
                 <div class="flex items-center gap-3">
                     <div class="flex items-center justify-center font-bold text-primary" style="width:40px; height:40px; background:var(--bg-input); border-radius:50%;">
-                        ${s.name.charAt(0).toUpperCase()}
+                        ${Utils.escapeHTML(s.name.charAt(0).toUpperCase())}
                     </div>
                     <div>
-                        <div class="font-bold text-primary" style="font-size:1.05rem;">${s.name}</div>
+                        <div class="font-bold text-primary" style="font-size:1.05rem;">${Utils.escapeHTML(s.name)}</div>
                         <div class="flex gap-3 text-muted" style="font-size:0.82rem; margin-top:2px;">
-                            ${s.rut ? `<span><i class="ph ph-identification-card"></i> ${s.rut}</span>` : ''}
-                            ${s.contact ? `<span><i class="ph ph-phone"></i> ${s.contact}</span>` : ''}
+                            ${s.rut ? `<span><i class="ph ph-identification-card"></i> ${Utils.escapeHTML(s.rut)}</span>` : ''}
+                            ${s.contact ? `<span><i class="ph ph-phone"></i> ${Utils.escapeHTML(s.contact)}</span>` : ''}
                         </div>
                     </div>
                 </div>

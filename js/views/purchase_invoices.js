@@ -1525,7 +1525,7 @@ async function renderInvoices() {
     } catch (e) {
         console.error("Error in renderInvoices:", e);
         if (list) {
-            list.innerHTML = `<div style="color:red; padding:20px;">Error cargando datos: ${e.message}</div>`;
+            list.innerHTML = `<div style="color:red; padding:20px;">Error cargando datos: ${window.Utils.escapeHTML(e.message)}</div>`;
         }
     }
 }

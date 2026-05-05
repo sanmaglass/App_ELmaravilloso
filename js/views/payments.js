@@ -330,7 +330,7 @@ window.Views.payments = async (container) => {
             document.getElementById('upcoming-payments-list').innerHTML = html;
         } catch (e) {
             console.error("Error calculating payments:", e);
-            document.getElementById('upcoming-payments-list').innerHTML = `<div style="color:red; font-size:0.85rem;">Error: ${e.message}</div>`;
+            document.getElementById('upcoming-payments-list').innerHTML = `<div style="color:red; font-size:0.85rem;">Error: ${window.Utils.escapeHTML(e.message)}</div>`;
         }
     };
 

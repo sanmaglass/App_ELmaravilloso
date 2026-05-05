@@ -542,46 +542,116 @@ window.Utils = {
     },
 
     // --- PRORATION LOGIC (BURN RATE) ---
+    // Ahora usa gastos REALES confirmados (expenses con categoría Sueldos/Adelantos)
+    // en vez de proyecciones de sueldo.
     calculateDailyBurnRate: async (expenses, employees, referenceDate) => {
         const month = referenceDate.getMonth();
         const year = referenceDate.getFullYear();
         const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-        
-        // Days in the current month
+
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-        
+
         // 1. Sum Fixed Expenses (isFixed = true) for the current month
         const fixedExpensesList = expenses.filter(e => !e.deleted && e.isFixed && e.date && e.date.startsWith(monthStr));
         const fixedExpensesSum = fixedExpensesList.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-            
-        // 2. Sum Salaries 
-        // We use the projected total from the month to cover what the business *must* pay in total
-        const monthlyPaymentsInfo = await window.Utils.calculateMonthlyPayments(employees, [], referenceDate);
-        const salariesProjectedSum = monthlyPaymentsInfo.totalProjected;
-        
-        // Calcular el detalle individual para transparencia
-        const salariesDetails = [];
-        for (const emp of employees) {
-            // We run it individually to get their specific projected total
-            const emInfo = await window.Utils.calculateMonthlyPayments([emp], [], referenceDate);
-            if (emInfo.totalProjected > 0) {
-                salariesDetails.push({ name: emp.name, amount: emInfo.totalProjected });
-            }
-        }
-        
-        // 3. Calculate Daily Burn Rate
-        const totalMonthlyCommitments = fixedExpensesSum + salariesProjectedSum;
-        const dailyBurnRate = totalMonthlyCommitments / daysInMonth;
-        
+
+        // 2. Sueldos CONFIRMADOS: expenses con categoría "Sueldos" del mes
+        //    Solo incluir sueldos de empleados activos (no eliminados)
+        const activeNames = new Set((employees || []).map(e => (e.name || '').trim().toLowerCase()));
+        const sueldosConfirmados = expenses.filter(e => {
+            if (e.deleted || e.category !== 'Sueldos' || !e.date || !e.date.startsWith(monthStr)) return false;
+            // Filtrar sueldos de empleados eliminados (título = "Sueldo - NombreEmpleado")
+            const titleName = (e.title || '').replace(/^Sueldo\s*-\s*/i, '').trim().toLowerCase();
+            return !titleName || activeNames.has(titleName);
+        });
+        const sueldosSum = sueldosConfirmados.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+
+        // Detalle individual de pagos confirmados
+        const salariesDetails = sueldosConfirmados.map(e => ({
+            name: e.title || 'Sueldo',
+            amount: parseFloat(e.amount) || 0
+        }));
+
+        // 3. Adelantos confirmados del mes (solo de empleados activos)
+        const adelantosConfirmados = expenses.filter(e => {
+            if (e.deleted || e.category !== 'Adelantos' || !e.date || !e.date.startsWith(monthStr)) return false;
+            const titleName = (e.title || '').replace(/^Adelanto\s*-\s*/i, '').trim().toLowerCase();
+            return !titleName || activeNames.has(titleName);
+        });
+        const adelantosSum = adelantosConfirmados.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+
+        // 4. Burn rate = solo gastos fijos prorrateados (sueldos y adelantos son gastos puntuales, no se prorratean)
+        const dailyBurnRate = fixedExpensesSum / daysInMonth;
+        const totalMonthlyCommitments = fixedExpensesSum;
+
         return {
             daysInMonth,
             fixedExpensesSum,
             fixedExpensesDetails: fixedExpensesList,
-            salariesProjectedSum,
+            salariesProjectedSum: sueldosSum + adelantosSum,
             salariesDetails,
             totalMonthlyCommitments,
             dailyBurnRate: Math.round(dailyBurnRate)
         };
+    },
+
+    // --- HELPERS DE PAGOS Y ADELANTOS ---
+
+    // Calcula la fecha del próximo pago según frecuencia y último pago
+    getNextPaymentDate: (employee) => {
+        const freq = employee.paymentFrequency || 'monthly';
+        const lastPay = employee.lastPaymentDate ? new Date(employee.lastPaymentDate) : null;
+        const start = employee.startDate ? new Date(employee.startDate) : new Date();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (freq === 'weekly') {
+            const base = lastPay || start;
+            const next = new Date(base);
+            next.setDate(next.getDate() + 7);
+            // Si el próximo pago ya pasó, buscar la semana actual
+            while (next < today) next.setDate(next.getDate() + 7);
+            return next;
+        } else if (freq === 'biweekly') {
+            // Quincenas: 15 y último día del mes
+            const day = today.getDate();
+            if (day <= 15) {
+                return new Date(today.getFullYear(), today.getMonth(), 15);
+            } else {
+                return new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            }
+        } else {
+            // Mensual: último día del mes
+            return new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        }
+    },
+
+    // Calcula el monto bruto por ciclo de pago
+    getPaymentCycleAmount: (employee) => {
+        const freq = employee.paymentFrequency || 'monthly';
+        const base = parseFloat(employee.baseSalary) || 0;
+        if (freq === 'weekly') return Math.round(base / 4);
+        if (freq === 'biweekly') return Math.round(base / 2);
+        return base;
+    },
+
+    // Lee adelantos pendientes de un empleado
+    getPendingAdvances: async (employeeId) => {
+        const all = await window.db.advances.where('employeeId').equals(Number(employeeId)).toArray();
+        return all.filter(a => !a.deleted && a.status === 'pending');
+    },
+
+    // Determina si un empleado tiene pago pendiente (vencido o próximo)
+    getPaymentStatus: (employee) => {
+        const nextDate = window.Utils.getNextPaymentDate(employee);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((nextDate - today) / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) return { status: 'overdue', label: 'Vencido', daysUntil: diffDays, nextDate };
+        if (diffDays === 0) return { status: 'due_today', label: 'Hoy', daysUntil: 0, nextDate };
+        if (diffDays <= 3) return { status: 'upcoming', label: `En ${diffDays} día${diffDays > 1 ? 's' : ''}`, daysUntil: diffDays, nextDate };
+        return { status: 'ok', label: `En ${diffDays} días`, daysUntil: diffDays, nextDate };
     },
 
     animateNumber: (el, start, end, duration = 1000, isCurrency = false) => {

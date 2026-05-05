@@ -10,10 +10,8 @@ window.state = {
 const views = {
     dashboard: () => window.Views.dashboard(document.getElementById('view-container')),
     employees: () => window.Views.employees(document.getElementById('view-container')),
-    calendar: () => window.Views.calendar(document.getElementById('view-container')),
     calculator: () => window.Views.calculator(document.getElementById('view-container')),
     marketing: () => window.Views.marketing(document.getElementById('view-container')),
-    payments: () => window.Views.payments(document.getElementById('view-container')),
     security: () => window.Views.security(document.getElementById('view-container')),
     settings: () => window.Views.settings(document.getElementById('view-container')),
     profit_monitor: () => window.Views.profit_monitor(document.getElementById('view-container')),
@@ -27,7 +25,8 @@ const views = {
     expenses: () => window.Views.expenses(document.getElementById('view-container')),
     electronic_invoices: () => window.Views.electronic_invoices(document.getElementById('view-container')),
     cash_register: () => window.Views.cash_register(document.getElementById('view-container')),
-    credits: () => window.Views.credits(document.getElementById('view-container'))
+    credits: () => window.Views.credits(document.getElementById('view-container')),
+    barcode: () => window.Views.barcode(document.getElementById('view-container'))
 };
 
 // --- AUTH GATE: Credenciales hasheadas (SHA-256) ---
@@ -175,6 +174,7 @@ async function init() {
                 window.Sync?.updateIndicator?.('syncing');
                 console.log("2️⃣ SyncV2 listo - iniciando pull incremental...");
                 await window.SyncV2.syncAll();
+
                 console.log("3️⃣ Pull completado - iniciando Realtime...");
                 await window.SyncV2.initRealtimeSync();
 
@@ -255,6 +255,11 @@ async function init() {
                 const viewName = target.dataset.view;
                 document.getElementById('page-title').textContent = target.querySelector('span').textContent;
                 if (views[viewName]) {
+                    // Cleanup previous view (camera, timers, etc.)
+                    if (window._viewCleanup) {
+                        try { window._viewCleanup(); } catch (e) { /* ignore */ }
+                        window._viewCleanup = null;
+                    }
                     views[viewName]();
                 }
 
@@ -367,10 +372,13 @@ if (mobileBtn && overlay) {
     overlay.addEventListener('click', toggleSidebar);
 }
 
-// Global Modal Handlers
+// Global Add Button — navega a Personal y abre modal de nuevo empleado
 document.getElementById('global-add-btn').addEventListener('click', () => {
-    // For now, simpler action
-    alert('Ve a la sección "Personal" para agregar empleados.');
+    const container = document.getElementById('view-container');
+    window.Views.employees(container, 'equipo').then(() => {
+        window.state.currentView = 'employees';
+        if (window.showEmployeeModal) window.showEmployeeModal();
+    });
 });
 
 // Privacy Toggle Logic

@@ -59,7 +59,7 @@ window.Views.credits = async (container) => {
             render();
         } catch (e) {
             console.error(e);
-            list.innerHTML = `<div class="p-6 text-center text-danger" style="grid-column:1/-1;">Error consultando Supabase. Revisa las políticas RLS: ${e.message}</div>`;
+            list.innerHTML = `<div class="p-6 text-center text-danger" style="grid-column:1/-1;">Error consultando Supabase. Revisa las políticas RLS: ${window.Utils.escapeHTML(e.message)}</div>`;
         }
     }
 
@@ -99,10 +99,10 @@ window.Views.credits = async (container) => {
             <div class="card p-4 flex justify-between items-center" style="${deuda > 0 ? 'border-left: 4px solid var(--danger)' : ''}">
                 <div class="flex items-center gap-3">
                     <div class="flex items-center justify-center font-bold" style="width:40px; height:40px; background:rgba(0,0,0,0.05); color:var(--text-main); border-radius:50%;">
-                        ${c.nombre.charAt(0).toUpperCase()}
+                        ${Utils.escapeHTML(c.nombre.charAt(0).toUpperCase())}
                     </div>
                     <div>
-                        <div class="font-bold text-primary" style="font-size:1.1rem;">${c.nombre}</div>
+                        <div class="font-bold text-primary" style="font-size:1.1rem;">${Utils.escapeHTML(c.nombre)}</div>
                         <div class="text-xs text-muted" style="margin-top:2px;">
                             ${limite > 0 ? `Límite Autorizado: ${window.Utils ? window.Utils.formatCurrency(limite) : limite}` : 'Sin límite configurado'}
                         </div>
@@ -126,8 +126,11 @@ window.Views.credits = async (container) => {
          loadData().then(() => btn.innerHTML = '<i class="ph ph-arrows-clockwise"></i> Recargar');
     });
 
-    // Suscripción Realtime a Clientes (reusar cliente existente)
-    const channel = supabase.channel('clientes-changes')
+    // Suscripción Realtime a Clientes — desuscribir canal previo para evitar leak
+    if (window._creditsChannel) {
+        supabase.removeChannel(window._creditsChannel);
+    }
+    window._creditsChannel = supabase.channel('clientes-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'eleventa_clientes' }, payload => {
             console.log('Cambio en clientes recibido!', payload);
             loadData();

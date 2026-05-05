@@ -101,8 +101,13 @@ window.SyncV2 = {
           if (error) throw error;
           if (!data || data.length === 0) break;
 
+          // Batch lookup: 1 query en vez de N gets individuales
+          const ids = data.map(r => r.id);
+          const localRecords = await window.db[local].where('id').anyOf(ids).toArray();
+          const localMap = new Map(localRecords.map(r => [r.id, r]));
+
           for (const remote_rec of data) {
-            const local_rec = await window.db[local].get(remote_rec.id);
+            const local_rec = localMap.get(remote_rec.id);
             const localHlc = this._toHlcNumber(local_rec?.updated_at_hlc);
             const remoteHlc = Number(remote_rec.updated_at_hlc) || 0;
             const shouldApply = !local_rec || localHlc < remoteHlc;
@@ -200,7 +205,9 @@ window.SyncV2 = {
         const localRec = await window.db[local].get(rec.id);
         const localHlc = this._toHlcNumber(localRec?.updated_at_hlc);
         const remoteHlc = Number(rec.updated_at_hlc) || 0;
-        const shouldApply = !localRec || remoteHlc >= localHlc;
+        // Consistente con pull: local gana en empate (estricto <)
+        // Ignorar registros remotos sin HLC válido si ya tenemos local
+        const shouldApply = !localRec || (remoteHlc > 0 && localHlc < remoteHlc);
 
         if (shouldApply) {
           rec.updated_at_hlc = remoteHlc;

@@ -180,9 +180,9 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                                 </span>
                                 <span class="text-muted text-xs">${formatDate(l.date)}</span>
                             </div>
-                            <div class="font-bold text-lg">${l.item}</div>
+                            <div class="font-bold text-lg">${Utils.escapeHTML(l.item)}</div>
                             <div class="text-sm text-muted">
-                                <i class="ph ph-buildings"></i> ${supplierName} • 
+                                <i class="ph ph-buildings"></i> ${Utils.escapeHTML(supplierName)} • 
                                 <i class="ph ph-hash"></i> ${l.quantity} unidades • 
                                 <i class="ph ph-money"></i> ${formatCurrency(l.total)}
                             </div>
@@ -326,7 +326,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                             <option value="">Seleccionar proveedor...</option>
                             ${activeSuppliers.map(s => `
                                 <option value="${s.id}" ${isEdit && loanToEdit.supplierId == s.id ? 'selected' : (viewState.supplierId == s.id ? 'selected' : '')}>
-                                    ${s.name}
+                                    ${Utils.escapeHTML(s.name)}
                                 </option>
                             `).join('')}
                         </select>
@@ -488,7 +488,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                     </button>
                 </div>
                 <div class="p-6">
-                    <p class="mb-4 text-sm">${isToSupplier ? `¿Cómo te devolvieron el préstamo de <b>${loan.item}</b>?` : `¿Cómo devolviste el préstamo de <b>${loan.item}</b>?`}</p>
+                    <p class="mb-4 text-sm">${isToSupplier ? `¿Cómo te devolvieron el préstamo de <b>${Utils.escapeHTML(loan.item)}</b>?` : `¿Cómo devolviste el préstamo de <b>${Utils.escapeHTML(loan.item)}</b>?`}</p>
                     
                     <div class="flex flex-col gap-3">
                         <button class="btn btn-secondary w-full flex justify-between items-center p-4 hover:bg-success-light" id="btn-repay-money">

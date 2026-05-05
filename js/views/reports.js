@@ -293,6 +293,6 @@ window.Views.reports = async (container) => {
 
     } catch (e) {
         console.error('Reports error:', e);
-        document.getElementById('months-list').innerHTML = `<div style="color:red;">Error: ${e.message}</div>`;
+        document.getElementById('months-list').innerHTML = `<div style="color:red;">Error: ${window.Utils.escapeHTML(e.message)}</div>`;
     }
 };

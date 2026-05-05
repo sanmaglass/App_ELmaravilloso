@@ -87,15 +87,15 @@ db.version(17).stores({
                     'daily_sales', 'reminders', 'eleventa_sales', 'loans'];
     const now = Date.now();
 
-    tables.forEach(tableName => {
-        tx.table(tableName).toCollection().modify(record => {
+    return Promise.all(tables.map(tableName => {
+        return tx.table(tableName).toCollection().modify(record => {
             if (!record.updated_at_hlc) {
                 record.updated_at_hlc = now;
                 record.updated_by_device = 'migration';
                 record.version = record.version || 1;
             }
         });
-    });
+    }));
 });
 
 // v18: cash_register — Arqueo y movimientos de caja
@@ -118,6 +118,29 @@ db.version(18).stores({
     sync_outbox: '++id, tableName, status, created_at',
     sync_state: 'table_name',
     cash_register: 'id, date, type, category, deleted, updated_at_hlc'
+});
+
+// v19: advances — Adelantos de sueldo para empleados
+db.version(19).stores({
+    employees: 'id, rut, deleted, updated_at_hlc',
+    workLogs: 'id, employeeId, date, deleted, updated_at_hlc',
+    products: 'id, category, deleted, updated_at_hlc',
+    promotions: 'id, deleted, updated_at_hlc',
+    suppliers: 'id, name, deleted, updated_at_hlc',
+    purchase_invoices: 'id, supplierId, date, paymentStatus, paymentMethod, invoiceNumber, deleted, version, updated_at_hlc',
+    sales_invoices: 'id, date, clientName, invoiceNumber, deleted, updated_at_hlc',
+    electronic_invoices: 'id, date, folio, status, deleted, version, updated_at_hlc',
+    expenses: 'id, date, deleted, updated_at_hlc',
+    daily_sales: 'id, date, deleted, updated_at_hlc',
+    settings: 'key',
+    reminders: 'id, deleted, completed, [completed+deleted], updated_at_hlc',
+    eleventa_sales: 'id, ticket_id, date, deleted, updated_at_hlc',
+    loans: 'id, supplierId, date, deleted, direction, status, version, updated_at_hlc',
+    error_logs: 'id, timestamp, level, [level+timestamp]',
+    sync_outbox: '++id, tableName, status, created_at',
+    sync_state: 'table_name',
+    cash_register: 'id, date, type, category, deleted, updated_at_hlc',
+    advances: 'id, employeeId, date, status, deleted, updated_at_hlc'
 });
 
 // ──────────────────────────────────────────────────────────────
@@ -172,6 +195,7 @@ window.DataManager = {
     // Full fields list (used after running migration SQL in Supabase)
     _loansFullFields: ['id', 'supplier_id', 'borrower_name', 'item', 'quantity', 'unit_price', 'total', 'date', 'notes', 'status', 'direction', 'type', 'repayment_type', 'repayment_date', 'deleted', 'version'],
     _cashRegisterCoreFields: ['id', 'date', 'type', 'category', 'amount', 'description', 'paymentMethod', 'reference', 'notes', 'deleted'],
+    _advancesCoreFields: ['id', 'employee_id', 'amount', 'date', 'note', 'status', 'deducted_in_expense_id', 'deleted'],
 
     /**
      * Guarda o actualiza una entidad, gestiona version para locking
@@ -187,7 +211,7 @@ window.DataManager = {
             if (data.id) data.id = Number(data.id);
 
             if (!data.id) {
-                data.id = Math.floor(Math.random() * 2000000000);
+                data.id = crypto.getRandomValues(new Uint32Array(1))[0];
                 data.created_at = new Date().toISOString();
             }
 
@@ -212,9 +236,8 @@ window.DataManager = {
             if (activeClient) {
                 const syncResult = await this._syncWithRetry(tableName, remoteTable, data);
                 if (!syncResult.success) {
-                    // Guardar en queue para procesar cuando vuelva conexión
-                    this._enqueueChange(tableName, data);
-                    this._scheduleQueueProcessor();
+                    // Encolar en outbox persistente para retry (sobrevive refresh)
+                    await window.Outbox.enqueue(tableName, 'PUT', data);
                     return { success: true, id: data.id, syncError: syncResult.error, queued: true };
                 }
             }
@@ -395,7 +418,8 @@ window.DataManager = {
             'daily_sales': this._dailySalesCoreFields,
             'electronic_invoices': this._electronicInvoicesCoreFields,
             'loans': this._loansCoreFields,
-            'cash_register': this._cashRegisterCoreFields
+            'cash_register': this._cashRegisterCoreFields,
+            'advances': this._advancesCoreFields
         };
     },
 
@@ -409,6 +433,20 @@ window.DataManager = {
         if (tableName === 'purchase_invoices') {
             delete syncData.imageData;
             delete syncData.created_at;
+        }
+
+        // Advances: convertir camelCase a snake_case para Supabase
+        if (tableName === 'advances') {
+            syncData = {
+                id: data.id,
+                employee_id: data.employeeId || null,
+                amount: data.amount,
+                date: data.date,
+                note: data.note || null,
+                status: data.status || 'pending',
+                deducted_in_expense_id: data.deductedInExpenseId || null,
+                deleted: data.deleted || false,
+            };
         }
 
         // Loans: convertir camelCase a snake_case para Supabase
@@ -434,7 +472,7 @@ window.DataManager = {
         }
 
         // Filtrar solo campos core para tablas conocidas
-        if (fallbackTables[tableName] && tableName !== 'loans') {
+        if (fallbackTables[tableName] && tableName !== 'loans' && tableName !== 'advances') {
             const coreFields = fallbackTables[tableName];
             const cleanData = {};
             coreFields.forEach(k => {
@@ -469,19 +507,9 @@ window.DataManager = {
                 const result = await this._syncWithRetry(tableName, remoteTable, { id: numericId, deleted: true });
 
                 if (!result.success) {
-                    // Fallback: hard delete
-                    try {
-                        const { error: hardDelErr } = await activeClient
-                            .from(remoteTable)
-                            .delete()
-                            .eq('id', id);
-                        if (hardDelErr) throw hardDelErr;
-                    } catch (hardErr) {
-                        // Encolar para retry posterior
-                        this._enqueueChange(tableName, { id: numericId, deleted: true });
-                        this._scheduleQueueProcessor();
-                        return { success: true, syncError: hardErr.message, queued: true };
-                    }
+                    // Encolar soft delete en outbox persistente para retry
+                    await window.Outbox.enqueue(tableName, 'DELETE', { id: numericId, deleted: true });
+                    return { success: true, syncError: result.error, queued: true };
                 }
             }
             return { success: true };
@@ -514,9 +542,56 @@ async function migratePendienteToPagado() {
     }
 }
 
+// One-time migration: limpiar employees y workLogs antiguos para nuevo sistema de pagos
+// Corre DESPUÉS de SyncV2.syncAll() para tener acceso al cliente Supabase
+async function migrateCleanPersonal() {
+    const flag = 'migration_clean_personal_v1052';
+    if (localStorage.getItem(flag)) return;
+    try {
+        const client = window.SyncV2?.client || window.Sync?.client;
+
+        // 1. Soft-delete employees local + Supabase
+        const emps = await db.employees.toArray();
+        const activeEmps = emps.filter(e => !e.deleted);
+        if (activeEmps.length > 0) {
+            for (const emp of activeEmps) {
+                emp.deleted = true;
+                await db.employees.put(emp);
+            }
+            // Borrar en Supabase también
+            if (client) {
+                const ids = activeEmps.map(e => e.id);
+                await client.from('employees').update({ deleted: true }).in('id', ids);
+            }
+            console.log(`🧹 Limpieza: ${activeEmps.length} empleados eliminados (local + nube)`);
+        }
+
+        // 2. Soft-delete workLogs local + Supabase
+        const logs = await db.workLogs.toArray();
+        const activeLogs = logs.filter(l => !l.deleted);
+        if (activeLogs.length > 0) {
+            for (const log of activeLogs) {
+                log.deleted = true;
+                await db.workLogs.put(log);
+            }
+            if (client) {
+                const ids = activeLogs.map(l => l.id);
+                await client.from('worklogs').update({ deleted: true }).in('id', ids);
+            }
+            console.log(`🧹 Limpieza: ${activeLogs.length} workLogs eliminados (local + nube)`);
+        }
+
+        localStorage.setItem(flag, Date.now().toString());
+        console.log('✅ Migración: Personal limpio para nuevo sistema de pagos');
+    } catch (e) {
+        console.error('Error en migración limpieza Personal:', e);
+    }
+}
+
 window.seedDatabase = seedDatabase;
 window.seedSuppliersIfNeeded = seedSuppliersIfNeeded;
 window.migratePendienteToPagado = migratePendienteToPagado;
+window.migrateCleanPersonal = migrateCleanPersonal;
 
 // Inicializar queue processor al cargar el módulo
 window.DataManager.initQueueProcessor();

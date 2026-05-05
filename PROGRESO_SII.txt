@@ -1,0 +1,141 @@
+================================================================================
+PROGRESO INTEGRACIÓN SII — EL MARAVILLOSO
+Última actualización: 18 abril 2026
+================================================================================
+
+## ESTADO ACTUAL: API SIN CUPO (50/50 consultas usadas en BaseAPI)
+   → Se renueva el próximo mes o subiendo de plan en baseapi.cl
+
+================================================================================
+✅ COMPLETADO
+================================================================================
+
+1. PROXY CORS (vercel.json)
+   - Rewrite: /api/sii/:path* → https://api.baseapi.cl/api/v1/sii/:path*
+   - Evita CORS preflight por header x-api-key
+
+2. IMPORTACIÓN AUTOMÁTICA DE COMPRAS (sii_api.js)
+   - consultarRCV(periodo, tipo) → llama BaseAPI con credenciales
+   - importarFacturas(periodo) → crea/actualiza proveedores por RUT + importa facturas
+   - importarHistorico() → primera vez importa 12 meses (flag: sii_historico_importado)
+   - limpiarDatosManuales() → soft-delete facturas manuales y proveedores sin RUT
+   - Tipos compras: 33 (Factura), 34 (Factura Exenta), 61 (Nota de Crédito)
+
+3. RATE LIMITER (sii_api.js)
+   - Cola global: máx 1 request cada 13 segundos (5 req/min de BaseAPI)
+   - Retry automático en 429: espera 60s y reintenta
+   - Detección de 403 "limit exceeded": para toda la cola, no gasta más requests
+   - autoSync y precarga corren secuencialmente (no en paralelo)
+
+4. VENTAS DESDE RESUMEN POR TIPO (sii_api.js)
+   - DESCUBRIMIENTO CLAVE: Las boletas (tipo 39) NO vienen en datos[] individual
+   - Vienen SOLO en resumenPorTipo[] como totales mensuales
+   - _parsearVentas() usa SOLO resumenPorTipo como fuente única
+   - Tipos procesados: 33 (Factura), 34 (Exenta), 39 (Boleta), 41 (Boleta Exenta),
+     48 (Comprobante Pago), 56 (Nota Débito), 61 (NC → RESTA)
+
+5. CACHÉ DE VENTAS (sii_api.js)
+   - Clave: sii_ventas_v4_{periodo}
+   - Meses pasados: caché permanente (no se vuelven a consultar)
+   - Mes actual: TTL 30 minutos
+   - Fallback: si API falla, lee caché v4 o v3
+   - Precarga: solo 2 meses (actual + anterior), no todos
+
+6. CONTADOR DIGITAL TRIBUTARIO (purchase_invoices.js)
+   - Panel con selector de mes en header oscuro
+   - Balance IVA: Débito (ventas) vs Crédito (compras)
+   - PPM: 1% del neto de VENTAS
+   - F29 estimado: max(0, IVA débito - crédito) + PPM
+   - Tips contextuales (remanente, adelantar compras, etc.)
+   - Celdas: Neto Compras, IVA Crédito, Ventas SII, PPM, Pendientes, Proveedores
+   - Estilos inyectados una sola vez en <head> (no duplican al cambiar mes)
+
+7. FILTRO TIPO DOCUMENTO (purchase_invoices.js)
+   - "Solo Facturas" (default) / "Solo Notas de Crédito" / "Todas"
+   - NC separadas con borde morado, tag "NC", monto negativo en morado
+   - Resumen de totales arriba de la lista
+
+8. CAMPOS SII EN BD (db.js + Supabase)
+   - Campos agregados: siiTipoDoc, siiRutProveedor, siiFolio, siiMontoNeto,
+     siiMontoIva, siiMontoExento, siiImportado, siiImportDate, supplierName
+   - Migración SQL ejecutada en Supabase
+   - Campos incluidos en _purchaseInvoicesCoreFields para sync
+
+9. PROVEEDORES POR RUT
+   - SII es fuente de verdad: RUT identifica, nombre se actualiza del SII
+   - Proveedores sin RUT = manuales → soft-deleted por limpieza
+
+================================================================================
+⏳ PENDIENTE (cuando se renueve el cupo de API)
+================================================================================
+
+1. VERIFICAR CÁLCULO F29 MARZO vs CONTADOR ($161.582)
+   - Contador del usuario dice: $161.582 a pagar en marzo
+   - Necesitamos: ventas marzo + compras marzo → verificar que calce
+   - Ejecutar: SII_API.diagnostico('2026-03', 'venta') cuando haya cupo
+   - Marzo tiene 1 NC grande ($6.197.138) por duplicado Mercado Pago
+
+2. VERIFICAR NC DE BOLETAS
+   - Las NC de ventas (tipo 61 en resumenPorTipo) ya se restan
+   - Falta confirmar con datos reales que el cálculo es correcto
+   - Ej: marzo boletas $11.2M + comp $7.7M + fact $40K - NC $6.2M = $12.8M neto
+
+3. CONSIDERAR SUBIR PLAN BASEAPI
+   - Plan actual: gratis, 50 consultas/mes (se agotó rápido)
+   - Recomendado: 200-300 consultas/mes mínimo
+   - Ver precios en baseapi.cl → dashboard → planes
+   - Con caché optimizado, uso normal = ~4-6 consultas/día
+
+4. MULTAS SII
+   - BaseAPI NO tiene endpoint para consultar multas/infracciones
+   - Eso está en sii.cl → Mi SII → Situación Tributaria → Infracciones
+   - Podríamos agregar un link directo en la app
+
+================================================================================
+DATOS DE REFERENCIA (del diagnóstico de API)
+================================================================================
+
+ABRIL 2026 (resumenPorTipo):
+  - Boleta Electrónica (39): 992 docs, neto $4.263.100, IVA $810.032, total $5.073.132
+  - Comprobante Pago (48): 69 docs, neto $260.630, IVA $49.520, total $310.150
+
+MARZO 2026 (resumenPorTipo):
+  - Factura Electrónica (33): 1 doc, neto $33.445, IVA $6.355, total $39.800
+  - Boleta Electrónica (39): 1710 docs, neto $9.439.737, IVA $1.793.593, total $11.233.330
+  - Comprobante Pago (48): 1006 docs, neto $6.506.378, IVA $1.236.212, total $7.742.590
+  - Nota de Crédito (61): 1 doc, neto $5.207.679, IVA $989.459, total $6.197.138
+
+CREDENCIALES BASEAPI (hardcoded en sii_api.js):
+  - apiKey: sk_8bc5fa1e06cb022e94f09760069cedd3cb3709af8622ea46
+  - RUT: 14061423-8
+  - Endpoint: POST /api/sii/rcv/{periodo}/{tipo}
+
+================================================================================
+ARCHIVOS MODIFICADOS
+================================================================================
+
+- js/sii_api.js (v1049) — Core SII: rate limiter, parseo ventas, caché, diagnóstico
+- js/views/purchase_invoices.js (v1049) — Contador tributario, filtro tipo doc, auto-sync
+- js/db.js (v1033) — Campos SII en _purchaseInvoicesCoreFields
+- index.html — Cache bust versions, NUKE_VERSION v1046
+- vercel.json — Rewrite proxy para BaseAPI
+
+================================================================================
+COMANDOS ÚTILES (consola del navegador)
+================================================================================
+
+// Ver qué devuelve la API para un mes
+SII_API.diagnostico('2026-04', 'venta')
+SII_API.diagnostico('2026-04', 'compra')
+
+// Ver resumen por tipo directamente
+SII_API.consultarRCV('2026-03', 'venta').then(r => console.log(JSON.stringify(r.data.resumenPorTipo, null, 2)))
+
+// Forzar recarga de ventas de un mes
+SII_API.obtenerTotalesVentas('2026-04', true)
+
+// Ver caché local de ventas
+JSON.parse(localStorage.getItem('sii_ventas_v4_2026-04'))
+
+// Resetear flag de límite API (si se renovó el cupo)
+SII_API._apiLimitExceeded = false

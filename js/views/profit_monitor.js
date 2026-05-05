@@ -411,7 +411,7 @@ window.Views.profit_monitor = async (container) => {
         } catch (e) {
             console.error('Profit Monitor Error:', e);
             const tbody2 = document.getElementById('profit-list-body');
-            if (tbody2) tbody2.innerHTML = `<tr><td colspan="8" style="padding:40px; color:red;">Error: ${e.message}</td></tr>`;
+            if (tbody2) tbody2.innerHTML = `<tr><td colspan="8" style="padding:40px; color:red;">Error: ${window.Utils.escapeHTML(e.message)}</td></tr>`;
         } finally {
             _rendering = false;
         }

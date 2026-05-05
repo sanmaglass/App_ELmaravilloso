@@ -211,7 +211,7 @@ async function renderExpenses() {
             return `
             <div class="card" style="padding:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                 <div style="flex: 1 1 180px; min-width:0;">
-                    <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${exp.title}</div>
+                    <div style="font-weight:600; font-size:1.05rem; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${Utils.escapeHTML(exp.title)}</div>
                     <div style="font-size:0.85rem; color:var(--text-muted); display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:4px;">
                         <span><i class="ph ph-calendar-blank"></i> ${formatDate(exp.date)}</span>
                         <span>•</span>
@@ -244,7 +244,7 @@ async function renderExpenses() {
 
     } catch (e) {
         console.error("Error in renderExpenses:", e);
-        list.innerHTML = `<div style="color:red;">Error: ${e.message}</div>`;
+        list.innerHTML = `<div style="color:red;">Error: ${window.Utils.escapeHTML(e.message)}</div>`;
     }
 }
 
@@ -293,6 +293,7 @@ function showExpenseModal(expenseToEdit = null) {
                         <select id="exp-category" class="form-input">
                             <option value="Retiro del Dueño" ${isEdit && expenseToEdit.category === 'Retiro del Dueño' ? 'selected' : ''}>💼 Retiro del Dueño (tu sueldo)</option>
                             <option value="Sueldos" ${isEdit && expenseToEdit.category === 'Sueldos' ? 'selected' : ''}>👷 Sueldos / Nómina</option>
+                            <option value="Adelantos" ${isEdit && expenseToEdit.category === 'Adelantos' ? 'selected' : ''}>💸 Adelantos</option>
                             <option value="Servicios" ${isEdit && expenseToEdit.category === 'Servicios' ? 'selected' : ''}>Servicios Básicos</option>
                             <option value="Alquiler" ${isEdit && expenseToEdit.category === 'Alquiler' ? 'selected' : ''}>Alquiler</option>
                             <option value="Contabilidad" ${isEdit && expenseToEdit.category === 'Contabilidad' ? 'selected' : ''}>Contabilidad</option>

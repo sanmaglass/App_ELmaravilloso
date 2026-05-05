@@ -330,7 +330,7 @@ async function renderDailySales() {
 
     } catch (e) {
         console.error("Error in renderDailySales:", e);
-        list.innerHTML = `<div style="color:red;">Error: ${e.message}</div>`;
+        list.innerHTML = `<div style="color:red;">Error: ${window.Utils.escapeHTML(e.message)}</div>`;
     }
 }
 
