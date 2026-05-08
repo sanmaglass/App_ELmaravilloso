@@ -29,20 +29,9 @@ const views = {
     barcode: () => window.Views.barcode(document.getElementById('view-container'))
 };
 
-// --- AUTH GATE: Credenciales hasheadas (SHA-256) ---
-// Hash pre-calculado de email+password para que nadie pueda leerlos en el código
-// sha256("sanmaglass@gmail.com:sanma123")
-const AUTH_HASH = '3116f6b417a96bd88af00cd66a352106f0f9c55f3a6b43382de61360ec2e2f82';
-
-// Versión de sesión — incrementar para forzar re-login en TODOS los dispositivos
-// Cualquier sesión guardada con una versión distinta se invalida automáticamente
-const SESSION_VERSION = '2';
-
-async function sha256(text) {
-    const data = new TextEncoder().encode(text);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
+// --- AUTH GATE: Supabase Auth ---
+// Versión de sesión — v3 = Supabase Auth (v2 era hash local)
+const SESSION_VERSION = '3';
 
 function showEmailGate() {
     const splash = document.getElementById('splash-screen');
@@ -53,12 +42,12 @@ function showEmailGate() {
             <div style="width:90%; max-width:380px; text-align:center;">
                 <img src="assets/logo-dark.png" alt="Logo" style="width:80px; height:80px; border-radius:20px; margin-bottom:24px; box-shadow:0 12px 40px rgba(220,38,38,0.3);">
                 <h1 style="color:#fff; font-size:1.4rem; font-weight:700; margin:0 0 6px;">El Maravilloso</h1>
-                <p style="color:rgba(255,255,255,0.4); font-size:0.75rem; margin:0 0 32px; letter-spacing:0.1em; text-transform:uppercase;">Acceso Autorizado</p>
+                <p id="gate-subtitle" style="color:rgba(255,255,255,0.4); font-size:0.75rem; margin:0 0 32px; letter-spacing:0.1em; text-transform:uppercase;">Acceso Autorizado</p>
                 <input id="gate-email" type="email" placeholder="Correo" autocomplete="email" autofocus
-                    style="width:100%; padding:14px 18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:#fff; font-size:1rem; font-family:inherit; outline:none; transition:border-color 0.2s; margin-bottom:12px;">
+                    style="width:100%; padding:14px 18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:#fff; font-size:1rem; font-family:inherit; outline:none; transition:border-color 0.2s; margin-bottom:12px; box-sizing:border-box;">
                 <div style="position:relative;">
                     <input id="gate-pass" type="password" placeholder="Contrase\u00f1a" autocomplete="current-password"
-                        style="width:100%; padding:14px 18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:#fff; font-size:1rem; font-family:inherit; outline:none; transition:border-color 0.2s; padding-right:48px;">
+                        style="width:100%; padding:14px 18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:#fff; font-size:1rem; font-family:inherit; outline:none; transition:border-color 0.2s; padding-right:48px; box-sizing:border-box;">
                     <button id="gate-toggle-pass" type="button" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:rgba(255,255,255,0.4); cursor:pointer; font-size:1.1rem; padding:4px;">
                         <i class="ph ph-eye"></i>
                     </button>
@@ -67,7 +56,12 @@ function showEmailGate() {
                 <button id="gate-btn" style="width:100%; margin-top:16px; padding:14px; background:linear-gradient(135deg,#e60000,#990000); color:#fff; border:none; border-radius:12px; font-size:0.95rem; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.2s; box-shadow:0 6px 20px rgba(230,0,0,0.3);">
                     Ingresar
                 </button>
-                <p style="color:rgba(255,255,255,0.2); font-size:0.65rem; margin-top:24px;">Solo personal autorizado</p>
+                <div style="margin-top:16px;">
+                    <button id="gate-forgot" type="button" style="background:none; border:none; color:rgba(255,255,255,0.35); font-size:0.78rem; cursor:pointer; font-family:inherit; text-decoration:underline;">
+                        Olvidé mi contraseña
+                    </button>
+                </div>
+                <p style="color:rgba(255,255,255,0.2); font-size:0.65rem; margin-top:24px;">Sistema de Gestión Comercial</p>
             </div>
         </div>
     `;
@@ -77,6 +71,7 @@ function showEmailGate() {
     const errorEl = document.getElementById('gate-error');
     const btn = document.getElementById('gate-btn');
     const toggleBtn = document.getElementById('gate-toggle-pass');
+    const forgotBtn = document.getElementById('gate-forgot');
 
     // Toggle ver/ocultar contraseña
     toggleBtn.addEventListener('click', () => {
@@ -90,12 +85,12 @@ function showEmailGate() {
         const pass = passInput.value || '';
 
         if (!email || !email.includes('@')) {
-            errorEl.textContent = 'Ingresa un correo v\u00e1lido';
+            errorEl.textContent = 'Ingresa un correo válido';
             emailInput.style.borderColor = '#ff6b6b';
             return;
         }
         if (!pass) {
-            errorEl.textContent = 'Ingresa tu contrase\u00f1a';
+            errorEl.textContent = 'Ingresa tu contraseña';
             passInput.style.borderColor = '#ff6b6b';
             return;
         }
@@ -103,52 +98,70 @@ function showEmailGate() {
         btn.textContent = 'Verificando...';
         btn.disabled = true;
 
-        const hash = await sha256(email + ':' + pass);
-        if (hash !== AUTH_HASH) {
-            errorEl.textContent = 'Correo o contrase\u00f1a incorrectos';
+        try {
+            await window.Auth.login(email, pass);
+            // Login exitoso — reload para inicializar app con sesión
+            window.location.reload();
+        } catch (err) {
+            const msg = err.message || '';
+            if (msg.includes('Invalid login')) {
+                errorEl.textContent = 'Correo o contraseña incorrectos';
+            } else if (msg.includes('Email not confirmed')) {
+                errorEl.textContent = 'Confirma tu email antes de ingresar';
+            } else {
+                errorEl.textContent = 'Error de conexión. Intenta de nuevo.';
+            }
             emailInput.style.borderColor = '#ff6b6b';
             passInput.style.borderColor = '#ff6b6b';
             btn.textContent = 'Ingresar';
             btn.disabled = false;
-            console.warn('Acceso denegado:', email);
+            console.warn('Login error:', msg);
+        }
+    }
+
+    // Recuperar contraseña
+    forgotBtn.addEventListener('click', async () => {
+        const email = (emailInput.value || '').trim().toLowerCase();
+        if (!email || !email.includes('@')) {
+            errorEl.textContent = 'Ingresa tu correo primero';
+            emailInput.style.borderColor = '#ff6b6b';
             return;
         }
-
-        // Acceso concedido — guardar token hasheado (no el password)
-        localStorage.setItem('wm_auth', 'true');
-        localStorage.setItem('wm_auth_token', hash);
-        localStorage.setItem('wm_auth_email', email);
-        localStorage.setItem('wm_user', email.split('@')[0]);
-        localStorage.setItem('wm_session_version', SESSION_VERSION);
-        window.location.reload();
-    }
+        try {
+            await window.Auth.resetPassword(email);
+            errorEl.style.color = '#4ade80';
+            errorEl.textContent = 'Se envió un link a tu correo para restablecer la contraseña';
+        } catch (err) {
+            errorEl.textContent = 'Error al enviar email. Intenta de nuevo.';
+        }
+    });
 
     btn.addEventListener('click', attemptLogin);
     emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passInput.focus(); });
     passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptLogin(); });
-    emailInput.addEventListener('input', () => { errorEl.textContent = ''; emailInput.style.borderColor = 'rgba(255,255,255,0.1)'; });
-    passInput.addEventListener('input', () => { errorEl.textContent = ''; passInput.style.borderColor = 'rgba(255,255,255,0.1)'; });
+    emailInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#ff6b6b'; emailInput.style.borderColor = 'rgba(255,255,255,0.1)'; });
+    passInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#ff6b6b'; passInput.style.borderColor = 'rgba(255,255,255,0.1)'; });
 }
 
 // Initialize App
 async function init() {
     try {
-        // --- AUTH CHECK (Email + Password Gate + Session Version) ---
-        const isAuth = localStorage.getItem('wm_auth');
-        const authToken = localStorage.getItem('wm_auth_token');
-        const sessionVer = localStorage.getItem('wm_session_version');
+        // --- AUTH CHECK: Supabase Auth ---
+        window.Auth.init();
+        const session = await window.Auth.getSession();
 
-        if (!isAuth || authToken !== AUTH_HASH || sessionVer !== SESSION_VERSION) {
-            localStorage.removeItem('wm_auth');
-            localStorage.removeItem('wm_auth_token');
-            localStorage.removeItem('wm_auth_email');
-            localStorage.removeItem('wm_user');
-            localStorage.removeItem('wm_session_version');
+        if (!session) {
             showEmailGate();
             return;
         }
 
-        window.state.currentUser = localStorage.getItem('wm_auth_email');
+        // Sesión válida — cargar tenant
+        window.Auth.session = session;
+        await window.Auth._loadTenant();
+        window.state.currentUser = session.user.email;
+        localStorage.setItem('wm_auth', 'true');
+        localStorage.setItem('wm_auth_email', session.user.email);
+        localStorage.setItem('wm_user', session.user.email.split('@')[0]);
 
         // Auth passed - continue with initialization
 
@@ -236,11 +249,7 @@ async function init() {
                 // Logout Check
                 if (btn.dataset.view === 'logout') {
                     if (confirm('¿Cerrar sesión?')) {
-                        localStorage.removeItem('wm_auth');
-                        localStorage.removeItem('wm_auth_token');
-                        localStorage.removeItem('wm_auth_email');
-                        localStorage.removeItem('wm_user');
-                        window.location.reload();
+                        window.Auth.logout();
                     }
                     return;
                 }

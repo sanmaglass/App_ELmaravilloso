@@ -8,6 +8,12 @@ window.Outbox = {
         // 1. Actualizar registro local
         payload.updated_at_hlc = typeof hlc === 'number' ? hlc : HLC.encode(hlc || HLC.now());
         payload.updated_by_device = DeviceId.get();
+
+        // Inyectar tenant_id si hay sesión autenticada
+        const tenantId = window.Auth?.getTenantId();
+        if (tenantId && !payload.tenant_id) {
+          payload.tenant_id = tenantId;
+        }
         await window.db[tableName].put(payload);
 
         // 2. Encolar en outbox

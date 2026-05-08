@@ -26,6 +26,13 @@ window.SyncV2 = {
   },
 
   async init() {
+    // Reusar el cliente autenticado de Auth si existe
+    if (window.Auth?.client) {
+      this.client = window.Auth.client;
+      console.log('✅ SyncV2 inicializado (con sesión autenticada)');
+      return true;
+    }
+
     const url = localStorage.getItem('supabase_url') || window.AppConfig.supabaseUrl;
     const key = localStorage.getItem('supabase_key') || window.AppConfig.supabaseKey;
 
@@ -35,7 +42,7 @@ window.SyncV2 = {
     }
 
     this.client = supabase.createClient(url, key);
-    console.log('✅ SyncV2 inicializado');
+    console.log('✅ SyncV2 inicializado (anon)');
     return true;
   },
 

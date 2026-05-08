@@ -12,6 +12,12 @@ window.SII_API = {
         password: ''
     },
 
+    // --- Política de sincronización ---
+    DAILY_BUDGET: 2,                // Máx 2 llamadas API por día (1 sync completo = compras + ventas)
+    MONTHLY_BUDGET: 50,             // Cupo mensual BaseAPI
+    BUDGET_RESERVE: 30,             // Reserva para consultas manuales
+    AUTO_BUDGET: 20,                // Máximo para auto-syncs (50 - 30)
+
     // --- Rate Limiter: max 5 req/min = 1 cada 13s ---
     _queue: [],
     _queueRunning: false,
@@ -86,7 +92,13 @@ window.SII_API = {
      * @returns {Object} { success, data: { totalRegistros, datos[], resumenPorTipo[] } }
      */
     async consultarRCV(periodo, tipo = 'compra') {
-        // Si ya se detectó que se acabó el cupo, no gastar más requests
+        // Verificar límite diario PRIMERO (antes de gastar cupo mensual)
+        const daily = this.getDailyUsage();
+        if (daily.remaining <= 0) {
+            throw new Error('DAILY_LIMIT');
+        }
+
+        // Si ya se detectó que se acabó el cupo mensual
         if (this._apiLimitExceeded) {
             throw new Error('Cupo mensual de BaseAPI agotado (50/50). Se renueva el próximo mes.');
         }
@@ -125,6 +137,7 @@ window.SII_API = {
 
             const data = await response.json();
             console.log(`✅ SII API: ${tipo} ${periodo} OK`);
+            this._registrarUsoAPI();
             return data;
         });
     },
@@ -452,8 +465,14 @@ window.SII_API = {
         if (!forceRefresh) {
             const cached = this._leerCacheVentas(periodo);
             if (cached) {
-                if (!esMesActual) return cached;
-                if (cached._ts && (Date.now() - cached._ts) < 30 * 60 * 1000) return cached;
+                if (!esMesActual) return cached; // Meses pasados: caché permanente
+                // Mes actual: caché válido por el resto del día
+                const cacheDate = new Date(cached._ts);
+                const nowDate = new Date();
+                const sameDayCache = cacheDate.getFullYear() === nowDate.getFullYear()
+                    && cacheDate.getMonth() === nowDate.getMonth()
+                    && cacheDate.getDate() === nowDate.getDate();
+                if (cached._ts && sameDayCache) return cached;
             }
         }
 
@@ -500,7 +519,12 @@ window.SII_API = {
             if (cached) {
                 const data = JSON.parse(cached);
                 if (p !== mesActual) continue;
-                if (data._ts && (Date.now() - data._ts) < 30 * 60 * 1000) continue;
+                // Mes actual: solo refrescar si el caché es de un día anterior
+                const cacheDate = new Date(data._ts);
+                const sameDayP = cacheDate.getFullYear() === now.getFullYear()
+                    && cacheDate.getMonth() === now.getMonth()
+                    && cacheDate.getDate() === now.getDate();
+                if (data._ts && sameDayP) continue;
             }
             faltantes.push(p);
         }
@@ -527,5 +551,178 @@ window.SII_API = {
                 console.warn(`Error precargando ventas ${p}:`, e.message);
             }
         }
+    },
+
+    // =========================================================================
+    // SISTEMA DE SYNC INTELIGENTE — Control de cuota y política de 3 días
+    // =========================================================================
+
+    /**
+     * Registra una llamada a la API en contadores diario y mensual.
+     * Se llama automáticamente desde consultarRCV().
+     */
+    _registrarUsoAPI() {
+        const now = new Date();
+
+        // Contador mensual
+        const mesKey = `sii_quota_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const usage = JSON.parse(localStorage.getItem(mesKey) || '{"calls":0,"history":[]}');
+        usage.calls++;
+        usage.history.push({ ts: Date.now(), type: 'api_call' });
+        localStorage.setItem(mesKey, JSON.stringify(usage));
+
+        // Contador diario
+        const diaKey = `sii_daily_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const daily = JSON.parse(localStorage.getItem(diaKey) || '{"calls":0}');
+        daily.calls++;
+        daily.lastCall = Date.now();
+        localStorage.setItem(diaKey, JSON.stringify(daily));
+    },
+
+    /**
+     * Devuelve el uso de API del día actual.
+     * @returns {{ used, budget, remaining, lastCall, todayKey }}
+     */
+    getDailyUsage() {
+        const now = new Date();
+        const diaKey = `sii_daily_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const daily = JSON.parse(localStorage.getItem(diaKey) || '{"calls":0}');
+        return {
+            used: daily.calls,
+            budget: this.DAILY_BUDGET,
+            remaining: Math.max(0, this.DAILY_BUDGET - daily.calls),
+            lastCall: daily.lastCall ? new Date(daily.lastCall) : null,
+            todayKey: diaKey
+        };
+    },
+
+    /**
+     * Devuelve el estado de cuota del mes actual.
+     * @returns {{ used, budget, reserve, remaining, autoRemaining, percentUsed }}
+     */
+    getQuotaUsage() {
+        const now = new Date();
+        const mesKey = `sii_quota_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const usage = JSON.parse(localStorage.getItem(mesKey) || '{"calls":0,"history":[]}');
+        const used = usage.calls;
+        return {
+            used,
+            budget: this.MONTHLY_BUDGET,
+            reserve: this.BUDGET_RESERVE,
+            remaining: Math.max(0, this.MONTHLY_BUDGET - used),
+            autoRemaining: Math.max(0, this.AUTO_BUDGET - used),
+            percentUsed: Math.round((used / this.MONTHLY_BUDGET) * 100),
+            history: usage.history || []
+        };
+    },
+
+    /**
+     * ¿Debería ejecutarse un auto-sync ahora?
+     * Política: máx 2 llamadas/día. Si ya se usaron, esperar al día siguiente.
+     * Retorna { shouldSync, reason, lastSync, dailyUsage }
+     */
+    shouldAutoSync() {
+        const lastSync = parseInt(localStorage.getItem('sii_last_auto_sync') || '0');
+        const daily = this.getDailyUsage();
+
+        // Nunca se ha sincronizado
+        if (lastSync === 0) {
+            return { shouldSync: true, reason: 'never_synced', lastSync: null, dailyUsage: daily };
+        }
+
+        // Verificar cuota mensual
+        const quota = this.getQuotaUsage();
+        if (quota.autoRemaining <= 0) {
+            return { shouldSync: false, reason: 'quota_exhausted', lastSync: new Date(lastSync), dailyUsage: daily };
+        }
+
+        // Verificar límite diario (2 llamadas/día)
+        if (daily.remaining <= 0) {
+            return { shouldSync: false, reason: 'daily_limit', lastSync: new Date(lastSync), dailyUsage: daily };
+        }
+
+        // ¿Ya se sincronizó hoy? (mismo día calendario)
+        const lastDate = new Date(lastSync);
+        const now = new Date();
+        const sameDay = lastDate.getFullYear() === now.getFullYear()
+            && lastDate.getMonth() === now.getMonth()
+            && lastDate.getDate() === now.getDate();
+
+        if (sameDay) {
+            return { shouldSync: false, reason: 'already_today', lastSync: new Date(lastSync), dailyUsage: daily };
+        }
+
+        // Nuevo día y hay cupo → sincronizar
+        return { shouldSync: true, reason: 'new_day', lastSync: new Date(lastSync), dailyUsage: daily };
+    },
+
+    /**
+     * Sync inteligente: compras + ventas del mes actual.
+     * Solo ejecuta si la política lo permite (cada 3 días o forzado).
+     * @param {boolean} force - true = ignorar intervalo (sync manual del usuario)
+     * @param {Function} onProgress - Callback de progreso
+     * @returns {{ synced, reason, compras, ventas, quotaAfter }}
+     */
+    async smartSync(force = false, onProgress = null) {
+        const policy = this.shouldAutoSync();
+
+        if (!force && !policy.shouldSync) {
+            return { synced: false, reason: policy.reason, lastSync: policy.lastSync, nextSync: policy.nextSync, daysSinceSync: policy.daysSinceSync };
+        }
+
+        const now = new Date();
+        const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        let comprasResult = null;
+        let ventasResult = null;
+
+        // 1. Sync compras del mes actual (1 call)
+        if (onProgress) onProgress('compras', mesActual, 1, 2);
+        try {
+            comprasResult = await this.importarFacturas(mesActual);
+        } catch (err) {
+            comprasResult = { error: err.message };
+        }
+
+        // 2. Sync ventas del mes actual (1 call)
+        if (onProgress) onProgress('ventas', mesActual, 2, 2);
+        try {
+            ventasResult = await this.obtenerTotalesVentas(mesActual, true);
+        } catch (err) {
+            ventasResult = { error: err.message };
+        }
+
+        // Registrar timestamp del sync
+        localStorage.setItem('sii_last_auto_sync', String(Date.now()));
+
+        return {
+            synced: true,
+            reason: force ? 'manual' : policy.reason,
+            periodo: mesActual,
+            compras: comprasResult,
+            ventas: ventasResult,
+            quotaAfter: this.getQuotaUsage()
+        };
+    },
+
+    /**
+     * Resumen del estado de sync para mostrar en UI.
+     * No hace llamadas API — solo lee caché local.
+     */
+    getSyncStatus() {
+        const lastSync = parseInt(localStorage.getItem('sii_last_auto_sync') || '0');
+        const quota = this.getQuotaUsage();
+        const policy = this.shouldAutoSync();
+        const historicoHecho = !!localStorage.getItem('sii_historico_importado');
+
+        return {
+            configured: this.isConfigured(),
+            historicoImportado: historicoHecho,
+            lastSync: lastSync > 0 ? new Date(lastSync) : null,
+            shouldSync: policy.shouldSync,
+            reason: policy.reason,
+            dailyUsage: policy.dailyUsage || this.getDailyUsage(),
+            quota
+        };
     }
 };

@@ -226,6 +226,27 @@ async function syncFromSII(silent = false) {
         return;
     }
 
+    // Verificar límite diario antes de intentar
+    const dailyCheck = window.SII_API.getDailyUsage();
+    if (dailyCheck.remaining <= 0) {
+        if (!silent && banner) {
+            banner.style.display = 'block';
+            const lastStr = dailyCheck.lastCall ? dailyCheck.lastCall.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) : '';
+            banner.innerHTML = `
+                <div style="background:linear-gradient(135deg, #fefce8, #fef9c3); border:2px solid #eab308; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <i class="ph ph-clock" style="font-size:1.5rem; color:#ca8a04;"></i>
+                    <div style="flex:1; min-width:200px;">
+                        <div style="font-weight:700; color:#854d0e;">Ya se actualizó hoy (${dailyCheck.used}/${dailyCheck.budget} consultas usadas)</div>
+                        <div style="font-size:0.85rem; color:#a16207; margin-top:4px;">
+                            Última consulta: ${lastStr}. Los datos que ves son los más recientes del SII. Se podrá actualizar nuevamente mañana.
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        return;
+    }
+
     // UI: loading state
     if (btn) {
         btn.disabled = true;
@@ -323,15 +344,30 @@ async function syncFromSII(silent = false) {
     } catch (err) {
         console.error('Error sync SII:', err);
         if (banner) {
-            banner.innerHTML = `
-                <div style="background:#fef2f2; border:2px solid #dc2626; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px;">
-                    <i class="ph ph-warning-circle" style="font-size:1.5rem; color:#dc2626;"></i>
-                    <div>
-                        <div style="font-weight:700; color:#991b1b;">Error al conectar con SII</div>
-                        <div style="font-size:0.85rem; color:#dc2626;">${err.message}</div>
+            // Mensaje amigable si es límite diario
+            const isDailyLimit = err.message === 'DAILY_LIMIT' || (err.message && err.message.includes('DAILY_LIMIT'));
+            if (isDailyLimit) {
+                const dl = window.SII_API.getDailyUsage();
+                banner.innerHTML = `
+                    <div style="background:linear-gradient(135deg, #fefce8, #fef9c3); border:2px solid #eab308; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px;">
+                        <i class="ph ph-clock" style="font-size:1.5rem; color:#ca8a04;"></i>
+                        <div>
+                            <div style="font-weight:700; color:#854d0e;">Actualización del día completada (${dl.used}/${dl.budget})</div>
+                            <div style="font-size:0.85rem; color:#a16207;">Los datos que ves están actualizados. Se podrá consultar nuevamente mañana.</div>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            } else {
+                banner.innerHTML = `
+                    <div style="background:#fef2f2; border:2px solid #dc2626; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px;">
+                        <i class="ph ph-warning-circle" style="font-size:1.5rem; color:#dc2626;"></i>
+                        <div>
+                            <div style="font-weight:700; color:#991b1b;">Error al conectar con SII</div>
+                            <div style="font-size:0.85rem; color:#dc2626;">${err.message}</div>
+                        </div>
+                    </div>
+                `;
+            }
         }
     }
 
@@ -344,7 +380,7 @@ async function syncFromSII(silent = false) {
 
 // Auto-sync al cargar la vista
 // Primera vez: importa 12 meses de historial
-// Después: solo últimos 2 meses, máx cada 5 minutos
+// Después: smart sync cada 3 días (NO cada vez que se abre la app)
 async function autoSyncSII() {
     const banner = document.getElementById('sii-sync-banner');
     const btn = document.getElementById('btn-sync-sii');
@@ -420,27 +456,97 @@ async function autoSyncSII() {
         return;
     }
 
-    // Sync normal (no primera vez): solo mes actual, máx cada 30 min
-    const lastSync = parseInt(localStorage.getItem('sii_last_auto_sync') || '0');
-    const now = Date.now();
-    const THIRTY_MIN = 30 * 60 * 1000;
+    // --- Smart Sync: máx 2 llamadas/día, NO cada vez que se abre la app ---
+    const status = window.SII_API.getSyncStatus();
+    const quota = status.quota;
+    const daily = status.dailyUsage;
 
-    if (now - lastSync < THIRTY_MIN) {
+    if (!status.shouldSync) {
+        // No toca sync — mostrar estado del caché
         if (banner) {
-            const lastDate = new Date(lastSync);
             banner.style.display = 'block';
+            const lastDate = status.lastSync;
+            const lastStr = lastDate ? lastDate.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Nunca';
+
+            const quotaColor = quota.percentUsed > 80 ? '#dc2626' : quota.percentUsed > 50 ? '#f59e0b' : '#16a34a';
+
+            let reasonMsg;
+            if (status.reason === 'quota_exhausted') {
+                reasonMsg = '<span style="color:#dc2626;">Cuota mensual agotada — se renueva el próximo mes</span>';
+            } else if (status.reason === 'daily_limit' || status.reason === 'already_today') {
+                reasonMsg = 'Ya se actualizó hoy — próxima actualización mañana';
+            } else {
+                reasonMsg = 'Datos al día';
+            }
+
             banner.innerHTML = `
-                <div style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); border:1px solid #bbf7d0; border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:10px;">
+                <div style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); border:1px solid #bbf7d0; border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                     <i class="ph ph-check-circle" style="font-size:1.2rem; color:#16a34a;"></i>
-                    <span style="font-size:0.85rem; color:#166534;">SII sincronizado · Última vez: ${lastDate.toLocaleTimeString('es-CL')}</span>
+                    <div style="flex:1; min-width:200px;">
+                        <span style="font-size:0.85rem; color:#166534;">SII sincronizado · Última vez: <b>${lastStr}</b></span>
+                        <div style="font-size:0.78rem; color:#6b7280; margin-top:2px;">
+                            ${reasonMsg} · API hoy: <b>${daily.used}/${daily.budget}</b> · Mes: <span style="color:${quotaColor}; font-weight:600;">${quota.used}/${quota.budget}</span>
+                        </div>
+                    </div>
                 </div>
             `;
         }
         return;
     }
 
-    localStorage.setItem('sii_last_auto_sync', String(now));
-    await syncFromSII(true);
+    // Toca sync — ejecutar smartSync
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Sincronizando...'; }
+    if (banner) {
+        banner.style.display = 'block';
+        banner.innerHTML = `
+            <div style="background:linear-gradient(135deg, #eff6ff, #dbeafe); border:1px solid #93c5fd; border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:10px;">
+                <div class="spinner" style="width:20px; height:20px; border-width:2px;"></div>
+                <span style="font-size:0.85rem; color:#1e40af;" id="sii-smart-progress">Sincronizando con SII...</span>
+            </div>
+        `;
+    }
+
+    try {
+        const result = await window.SII_API.smartSync(false, (tipo, periodo, step, total) => {
+            const el = document.getElementById('sii-smart-progress');
+            if (el) el.textContent = `Sincronizando ${tipo} ${periodo}... (${step}/${total})`;
+        });
+
+        if (result.synced && banner) {
+            const imported = result.compras?.imported || 0;
+            const skipped = result.compras?.skipped || 0;
+            const q = result.quotaAfter;
+            banner.innerHTML = `
+                <div style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); border:1px solid #bbf7d0; border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <i class="ph ph-check-circle" style="font-size:1.2rem; color:#16a34a;"></i>
+                    <div style="flex:1; min-width:200px;">
+                        <span style="font-size:0.85rem; color:#166534;">SII sincronizado ahora</span>
+                        <div style="font-size:0.78rem; color:#6b7280; margin-top:2px;">
+                            ${imported > 0 ? `<b>${imported}</b> nuevas · ` : ''}${skipped} ya existían · API: <b>${q.used}/${q.budget}</b> consultas
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Refrescar datos en la vista
+            await initDateFilter();
+            await populateSupplierFilter();
+            await renderAnalytics();
+            renderInvoices();
+        }
+    } catch (err) {
+        console.error('Error smart sync SII:', err);
+        if (banner) {
+            banner.innerHTML = `
+                <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:10px;">
+                    <i class="ph ph-warning-circle" style="font-size:1.2rem; color:#dc2626;"></i>
+                    <span style="font-size:0.85rem; color:#991b1b;">${err.message}</span>
+                </div>
+            `;
+        }
+    }
+
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ph ph-cloud-arrow-down"></i> Sincronizar SII'; }
 }
 
 // --- INIT FILTERS ---
@@ -495,10 +601,10 @@ async function initDateFilter() {
 }
 
 // --- PRECARGA DE VENTAS EN BACKGROUND ---
+// Solo precarga si smartSync lo ejecutó, o si no hay caché.
+// NO hace calls API extras — usa el caché que smartSync ya dejó.
 async function precargarVentasBackground() {
     try {
-        // Solo precargar mes actual y anterior (los más importantes)
-        // El resto se carga bajo demanda cuando el usuario navega a ese mes
         const now = new Date();
         const meses = [];
         for (let i = 0; i < 2; i++) {
@@ -506,9 +612,9 @@ async function precargarVentasBackground() {
             meses.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
         }
 
-        // Precargar en background sin bloquear la UI (max 2 meses)
-        window.SII_API.precargarVentas(meses, null, 2).then(() => {
-            console.log('[SII] Ventas precargadas para', meses.length, 'meses');
+        // precargarVentas ya respeta el TTL de 3 días — solo llama API si el caché expiró
+        window.SII_API.precargarVentas(meses, null, 1).then(() => {
+            console.log('[SII] Ventas precargadas (solo si caché expirado)');
         }).catch(e => console.warn('Error precarga ventas:', e.message));
     } catch (e) { /* silent */ }
 }
@@ -620,20 +726,19 @@ async function renderContadorDigital(periodoOverride = null) {
             || localStorage.getItem(`sii_ventas_v3_${currentPeriodo}`);
         if (ventasCache) {
             ventas = JSON.parse(ventasCache);
-        } else if (!window.SII_API._apiLimitExceeded) {
-            // No hay caché y hay cupo: lanzar fetch en background
+        } else if (window.SII_API.isConfigured() && !window.SII_API._apiLimitExceeded && window.SII_API.getDailyUsage().remaining > 0) {
+            // No hay caché, SII configurado y hay cupo diario: lanzar fetch en background
             ventasCargando = true;
-            window.SII_API.obtenerTotalesVentas(currentPeriodo).then((data) => {
-                if (data && (data.total > 0 || data.boletas > 0)) {
-                    renderContadorDigital(currentPeriodo);
-                }
+            window.SII_API.obtenerTotalesVentas(currentPeriodo).then(() => {
+                renderContadorDigital(currentPeriodo);
             }).catch(e => {
                 console.warn('No se pudieron obtener ventas del SII:', e.message);
+                renderContadorDigital(currentPeriodo);
             });
-        } else {
-            // Sin cupo API — mostrar aviso
+        } else if (window.SII_API._apiLimitExceeded) {
             ventasError = true;
         }
+        // Si SII no está configurado o sin cupo diario, muestra ventas en 0 (sin spinner)
 
         const ivaDebito = ventas.iva;       // IVA Débito real del SII
         const ivaCredito = totalIva;         // IVA Crédito de compras
