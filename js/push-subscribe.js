@@ -49,9 +49,10 @@ window.PushSubscribe = {
             if (!ok) return false;
         }
 
-        // Si ya está suscrito, no hacer nada
+        // Si ya está suscrito, re-guardar en Supabase por si falló antes
         if (this._subscription) {
-            console.log('[Push] Ya suscrito');
+            console.log('[Push] Ya suscrito, re-guardando en Supabase...');
+            await this._saveToSupabase(this._subscription);
             return true;
         }
 
@@ -121,10 +122,12 @@ window.PushSubscribe = {
             return;
         }
 
-        const userId = window.Auth?.session?.user?.id;
-        const tenantId = window.Auth?.getTenantId();
+        const userId = window.Auth?.session?.user?.id || null;
+        const tenantId = window.Auth?.getTenantId() || null;
         const deviceId = window.DeviceId?.get() || 'unknown';
         const subJson = subscription.toJSON();
+
+        console.log('[Push] Guardando suscripción:', { userId, tenantId, deviceId, hasEndpoint: !!subJson.endpoint, hasKeys: !!subJson.keys?.p256dh });
 
         const record = {
             user_id: userId,
