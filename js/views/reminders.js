@@ -19,9 +19,12 @@ window.Views.reminders = async (container) => {
                     <h1 style="margin:0;">Mis Tareas</h1>
                     <p style="color:var(--text-muted); margin:4px 0 0;">Gestiona actividades y alertas de negocio</p>
                 </div>
-                <div style="display:flex; gap:10px; align-items:center;">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <button class="btn btn-secondary btn-sm" id="btn-notif-perm" style="display:none;">
                         <i class="ph ph-bell-ringing"></i> Activar alertas
+                    </button>
+                    <button class="btn btn-secondary btn-sm" id="btn-test-push" style="display:none;">
+                        <i class="ph ph-paper-plane-tilt"></i> Test Push
                     </button>
                     <button class="btn btn-primary" id="btn-add-alert">
                         <i class="ph ph-bell-plus"></i> Nueva Alerta
@@ -75,12 +78,18 @@ window.Views.reminders = async (container) => {
             btn.innerHTML = '<i class="ph ph-bell-ringing"></i> Activar alertas push';
         }
 
+        // Show test button if already subscribed
+        if (window.PushSubscribe?.isSubscribed()) {
+            document.getElementById('btn-test-push').style.display = 'inline-flex';
+        }
+
         // Events
         document.getElementById('btn-add-alert').addEventListener('click', () => showAddModal());
         document.getElementById('btn-notif-perm').addEventListener('click', async () => {
             const subscribed = await window.PushSubscribe?.subscribe();
             if (subscribed) {
                 document.getElementById('btn-notif-perm').style.display = 'none';
+                document.getElementById('btn-test-push').style.display = 'inline-flex';
                 window.AppNotify?.playChime('success');
                 window.Sync?.showToast('✅ Notificaciones push activadas', 'success');
             } else {
@@ -90,6 +99,24 @@ window.Views.reminders = async (container) => {
                     document.getElementById('btn-notif-perm').style.display = 'none';
                     window.Sync?.showToast('✅ Alertas activadas (sin push)', 'info');
                 }
+            }
+        });
+
+        // Test push — envía notificación via SW para verificar que funciona
+        document.getElementById('btn-test-push').addEventListener('click', async () => {
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                await reg.showNotification('Notificacion de prueba — QA', {
+                    body: 'Si ves esto, las push notifications funcionan correctamente en tu dispositivo!',
+                    icon: '/assets/icon-512.png',
+                    badge: '/assets/icon-512.png',
+                    tag: 'wm-test-qa-' + Date.now(),
+                    requireInteraction: true,
+                    vibrate: [200, 100, 200, 100, 400]
+                });
+                window.Sync?.showToast('Notificacion de prueba enviada', 'success');
+            } catch (e) {
+                window.Sync?.showToast('Error: ' + e.message, 'error');
             }
         });
 
