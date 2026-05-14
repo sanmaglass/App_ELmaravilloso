@@ -68,19 +68,28 @@ window.Views.reminders = async (container) => {
             </div>
         `;
 
-        // Show permission button if not granted
-        if (Notification.permission !== 'granted' && 'Notification' in window) {
-            document.getElementById('btn-notif-perm').style.display = 'inline-flex';
+        // Show push subscription button only if NOT yet subscribed
+        if ('Notification' in window && !window.PushSubscribe?.isSubscribed()) {
+            const btn = document.getElementById('btn-notif-perm');
+            btn.style.display = 'inline-flex';
+            btn.innerHTML = '<i class="ph ph-bell-ringing"></i> Activar alertas push';
         }
 
         // Events
         document.getElementById('btn-add-alert').addEventListener('click', () => showAddModal());
         document.getElementById('btn-notif-perm').addEventListener('click', async () => {
-            const granted = await window.AppNotify?.requestPermission();
-            if (granted) {
+            const subscribed = await window.PushSubscribe?.subscribe();
+            if (subscribed) {
                 document.getElementById('btn-notif-perm').style.display = 'none';
                 window.AppNotify?.playChime('success');
-                window.Sync?.showToast('✅ Alertas activadas — El Maravilloso', 'success');
+                window.Sync?.showToast('✅ Notificaciones push activadas', 'success');
+            } else {
+                // Fallback al permiso básico
+                const granted = await window.AppNotify?.requestPermission();
+                if (granted) {
+                    document.getElementById('btn-notif-perm').style.display = 'none';
+                    window.Sync?.showToast('✅ Alertas activadas (sin push)', 'info');
+                }
             }
         });
 

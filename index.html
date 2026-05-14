@@ -18,7 +18,7 @@
          ============================================================ -->
     <script>
     (function cacheNuker() {
-        var NUKE_VERSION = 'v1053';
+        var NUKE_VERSION = 'v1054';
         var FLAG = 'wm_cache_nuked_' + NUKE_VERSION;
         if (localStorage.getItem(FLAG)) return;
 
@@ -302,26 +302,9 @@
     <script src="js/barcode-scanner.js?v=1000"></script>
     <script src="js/views/barcode.js?v=1000"></script>
     <script src="js/notifications.js?v=1018"></script>
+    <script src="js/push-subscribe.js?v=1054"></script>
     <!-- Main controller - MUST be last to initialize app -->
-    <script src="main.js?v=1050"></script>
-
-    <!-- Service Worker desactivado: demasiados bugs históricos con caching agresivo.
-         Este bloque ACTIVAMENTE desregistra cualquier SW viejo y borra sus cachés
-         para curar a los usuarios que tienen un SW roto instalado. -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then((regs) => {
-                for (const r of regs) {
-                    r.unregister().then(() => console.log('🧹 SW viejo desregistrado'));
-                }
-            }).catch(() => {});
-            if (typeof caches !== 'undefined') {
-                caches.keys().then((keys) => {
-                    for (const k of keys) caches.delete(k).catch(() => {});
-                }).catch(() => {});
-            }
-        }
-    </script>
+    <script src="main.js?v=1054"></script>
 
     <!-- Dark Mode Toggle Logic -->
     <script>

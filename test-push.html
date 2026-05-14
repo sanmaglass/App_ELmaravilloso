@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Push Notification</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: #161b22; padding: 40px; border-radius: 16px; text-align: center; max-width: 400px; }
+        h1 { font-size: 1.4rem; margin: 0 0 12px; }
+        p { color: #8b949e; font-size: 0.9rem; margin: 0 0 24px; }
+        button { padding: 14px 32px; background: linear-gradient(135deg, #e60000, #990000); color: #fff; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
+        button:hover { transform: scale(1.03); }
+        #status { margin-top: 16px; font-size: 0.85rem; color: #58a6ff; min-height: 1.2em; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Test Push Notifications</h1>
+        <p>Registra el Service Worker y dispara una notificacion de prueba</p>
+        <button onclick="testPush()">Enviar Notificacion de Prueba</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+    async function testPush() {
+        const status = document.getElementById('status');
+        status.textContent = 'Registrando Service Worker...';
+
+        try {
+            // 1. Registrar SW
+            const reg = await navigator.serviceWorker.register('./service-worker.js');
+            await navigator.serviceWorker.ready;
+            status.textContent = 'SW listo. Pidiendo permiso...';
+
+            // 2. Pedir permiso
+            const perm = await Notification.requestPermission();
+            if (perm !== 'granted') {
+                status.textContent = 'Permiso denegado.';
+                status.style.color = '#f85149';
+                return;
+            }
+
+            status.textContent = 'Enviando notificacion...';
+
+            // 3. Mostrar notificacion via SW (simula un push)
+            await reg.showNotification('Notificacion de prueba con diseno y todo para probar un QA', {
+                body: 'Recordatorio — El Maravilloso\nSi ves esto en tu barra de notificaciones, las push notifications funcionan correctamente.',
+                icon: '/assets/icon-512.png',
+                badge: '/assets/icon-512.png',
+                tag: 'wm-test-push',
+                requireInteraction: true,
+                vibrate: [200, 100, 200, 100, 400],
+                actions: []
+            });
+
+            status.textContent = 'Notificacion enviada! Revisa tu barra de notificaciones.';
+            status.style.color = '#3fb950';
+
+        } catch (e) {
+            status.textContent = 'Error: ' + e.message;
+            status.style.color = '#f85149';
+            console.error(e);
+        }
+    }
+    </script>
+</body>
+</html>

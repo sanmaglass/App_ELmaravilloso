@@ -317,6 +317,19 @@ async function init() {
             console.error('Error suscribiendo a eleventa_alertas', e);
         }
 
+        // Push Notifications — registrar SW y re-suscribir si ya tenía permiso
+        try {
+            if (window.PushSubscribe) {
+                await window.PushSubscribe.init();
+                // Si ya tenía permiso, suscribir automáticamente
+                if (Notification.permission === 'granted') {
+                    await window.PushSubscribe.subscribe();
+                }
+            }
+        } catch (pushErr) {
+            console.warn('[Push] Init error (no crítico):', pushErr);
+        }
+
         // Initial Load
         views.dashboard();
 
