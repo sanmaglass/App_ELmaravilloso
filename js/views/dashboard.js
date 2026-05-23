@@ -443,7 +443,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             <div class="premium-card" style="padding:14px;" id="dec-buy">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
                     <i class="ph ph-shopping-cart" style="color:#3b82f6; font-size:1.1rem;"></i>
-                    <span style="font-weight:700; font-size:0.8rem;">Qué comprar</span>
+                    <span style="font-weight:700; font-size:0.8rem;">Qué reponer</span>
                 </div>
                 <div id="dec-buy-list" style="font-size:0.75rem; display:flex; flex-direction:column; gap:4px;">
                     <span class="text-muted">Cargando...</span>
@@ -1275,16 +1275,46 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // ============================================================
         try {
 
-            // 1. QUÉ COMPRAR — productos con más ventas este mes (alto volumen)
-            const topSellers = [...allProductsArr].sort((a, b) => b.qty - a.qty).slice(0, 5);
+            // 1. QUÉ COMPRAR — basado en velocidad de venta actual vs mes anterior
+            const daysElapsed = Math.max(now.getDate(), 1);
+            const daysInPrevMonth = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, 0).getDate();
+            const buyAnalysis = allProductsArr
+                .filter(p => p.qty >= 3) // mínimo 3 vendidos para ser relevante
+                .map(p => {
+                    const dailyRate = p.qty / daysElapsed;
+                    const prev = prevProductStats[p.name];
+                    const prevQty = prev ? prev.qty : 0;
+                    const prevDailyRate = daysInPrevMonth > 0 ? prevQty / daysInPrevMonth : 0;
+                    // Proyección: cuánto necesitarás para el resto del mes
+                    const daysRemaining = Math.max(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - daysElapsed, 0);
+                    const projected = Math.ceil(dailyRate * daysRemaining);
+                    // Aceleración: cuánto más rápido se vende vs mes pasado
+                    const acceleration = prevDailyRate > 0 ? ((dailyRate - prevDailyRate) / prevDailyRate) * 100 : (dailyRate > 0 ? 100 : 0);
+                    return { ...p, dailyRate, prevQty, prevDailyRate, projected, acceleration };
+                })
+                .sort((a, b) => {
+                    // Prioridad: productos acelerando con alto volumen
+                    const scoreA = a.dailyRate * (1 + Math.max(a.acceleration, 0) / 100);
+                    const scoreB = b.dailyRate * (1 + Math.max(b.acceleration, 0) / 100);
+                    return scoreB - scoreA;
+                })
+                .slice(0, 5);
             const decBuyEl = document.getElementById('dec-buy-list');
             if (decBuyEl) {
-                decBuyEl.innerHTML = topSellers.length ? topSellers.map(p =>
-                    `<div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:65%;">${window.Utils.escapeHTML(p.name)}</span>
-                        <b>${p.qty} uds</b>
-                    </div>`
-                ).join('') : '<span class="text-muted">Sin datos</span>';
+                decBuyEl.innerHTML = buyAnalysis.length ? buyAnalysis.map(p => {
+                    let badge = '';
+                    if (p.acceleration > 30) {
+                        badge = `<span style="color:#ef4444; font-weight:700; font-size:0.65rem;">↑${Math.round(p.acceleration)}%</span>`;
+                    } else if (p.acceleration > 0) {
+                        badge = `<span style="color:#f97316; font-weight:600; font-size:0.65rem;">↑${Math.round(p.acceleration)}%</span>`;
+                    } else {
+                        badge = `<span style="color:#6b7280; font-size:0.65rem;">${Math.round(p.dailyRate)}/día</span>`;
+                    }
+                    return `<div style="display:flex; justify-content:space-between; align-items:center;" title="Vendido: ${p.qty} uds (${Math.round(p.dailyRate)}/día) · Mes ant: ${p.prevQty} uds · Faltan ~${p.projected} uds para el mes">
+                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60%;">${window.Utils.escapeHTML(p.name)}</span>
+                        ${badge}
+                    </div>`;
+                }).join('') : '<span class="text-muted">Sin datos de ventas</span>';
             }
 
             // 2. SUBIR PRECIO — alto volumen + margen bajo (oportunidad)
