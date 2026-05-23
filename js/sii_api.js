@@ -98,9 +98,18 @@ window.SII_API = {
             throw new Error('DAILY_LIMIT');
         }
 
-        // Si ya se detectó que se acabó el cupo mensual
+        // Si ya se detectó que se acabó el cupo mensual, verificar si cambió el mes
         if (this._apiLimitExceeded) {
-            throw new Error('Cupo mensual de BaseAPI agotado (50/50). Se renueva el próximo mes.');
+            const now = new Date();
+            const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            if (this._apiLimitMonth && this._apiLimitMonth !== currentMonth) {
+                // Mes nuevo: resetear el flag, la cuota se renovó
+                console.log('🔄 Nuevo mes detectado — reseteando flag de cuota API');
+                this._apiLimitExceeded = false;
+                this._apiLimitMonth = null;
+            } else {
+                throw new Error('Cupo mensual de BaseAPI agotado (50/50). Se renueva el próximo mes.');
+            }
         }
 
         const config = this.getConfig();
@@ -129,7 +138,9 @@ window.SII_API = {
                 const text = await response.text();
                 // Si se acabó el cupo mensual, marcar para no seguir intentando
                 if (response.status === 403 && text.includes('limit exceeded')) {
+                    const nowD = new Date();
                     this._apiLimitExceeded = true;
+                    this._apiLimitMonth = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}`;
                     console.warn('🚫 Cupo mensual de BaseAPI agotado (50/50). No se harán más consultas hasta el próximo mes.');
                 }
                 throw new Error(`Error BaseAPI (${response.status}): ${text}`);
@@ -692,11 +703,14 @@ window.SII_API = {
             ventasResult = { error: err.message };
         }
 
-        // Registrar timestamp del sync
-        localStorage.setItem('sii_last_auto_sync', String(Date.now()));
+        // Solo registrar timestamp si al menos uno de los dos fue exitoso
+        const anySuccess = (comprasResult && !comprasResult.error) || (ventasResult && !ventasResult.error);
+        if (anySuccess) {
+            localStorage.setItem('sii_last_auto_sync', String(Date.now()));
+        }
 
         return {
-            synced: true,
+            synced: anySuccess,
             reason: force ? 'manual' : policy.reason,
             periodo: mesActual,
             compras: comprasResult,
