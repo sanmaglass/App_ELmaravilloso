@@ -244,6 +244,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             .ceo-mini-value { font-size:1.5rem; }
             .ceo-payment-wrap canvas { width:90px !important; height:90px !important; }
         }
+
+        /* Section dividers dark mode */
+        body.dark-mode .section-divider-line { background:rgba(255,255,255,0.08) !important; }
     </style>
 
     <!-- Header -->
@@ -298,6 +301,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
+        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
+            <div style="width:4px; height:22px; border-radius:4px; background:#10b981;"></div>
+            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Resumen del Mes</h2>
+            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
+        </div>
         <!-- KPI Cards con Estética Premium -->
         <div class="grid grid-cols-auto gap-6 mb-8">
             <!-- Ventas mes -->
@@ -379,6 +387,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
+        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
+            <div style="width:4px; height:22px; border-radius:4px; background:#ef4444;"></div>
+            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Hoy</h2>
+            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
+        </div>
         <div class="premium-card mb-6" style="padding:14px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <h3 style="font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:6px; margin:0;">
@@ -397,6 +410,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
              CEO COCKPIT — Widgets inteligentes (mes en curso)
              ============================================================ -->
 
+        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
+            <div style="width:4px; height:22px; border-radius:4px; background:#6366f1;"></div>
+            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Indicadores Clave</h2>
+            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
+        </div>
         <!-- FILA: Ticket promedio · Resumen caja · Forma de pago -->
         <div class="ceo-row-3 mb-6">
             <!-- Ticket promedio + Tendencia -->
@@ -425,6 +443,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
+        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
+            <div style="width:4px; height:22px; border-radius:4px; background:#f97316;"></div>
+            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Alertas</h2>
+            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
+        </div>
         <!-- ALERTAS INTELIGENTES -->
         <div class="premium-card mb-6" id="ceo-alerts-card" style="background:linear-gradient(135deg, rgba(249,115,22,0.06), var(--bg-card, #fff)); border-left:4px solid #f97316;">
             <div class="flex justify-between items-center mb-3">
@@ -438,6 +461,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
+        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
+            <div style="width:4px; height:22px; border-radius:4px; background:#3b82f6;"></div>
+            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Decisiones</h2>
+            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
+        </div>
         <!-- PANEL DECISIONES -->
         <div class="decision-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:24px;">
             <div class="premium-card" style="padding:14px;" id="dec-buy">
@@ -488,6 +516,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             <i class="ph ph-arrow-right ceo-margins-cta-arrow"></i>
         </button>
 
+        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
+            <div style="width:4px; height:22px; border-radius:4px; background:#8b5cf6;"></div>
+            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Histórico</h2>
+            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
+        </div>
         <!-- Gráfico P&L + Top Proveedores -->
         <div class="pl-chart-grid">
             <!-- Gráfico P&L 6 meses -->
@@ -511,6 +544,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
+        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
+            <div style="width:4px; height:22px; border-radius:4px; background:#e11d48;"></div>
+            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Pagos Pendientes</h2>
+            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
+        </div>
         <!-- Widgets fila inferior -->
         <div class="bottom-widgets-grid">
             <!-- Próximos pagos empleados -->
@@ -739,7 +777,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         // 6. Invoices (Cashflow only, informational. Mercadería comprada)
         const thisMonthInvoices = invoices.filter(i => i.date && i.date.startsWith(currentMonthStr));
-        const gastoInventarioMes = thisMonthInvoices.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+        // NOTA: purchase_invoices NO se restan aquí porque gananciaBrutaMes (Eleventa) ya tiene costo descontado.
+        // Las compras solo se usan en el gráfico P&L histórico como referencia visual de cashflow.
 
         const currentMonthLogs = logs.filter(l => l.date && l.date.startsWith(currentMonthStr));
         const totalHours = currentMonthLogs.reduce((a, l) => a + (l.totalHours || 0), 0);
@@ -968,6 +1007,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                         <span style="font-size:0.9rem; font-weight:800; color:var(--text-primary);">UTILIDAD NETA FINAL</span>
                         <span style="font-weight:900; font-size:1.4rem; color:${netColor}; letter-spacing:-0.5px;">${utilidadNetaMonto >= 0 ? '+' : ''}${window.Utils.formatCurrency(utilidadNetaMonto)}</span>
                     </div>
+                    ${currentDayOfMoth <= 7 ? `
+<div style="display:flex; align-items:center; gap:6px; margin-top:8px; padding:8px 12px; background:rgba(245,158,11,0.08); border-radius:10px; border:1px solid rgba(245,158,11,0.15);">
+    <i class="ph ph-warning" style="color:#f59e0b; font-size:0.9rem;"></i>
+    <span style="font-size:0.72rem; color:#92400e; font-weight:600;">Inicio de mes — gastos fijos parcialmente prorrateados</span>
+</div>` : ''}
                 </div>
             `;
         }
@@ -1289,7 +1333,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     const daysRemaining = Math.max(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - daysElapsed, 0);
                     const projected = Math.ceil(dailyRate * daysRemaining);
                     // Aceleración: cuánto más rápido se vende vs mes pasado
-                    const acceleration = prevDailyRate > 0 ? ((dailyRate - prevDailyRate) / prevDailyRate) * 100 : (dailyRate > 0 ? 100 : 0);
+                    const rawAcceleration = prevDailyRate > 0 ? ((dailyRate - prevDailyRate) / prevDailyRate) * 100 : (dailyRate > 0 ? 100 : 0);
+                    const acceleration = Math.min(rawAcceleration, 200);
                     return { ...p, dailyRate, prevQty, prevDailyRate, projected, acceleration };
                 })
                 .sort((a, b) => {
@@ -1303,7 +1348,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             if (decBuyEl) {
                 decBuyEl.innerHTML = buyAnalysis.length ? buyAnalysis.map(p => {
                     let badge = '';
-                    if (p.acceleration > 30) {
+                    if (p.acceleration >= 200) {
+                        badge = `<span style="color:#ef4444; font-weight:700; font-size:0.65rem;">🔥 x${(p.dailyRate / Math.max(p.prevDailyRate, 0.1)).toFixed(1)}</span>`;
+                    } else if (p.acceleration > 30) {
                         badge = `<span style="color:#ef4444; font-weight:700; font-size:0.65rem;">↑${Math.round(p.acceleration)}%</span>`;
                     } else if (p.acceleration > 0) {
                         badge = `<span style="color:#f97316; font-weight:600; font-size:0.65rem;">↑${Math.round(p.acceleration)}%</span>`;

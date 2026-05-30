@@ -100,6 +100,11 @@ window.Views.profit_monitor = async (container) => {
     `;
 
     const fmt = window.Utils.formatCurrency;
+    const clampMargin = (profit, price) => {
+        if (price <= 0) return 0;
+        const raw = (profit / price) * 100;
+        return Math.max(-100, Math.min(raw, 100));
+    };
     let _chartInstance = null;
     let _sortKey = 'margin';
     let _sortAsc = true;
@@ -113,10 +118,11 @@ window.Views.profit_monitor = async (container) => {
         if (prev === 0 && cur === 0) return `<span style="color:var(--text-muted); font-size:0.75rem; font-weight:600;">—</span>`;
         if (prev === 0) return `<span style="background:rgba(16,185,129,0.1); color:#10b981; border-radius:5px; padding:2px 7px; font-size:0.72rem; font-weight:800;">nuevo</span>`;
         const pct = ((cur - prev) / Math.abs(prev)) * 100;
-        if (Math.abs(pct) < 1) return `<span style="color:var(--text-muted); font-size:0.75rem; font-weight:700;">=</span>`;
-        const sign = pct > 0 ? '▲' : '▼';
-        const [bg, color] = pct > 0 ? ['rgba(16,185,129,0.1)', '#10b981'] : ['rgba(239,68,68,0.1)', '#ef4444'];
-        return `<span style="background:${bg}; color:${color}; border-radius:5px; padding:2px 7px; font-size:0.72rem; font-weight:800; font-variant-numeric:tabular-nums;">${sign} ${Math.abs(pct).toFixed(0)}%</span>`;
+        const clampedPct = Math.max(-999, Math.min(pct, 999));
+        if (Math.abs(clampedPct) < 1) return `<span style="color:var(--text-muted); font-size:0.75rem; font-weight:700;">=</span>`;
+        const sign = clampedPct > 0 ? '▲' : '▼';
+        const [bg, color] = clampedPct > 0 ? ['rgba(16,185,129,0.1)', '#10b981'] : ['rgba(239,68,68,0.1)', '#ef4444'];
+        return `<span style="background:${bg}; color:${color}; border-radius:5px; padding:2px 7px; font-size:0.72rem; font-weight:800; font-variant-numeric:tabular-nums;">${sign} ${Math.abs(clampedPct).toFixed(0)}%</span>`;
     };
 
     const renderTable = () => {
@@ -317,7 +323,7 @@ window.Views.profit_monitor = async (container) => {
                         name, ...info,
                         qty: 0, revenue: 0, profitTotal: 0,
                         prevProfitTotal: null,
-                        marginPct: info.price > 0 ? (info.profit / info.price) * 100 : 0
+                        marginPct: clampMargin(info.profit, info.price)
                     });
                 });
             } else {
@@ -334,7 +340,7 @@ window.Views.profit_monitor = async (container) => {
                         revenue: totals.revenue,
                         profitTotal: totals.profitTotal,
                         prevProfitTotal: prev ? prev.profitTotal : null,
-                        marginPct: info.price > 0 ? (info.profit / info.price) * 100 : 0
+                        marginPct: clampMargin(info.profit, info.price)
                     });
                 });
             }
