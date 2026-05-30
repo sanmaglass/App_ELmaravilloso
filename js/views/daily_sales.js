@@ -199,7 +199,6 @@ async function renderDailySales() {
 
         // Flujo de caja Eleventa: Salidas, Devoluciones, Entradas
         const flujoByDate = new Map();        // Salidas (gastos)
-        const devolByDate = new Map();        // Devoluciones (ventas canceladas)
         const entradaByDate = new Map();      // Entradas (ingresos manuales)
         try {
             const client = window.SyncV2?.client;

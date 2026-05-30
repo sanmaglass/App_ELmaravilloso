@@ -770,7 +770,20 @@ async function showArqueoModal() {
     const today = new Date().toISOString().split('T')[0];
     const formatCurrency = window.Utils.formatCurrency;
 
-    // Calculate expected cash in register
+    // Buscar el último arqueo registrado
+    const allCajaRecords = window.db.cash_register
+        ? await window.db.cash_register.toArray()
+        : [];
+    const lastArqueo = allCajaRecords
+        .filter(r => !r.deleted && r.type === 'arqueo' && r.realCash !== undefined)
+        .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+        [0] || null;
+
+    // Saldo inicial = efectivo real del último arqueo (o 0 si nunca se hizo)
+    const saldoInicial = lastArqueo ? (parseFloat(lastArqueo.realCash) || 0) : 0;
+    const fechaDesde = lastArqueo ? lastArqueo.date : '1970-01-01';
+
+    // Cargar solo movimientos DESPUÉS del último arqueo
     const [dailySales, invoices, expenses] = await Promise.all([
         window.db.daily_sales.toArray(),
         window.db.purchase_invoices.toArray(),
@@ -780,20 +793,46 @@ async function showArqueoModal() {
     let totalCashIn = 0;
     let totalCashOut = 0;
 
-    dailySales.filter(s => !s.deleted).forEach(s => {
+    dailySales.filter(s => !s.deleted && (s.date || '') > fechaDesde).forEach(s => {
         totalCashIn += parseFloat(s.cash) || 0;
     });
 
-    invoices.filter(i => !i.deleted && i.paymentMethod === 'Efectivo').forEach(i => {
+    invoices.filter(i => !i.deleted && i.paymentMethod === 'Efectivo' && (i.date || '') > fechaDesde).forEach(i => {
         if (i.paymentStatus === 'Pagado') totalCashOut += parseFloat(i.amount) || 0;
         else if (i.paymentStatus === 'Abonado') totalCashOut += parseFloat(i.paidAmount) || 0;
     });
 
-    expenses.filter(e => !e.deleted && e.paymentMethod === 'Efectivo').forEach(e => {
+    expenses.filter(e => !e.deleted && e.paymentMethod === 'Efectivo' && (e.date || '') > fechaDesde).forEach(e => {
         totalCashOut += parseFloat(e.amount) || 0;
     });
 
-    const expectedCash = totalCashIn - totalCashOut;
+    // También sumar entradas/salidas manuales de cash_register posteriores al último arqueo
+    allCajaRecords
+        .filter(r => !r.deleted && r.type !== 'arqueo' && (r.date || '') > fechaDesde)
+        .forEach(r => {
+            const amt = parseFloat(r.amount) || 0;
+            if (amt > 0) totalCashIn += amt;
+            else totalCashOut += Math.abs(amt);
+        });
+
+    // Efectivo esperado = saldo inicial + entradas - salidas desde el último arqueo
+    const expectedCash = saldoInicial + totalCashIn - totalCashOut;
+
+    // Texto de contexto del último arqueo
+    const contextoArqueo = lastArqueo
+        ? `Último arqueo: ${formatDate(lastArqueo.date)} — Efectivo contado: ${formatCurrency(lastArqueo.realCash)}`
+        : 'Primer arqueo — sin saldo inicial';
+
+    // Bloque "primera vez" si nunca hubo arqueo
+    const primerArqueoMsg = !lastArqueo ? `
+        <div style="padding:16px; background:rgba(59,130,246,0.05); border-radius:12px; border:1px solid rgba(59,130,246,0.15); margin-bottom:16px;">
+            <p style="font-size:0.85rem; font-weight:600; color:#2563eb; margin:0 0 6px;">
+                <i class="ph ph-info"></i> ¿Primera vez?
+            </p>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">
+                Cuenta el efectivo que hay en tu caja ahora y haz tu primer arqueo. A partir de ahí, el sistema calculará automáticamente cuánto debería haber.
+            </p>
+        </div>` : '';
 
     modal.innerHTML = `
         <div class="modal" style="max-width:480px;">
@@ -802,14 +841,17 @@ async function showArqueoModal() {
                 <button class="modal-close" onclick="document.getElementById('modal-container').classList.add('hidden')"><i class="ph ph-x"></i></button>
             </div>
             <div class="modal-body">
+                ${primerArqueoMsg}
                 <div style="background:linear-gradient(135deg, #1e293b, #0f172a); border-radius:16px; padding:20px; margin-bottom:20px; color:white;">
-                    <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:8px;">
+                    <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:4px;">
                         Efectivo esperado según el sistema
                     </div>
+                    <div style="font-size:0.75rem; color:#64748b; margin-bottom:10px;">${contextoArqueo}</div>
                     <div style="font-size:2rem; font-weight:800; color:${expectedCash >= 0 ? '#10b981' : '#ef4444'};" id="arqueo-expected-display">
                         ${formatCurrency(expectedCash)}
                     </div>
-                    <div style="display:flex; gap:16px; margin-top:12px; font-size:0.8rem; color:#94a3b8;">
+                    <div style="display:flex; gap:16px; margin-top:12px; font-size:0.8rem; color:#94a3b8; flex-wrap:wrap;">
+                        ${lastArqueo ? `<span>🏁 Saldo inicial: ${formatCurrency(saldoInicial)}</span>` : ''}
                         <span>📥 Entradas: ${formatCurrency(totalCashIn)}</span>
                         <span>📤 Salidas: ${formatCurrency(totalCashOut)}</span>
                     </div>
