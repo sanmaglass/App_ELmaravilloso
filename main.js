@@ -394,15 +394,6 @@ if (mobileBtn && overlay) {
     overlay.addEventListener('click', toggleSidebar);
 }
 
-// Global Add Button — navega a Personal y abre modal de nuevo empleado
-document.getElementById('global-add-btn').addEventListener('click', () => {
-    const container = document.getElementById('view-container');
-    window.Views.employees(container, 'equipo').then(() => {
-        window.state.currentView = 'employees';
-        if (window.showEmployeeModal) window.showEmployeeModal();
-    });
-});
-
 // Privacy Toggle Logic
 document.getElementById('btn-toggle-privacy').addEventListener('click', () => {
     document.body.classList.toggle('privacy-mode');

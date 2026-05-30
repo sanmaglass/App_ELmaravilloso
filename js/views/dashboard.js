@@ -263,30 +263,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             <button id="btn-export-excel" class="btn btn-premium" style="background:var(--grad-success); box-shadow: 0 10px 20px rgba(0, 200, 83, 0.2);">
                 <i class="ph ph-file-xls"></i> <span class="hide-mobile">Excel</span>
             </button>
-            <button id="btn-whatsapp-report" class="btn btn-premium" style="background:#25D366; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.2);">
-                <i class="ph ph-whatsapp-logo"></i> <span class="hide-mobile">WhatsApp</span>
-            </button>
         </div>
     </div>
-
-    <!-- Quick-access tabs (replaces sidebar items) -->
-    <div style="display:flex; gap:0; background:var(--bg-input); border-radius:14px; padding:4px; margin-bottom:20px; width:fit-content; box-shadow:0 1px 4px rgba(0,0,0,0.07); flex-wrap:wrap;">
-        <button id="dash-tab-resumen" onclick="window._switchDashTab('resumen')" style="padding:8px 18px; border:none; border-radius:10px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.2s; background:var(--primary); color:white;">
-            <i class="ph ph-squares-four"></i> Dashboard
-        </button>
-        <button id="dash-tab-reportes" onclick="window._switchDashTab('reportes')" style="padding:8px 18px; border:none; border-radius:10px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.2s; background:transparent; color:var(--text-muted);">
-            <i class="ph ph-chart-bar"></i> Historial
-        </button>
-        <button id="dash-tab-calc" onclick="window._switchDashTab('calc')" style="padding:8px 18px; border:none; border-radius:10px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.2s; background:transparent; color:var(--text-muted);">
-            <i class="ph ph-calculator"></i> Calculadora
-        </button>
-        <button id="dash-tab-marketing" onclick="window._switchDashTab('marketing')" style="padding:8px 18px; border:none; border-radius:10px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.2s; background:transparent; color:var(--text-muted);">
-            <i class="ph ph-megaphone"></i> Marketing
-        </button>
-    </div>
-
-    <!-- Embedded sub-view (reports / calculator / marketing) -->
-    <div id="dash-subview" style="display:none; margin-bottom:20px;"></div>
 
     <!-- ===================== TAB 1: RESUMEN ===================== -->
     <div id="tab-resumen" class="dash-tab-content active">
@@ -382,16 +360,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     <div id="predict-insight-dot" style="width:5px; height:5px; border-radius:50%; background:#6366f1;"></div>
                     <span id="predict-insight-text" style="font-size:0.75rem; font-weight:600; color:var(--ia-muted);">Calculando...</span>
                 </div>
-                <div id="predict-record" style="display:none;"><span id="predict-record-value"></span></div>
                 <span id="label-ia-meta" style="display:none;">AVANCE MENSUAL</span>
             </div>
         </div>
 
-        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
-            <div style="width:4px; height:22px; border-radius:4px; background:#ef4444;"></div>
-            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Hoy</h2>
-            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
-        </div>
         <div class="premium-card mb-6" style="padding:14px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <h3 style="font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:6px; margin:0;">
@@ -443,11 +415,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
-        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
-            <div style="width:4px; height:22px; border-radius:4px; background:#f97316;"></div>
-            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Alertas</h2>
-            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
-        </div>
         <!-- ALERTAS INTELIGENTES -->
         <div class="premium-card mb-6" id="ceo-alerts-card" style="background:linear-gradient(135deg, rgba(249,115,22,0.06), var(--bg-card, #fff)); border-left:4px solid #f97316;">
             <div class="flex justify-between items-center mb-3">
@@ -516,11 +483,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             <i class="ph ph-arrow-right ceo-margins-cta-arrow"></i>
         </button>
 
-        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
-            <div style="width:4px; height:22px; border-radius:4px; background:#8b5cf6;"></div>
-            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Histórico</h2>
-            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
-        </div>
         <!-- Gráfico P&L + Top Proveedores -->
         <div class="pl-chart-grid">
             <!-- Gráfico P&L 6 meses -->
@@ -544,11 +506,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
-        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
-            <div style="width:4px; height:22px; border-radius:4px; background:#e11d48;"></div>
-            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Pagos Pendientes</h2>
-            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
-        </div>
         <!-- Widgets fila inferior -->
         <div class="bottom-widgets-grid">
             <!-- Próximos pagos empleados -->
@@ -682,6 +639,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const elFeed = document.getElementById('live-sales-feed');
         const validSales = todayEleventa.filter(v => v.total > 0);
 
+        // --- Meta diaria ---
+        const META_DIARIA = 400000;
+
         if (elFeed) {
             if (validSales.length === 0) {
                 elFeed.innerHTML = '<div style="text-align:center; padding:16px; color:var(--text-muted); font-size:0.8rem;">Sin ventas hoy</div>';
@@ -707,6 +667,43 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             document.getElementById('live-sales-count').textContent = validSales.length;
             const eleventaTotal = validSales.reduce((sum, v) => sum + (parseFloat(v.total) || 0), 0);
             document.getElementById('live-sales-total').innerHTML = window.Utils.formatCurrency(eleventaTotal);
+
+            // Barra de progreso de meta diaria
+            const META_DIARIA_FORMATTED = Math.round(META_DIARIA).toLocaleString('es-CL');
+            const metaProgressHtml = `
+                <div style="margin-top:8px;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-bottom:3px;">
+                        <span>Meta diaria</span>
+                        <span>$${META_DIARIA_FORMATTED}</span>
+                    </div>
+                    <div style="height:6px; background:rgba(0,0,0,0.06); border-radius:99px; overflow:hidden;">
+                        <div id="meta-progress-bar" style="height:100%; width:0%; background:linear-gradient(90deg, #10b981, #059669); border-radius:99px; transition:width 1s ease;"></div>
+                    </div>
+                </div>`;
+            // Insertar barra antes del feed (debajo del header del widget Hoy)
+            if (!document.getElementById('meta-progress-bar')) {
+                elFeed.insertAdjacentHTML('beforebegin', metaProgressHtml);
+            }
+
+            // Animar barra de progreso
+            const metaBar = document.getElementById('meta-progress-bar');
+            if (metaBar) {
+                const metaPct = Math.min(100, (eleventaTotal / META_DIARIA) * 100);
+                setTimeout(() => { metaBar.style.width = metaPct + '%'; }, 300);
+                if (metaPct >= 100) metaBar.style.background = 'linear-gradient(90deg, #f59e0b, #eab308)';
+            }
+
+            // Notificación de meta superada (una sola vez por día)
+            const metaKey = `wm_meta_notified_${now.toISOString().slice(0, 10)}`;
+            if (eleventaTotal >= META_DIARIA && !localStorage.getItem(metaKey)) {
+                localStorage.setItem(metaKey, '1');
+                if (window.Sync && window.Sync.showToast) {
+                    window.Sync.showToast(`Meta diaria superada! $${Math.round(eleventaTotal).toLocaleString('es-CL')}`, 'success');
+                }
+                if (window.AppNotify && window.AppNotify.playChime) {
+                    window.AppNotify.playChime('success');
+                }
+            }
         }
 
         // ---- KPI Calculations (True Profitability Engine) ----
@@ -739,11 +736,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const gananciaBrutaMes = thisMonthEleventa.reduce((s, t) => s + (parseFloat(t.profit) || 0), 0);
         const gananciaBrutaPrev = prevMonthEleventa.reduce((s, t) => s + (parseFloat(t.profit) || 0), 0);
 
-        // --- VALIDACIÓN DE COHERENCIA (ahora siempre coherente: ambos vienen de Eleventa) ---
-        const totalVentasEleventa = ventasMes; // misma fuente
-        const diffRatio = 1; // siempre coherente
-        const isDataIncomplete = false;
-
         // 3. Operational Expenses (Local Bills, etc.)
         // Separamos el Retiro del Dueño de los gastos generales para el desglose
         const thisMonthExpenses = allExpenses.filter(e => !e.deleted && e.date && e.date.startsWith(currentMonthStr));
@@ -760,7 +752,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // 4. CÁLCULO DE RENTABILIDAD (basado en gastos REALES confirmados)
         // Burn rate solo prorratea gastos fijos (arriendos, servicios, etc.)
         const burnRateInfo = await window.Utils.calculateDailyBurnRate(allExpenses, employees, now);
-        const currentDayOfMoth = thisMonthSales.length > 0 ? now.getDate() : 1;
+        const currentDayOfMoth = now.getDate();
         const gastoTotalProrrateado = burnRateInfo.dailyBurnRate * currentDayOfMoth;
 
         // Gastos variables del mes (incluye Sueldos y Adelantos confirmados)
@@ -773,20 +765,17 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         // Gasto Total = Fijos prorrateados + Variables (sueldos, adelantos, etc.) + Retiros dueño + Comisión MP
         const gastoTotal = gastoTotalProrrateado + gastosVariablesMes + ownerExtraDraw + comisionMPMes;
-        const gastoPrev = gastosOperativosPrev + comisionMPPrev;
+        const gastosRetiroDuenoPrev = prevMonthExpenses
+            .filter(e => e.category === 'Retiro del Due\u00f1o')
+            .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+        const gastosFijosPrev = prevMonthExpenses
+            .filter(e => e.isFixed)
+            .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+        const gastoPrev = gastosFijosPrev + gastosOperativosPrev + gastosRetiroDuenoPrev + comisionMPPrev;
 
         // 6. Invoices (Cashflow only, informational. Mercadería comprada)
-        const thisMonthInvoices = invoices.filter(i => i.date && i.date.startsWith(currentMonthStr));
         // NOTA: purchase_invoices NO se restan aquí porque gananciaBrutaMes (Eleventa) ya tiene costo descontado.
         // Las compras solo se usan en el gráfico P&L histórico como referencia visual de cashflow.
-
-        const currentMonthLogs = logs.filter(l => l.date && l.date.startsWith(currentMonthStr));
-        const totalHours = currentMonthLogs.reduce((a, l) => a + (l.totalHours || 0), 0);
-
-        // (Resumen Operativo eliminado — no hay datos de workLogs)
-
-        const elMonthLabel = document.getElementById('stat-month-label');
-        if (elMonthLabel) elMonthLabel.textContent = now.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 
         const fmt = v => window.Utils.formatCurrency(v);
 
@@ -899,12 +888,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             window.Utils.animateNumber(elMargenMonto, 0, utilidadNetaMonto, 1000, true);
         }
 
-        const elMargenBadge = document.getElementById('kpi-margen-badge');
-        if (elMargenBadge) {
-            elMargenBadge.textContent = margenNetoPct.toFixed(1) + '% de margen neto final';
-            elMargenBadge.className = 'kpi-badge ' + (margenNetoPct > 15 ? 'up' : margenNetoPct > 5 ? 'neutral' : 'down');
-        }
-
         // ---- DESGLOSE RENTABILIDAD NETA (Nuevo widget de transparencia) ----
         const elHealthDetail = document.getElementById('health-detail');
         const elHealthBar = document.getElementById('health-bar');
@@ -945,63 +928,68 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
             elHealthDetail.innerHTML = `
                 <div style="margin-top:12px; background:rgba(0,0,0,0.02); border-radius:14px; padding:14px; font-family: var(--font-primary, Arial, sans-serif); border:1px solid rgba(0,0,0,0.03);">
-                    
-                    <!-- Resumen Principal -->
-                    ${fmtRow('Ganancia Bruta (Cierre Caja)', gananciaBrutaMes, '#10b981', 'ph ph-coins')}
-                    
-                    ${burnRateInfo.dailyBurnRate > 0 ? `
+
+                    <details>
+                        <summary style="list-style:none; cursor:pointer; outline:none; padding:4px 0 8px; font-size:0.82rem; font-weight:700; color:var(--text-muted);">Ver desglose de gastos</summary>
+
+                        <!-- Resumen Principal -->
+                        ${fmtRow('Ganancia Bruta (Cierre Caja)', gananciaBrutaMes, '#10b981', 'ph ph-coins')}
+
+                        ${burnRateInfo.dailyBurnRate > 0 ? `
+                            <details style="margin: 4px 0;">
+                                <summary style="list-style:none; cursor:pointer; outline:none;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
+                                        <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                                            <i class="ph ph-chart-line-down"></i> Gastos Fijos (Prorrateo)
+                                            <i class="ph ph-caret-down" style="font-size:0.7rem; opacity:0.5;"></i>
+                                        </span>
+                                        <span style="font-weight:700; font-size:0.9rem; color:#ef4444;">-${window.Utils.formatCurrency(gastoTotalProrrateado)}</span>
+                                    </div>
+                                </summary>
+                                <div style="padding: 8px 12px; background: rgba(239,68,68,0.03); border-radius:8px; font-size:0.72rem; color:var(--text-muted); margin-bottom:8px;">
+                                    <div style="font-weight:700; margin-bottom:6px; text-transform:uppercase; font-size:0.6rem; letter-spacing:0.5px; opacity:0.6;">Detalle de Prorrateo (${currentDayOfMoth} días)</div>
+                                    ${prorrateoItemsHtml}
+                                </div>
+                            </details>
+                        ` : ''}
+
+                        ${gastosVariablesMes > 0 ? fmtRow('Gastos Variables', -gastosVariablesMes, '#f59e0b', 'ph ph-receipt') : ''}
+
+                        ${comisionMPMes > 0 ? `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed rgba(0,0,0,0.06);">
+                            <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                                <i class="ph ph-credit-card"></i> Comisión MercadoPago (2%)
+                                <span style="font-size:0.65rem; opacity:0.6;">sobre ${window.Utils.formatCurrency(tarjetaMes)}</span>
+                            </span>
+                            <span style="font-weight:700; font-size:0.9rem; color:#e11d48;">-${window.Utils.formatCurrency(comisionMPMes)}</span>
+                        </div>` : ''}
+
+                        <!-- Cuenta Dueño (Compacta) -->
+                        ${ownerExtraDraw > 0 ? `
                         <details style="margin: 4px 0;">
                             <summary style="list-style:none; cursor:pointer; outline:none;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
                                     <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-                                        <i class="ph ph-chart-line-down"></i> Gastos Fijos (Prorrateo) 
+                                        <i class="ph ph-wallet"></i> Cuenta Anticipos Dueño
                                         <i class="ph ph-caret-down" style="font-size:0.7rem; opacity:0.5;"></i>
                                     </span>
-                                    <span style="font-weight:700; font-size:0.9rem; color:#ef4444;">-${window.Utils.formatCurrency(gastoTotalProrrateado)}</span>
+                                    <span style="font-weight:700; font-size:0.9rem; color:${ownerExtraDraw > 0 ? '#9333ea' : 'var(--text-muted)'};">
+                                        ${ownerExtraDraw > 0 ? '-' + window.Utils.formatCurrency(ownerExtraDraw) : 'Al día'}
+                                    </span>
                                 </div>
                             </summary>
-                            <div style="padding: 8px 12px; background: rgba(239,68,68,0.03); border-radius:8px; font-size:0.72rem; color:var(--text-muted); margin-bottom:8px;">
-                                <div style="font-weight:700; margin-bottom:6px; text-transform:uppercase; font-size:0.6rem; letter-spacing:0.5px; opacity:0.6;">Detalle de Prorrateo (${currentDayOfMoth} días)</div>
-                                ${prorrateoItemsHtml}
+                            <div style="padding: 10px; background: rgba(59,130,246,0.03); border-radius:10px; margin-bottom:8px; border:1px solid rgba(59,130,246,0.1);">
+                               <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
+                                   <span style="color:var(--text-muted);">Retiros del Dueño:</span>
+                                   <span style="font-weight:600;">${window.Utils.formatCurrency(gastosRetiroDueno)}</span>
+                               </div>
+                               <div style="font-size:0.7rem; color:${balanceColor}; font-weight:700; text-align:right; margin-top:6px; border-top:1px solid rgba(0,0,0,0.03); padding-top:6px;">
+                                    ${balanceMsg}
+                               </div>
                             </div>
-                        </details>
-                    ` : ''}
+                        </details>` : ''}
 
-                    ${gastosVariablesMes > 0 ? fmtRow('Gastos Variables', -gastosVariablesMes, '#f59e0b', 'ph ph-receipt') : ''}
-
-                    ${comisionMPMes > 0 ? `
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed rgba(0,0,0,0.06);">
-                        <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-                            <i class="ph ph-credit-card"></i> Comisión MercadoPago (2%)
-                            <span style="font-size:0.65rem; opacity:0.6;">sobre ${window.Utils.formatCurrency(tarjetaMes)}</span>
-                        </span>
-                        <span style="font-weight:700; font-size:0.9rem; color:#e11d48;">-${window.Utils.formatCurrency(comisionMPMes)}</span>
-                    </div>` : ''}
-
-                    <!-- Cuenta Dueño (Compacta) -->
-                    ${ownerExtraDraw > 0 ? `
-                    <details style="margin: 4px 0;">
-                        <summary style="list-style:none; cursor:pointer; outline:none;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
-                                <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-                                    <i class="ph ph-wallet"></i> Cuenta Anticipos Dueño 
-                                    <i class="ph ph-caret-down" style="font-size:0.7rem; opacity:0.5;"></i>
-                                </span>
-                                <span style="font-weight:700; font-size:0.9rem; color:${ownerExtraDraw > 0 ? '#9333ea' : 'var(--text-muted)'};">
-                                    ${ownerExtraDraw > 0 ? '-' + window.Utils.formatCurrency(ownerExtraDraw) : 'Al día'}
-                                </span>
-                            </div>
-                        </summary>
-                        <div style="padding: 10px; background: rgba(59,130,246,0.03); border-radius:10px; margin-bottom:8px; border:1px solid rgba(59,130,246,0.1);">
-                           <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
-                               <span style="color:var(--text-muted);">Retiros del Dueño:</span>
-                               <span style="font-weight:600;">${window.Utils.formatCurrency(gastosRetiroDueno)}</span>
-                           </div>
-                           <div style="font-size:0.7rem; color:${balanceColor}; font-weight:700; text-align:right; margin-top:6px; border-top:1px solid rgba(0,0,0,0.03); padding-top:6px;">
-                                ${balanceMsg}
-                           </div>
-                        </div>
-                    </details>` : ''}
+                    </details>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0 2px; margin-top:8px; border-top:2px solid rgba(0,0,0,0.05);">
                         <span style="font-size:0.9rem; font-weight:800; color:var(--text-primary);">UTILIDAD NETA FINAL</span>
@@ -1030,10 +1018,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             setTimeout(() => { elHealthBar.style.width = burdenPct + '%'; }, 100);
             if (healthRatioPct) healthRatioPct.textContent = margin + '% final';
 
-            if (isDataIncomplete) {
-                healthEl.innerHTML = '🟠 Datos Incompletos';
-                elHealthBar.style.background = '#f97316';
-            } else if (burdenPct < 50) {
+            if (burdenPct < 50) {
                 healthEl.innerHTML = '🟢 Muy Saludable';
                 elHealthBar.style.background = '#10b981';
             } else if (burdenPct < 75) {
@@ -1422,13 +1407,14 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             }
 
             // 4. FLUJO PRÓXIMO — caja neta proyectada (ventas promedio - pagos pendientes)
-            const avgDailySales = dayAvgs.reduce((a, b) => a + b, 0) / 7;
+            const activeDays = dayAvgs.filter(a => a > 0).length || 1;
+            const avgDailySales = dayAvgs.reduce((a, b) => a + b, 0) / activeDays;
             const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
             const projectedIncome = Math.round(avgDailySales * daysLeft);
             // Pagos pendientes: facturas crédito + sueldos estimados
             const pendingInvoices = invoices.filter(i => i.paymentMethod === 'Crédito' && i.paymentStatus === 'Pendiente');
             const pendingTotal = pendingInvoices.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
-            const monthlyPayroll = employees.reduce((s, e) => s + (parseFloat(e.salary) || 0), 0);
+            const monthlyPayroll = employees.reduce((s, e) => s + (parseFloat(e.baseSalary) || 0), 0);
             const netFlow = projectedIncome - pendingTotal - monthlyPayroll;
             const decCashEl = document.getElementById('dec-cash-content');
             if (decCashEl) {
@@ -1881,12 +1867,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             finally { btn.innerHTML = '<i class="ph ph-file-xls" style="font-size:1.1rem;"></i> <span class="hide-mobile">Exportar Excel</span>'; btn.disabled = false; }
         });
 
-        // ---- WhatsApp Report ----
-        document.getElementById('btn-whatsapp-report').addEventListener('click', () => {
-            const msg = `📊 * Reporte El Maravilloso *\n📅 ${now.toLocaleDateString('es-ES')} \n\n💰 Gasto Mes: ${window.Utils.formatCurrency(gastoTotal, true)} \n💵 Ventas Mes: ${window.Utils.formatCurrency(ventasMes, true)} \n⏱ Horas: ${totalHours.toFixed(1)} h\n👥 Personal: ${employees.length} \n\n_Generado automáticamente_`;
-            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-        });
-
         // ── LISTENER: Actualizar Dashboard en tiempo real cuando hay cambios en Supabase ──
         // Usa debounce de 500ms para no re-renderizar si llegan varios eventos seguidos
 
@@ -1971,338 +1951,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
     }
 };
 
-// ===================== TAB 2: ANÁLISIS FINANCIERO =====================
-async function renderReportsTab() {
-    try {
-        const period = document.getElementById('report-period')?.value || 'month';
-        const now = new Date();
-
-        const [purchases, sales, suppliers, expenses, employees, workLogs, dailySales] = await Promise.all([
-            window.db.purchase_invoices.toArray(), window.db.sales_invoices.toArray(),
-            window.db.suppliers.toArray(), window.db.expenses.toArray(),
-            window.db.employees.toArray(), window.db.workLogs.toArray(),
-            window.db.daily_sales.toArray()
-        ]);
-
-        const supplierMap = window.Utils.createSupplierMap(suppliers);
-
-        const activePurchases = purchases.filter(p => !p.deleted);
-        const activeSales = sales.filter(s => !s.deleted);
-        const activeDailySales = dailySales.filter(d => !d.deleted);
-        const activeExpenses = expenses.filter(e => !e.deleted);
-        const activeEmployees = employees.filter(e => !e.deleted);
-        const activeLogs = workLogs.filter(l => !l.deleted);
-
-        const filterDate = dateStr => {
-            if (!dateStr) return false;
-            const d = new Date(dateStr);
-            if (period === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-            if (period === 'year') return d.getFullYear() === now.getFullYear();
-            return true;
-        };
-
-        const fPurchases = activePurchases.filter(p => filterDate(p.date));
-        const fSalesInv = activeSales.filter(s => filterDate(s.date));
-        const fDailySales = activeDailySales.filter(d => filterDate(d.date));
-        const fExpenses = activeExpenses.filter(e => filterDate(e.date));
-
-        // ---- Previous Month Comparison Data ----
-        const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const filterPrev = dStr => {
-            if (!dStr) return false;
-            const d = new Date(dStr);
-            return d.getMonth() === prevMonth.getMonth() && d.getFullYear() === prevMonth.getFullYear();
-        };
-
-        const prevSales = activeDailySales.filter(d => filterPrev(d.date)).reduce((s, x) => s + (parseFloat(x.total) || 0), 0) +
-            activeSales.filter(s => filterPrev(s.date)).reduce((s, x) => s + (parseFloat(x.total) || 0), 0);
-
-        const prevPurchases = activePurchases.filter(p => filterPrev(p.date)).reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
-        const prevGenExp = activeExpenses.filter(e => filterPrev(e.date)).reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
-
-        // For salaries in prev month, simple log sum is enough for comparison
-        let prevSalaries = activeLogs.filter(l => filterPrev(l.date)).reduce((s, l) => s + (l.payAmount || 0), 0);
-        const prevCosts = prevPurchases + prevGenExp + prevSalaries;
-
-        const totalDailySales = fDailySales.reduce((s, x) => s + (parseFloat(x.total) || 0), 0);
-        const totalSalesInv = fSalesInv.reduce((s, x) => s + (parseFloat(x.total) || 0), 0);
-        const totalSales = totalDailySales + totalSalesInv;
-
-        const totalPurchases = fPurchases.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
-        const totalGenExp = fExpenses.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
-
-        // Sueldos = expenses confirmados con categoría Sueldos + Adelantos
-        let totalSalaries = 0;
-        const allExp = await window.db.expenses.toArray();
-        allExp.filter(e => !e.deleted && (e.category === 'Sueldos' || e.category === 'Adelantos') && e.date && filterDate(e.date))
-            .forEach(e => { totalSalaries += (parseFloat(e.amount) || 0); });
-
-        const totalCosts = totalPurchases + totalGenExp + totalSalaries;
-        const profit = totalSales - totalCosts;
-        const fmt = v => window.Utils.formatCurrency(v);
-
-        // Update KPIs
-        // Update KPIs with count-up animation
-        const elSales = document.getElementById('kpi-sales');
-        if (elSales) window.Utils.animateNumber(elSales, 0, totalDailySales, 1000, true);
-
-        const elCosts = document.getElementById('kpi-expenses');
-        if (elCosts) window.Utils.animateNumber(elCosts, 0, totalCosts, 1000, true);
-
-        const elSalesB2B = document.getElementById('kpi-sales-b2b');
-        if (elSalesB2B) elSalesB2B.innerHTML = `Facturas: <b>${fmt(totalSalesInv)}</b>`;
-
-        const elCostsDetail = document.getElementById('kpi-expenses-detail');
-        if (elCostsDetail) elCostsDetail.innerHTML = `Compras: <b>${fmt(totalPurchases)}</b> · Gastos: <b>${fmt(totalGenExp)}</b> · Sueldos: <b>${fmt(totalSalaries)}</b>`;
-
-        // Update Badges
-        renderBadge('kpi-sales-badge', totalSales, prevSales, false);
-        renderBadge('kpi-expenses-badge', totalCosts, prevCosts, true);
-
-        const profEl = document.getElementById('kpi-profit');
-        if (profEl) {
-            window.Utils.animateNumber(profEl, 0, profit, 1000, true);
-            profEl.style.color = profit >= 0 ? '#10b981' : '#ef4444';
-        }
-
-        const profMarginEl = document.getElementById('kpi-profit-margin');
-        if (profMarginEl) {
-            const margin = totalSales > 0 ? (profit / totalSales * 100).toFixed(1) : 0;
-            profMarginEl.innerHTML = `Margen: <b>${margin}%</b>`;
-        }
-
-        // ---- INSIGHTS CALCULATIONS ----
-        // 1. Avg Ticket
-        const insightTicket = document.getElementById('insight-avg-ticket');
-        if (insightTicket) {
-            const dailyCount = fDailySales.length;
-            const avg = dailyCount > 0 ? totalDailySales / dailyCount : 0;
-            window.Utils.animateNumber(insightTicket, 0, avg, 1200, true);
-        }
-
-        // 2. Best Day
-        const insightBest = document.getElementById('insight-best-day');
-        if (insightBest) {
-            const weekdayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-            const daySales = [0, 0, 0, 0, 0, 0, 0];
-            fDailySales.forEach(s => daySales[new Date(s.date + 'T12:00:00').getDay()] += parseFloat(s.total) || 0);
-            const bestDayIndex = daySales.indexOf(Math.max(...daySales));
-            insightBest.textContent = daySales[bestDayIndex] > 0 ? weekdayNames[bestDayIndex] : '—';
-        }
-
-        // 3. Growth
-        const insightGrowth = document.getElementById('insight-growth');
-        if (insightGrowth) {
-            // Simple logic for month growth vs prev month
-            const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            const prevMonthStr = prevMonthDate.toISOString().substring(0, 7);
-            const prevSalesArray = activeDailySales.filter(d => d.date && d.date.startsWith(prevMonthStr));
-            const prevTotal = prevSalesArray.reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
-
-            if (prevTotal > 0) {
-                const growth = ((totalDailySales - prevTotal) / prevTotal * 100).toFixed(1);
-                insightGrowth.textContent = (growth >= 0 ? '+' : '') + growth + '%';
-                insightGrowth.style.color = growth >= 0 ? '#10b981' : '#ef4444';
-            } else {
-                insightGrowth.textContent = '—';
-            }
-        }
-
-        // ---- CHART: DAILY SALES TREND (PRO EDITION) ----
-        // This replaces the Weekday Aggregation to show ACTUAL data points that match the user's list
-        const sortedDailySales = [...fDailySales].sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        const trendLabels = sortedDailySales.map(s => {
-            const d = new Date(s.date + 'T12:00:00');
-            return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-        });
-        const trendData = sortedDailySales.map(s => parseFloat(s.total) || 0);
-
-        const trendCtx = document.getElementById('chart-weekday').getContext('2d');
-        const trendGradient = trendCtx.createLinearGradient(0, 0, 0, 300);
-        trendGradient.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
-        trendGradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
-
-        const existTrend = Chart.getChart('chart-weekday');
-        if (existTrend) existTrend.destroy();
-
-        new Chart(trendCtx, {
-            type: 'line',
-            data: {
-                labels: trendLabels,
-                datasets: [{
-                    label: 'Venta Diaria',
-                    data: trendData,
-                    backgroundColor: trendGradient,
-                    borderColor: '#10b981',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
-                    pointBackgroundColor: '#10b981',
-                    pointRadius: 3,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: 'rgba(31, 41, 55, 0.95)',
-                        titleFont: { size: 13, weight: 'bold' },
-                        padding: 12,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: (ctx) => ` Venta: ${window.Utils.formatCurrency(ctx.raw, true)}`
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(0,0,0,0.03)' },
-                        ticks: {
-                            callback: (v) => '$' + (v / 1000).toFixed(0) + 'k',
-                            font: { size: 10 }
-                        }
-                    },
-                    x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }
-                }
-            }
-        });
-
-        // ---- Pie chart: cost breakdown ----
-        const costMap = { 'Proveedores': totalPurchases, 'Sueldos': totalSalaries };
-        fExpenses.forEach(e => { costMap[e.category] = (costMap[e.category] || 0) + (parseFloat(e.amount) || 0); });
-        const sorted = Object.entries(costMap).filter(([, v]) => v > 0).sort(([, a], [, b]) => b - a);
-
-        const pieCtx = document.getElementById('chart-suppliers').getContext('2d');
-        const existPie = Chart.getChart('chart-suppliers');
-        if (existPie) existPie.destroy();
-        new Chart(pieCtx, {
-            type: 'doughnut',
-            data: {
-                labels: sorted.map(([n]) => n),
-                datasets: [{ data: sorted.map(([, v]) => v), backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6'], borderWidth: 2, borderColor: 'white' }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                animation: { animateRotate: true, duration: 800 },
-                plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }
-            }
-        });
-
-        // ---- Area chart: Trend (Balance) ----
-        const barCtx = document.getElementById('chart-trend').getContext('2d');
-        const balanceGradient = barCtx.createLinearGradient(0, 0, 0, 250);
-        balanceGradient.addColorStop(0, 'rgba(99, 102, 241, 0.5)');
-        balanceGradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
-
-        const existBar = Chart.getChart('chart-trend');
-        if (existBar) existBar.destroy();
-        new Chart(barCtx, {
-            type: 'line',
-            data: {
-                labels: ['Cierres', 'Facturas', 'Gastos', 'Balance'],
-                datasets: [{
-                    label: 'Monto',
-                    data: [totalDailySales, totalSalesInv, totalCosts, profit],
-                    backgroundColor: balanceGradient,
-                    borderColor: '#6366f1',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4,
-                    pointBackgroundColor: '#6366f1',
-                    pointRadius: 4
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#1f2937',
-                        bodyFont: { size: 13 },
-                        callbacks: {
-                            label: (ctx) => ` ${ctx.dataset.label}: ${window.Utils.formatCurrency(ctx.raw, true)}`
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(0,0,0,0.03)' },
-                        ticks: { callback: (v) => '$' + (v / 1000).toFixed(0) + 'k' }
-                    },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
-
-        // ---- Forecast 14 días ----
-        const today0 = new Date(); today0.setHours(0, 0, 0, 0);
-        const end14 = new Date(today0); end14.setDate(end14.getDate() + 14);
-        const forecast = activePurchases
-            .filter(i => i.paymentMethod === 'Crédito' && i.paymentStatus === 'Pendiente' && i.dueDate)
-            .filter(i => { const d = new Date(i.dueDate); return d >= today0 && d <= end14; })
-            .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-
-        const forecastEl = document.getElementById('forecast-list');
-        if (forecast.length === 0) {
-            forecastEl.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px;">✅ Sin vencimientos en los próximos 14 días</p>';
-        } else {
-            forecastEl.innerHTML = forecast.map(i => {
-                const d = new Date(i.dueDate); d.setHours(0, 0, 0, 0);
-                const dl = Math.ceil((d - today0) / 86400000);
-                const col = dl === 0 ? '#dc2626' : dl <= 3 ? '#ea580c' : dl <= 7 ? '#d97706' : '#6366f1';
-                return `<div class="forecast-item">
-                    <div class="forecast-dot" style="background:${col};"></div>
-                    <div style="flex:1;">
-                        <div style="font-weight:700;font-size:0.85rem;color:var(--text-primary);">${supplierMap[i.supplierId] || 'Proveedor'}</div>
-                        <div style="font-size:0.75rem;color:var(--text-muted);">#${i.invoiceNumber || '—'} · Vence ${d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-weight:700;color:${col};font-size:0.88rem;">${fmt(parseFloat(i.amount) || 0)}</div>
-                        <div style="font-size:0.75rem;background:${col};color:white;border-radius:8px;padding:1px 7px;font-weight:600;">${dl === 0 ? '¡HOY!' : `${dl}d`}</div>
-                    </div>
-                </div>`;
-            }).join('');
-        }
-
-        // ---- Pending list ----
-        const pending = fPurchases.filter(p => p.paymentStatus === 'Pendiente');
-        const pendingEl = document.getElementById('pending-list');
-        pendingEl.innerHTML = pending.length === 0
-            ? '<div style="padding:20px;text-align:center;color:var(--text-muted);">¡Todo pagado! Sin deudas pendientes.</div>'
-            : pending.map(p => `
-                <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-                    <div>
-                        <div style="font-weight:600;color:var(--text-primary);font-size:0.88rem;">${supplierMap[p.supplierId] || 'Desconocido'}</div>
-                        <div style="font-size:0.75rem;color:var(--text-muted);">Factura #${p.invoiceNumber || '—'} · ${p.date || ''}</div>
-                    </div>
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <span style="font-weight:700;color:#d97706;">${fmt(parseFloat(p.amount) || 0)}</span>
-                        <button class="btn btn-icon" title="Marcar Pagado" onclick="window._markPaid(${p.id})">
-                            <i class="ph ph-check-circle" style="color:#10b981;"></i>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-
-        window._markPaid = async (id) => {
-            if (confirm('¿Marcar factura como PAGADA?')) {
-                try {
-                    await window.DataManager.saveAndSync('purchase_invoices', { id, paymentStatus: 'Pagado' });
-                    renderReportsTab();
-                } catch (e) { alert('Error: ' + e.message); }
-            }
-        };
-
-    } catch (e) {
-        console.error('Reports tab error:', e);
-    }
-}
-
 // ---- Helper: render % badge ----
 function renderBadge(id, current, prev, invertGood) {
     const el = document.getElementById(id);
@@ -2321,38 +1969,3 @@ window.Views.reports = (container) => {
     window.Views.dashboard(container);
 };
 
-// --- DASHBOARD SUB-TAB SWITCHER ---
-window._switchDashTab = async (tab) => {
-    const resumenContent = document.getElementById('tab-resumen');
-    const subview = document.getElementById('dash-subview');
-    const tabs = ['resumen', 'reportes', 'calc', 'marketing'];
-
-    // Update button styles
-    tabs.forEach(t => {
-        const btn = document.getElementById(`dash-tab-${t}`);
-        if (btn) {
-            btn.style.background = t === tab ? 'var(--primary)' : 'transparent';
-            btn.style.color = t === tab ? 'white' : 'var(--text-muted)';
-        }
-    });
-
-    if (tab === 'resumen') {
-        if (resumenContent) resumenContent.style.display = '';
-        if (subview) { subview.style.display = 'none'; subview.innerHTML = ''; }
-        return;
-    }
-
-    // Hide dashboard content, show sub-view
-    if (resumenContent) resumenContent.style.display = 'none';
-    if (subview) subview.style.display = 'block';
-
-    if (tab === 'reportes') {
-        // Use _reportsReal if reports.js has stored it (avoids the dashboard alias)
-        const fn = window.Views._reportsReal || window.Views.reports;
-        if (fn) await fn(subview);
-    } else if (tab === 'calc' && window.Views.calculator) {
-        await window.Views.calculator(subview);
-    } else if (tab === 'marketing' && window.Views.marketing) {
-        await window.Views.marketing(subview);
-    }
-};
