@@ -13,6 +13,7 @@ const views = {
     calculator: () => window.Views.calculator(document.getElementById('view-container')),
     settings: () => window.Views.settings(document.getElementById('view-container')),
     profit_monitor: () => window.Views.profit_monitor(document.getElementById('view-container')),
+    abc_analysis: () => window.Views.abc_analysis(document.getElementById('view-container')),
     daily_sales: () => window.Views.daily_sales(document.getElementById('view-container')),
     suppliers: () => window.Views.suppliers(document.getElementById('view-container')),
     purchase_invoices: () => window.Views.purchase_invoices(document.getElementById('view-container')),
