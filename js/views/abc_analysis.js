@@ -130,10 +130,90 @@ window.Views.abc_analysis = async (container) => {
                 color: var(--text-muted);
             }
             .abc-empty i { font-size: 3rem; display: block; margin-bottom: 12px; opacity: 0.4; }
+            /* Filtros */
+            .abc-filters-row {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+                background: var(--card-bg);
+                border-radius: 12px;
+                padding: 12px 16px;
+                margin-bottom: 20px;
+            }
+            .abc-filter-label {
+                font-size: 0.75rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                color: var(--text-muted);
+                white-space: nowrap;
+            }
+            .abc-filter-sep {
+                width: 1px;
+                height: 24px;
+                background: rgba(128,128,128,0.2);
+                flex-shrink: 0;
+            }
+            .abc-class-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                border-radius: 8px;
+                font-size: 0.82rem;
+                font-weight: 800;
+                border: 2px solid transparent;
+                cursor: pointer;
+                transition: all 0.15s;
+                user-select: none;
+            }
+            .abc-class-toggle[data-class="A"] { background: rgba(34,197,94,0.15); color: #16a34a; border-color: rgba(34,197,94,0.3); }
+            .abc-class-toggle[data-class="B"] { background: rgba(245,158,11,0.15); color: #d97706; border-color: rgba(245,158,11,0.3); }
+            .abc-class-toggle[data-class="C"] { background: rgba(239,68,68,0.15);  color: #dc2626; border-color: rgba(239,68,68,0.3); }
+            .abc-class-toggle.inactive {
+                background: rgba(128,128,128,0.08) !important;
+                color: var(--text-muted) !important;
+                border-color: rgba(128,128,128,0.15) !important;
+                opacity: 0.5;
+            }
+            .abc-filter-input {
+                background: var(--input-bg, rgba(128,128,128,0.08));
+                border: 1px solid rgba(128,128,128,0.2);
+                border-radius: 8px;
+                padding: 5px 10px;
+                font-size: 0.82rem;
+                color: var(--text);
+                outline: none;
+                transition: border-color 0.15s;
+                font-family: inherit;
+            }
+            .abc-filter-input:focus { border-color: var(--primary, #6366f1); }
+            .abc-filter-input[type="number"] { width: 80px; }
+            .abc-filter-input[type="text"]   { width: 160px; }
+            .abc-filter-checkbox-wrap {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                cursor: pointer;
+                user-select: none;
+                font-size: 0.82rem;
+                color: var(--text-muted);
+                white-space: nowrap;
+            }
+            .abc-filter-checkbox-wrap input[type="checkbox"] {
+                accent-color: var(--primary, #6366f1);
+                width: 15px;
+                height: 15px;
+                cursor: pointer;
+            }
             @media (max-width: 600px) {
                 .abc-cards-row { flex-direction: column; }
                 .abc-table thead th:nth-child(4),
                 .abc-table tbody td:nth-child(4) { display: none; }
+                .abc-filters-row { gap: 8px; }
+                .abc-filter-input[type="text"] { width: 120px; }
             }
         </style>
 
@@ -152,6 +232,37 @@ window.Views.abc_analysis = async (container) => {
                     <option value="90" selected>Últimos 90 días</option>
                 </select>
             </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="abc-filters-row">
+            <span class="abc-filter-label"><i class="ph ph-funnel" style="margin-right:3px;"></i>Filtros</span>
+            <div class="abc-filter-sep"></div>
+
+            <!-- Toggle ABC -->
+            <span class="abc-filter-label">Clase</span>
+            <button class="abc-class-toggle" data-class="A" id="abc-toggle-a" title="Mostrar/ocultar clase A">A</button>
+            <button class="abc-class-toggle" data-class="B" id="abc-toggle-b" title="Mostrar/ocultar clase B">B</button>
+            <button class="abc-class-toggle" data-class="C" id="abc-toggle-c" title="Mostrar/ocultar clase C">C</button>
+
+            <div class="abc-filter-sep"></div>
+
+            <!-- Mínimo de unidades -->
+            <span class="abc-filter-label">Mín. unidades</span>
+            <input type="number" id="abc-filter-min-qty" class="abc-filter-input" value="1" min="0" step="1" title="Ocultar productos con menos unidades vendidas">
+
+            <div class="abc-filter-sep"></div>
+
+            <!-- Búsqueda por nombre -->
+            <input type="text" id="abc-filter-search" class="abc-filter-input" placeholder="Buscar producto…" title="Filtrar por nombre de producto">
+
+            <div class="abc-filter-sep"></div>
+
+            <!-- Ocultar inactivos -->
+            <label class="abc-filter-checkbox-wrap" title="Ocultar productos sin venta en los últimos 60 días">
+                <input type="checkbox" id="abc-filter-hide-inactive" checked>
+                Ocultar sin venta reciente
+            </label>
         </div>
 
         <!-- Summary Cards -->
@@ -215,6 +326,12 @@ window.Views.abc_analysis = async (container) => {
         </style>
     `;
 
+    // --- Estado de filtros y datos calculados ---
+    let allProducts = [];          // todos los productos con clase ABC ya asignada
+    let allSalesMap = new Map();   // name → lastSaleTs (para filtro de inactivos)
+    const activeClasses = new Set(['A', 'B', 'C']);
+    const INACTIVE_DAYS = 60;
+
     // --- Lógica de datos ---
     async function loadAndRender() {
         const days = parseInt(document.getElementById('abc-period-select').value, 10);
@@ -238,15 +355,20 @@ window.Views.abc_analysis = async (container) => {
         });
 
         if (!sales.length) {
+            allProducts = [];
+            allSalesMap = new Map();
             showEmpty('Sin ventas en el período seleccionado.');
             resetCards();
             return;
         }
 
-        // Acumular por nombre de producto
+        // Acumular por nombre de producto + registrar última venta por producto
         const map = new Map(); // name → { name, qty, revenue, profit }
+        const lastSaleMap = new Map(); // name → lastSaleTs
+
         for (const sale of sales) {
             if (!Array.isArray(sale.items)) continue;
+            const saleTs = sale.date ? new Date(sale.date).getTime() : 0;
             for (const item of sale.items) {
                 const name = (item.name || '(sin nombre)').trim();
                 const qty = parseFloat(item.qty) || 0;
@@ -259,9 +381,14 @@ window.Views.abc_analysis = async (container) => {
                 acc.qty += qty;
                 acc.revenue += rev;
                 acc.profit += prof;
+                // Actualizar última venta
+                if (!lastSaleMap.has(name) || saleTs > lastSaleMap.get(name)) {
+                    lastSaleMap.set(name, saleTs);
+                }
             }
         }
 
+        allSalesMap = lastSaleMap;
         let products = Array.from(map.values());
 
         // Ordenar por revenue descendente
@@ -269,6 +396,7 @@ window.Views.abc_analysis = async (container) => {
 
         const totalRevenue = products.reduce((s, p) => s + p.revenue, 0);
         if (totalRevenue <= 0) {
+            allProducts = [];
             showEmpty('Los productos del período no tienen ingreso registrado.');
             resetCards();
             return;
@@ -287,16 +415,42 @@ window.Views.abc_analysis = async (container) => {
                 p.class = 'C';
             }
             p.revenuePct = (p.revenue / totalRevenue) * 100;
+            p.lastSaleTs = lastSaleMap.get(p.name) || 0;
         }
 
-        // Stats por clase
-        const classA = products.filter(p => p.class === 'A');
-        const classB = products.filter(p => p.class === 'B');
-        const classC = products.filter(p => p.class === 'C');
+        allProducts = products;
 
-        const pctA = classA.reduce((s, p) => s + p.revenuePct, 0);
-        const pctB = classB.reduce((s, p) => s + p.revenuePct, 0);
-        const pctC = classC.reduce((s, p) => s + p.revenuePct, 0);
+        // Aplicar filtros y renderizar
+        applyFiltersAndRender();
+    }
+
+    function applyFiltersAndRender() {
+        if (!allProducts.length) return;
+
+        const minQty = parseFloat(document.getElementById('abc-filter-min-qty').value) || 0;
+        const searchRaw = document.getElementById('abc-filter-search').value.trim().toLowerCase();
+        const hideInactive = document.getElementById('abc-filter-hide-inactive').checked;
+        const inactiveCutoff = Date.now() - INACTIVE_DAYS * 24 * 60 * 60 * 1000;
+
+        // Aplicar filtros (no tocar la clasificación)
+        const visible = allProducts.filter(p => {
+            if (!activeClasses.has(p.class)) return false;
+            if (p.qty < minQty) return false;
+            if (searchRaw && !p.name.toLowerCase().includes(searchRaw)) return false;
+            if (hideInactive && p.lastSaleTs < inactiveCutoff) return false;
+            return true;
+        });
+
+        // Calcular totales sobre los visibles
+        const totalRevenue = visible.reduce((s, p) => s + p.revenue, 0);
+
+        const classA = visible.filter(p => p.class === 'A');
+        const classB = visible.filter(p => p.class === 'B');
+        const classC = visible.filter(p => p.class === 'C');
+
+        const pctA = totalRevenue > 0 ? classA.reduce((s, p) => s + p.revenue, 0) / totalRevenue * 100 : 0;
+        const pctB = totalRevenue > 0 ? classB.reduce((s, p) => s + p.revenue, 0) / totalRevenue * 100 : 0;
+        const pctC = totalRevenue > 0 ? classC.reduce((s, p) => s + p.revenue, 0) / totalRevenue * 100 : 0;
 
         // Actualizar tarjetas resumen
         document.getElementById('abc-count-a').textContent = classA.length;
@@ -318,7 +472,7 @@ window.Views.abc_analysis = async (container) => {
         segC.textContent = pctC >= 5 ? ` C ${pctC.toFixed(0)}%` : '';
 
         // Renderizar tabla
-        renderTable(products, totalRevenue);
+        renderTable(visible, totalRevenue);
     }
 
     function fmt(val) {
@@ -331,7 +485,7 @@ window.Views.abc_analysis = async (container) => {
     function renderTable(products, totalRevenue) {
         const container = document.getElementById('abc-table-container');
         if (!products.length) {
-            showEmpty('Sin productos para mostrar.');
+            showEmpty('Sin productos para mostrar con los filtros actuales.');
             return;
         }
 
@@ -407,8 +561,42 @@ window.Views.abc_analysis = async (container) => {
             .replace(/"/g, '&quot;');
     }
 
-    // Listener del selector de período
+    // --- Event listeners ---
+
+    // Selector de período: recalcula todo
     document.getElementById('abc-period-select').addEventListener('change', loadAndRender);
+
+    // Toggles de clase ABC
+    ['a', 'b', 'c'].forEach(cls => {
+        document.getElementById(`abc-toggle-${cls}`).addEventListener('click', function () {
+            const C = cls.toUpperCase();
+            if (activeClasses.has(C)) {
+                activeClasses.delete(C);
+                this.classList.add('inactive');
+            } else {
+                activeClasses.add(C);
+                this.classList.remove('inactive');
+            }
+            applyFiltersAndRender();
+        });
+    });
+
+    // Filtro mínimo de unidades (con pequeño debounce)
+    let minQtyTimer = null;
+    document.getElementById('abc-filter-min-qty').addEventListener('input', () => {
+        clearTimeout(minQtyTimer);
+        minQtyTimer = setTimeout(applyFiltersAndRender, 300);
+    });
+
+    // Búsqueda por nombre (con debounce)
+    let searchTimer = null;
+    document.getElementById('abc-filter-search').addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(applyFiltersAndRender, 250);
+    });
+
+    // Checkbox ocultar inactivos
+    document.getElementById('abc-filter-hide-inactive').addEventListener('change', applyFiltersAndRender);
 
     // Carga inicial
     await loadAndRender();
