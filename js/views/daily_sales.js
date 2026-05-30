@@ -170,8 +170,6 @@ async function renderDailySales() {
         byDate.forEach(day => {
             const bruto = day.debitBruto || 0;
             day.comisionMP = Math.round(bruto * COMISION_MP);
-            day.debit = Math.max(0, day.debit - day.comisionMP);
-            day.total = Math.max(0, day.total - day.comisionMP);
         });
 
         let allDays = Array.from(byDate.values());

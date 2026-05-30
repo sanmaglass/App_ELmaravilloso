@@ -316,7 +316,7 @@ window.Sync = {
                             const localIds = new Set(localData.map(r => r.id));
                             const cloudHasNew = normalizedCloudData.some(r => !localIds.has(r.id));
                             const countDiffers = normalizedCloudData.length !== localData.length;
-                            if (cloudHasNew || countDiffers || toDeleteLocal.length > 0) {
+                            if (cloudHasNew || countDiffers) {
                                 try {
                                     await window.db[localName].bulkPut(normalizedCloudData);
                                     console.log(`[Sync DEBUG] ${localName}: bulkPut exitoso`);

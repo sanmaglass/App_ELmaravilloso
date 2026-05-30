@@ -1012,7 +1012,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             elHealthBar.style.width = '0%';
             if (healthRatioPct) healthRatioPct.textContent = '0%';
         } else {
-            const burdenPct = Math.min(100, Math.max(0, (gastoTotal / gananciaBrutaMes) * 100));
+            const burdenPct = Math.min(100, Math.max(0, (gastoTotal / ventasMes) * 100));
             const margin = margenNetoPct.toFixed(1);
 
             setTimeout(() => { elHealthBar.style.width = burdenPct + '%'; }, 100);
