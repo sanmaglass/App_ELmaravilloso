@@ -295,6 +295,25 @@ window.Sync = {
                                 return false;
                             }
                             return true;
+                        }).map(item => {
+                            // Sanitizar items de eleventa_sales: limpiar items con nombre corrupto (timestamp, vacío, etc.)
+                            if (remoteName === 'eleventa_sales' && Array.isArray(item.items)) {
+                                const cleanItems = item.items.filter(it => {
+                                    const n = (it.name || '').trim();
+                                    if (!n || n.length < 2 || /^\d{4}-\d{2}-\d{2}/.test(n)) {
+                                        window.ErrorLogger?.log('sync.pull.corrupt_item', `Item corrupto filtrado en eleventa_sales`,
+                                            { saleId: item.id, itemName: n, date: item.date });
+                                        return false;
+                                    }
+                                    return true;
+                                });
+                                if (cleanItems.length !== item.items.length) {
+                                    item.items = cleanItems;
+                                    // Si quedó sin items válidos, marcar como deleted
+                                    if (cleanItems.length === 0) item.deleted = true;
+                                }
+                            }
+                            return item;
                         });
 
                         // --- RECONCILIACIÓN POR RANGO (Protección de Historial) ---

@@ -371,6 +371,8 @@ window.Views.abc_analysis = async (container) => {
             const saleTs = sale.date ? new Date(sale.date).getTime() : 0;
             for (const item of sale.items) {
                 const name = (item.name || '(sin nombre)').trim();
+                // Filtro anti-corrupción: descartar items cuyo nombre parece timestamp o dato basura
+                if (/^\d{4}-\d{2}-\d{2}/.test(name) || name.length < 2) continue;
                 const qty = parseFloat(item.qty) || 0;
                 const rev = (parseFloat(item.price) || 0) * qty;
                 const prof = (parseFloat(item.profit) || 0) * qty;
