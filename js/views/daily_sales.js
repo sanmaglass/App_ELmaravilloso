@@ -1,4 +1,4 @@
-// Daily Sales View (Cierre Diario)
+﻿// Daily Sales View (Cierre Diario)
 window.Views = window.Views || {};
 
 window.Views.daily_sales = async (container) => {
@@ -136,7 +136,7 @@ async function renderDailySales() {
         // Agrupar por fecha y forma de pago
         const byDate = new Map();
         activeEleventa.forEach(s => {
-            const d = s.date?.split('T')[0];
+            const d = s.date_local || s.date?.split('T')[0];
             if (!d) return;
             if (!byDate.has(d)) byDate.set(d, { date: d, cash: 0, transfer: 0, debit: 0, credit: 0, total: 0, profit: 0, tickets: 0 });
             const day = byDate.get(d);
@@ -531,7 +531,7 @@ async function exportDailySalesToExcel() {
         const allEleventa = await window.db.eleventa_sales.toArray();
         const profitByDate = new Map();
         allEleventa.forEach(s => {
-            const d = s.date?.split('T')[0];
+            const d = s.date_local || s.date?.split('T')[0];
             if (d && s.profit) profitByDate.set(d, (profitByDate.get(d) || 0) + parseFloat(s.profit));
         });
 
@@ -556,3 +556,4 @@ async function exportDailySalesToExcel() {
         alert('Error exportando: ' + e.message);
     }
 }
+
