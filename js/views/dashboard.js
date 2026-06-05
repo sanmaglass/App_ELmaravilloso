@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // DASHBOARD PRO — Unified View
 // Includes: Dashboard + Reports merged
 // ==========================================
@@ -631,8 +631,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const todayStrLocal = `${localYear}-${localMonth}-${localDay}`; // YYYY-MM-DD local
 
         const todayEleventa = eleventaSales.filter(v => {
-            // v.date es string "YYYY-MM-DD" o timestamp
-            let dateStr = String(v.date).split('T')[0]; // Tomar solo YYYY-MM-DD si viene con hora
+            // Usar date_local (fecha calendario local) si existe, si no extraer de date UTC
+            let dateStr = v.date_local || String(v.date).split('T')[0];
             return dateStr === todayStrLocal;
         }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -1197,10 +1197,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             }
         }
 
-        // Días con caída — desde Eleventa (agrupado por fecha)
+        // Días con caída — desde Eleventa (agrupado por fecha local)
         const eleventaByDay = new Map();
-        eleventaSales.filter(s => s.date && s.date.startsWith(currentMonthStr)).forEach(s => {
-            const d = s.date.split('T')[0];
+        eleventaSales.filter(s => (s.date_local || s.date || '').substring(0, 7) === currentMonthStr).forEach(s => {
+            const d = s.date_local || s.date.split('T')[0];
             eleventaByDay.set(d, (eleventaByDay.get(d) || 0) + (parseFloat(s.total) || 0));
         });
         const currentMonthDaily = Array.from(eleventaByDay.entries()).map(([date, total]) => ({ date, total }));
@@ -1968,4 +1968,5 @@ function renderBadge(id, current, prev, invertGood) {
 window.Views.reports = (container) => {
     window.Views.dashboard(container);
 };
+
 
