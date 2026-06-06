@@ -9,6 +9,10 @@ const db = new Dexie('ElMaravillosoApp');
 // v14:    added eleventa_sales integration
 // v15:    added version field index for optimistic locking
 // v16:    added error_logs table for centralized error tracking
+// v17:    HLC sync - nueva arquitectura de sincronización
+// v18:    cash_register — Arqueo y movimientos de caja
+// v19:    advances — Adelantos de sueldo para empleados
+// v20:    eleventa_abonos — Pagos recibidos en cuentas de crédito
 db.version(14).stores({
     employees: 'id, rut, deleted',
     workLogs: 'id, employeeId, date, deleted',
@@ -141,6 +145,30 @@ db.version(19).stores({
     sync_state: 'table_name',
     cash_register: 'id, date, type, category, deleted, updated_at_hlc',
     advances: 'id, employeeId, date, status, deleted, updated_at_hlc'
+});
+
+// v20: eleventa_abonos — Pagos recibidos en cuentas de crédito (read-only, pull-only desde Supabase)
+db.version(20).stores({
+    employees: 'id, rut, deleted, updated_at_hlc',
+    workLogs: 'id, employeeId, date, deleted, updated_at_hlc',
+    products: 'id, category, deleted, updated_at_hlc',
+    promotions: 'id, deleted, updated_at_hlc',
+    suppliers: 'id, name, deleted, updated_at_hlc',
+    purchase_invoices: 'id, supplierId, date, paymentStatus, paymentMethod, invoiceNumber, deleted, version, updated_at_hlc',
+    sales_invoices: 'id, date, clientName, invoiceNumber, deleted, updated_at_hlc',
+    electronic_invoices: 'id, date, folio, status, deleted, version, updated_at_hlc',
+    expenses: 'id, date, deleted, updated_at_hlc',
+    daily_sales: 'id, date, deleted, updated_at_hlc',
+    settings: 'key',
+    reminders: 'id, deleted, completed, [completed+deleted], updated_at_hlc',
+    eleventa_sales: 'id, ticket_id, date, deleted, updated_at_hlc',
+    loans: 'id, supplierId, date, deleted, direction, status, version, updated_at_hlc',
+    error_logs: 'id, timestamp, level, [level+timestamp]',
+    sync_outbox: '++id, tableName, status, created_at',
+    sync_state: 'table_name',
+    cash_register: 'id, date, type, category, deleted, updated_at_hlc',
+    advances: 'id, employeeId, date, status, deleted, updated_at_hlc',
+    eleventa_abonos: 'id, abono_id, date_local, cancelado'
 });
 
 // ──────────────────────────────────────────────────────────────
