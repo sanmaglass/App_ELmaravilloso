@@ -176,7 +176,8 @@ window.Sync = {
                 { local: 'reminders', remote: 'reminders', orderBy: 'id' },
                 { local: 'eleventa_sales', remote: 'eleventa_sales', orderBy: 'date', descending: true },
                 { local: 'loans', remote: 'loans', orderBy: 'date', descending: true },
-                { local: 'advances', remote: 'advances', orderBy: 'date', descending: true }
+                { local: 'advances', remote: 'advances', orderBy: 'date', 
+              { local: 'eleventa_abonos', remote: 'eleventa_abonos', orderBy: 'date_local', descending: true, skipPush: true }descending: true }
             ];
 
             let dataChanged = false;
@@ -375,7 +376,7 @@ window.Sync = {
             };
 
             await Promise.all(tableMap
-                .filter(m => m.remote !== 'settings')
+                .filter(m => m.remote !== 'settings' && !m.skipPush)
                 .map(async (map) => {
                     const localName = map.local;
                     const remoteName = map.remote;
