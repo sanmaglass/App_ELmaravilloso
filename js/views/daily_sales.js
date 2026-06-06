@@ -1,4 +1,4 @@
-﻿// Daily Sales View (Cierre Diario)
+// Daily Sales View (Cierre Diario)
 window.Views = window.Views || {};
 
 window.Views.daily_sales = async (container) => {
@@ -8,7 +8,7 @@ window.Views.daily_sales = async (container) => {
                 <h1 style="margin-bottom:8px; color:var(--text-primary); display:flex; align-items:center; gap:10px;">
                     <i class="ph ph-currency-dollar" style="color:var(--primary);"></i> Ventas Diarias
                 </h1>
-                <p style="color:var(--text-muted);">Registro de cierre de caja (Efectivo, Transferencia, Débito)</p>
+                <p style="color:var(--text-muted);">Registro de cierre de caja (Efectivo, Transferencia, Débito, Crédito)</p>
             </div>
             <button class="btn btn-primary" id="btn-add-daily-sale" style="display:none;">
                 <i class="ph ph-plus-circle"></i> Nuevo Cierre
@@ -61,7 +61,6 @@ window.Views.daily_sales = async (container) => {
     document.getElementById('btn-export-daily').addEventListener('click', exportDailySalesToExcel);
 
     // --- REALTIME REFRESH ---
-    // Limpiar listener anterior para evitar acumulación en visitas repetidas
     if (window._dailySalesSyncHandler) {
         window.removeEventListener('sync-data-updated', window._dailySalesSyncHandler);
         window._dailySalesSyncHandler = null;
@@ -84,7 +83,6 @@ async function initDailyMonthFilter() {
     const filter = document.getElementById('daily-filter-month');
     if (!filter) return;
 
-    // Limpiar opciones dinámicas previas (mantener solo "Todo el Historial")
     while (filter.options.length > 1) filter.remove(1);
 
     try {
@@ -94,7 +92,6 @@ async function initDailyMonthFilter() {
         const monthsFromDB = new Set();
         active.forEach(s => { if (s.date && s.date.length >= 7) monthsFromDB.add(s.date.substring(0, 7)); });
 
-        // Siempre incluir los últimos 12 meses en hora LOCAL
         const now = new Date();
         const monthsSet = new Set(monthsFromDB);
         for (let i = 0; i < 12; i++) {
@@ -112,7 +109,6 @@ async function initDailyMonthFilter() {
             filter.appendChild(option);
         });
 
-        // Por defecto mostrar el mes actual (menos carga visual)
         const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         filter.value = curMonth;
 
@@ -138,43 +134,100 @@ async function renderDailySales() {
         activeEleventa.forEach(s => {
             const d = s.date_local || s.date?.split('T')[0];
             if (!d) return;
-            if (!byDate.has(d)) byDate.set(d, { date: d, cash: 0, transfer: 0, debit: 0, credit: 0, total: 0, profit: 0, tickets: 0 });
+            if (!byDate.has(d)) byDate.set(d, {
+                date: d,
+                cash: 0,
+                transfer: 0,
+                debit: 0,
+                vales: 0,
+                creditPendiente: 0,
+                abonos: 0,
+                total: 0,
+                profit: 0,
+                tickets: 0,
+                debitBruto: 0,
+            });
             const day = byDate.get(d);
             const total = parseFloat(s.total) || 0;
             const profit = parseFloat(s.profit) || 0;
+            // credit_amount = TOTAL_CREDITO: porción no cobrada al momento de la venta
+            const creditAmt = parseFloat(s.credit_amount) || 0;
             const forma = (s.forma_pago || 'Efectivo').toLowerCase();
 
-            if (forma.includes('transfer')) day.transfer += total;
-            else if (forma.includes('tarjeta') || forma.includes('debito')) { day.debit += total; day.debitBruto = (day.debitBruto || 0) + total; }
-            else if (forma.includes('credito') || forma.includes('fiado') || forma.includes('vale')) day.credit += total;
-            else if (forma.includes('mixto')) { day.cash += total / 2; day.debit += total / 2; day.debitBruto = (day.debitBruto || 0) + total / 2; }
-            else if (forma.includes('efectivo')) day.cash += total;
-            else day.cash += total;
+            // Acumular lo pendiente de cobro
+            day.creditPendiente += creditAmt;
+
+            // Lo cobrado efectivamente en este ticket
+            const cobradoAhora = total - creditAmt;
+
+            if (forma.includes('transfer')) {
+                day.transfer += cobradoAhora;
+            } else if (forma.includes('tarjeta') || forma.includes('debito')) {
+                day.debit += cobradoAhora;
+                day.debitBruto += cobradoAhora;
+            } else if (forma.includes('vale')) {
+                day.vales += cobradoAhora;
+            } else if (forma.includes('credito')) {
+                // Venta 100% a crédito: cobradoAhora = 0, ya acumulado en creditPendiente
+            } else if (forma.includes('mixto')) {
+                // Mixto sin crédito: dividir entre efectivo y tarjeta
+                day.cash += cobradoAhora / 2;
+                day.debit += cobradoAhora / 2;
+                day.debitBruto += cobradoAhora / 2;
+            } else {
+                day.cash += cobradoAhora;
+            }
 
             day.total += total;
             day.profit += profit;
             day.tickets++;
         });
 
-        // Incluir cierres manuales existentes (como override si hay para esa fecha)
+        // Incluir cierres manuales existentes
         const manualSales = await window.db.daily_sales.toArray();
         const activeManual = manualSales.filter(s => !s.deleted);
         activeManual.forEach(s => {
             if (s.date && !byDate.has(s.date)) {
-                byDate.set(s.date, { date: s.date, cash: s.cash || 0, transfer: s.transfer || 0, debit: s.debit || 0, credit: s.credit || 0, total: s.total || 0, profit: 0, tickets: 0, manual: true, id: s.id });
+                byDate.set(s.date, {
+                    date: s.date,
+                    cash: s.cash || 0,
+                    transfer: s.transfer || 0,
+                    debit: s.debit || 0,
+                    vales: s.credit || 0,
+                    creditPendiente: 0,
+                    abonos: 0,
+                    total: s.total || 0,
+                    profit: 0,
+                    tickets: 0,
+                    debitBruto: s.debit || 0,
+                    manual: true,
+                    id: s.id
+                });
             }
         });
 
-        // Calcular comisión MercadoPago (2%) y descontar de tarjeta
+        // Calcular comisión MercadoPago (2%) y cargar abonos
         const COMISION_MP = 0.02;
+
+        // Cargar abonos de cuentas de crédito
+        const abonosByDate = new Map();
+        try {
+            const abonos = await window.db.eleventa_abonos.toArray();
+            abonos.filter(a => !a.cancelado).forEach(a => {
+                const d = a.date_local || a.fecha?.split('T')[0];
+                if (d) abonosByDate.set(d, (abonosByDate.get(d) || 0) + (parseFloat(a.monto) || 0));
+            });
+        } catch (e) { /* tabla puede no existir aún */ }
+
         byDate.forEach(day => {
             const bruto = day.debitBruto || 0;
             day.comisionMP = Math.round(bruto * COMISION_MP);
+            day.abonos = abonosByDate.get(day.date) || 0;
         });
 
         let allDays = Array.from(byDate.values());
 
-        // --- CALCULAR SALIDAS DE EFECTIVO (Gastos locales + Flujo Eleventa) ---
+        // --- CALCULAR SALIDAS DE EFECTIVO ---
         const cashOutByDate = new Map();
         const [invs, exps] = await Promise.all([
             window.db.purchase_invoices.toArray(),
@@ -182,22 +235,22 @@ async function renderDailySales() {
         ]);
 
         invs.filter(i => !i.deleted && i.paymentMethod === 'Efectivo').forEach(i => {
-             const d = i.date?.split('T')[0];
-             let out = 0;
-             if (i.paymentStatus === 'Pagado') out += (parseFloat(i.amount) || 0);
-             if (i.paymentStatus === 'Abonado') out += (parseFloat(i.paidAmount) || 0);
-             if (d && out > 0) cashOutByDate.set(d, (cashOutByDate.get(d) || 0) + out);
+            const d = i.date?.split('T')[0];
+            let out = 0;
+            if (i.paymentStatus === 'Pagado') out += (parseFloat(i.amount) || 0);
+            if (i.paymentStatus === 'Abonado') out += (parseFloat(i.paidAmount) || 0);
+            if (d && out > 0) cashOutByDate.set(d, (cashOutByDate.get(d) || 0) + out);
         });
 
         exps.filter(e => !e.deleted && e.paymentMethod === 'Efectivo').forEach(e => {
-             const d = e.date?.split('T')[0];
-             const out = parseFloat(e.amount) || 0;
-             if (d && out > 0) cashOutByDate.set(d, (cashOutByDate.get(d) || 0) + out);
+            const d = e.date?.split('T')[0];
+            const out = parseFloat(e.amount) || 0;
+            if (d && out > 0) cashOutByDate.set(d, (cashOutByDate.get(d) || 0) + out);
         });
 
-        // Flujo de caja Eleventa: Salidas, Devoluciones, Entradas
-        const flujoByDate = new Map();        // Salidas (gastos)
-        const entradaByDate = new Map();      // Entradas (ingresos manuales)
+        // Flujo de caja Eleventa
+        const flujoByDate = new Map();
+        const entradaByDate = new Map();
         try {
             const client = window.SyncV2?.client;
             if (client) {
@@ -211,9 +264,6 @@ async function renderDailySales() {
                         const tipo = (f.tipo || '').toLowerCase();
                         let target;
                         if (tipo === 'salida') target = flujoByDate;
-                        // Ignorar devoluciones/repasados: son tickets cancelados y repasados
-                        // en otra forma de pago, el ticket viejo ya queda con total=0 (excluido)
-                        // y el nuevo ticket ya se suma en ventas.
                         else if (tipo === 'repasado' || tipo === 'devolucion' || tipo === 'devolución') return;
                         else if (tipo === 'entrada') target = entradaByDate;
                         else return;
@@ -236,13 +286,13 @@ async function renderDailySales() {
         // Sort by Date DESC
         filtered.sort((a, b) => b.date.localeCompare(a.date));
 
-        // Limitar a 7 días visibles por defecto (última semana)
+        // Limitar a 7 días visibles
         const MAX_VISIBLE = 7;
         const showAll = window._dailyShowAll || false;
         const hasMoreDays = filtered.length > MAX_VISIBLE && !search && !showAll;
         const visible = (!search && !showAll && filtered.length > MAX_VISIBLE) ? filtered.slice(0, MAX_VISIBLE) : filtered;
 
-        // Update summary cards (sobre el total filtrado, no solo los visibles)
+        // Update summary cards
         const totalAmount = filtered.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
         const totalEl = document.getElementById('daily-total-amount');
         const countEl = document.getElementById('daily-count');
@@ -259,7 +309,11 @@ async function renderDailySales() {
             return;
         }
 
-        list.innerHTML = visible.map(sale => `
+        // ===== RENDERIZAR TARJETAS DE VENTAS =====
+        list.innerHTML = visible.map(sale => {
+            const ingresoReal = sale.total - sale.creditPendiente + sale.abonos;
+            const tieneCreditoOAbonos = sale.creditPendiente > 0 || sale.abonos > 0;
+            return `
             <div class="card" style="padding:16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                     <div style="flex:1 1 160px; min-width:0;">
@@ -273,8 +327,9 @@ async function renderDailySales() {
                         </div>
                     </div>
                     <div style="text-align:right; flex:0 0 auto;">
-                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Total Día</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Total Vendido</div>
                         <div style="font-weight:700; font-size:1.1rem; color:var(--primary);">${formatCurrency(sale.total)}</div>
+                        ${tieneCreditoOAbonos ? `<div style="font-size:0.75rem; color:#15803d; font-weight:600;">Ingreso Real: ${formatCurrency(ingresoReal)}</div>` : ''}
                     </div>
                 </div>
                 <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid rgba(0,0,0,0.06); font-size:0.8rem;">
@@ -290,8 +345,17 @@ async function renderDailySales() {
                     ${sale.comisionMP > 0 ? `<span style="background:rgba(225,29,72,0.1); padding:3px 10px; border-radius:20px; color:#be123c; white-space:nowrap; font-weight:600;" title="2% sobre ${formatCurrency(sale.debitBruto || 0)} en tarjetas">
                         <i class="ph ph-percent"></i> Comisión MP: -${formatCurrency(sale.comisionMP)}
                     </span>` : ''}
-                    ${sale.credit > 0 ? `<span style="background:rgba(139,92,246,0.1); padding:3px 10px; border-radius:20px; color:#5b21b6; white-space:nowrap;">
-                        <i class="ph ph-ticket"></i> Vales: ${formatCurrency(sale.credit)}
+                    ${sale.vales > 0 ? `<span style="background:rgba(139,92,246,0.1); padding:3px 10px; border-radius:20px; color:#5b21b6; white-space:nowrap;">
+                        <i class="ph ph-ticket"></i> Vales: ${formatCurrency(sale.vales)}
+                    </span>` : ''}
+                    ${sale.creditPendiente > 0 ? `<span style="background:rgba(249,115,22,0.12); padding:3px 10px; border-radius:20px; color:#9a3412; white-space:nowrap;" title="Ventas registradas aún no cobradas (crédito pendiente)">
+                        <i class="ph ph-clock"></i> En Crédito: ${formatCurrency(sale.creditPendiente)}
+                    </span>` : ''}
+                    ${sale.abonos > 0 ? `<span style="background:rgba(34,197,94,0.15); padding:3px 10px; border-radius:20px; color:#14532d; font-weight:600; white-space:nowrap; border:1px solid rgba(34,197,94,0.3);" title="Pagos recibidos en cuentas de crédito de clientes">
+                        <i class="ph ph-hand-coins"></i> Abonos: +${formatCurrency(sale.abonos)}
+                    </span>` : ''}
+                    ${tieneCreditoOAbonos ? `<span style="background:linear-gradient(135deg,rgba(37,99,235,0.1),rgba(37,99,235,0.2)); padding:3px 12px; border-radius:20px; color:#1e3a8a; font-weight:700; white-space:nowrap; border:1px solid rgba(37,99,235,0.3);" title="= Total Vendido - En Crédito + Abonos recibidos">
+                        <i class="ph ph-check-circle"></i> Ingreso Real: ${formatCurrency(ingresoReal)}
                     </span>` : ''}
                     ${sale.profit > 0 ? `<span style="background:rgba(139,92,246,0.15); padding:3px 10px; border-radius:20px; color:#5b21b6; font-weight:600; white-space:nowrap; border:1px solid rgba(139,92,246,0.3);">
                         <i class="ph ph-chart-line-up"></i> Utilidad: ${formatCurrency(sale.profit)}
@@ -310,12 +374,11 @@ async function renderDailySales() {
                     </span>` : ''}
                 </div>
             </div>
-        `).join('') + (hasMoreDays ? `
+        `}).join('') + (hasMoreDays ? `
             <button id="btn-show-all-daily" style="width:100%; padding:12px; border:1px dashed var(--border); border-radius:12px; background:rgba(0,0,0,0.02); color:var(--text-muted); cursor:pointer; font-size:0.9rem; font-weight:600; transition:all 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='rgba(0,0,0,0.02)'">
                 <i class="ph ph-caret-down"></i> Ver ${filtered.length - MAX_VISIBLE} días más
             </button>` : '');
 
-        // Listener para "Ver más" — mostrar todos los días del filtro actual
         const btnShowAll = document.getElementById('btn-show-all-daily');
         if (btnShowAll) {
             btnShowAll.addEventListener('click', () => {
@@ -359,13 +422,13 @@ function showDailySaleModal(saleToEdit = null) {
             </div>
             <div class="modal-body">
                 <form id="daily-sale-form" style="display:flex; flex-direction:column; gap:16px;">
-                    
+
                     <div class="form-group">
                         <label class="form-label">Fecha del Cierre</label>
                         <input type="date" id="ds-date" class="form-input" value="${isEdit ? saleToEdit.date : today}">
                     </div>
 
-                    <!-- 💡 SMART CASH OUTFLOW ALERT -->
+                    <!-- SMART CASH OUTFLOW ALERT -->
                     <div id="ds-cash-alert" style="display:none; background:linear-gradient(135deg, #fef3c7, #fffbeb); border-left:4px solid #f59e0b; padding:12px 16px; border-radius:8px; margin-bottom:4px; box-shadow:0 2px 8px rgba(245,158,11,0.1);">
                         <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
                             <i class="ph ph-lightbulb" style="color:#d97706; font-size:1.2rem;"></i>
@@ -390,8 +453,8 @@ function showDailySaleModal(saleToEdit = null) {
                             <label class="form-label">Débito ($)</label>
                             <input type="number" id="ds-debit" class="form-input calc-input" placeholder="0" value="${isEdit ? saleToEdit.debit : ''}">
                         </div>
-                         <div class="form-group">
-                            <label class="form-label">Crédito ($)</label>
+                        <div class="form-group">
+                            <label class="form-label">Crédito/Vales ($)</label>
                             <input type="number" id="ds-credit" class="form-input calc-input" placeholder="0" value="${isEdit ? saleToEdit.credit : ''}">
                         </div>
                     </div>
@@ -425,21 +488,17 @@ function showDailySaleModal(saleToEdit = null) {
 
     const calcTotal = () => {
         let total = 0;
-        inputs.forEach(input => {
-            total += parseFloat(input.value) || 0;
-        });
+        inputs.forEach(input => { total += parseFloat(input.value) || 0; });
         totalPreview.innerHTML = formatCurrency(total);
         return total;
     };
 
-    // Init calc
     calcTotal();
-
     inputs.forEach(input => input.addEventListener('input', calcTotal));
 
     // Smart Cash Outflow Calculation
     async function calculateCashOutflows(dateStr) {
-        if(!dateStr) return;
+        if (!dateStr) return;
         try {
             const [invoices, expenses] = await Promise.all([
                 window.db.purchase_invoices.toArray(),
@@ -461,7 +520,7 @@ function showDailySaleModal(saleToEdit = null) {
             } else {
                 alertBox.style.display = 'none';
             }
-        } catch(e) { console.error('Error calculando salidas', e); }
+        } catch (e) { console.error('Error calculando salidas', e); }
     }
 
     const dateInput = document.getElementById('ds-date');
@@ -484,7 +543,7 @@ function showDailySaleModal(saleToEdit = null) {
         }
 
         try {
-            // Check for duplicate date (filter in memory, no index needed)
+            // Check for duplicate date
             const allSales = await window.db.daily_sales.toArray();
             const existing = allSales.find(s => s.date === date && !s.deleted);
             if (existing && !existing.deleted && (!isEdit || existing.id !== saleToEdit.id)) {
@@ -527,21 +586,37 @@ async function exportDailySalesToExcel() {
             return;
         }
 
-        // Calculamos Utilidad para el reporte Excel
         const allEleventa = await window.db.eleventa_sales.toArray();
         const profitByDate = new Map();
+        const creditByDate = new Map();
         allEleventa.forEach(s => {
             const d = s.date_local || s.date?.split('T')[0];
-            if (d && s.profit) profitByDate.set(d, (profitByDate.get(d) || 0) + parseFloat(s.profit));
+            if (d) {
+                if (s.profit) profitByDate.set(d, (profitByDate.get(d) || 0) + parseFloat(s.profit));
+                if (s.credit_amount) creditByDate.set(d, (creditByDate.get(d) || 0) + parseFloat(s.credit_amount));
+            }
         });
+
+        // Cargar abonos
+        const abonosByDate = new Map();
+        try {
+            const abonos = await window.db.eleventa_abonos.toArray();
+            abonos.filter(a => !a.cancelado).forEach(a => {
+                const d = a.date_local || a.fecha?.split('T')[0];
+                if (d) abonosByDate.set(d, (abonosByDate.get(d) || 0) + (parseFloat(a.monto) || 0));
+            });
+        } catch (e) { /* tabla puede no existir */ }
 
         const data = activeSales.map(s => ({
             Fecha: s.date,
             Efectivo: s.cash,
             Transferencia: s.transfer,
             Debito: s.debit,
-            Credito: s.credit,
+            Credito_Vales: s.credit,
             Total_Venta: s.total,
+            Credito_Pendiente: creditByDate.get(s.date) || 0,
+            Abonos_Recibidos: abonosByDate.get(s.date) || 0,
+            Ingreso_Real: s.total - (creditByDate.get(s.date) || 0) + (abonosByDate.get(s.date) || 0),
             Utilidad_Eleventa: profitByDate.get(s.date) || 0,
             Notas: s.notes
         }));
@@ -556,4 +631,3 @@ async function exportDailySalesToExcel() {
         alert('Error exportando: ' + e.message);
     }
 }
-
