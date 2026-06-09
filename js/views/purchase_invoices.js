@@ -343,7 +343,7 @@ async function syncFromSII(silent = false) {
         if (totalImported > 0 || totalNewSuppliers > 0) {
             await initDateFilter();
             await populateSupplierFilter();
-            await renderAnalytics();
+            await renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
             await renderPendingDocuments();
             await renderCreditAlerts();
             renderInvoices();
@@ -442,7 +442,7 @@ async function autoSyncSII() {
                 // Refrescar toda la vista
                 await initDateFilter();
                 await populateSupplierFilter();
-                await renderAnalytics();
+                await renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
                 await renderPendingDocuments();
                 await renderCreditAlerts();
                 renderInvoices();
@@ -539,7 +539,7 @@ async function autoSyncSII() {
             // Refrescar datos en la vista
             await initDateFilter();
             await populateSupplierFilter();
-            await renderAnalytics();
+            await renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
             renderInvoices();
         }
     } catch (err) {
@@ -1277,139 +1277,6 @@ async function renderProximosPagos() {
     }
 }
 
-// --- ANALYTICS PANEL ---
-async function renderAnalytics() {
-    const panel = document.getElementById('invoice-analytics');
-    if (!panel) return;
-
-    try {
-        const invoices = await window.db.purchase_invoices.toArray();
-        const active = invoices.filter(i => !i.deleted);
-
-        const now = new Date();
-        // Use hr LOCAL for UTC offset in Chile/Argentina (UTC-3)
-        const realCurrentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const currentYear = now.getFullYear().toString();
-
-        // Read active date filter — analytics should reflect it
-        const dateFilterEl = document.getElementById('filter-date');
-        const activeDateFilter = dateFilterEl ? dateFilterEl.value : 'all';
-
-        // Determine period label and filter prefix
-        let periodPrefix = null;
-        let periodLabel = 'del Mes';
-
-        if (activeDateFilter && activeDateFilter !== 'all') {
-            periodPrefix = activeDateFilter; // e.g. "2026-02"
-            const [y, m] = activeDateFilter.split('-');
-            const d = new Date(parseInt(y), parseInt(m) - 1, 1);
-            periodLabel = `de ${d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`;
-        } else {
-            periodPrefix = realCurrentMonth;
-        }
-
-        // Previous month for comparison
-        const [pYear, pMonth] = periodPrefix.split('-').map(Number);
-        const prevDate = new Date(pYear, pMonth - 2, 1);
-        const lastMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
-
-        // Filter by periods
-        const thisMonth = active.filter(i => i.date && i.date.startsWith(periodPrefix));
-        const prevMonth = active.filter(i => i.date && i.date.startsWith(lastMonth));
-        const thisYear = active.filter(i => i.date && i.date.startsWith(currentYear));
-
-        // Calculate metrics
-        const monthCount = thisMonth.length;
-        const monthTotal = thisMonth.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
-        // Pending includes both 'Pendiente' and 'Abonado' (still have balance)
-        const monthPending = thisMonth.filter(i => i.paymentStatus === 'Pendiente' || i.paymentStatus === 'Abonado');
-        const monthPendingAmount = monthPending.reduce((sum, i) => {
-            const remaining = (parseFloat(i.amount) || 0) - (parseFloat(i.paidAmount) || 0);
-            return sum + Math.max(0, remaining);
-        }, 0);
-
-        const yearTotal = thisYear.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
-        const avgPerInvoice = monthCount > 0 ? monthTotal / monthCount : 0;
-
-        // Cash vs Bank Spent (For actual cashflow management)
-        const getRealPaid = (inv) => {
-            if (inv.paymentStatus === 'Pagado') return parseFloat(inv.amount) || 0;
-            if (inv.paymentStatus === 'Abonado') return parseFloat(inv.paidAmount) || 0;
-            return 0; 
-        };
-        const cashSpentMonth = thisMonth.filter(i => i.paymentMethod === 'Efectivo').reduce((sum, i) => sum + getRealPaid(i), 0);
-        const bankSpentMonth = thisMonth.filter(i => i.paymentMethod === 'Transferencia' || i.paymentMethod === 'Débito').reduce((sum, i) => sum + getRealPaid(i), 0);
-
-        // Credit totals (all-time, not just this month) — includes Abonado
-        const allCreditPending = active.filter(i => i.paymentMethod === 'Crédito' && (i.paymentStatus === 'Pendiente' || i.paymentStatus === 'Abonado'));
-        const creditPendingTotal = allCreditPending.reduce((sum, i) => {
-            const remaining = (parseFloat(i.amount) || 0) - (parseFloat(i.paidAmount) || 0);
-            return sum + Math.max(0, remaining);
-        }, 0);
-        const creditOverdue = allCreditPending.filter(i => {
-            if (!i.dueDate) return false;
-            const due = new Date(i.dueDate);
-            const today = new Date(); today.setHours(0, 0, 0, 0);
-            return due < today;
-        });
-
-        // Comparison with last month
-        const prevMonthCount = prevMonth.length;
-        const countDiff = monthCount - prevMonthCount;
-        const countDiffPercent = prevMonthCount > 0 ? ((countDiff / prevMonthCount) * 100).toFixed(0) : 0;
-        const trendIcon = countDiff > 0 ? '📈' : countDiff < 0 ? '📉' : '➡️';
-        const trendColor = countDiff > 0 ? '#f59e0b' : countDiff < 0 ? '#10b981' : '#6b7280';
-
-        panel.innerHTML = `
-            <div class="card" style="padding:16px; border-left:4px solid var(--primary);">
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Facturas ${periodLabel}</div>
-                <div style="font-size:1.8rem; font-weight:700; color:var(--primary);">${monthCount}</div>
-                <div style="font-size:0.75rem; color:${trendColor}; margin-top:4px;">
-                    ${trendIcon} ${countDiff > 0 ? '+' : ''}${countDiff} vs mes anterior
-                </div>
-            </div>
-
-            <div class="card" style="padding:16px; border-left:4px solid #10b981;">
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Total ${periodLabel}</div>
-                <div style="font-size:1.5rem; font-weight:700; color:#10b981;">${formatCurrency(monthTotal)}</div>
-                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
-                    Promedio: ${formatCurrency(avgPerInvoice)}
-                </div>
-            </div>
-
-            <div class="card" style="padding:16px; border-left:4px solid #f59e0b;">
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Pendientes ${periodLabel}</div>
-                <div style="font-size:1.5rem; font-weight:700; color:#f59e0b;">${monthPending.length}</div>
-                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
-                    ${formatCurrency(monthPendingAmount)}
-                </div>
-            </div>
-
-            <div class="card" style="padding:16px; border-left:4px solid #d97706;">
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">💳 Crédito Pendiente</div>
-                <div style="font-size:1.5rem; font-weight:700; color:#d97706;">${formatCurrency(creditPendingTotal)}</div>
-                <div style="font-size:0.75rem; color:${creditOverdue.length > 0 ? '#dc2626' : 'var(--text-muted)'}; margin-top:4px; font-weight:${creditOverdue.length > 0 ? '700' : '400'};">
-                    ${creditOverdue.length > 0 ? `🚨 ${creditOverdue.length} vencida${creditOverdue.length > 1 ? 's' : ''}` : `${allCreditPending.length} facturas`}
-                </div>
-            </div>
-
-            <div class="card" style="padding:16px; border-left:4px solid #6366f1;">
-                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Flujo de Caja ${periodLabel}</div>
-                <div style="font-size:1rem; font-weight:700; color:#059669; display:flex; align-items:center; gap:6px;">
-                    <i class="ph ph-money"></i> Efectivo: ${formatCurrency(cashSpentMonth)}
-                </div>
-                <div style="font-size:1rem; font-weight:700; color:#4f46e5; display:flex; align-items:center; gap:6px; margin-top:4px;">
-                    <i class="ph ph-bank"></i> Banco: ${formatCurrency(bankSpentMonth)}
-                </div>
-            </div>
-        `;
-
-    } catch (e) {
-        console.error("Error rendering analytics:", e);
-        panel.innerHTML = `<div style="color:var(--error); padding:12px;">Error cargando estadísticas</div>`;
-    }
-}
-
 // --- PENDING DOCUMENTS ALERT PANEL ---
 async function renderPendingDocuments() {
     const panel = document.getElementById('pending-docs-alert');
@@ -1657,7 +1524,7 @@ async function renderCreditAlerts() {
                             paidAmount: existing.amount // Mark as fully paid
                         });
                         await renderCreditAlerts();
-                        await renderAnalytics();
+                        await renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
                         renderInvoices();
                     } catch (err) { alert('Error: ' + err.message); }
                 }
@@ -1760,7 +1627,7 @@ async function renderCreditAlerts() {
 
                         overlay.remove();
                         await renderCreditAlerts();
-                        await renderAnalytics();
+                        await renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
                         renderInvoices();
                     } catch (err) {
                         overlay.remove();
@@ -2064,7 +1931,7 @@ async function handleDeleteInvoice(id) {
     if (confirm('¿Eliminar esta factura?')) {
         try {
             await window.DataManager.deleteAndSync('purchase_invoices', id);
-            renderAnalytics();
+            renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
             renderPendingDocuments();
             renderInvoices();
         } catch (e) { alert('Error: ' + e.message); }
@@ -2581,9 +2448,8 @@ async function showInvoiceModal(invoiceToEdit = null) {
             };
 
             // ── Guardar usando TransactionManager para atomicidad ──────────────
-            // Si renderAnalytics() u otro paso posterior falla, la factura
-            // igual queda guardada (la transacción Dexie ya hizo commit).
-            // Esto reemplaza el patrón inseguro: guardar → renderAnalytics() sin rollback.
+            // Si el refresh posterior falla, la factura igual queda guardada
+            // (la transacción Dexie ya hizo commit).
             const saveOp = {
                 table: 'purchase_invoices',
                 action: 'put',
@@ -2602,7 +2468,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
             // Siempre refrescar el filtro de fechas (tanto en nueva como en edición)
             await initDateFilter();
             window.state.invoicesPage = 1;
-            renderAnalytics();
+            renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
             renderPendingDocuments();
             renderInvoices();
             await renderCreditAlerts();
