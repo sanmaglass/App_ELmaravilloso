@@ -59,6 +59,11 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
             <!-- Injected by renderContadorDigital() -->
         </div>
 
+        <!-- PROXIMOS PAGOS (calendario consolidado) -->
+        <div id="proximos-pagos-panel" style="margin-bottom:24px;">
+            <!-- Injected by renderProximosPagos() -->
+        </div>
+
         <!-- 📊 ANALYTICS PANEL (cards resumen) -->
         <div id="invoice-analytics" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;">
             <!-- Stats cards will be injected here -->
@@ -132,6 +137,7 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     await initDateFilter();
     await populateSupplierFilter();
     await renderContadorDigital();
+    await renderProximosPagos();
     await renderAnalytics();
     await renderPendingDocuments();
     await renderCreditAlerts();
@@ -178,7 +184,11 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     document.getElementById('invoice-search').addEventListener('input', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('filter-tipo-doc').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('filter-status').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
-    document.getElementById('filter-date').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
+    document.getElementById('filter-date').addEventListener('change', (e) => {
+        window.state.invoicesPage = 1;
+        renderInvoices();
+        renderContadorDigital(e.target.value !== 'all' ? e.target.value : null);
+    });
     document.getElementById('filter-supplier').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('btn-export-excel').addEventListener('click', exportInvoicesToExcel);
 
@@ -208,6 +218,7 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
             // NO llamar initDateFilter aquí — los meses solo se actualizan al guardar/cargar
             renderAnalytics();
             renderPendingDocuments();
+            renderProximosPagos();
             renderInvoices();
             renderCreditAlerts();
             populateSupplierFilter();
@@ -594,8 +605,10 @@ async function initDateFilter() {
             filter.appendChild(option);
         });
 
-        // Por defecto mostrar todo el historial para no generar confusión (UX)
-        filter.value = 'all';
+        // Por defecto mostrar el mes actual
+        const now2 = new Date();
+        const mesActual = `${now2.getFullYear()}-${String(now2.getMonth() + 1).padStart(2, '0')}`;
+        filter.value = mesActual;
 
     } catch (e) { console.error('Error init date filter', e); }
 }
@@ -617,6 +630,85 @@ async function precargarVentasBackground() {
             console.log('[SII] Ventas precargadas (solo si caché expirado)');
         }).catch(e => console.warn('Error precarga ventas:', e.message));
     } catch (e) { /* silent */ }
+}
+
+// --- CALENDARIO TRIBUTARIO CHILE ---
+// F29 vence el día 12 del mes siguiente (PYME declaración electrónica)
+function getF29Vencimiento(periodo) {
+    const [y, m] = periodo.split('-').map(Number);
+    // new Date(y, m, 12) → mes m es 0-based en JS, pero m ya viene como 1-based del período
+    // Así que m = mes siguiente (correcto: F29 de junio vence en julio = mes index 6)
+    const vence = new Date(y, m, 12);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    vence.setHours(0, 0, 0, 0);
+    const diffMs = vence - hoy;
+    const diffDias = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    return { fecha: vence, diasRestantes: diffDias };
+}
+
+function textoVencimientoF29(periodo) {
+    const { fecha, diasRestantes } = getF29Vencimiento(periodo);
+    const fechaStr = fecha.toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' });
+    if (diasRestantes < 0) {
+        return { texto: `VENCIDO hace ${Math.abs(diasRestantes)} dias (${fechaStr})`, urgente: true, color: '#dc2626' };
+    } else if (diasRestantes === 0) {
+        return { texto: `Vence HOY (${fechaStr})`, urgente: true, color: '#dc2626' };
+    } else if (diasRestantes <= 3) {
+        return { texto: `Vence el ${fechaStr} · Faltan ${diasRestantes} dias`, urgente: true, color: '#dc2626' };
+    } else if (diasRestantes <= 5) {
+        return { texto: `Vence el ${fechaStr} · Faltan ${diasRestantes} dias`, urgente: true, color: '#ea580c' };
+    } else {
+        return { texto: `Vence el ${fechaStr} · Faltan ${diasRestantes} dias`, urgente: false, color: '#6b7280' };
+    }
+}
+
+// --- ALERTAS TRIBUTARIAS PERSONALIZADAS ---
+function dispararAlertasTributarias(params) {
+    const { periodo, f29, remAnterior, ivaCredito, ivaDebito, ventas, ppm } = params;
+    const now = new Date();
+    const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    if (periodo !== mesActual) return; // solo alertas para el mes actual
+
+    const { diasRestantes } = getF29Vencimiento(periodo);
+
+    // Debounce: no disparar mas de una vez por hora
+    const debounceKey = `sii_alerta_disparada_${periodo}`;
+    const ultimaAlerta = parseInt(localStorage.getItem(debounceKey) || '0');
+    if (Date.now() - ultimaAlerta < 3600 * 1000) return;
+    localStorage.setItem(debounceKey, String(Date.now()));
+
+    const fmt = n => '$' + Math.abs(n).toLocaleString('es-CL');
+    const [pY, pM] = periodo.split('-').map(Number);
+    const mesNombre = new Date(pY, pM - 1, 1).toLocaleDateString('es-CL', { month: 'long' });
+
+    // Alerta 1: recordatorio de vencimiento (solo si quedan 10 dias o menos)
+    if (diasRestantes >= 0 && diasRestantes <= 10 && f29 > 0) {
+        const tipo = diasRestantes <= 3 ? 'error' : 'info';
+        if (window.AppNotify?.playChime) {
+            window.AppNotify.playChime(diasRestantes <= 3 ? 'urgent' : 'alert');
+        }
+        if (window.Sync?.showToast) {
+            window.Sync.showToast(
+                `Luis, tu F29 de ${mesNombre} va en ${fmt(f29)}. Vence en ${diasRestantes} dias.`,
+                tipo
+            );
+        }
+    }
+
+    // Alerta 2: sugerencia de compras para reducir IVA
+    if (f29 > 50000 && ventas.neto > 0) {
+        const ivaNetoActual = Math.max(0, ivaDebito - ivaCredito - (remAnterior || 0));
+        const comprasParaCero = Math.ceil(ivaNetoActual / 0.19);
+        if (comprasParaCero > 0 && window.Sync?.showToast) {
+            setTimeout(() => {
+                window.Sync.showToast(
+                    `Si compras ${fmt(comprasParaCero)} mas con factura, el IVA queda en $0.`,
+                    'info'
+                );
+            }, 3000); // delay para no solapar con la primera alerta
+        }
+    }
 }
 
 // --- CONTADOR DIGITAL TRIBUTARIO ---
@@ -721,13 +813,11 @@ async function renderContadorDigital(periodoOverride = null) {
         let ventasError = false;
         let ventasCargando = false;
 
-        // Intento 1: caché local v4 o v3 (instantáneo)
         const ventasCache = localStorage.getItem(`sii_ventas_v4_${currentPeriodo}`)
             || localStorage.getItem(`sii_ventas_v3_${currentPeriodo}`);
         if (ventasCache) {
             ventas = JSON.parse(ventasCache);
         } else if (window.SII_API.isConfigured() && !window.SII_API._apiLimitExceeded && window.SII_API.getDailyUsage().remaining > 0) {
-            // No hay caché, SII configurado y hay cupo diario: lanzar fetch en background
             ventasCargando = true;
             window.SII_API.obtenerTotalesVentas(currentPeriodo).then(() => {
                 renderContadorDigital(currentPeriodo);
@@ -738,15 +828,40 @@ async function renderContadorDigital(periodoOverride = null) {
         } else if (window.SII_API._apiLimitExceeded) {
             ventasError = true;
         }
-        // Si SII no está configurado o sin cupo diario, muestra ventas en 0 (sin spinner)
 
-        const ivaDebito = ventas.iva;       // IVA Débito real del SII
-        const ivaCredito = totalIva;         // IVA Crédito de compras
-        const balanceIva = ivaDebito - ivaCredito;  // Lo que debes pagar
+        const ivaDebito = ventas.iva;
+        const ivaCredito = totalIva;
         const tieneVentas = ventas.total > 0 || ventas.facturas > 0 || ventas.boletas > 0;
 
-        // PPM: se calcula sobre el neto de VENTAS, no de compras
+        // --- REMANENTE IVA del mes anterior ---
+        const remaCache = localStorage.getItem(`sii_remanente_iva_v1_${prevPeriodo}`);
+        const remMesAnterior = remaCache ? (JSON.parse(remaCache).remanente || 0) : 0;
+
+        // Balance REAL = Débito - Crédito - Remanente arrastrado
+        const balanceIvaReal = ivaDebito - ivaCredito - remMesAnterior;
+
+        // PPM: 1% sobre neto de VENTAS
         const ppmSobreVentas = Math.round(ventas.neto * 0.01);
+
+        // F29 estimado con remanente aplicado
+        const f29Estimado = Math.max(0, balanceIvaReal) + ppmSobreVentas;
+
+        // Si el mes ya cerró y hay remanente nuevo, guardarlo
+        const { diasRestantes: diasF29 } = getF29Vencimiento(currentPeriodo);
+        if (diasF29 < -1 && balanceIvaReal < 0) {
+            const remKey = `sii_remanente_iva_v1_${currentPeriodo}`;
+            if (!localStorage.getItem(remKey)) {
+                localStorage.setItem(remKey, JSON.stringify({
+                    periodo: currentPeriodo,
+                    remanente: Math.abs(balanceIvaReal),
+                    calculadoEl: new Date().toISOString().substring(0, 10),
+                    ivaDebito, ivaCredito
+                }));
+            }
+        }
+
+        // Vencimiento F29
+        const venc = textoVencimientoF29(currentPeriodo);
 
         // Selector de meses
         const mesesOptions = mesesDisponibles.map(m => {
@@ -757,28 +872,47 @@ async function renderContadorDigital(periodoOverride = null) {
 
         const fmt = (n) => '$' + Math.abs(n).toLocaleString('es-CL');
 
-        // Total F29 estimado = IVA neto + PPM
-        const f29Estimado = Math.max(0, balanceIva) + ppmSobreVentas;
-
         // Balance visual
         let bMsg, bColor, bBg, bIcon;
         if (ventasCargando) { bMsg='Cargando ventas del SII...'; bColor='#3b82f6'; bBg='rgba(59,130,246,0.06)'; bIcon='ph-spinner-gap ph-spin'; }
-        else if (ventasError && window.SII_API._apiLimitExceeded) { bMsg='Cupo mensual de API agotado (50/50) — ventas no disponibles hasta el próximo mes'; bColor='#f59e0b'; bBg='rgba(245,158,11,0.06)'; bIcon='ph-warning'; }
+        else if (ventasError && window.SII_API._apiLimitExceeded) { bMsg='Cupo mensual de API agotado (50/50)'; bColor='#f59e0b'; bBg='rgba(245,158,11,0.06)'; bIcon='ph-warning'; }
         else if (ventasError) { bMsg='No se pudieron cargar ventas del SII'; bColor='#f59e0b'; bBg='rgba(245,158,11,0.06)'; bIcon='ph-warning'; }
         else if (!tieneVentas) { bMsg='Sin ventas registradas en el SII para este mes'; bColor='#6b7280'; bBg='rgba(107,114,128,0.06)'; bIcon='ph-info'; }
         else if (f29Estimado > 0) { bMsg=`Impuesto estimado (F29): ${fmt(f29Estimado)}`; bColor='#dc2626'; bBg='rgba(220,38,38,0.06)'; bIcon='ph-arrow-up-right'; }
-        else { bMsg=`Remanente IVA a favor: ${fmt(Math.abs(balanceIva))}`; bColor='#16a34a'; bBg='rgba(22,163,106,0.06)'; bIcon='ph-arrow-down-right'; }
+        else { bMsg=`Remanente IVA a favor: ${fmt(Math.abs(balanceIvaReal))}`; bColor='#16a34a'; bBg='rgba(22,163,106,0.06)'; bIcon='ph-arrow-down-right'; }
 
         let tip = '';
-        if (tieneVentas && f29Estimado > 50000) tip = `IVA: ${fmt(Math.max(0, balanceIva))} + PPM: ${fmt(ppmSobreVentas)} = ${fmt(f29Estimado)} · Podrías adelantar compras con factura para reducir el IVA.`;
-        else if (tieneVentas && balanceIva < 0) tip = `Remanente de ${fmt(Math.abs(balanceIva))} se arrastra al mes siguiente. PPM: ${fmt(ppmSobreVentas)}.`;
-        else if (tieneVentas) tip = `IVA: ${fmt(Math.max(0, balanceIva))} + PPM: ${fmt(ppmSobreVentas)}`;
+        if (tieneVentas && f29Estimado > 50000) tip = `IVA: ${fmt(Math.max(0, balanceIvaReal))} + PPM: ${fmt(ppmSobreVentas)} = ${fmt(f29Estimado)}`;
+        else if (tieneVentas && balanceIvaReal < 0) tip = `Remanente de ${fmt(Math.abs(balanceIvaReal))} se arrastra al mes siguiente. PPM: ${fmt(ppmSobreVentas)}.`;
+        else if (tieneVentas) tip = `IVA: ${fmt(Math.max(0, balanceIvaReal))} + PPM: ${fmt(ppmSobreVentas)}`;
 
         // Pendientes
         const pendMonto = del_mes.filter(i => i.paymentStatus === 'Pendiente' || i.paymentStatus === 'Abonado')
             .reduce((s, i) => s + Math.max(0, (parseFloat(i.amount) || 0) - (parseFloat(i.paidAmount) || 0)), 0);
         const pendCount = del_mes.filter(i => i.paymentStatus === 'Pendiente').length;
         const provCount = new Set(del_mes.map(i => i.siiRutProveedor).filter(Boolean)).size;
+
+        // Breakeven: cuánto comprar con factura para IVA = 0
+        const ivaNetoActual = Math.max(0, balanceIvaReal);
+        const comprasParaCero = ivaNetoActual > 0 ? Math.ceil(ivaNetoActual / 0.19) : 0;
+
+        // Desglose de facturas para el panel expandible
+        const escHTML = (s) => {
+            const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML;
+        };
+        const desgloseCompras = del_mes.map(inv => {
+            const signo = inv.siiTipoDoc === 61 ? '-' : '+';
+            const nombre = inv.supplierName || inv.siiRutProveedor || 'Proveedor';
+            const folio = inv.siiFolio || inv.invoiceNumber || '?';
+            return `<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed var(--border);">
+                <span style="color:var(--text-muted); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    ${signo} ${escHTML(nombre)} #${escHTML(String(folio))}
+                </span>
+                <span style="font-weight:600; color:${inv.siiTipoDoc === 61 ? '#dc2626' : '#16a34a'}; white-space:nowrap; padding-left:8px;">
+                    ${signo}${fmt(inv.siiMontoIva || 0)}
+                </span>
+            </div>`;
+        }).join('');
 
         panel.innerHTML = `
             <div class="sii-panel">
@@ -797,12 +931,16 @@ async function renderContadorDigital(periodoOverride = null) {
                     <div style="flex:1; min-width:180px;">
                         <div style="font-weight:800; font-size:1rem; color:${bColor};">${bMsg}</div>
                         ${tip ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">${tip}</div>` : ''}
+                        <div style="font-size:0.78rem; font-weight:600; color:${venc.color}; margin-top:4px; display:flex; align-items:center; gap:4px;">
+                            <i class="ph ${venc.urgente ? 'ph-warning-circle' : 'ph-calendar-check'}"></i> ${venc.texto}
+                        </div>
+                        ${remMesAnterior > 0 ? `<div style="font-size:0.78rem; color:#2563eb; margin-top:2px;"><i class="ph ph-arrow-bend-down-right"></i> Remanente arrastrado: ${fmt(remMesAnterior)}</div>` : ''}
                     </div>
                     ${tieneVentas || ventasError ? `
                     <div class="sii-balance-stats">
                         <div><div class="lbl">Ventas Neto</div><div class="val" style="color:var(--text-primary);">${fmt(ventas.neto)}</div></div>
-                        <div><div class="lbl">IVA Débito</div><div class="val" style="color:#dc2626;">${fmt(ivaDebito)}</div></div>
-                        <div><div class="lbl">IVA Crédito</div><div class="val" style="color:#16a34a;">${fmt(ivaCredito)}</div></div>
+                        <div><div class="lbl">IVA Debito</div><div class="val" style="color:#dc2626;">${fmt(ivaDebito)}</div></div>
+                        <div><div class="lbl">IVA Credito</div><div class="val" style="color:#16a34a;">${fmt(ivaCredito)}</div></div>
                         <div><div class="lbl">PPM</div><div class="val" style="color:#f59e0b;">${fmt(ppmSobreVentas)}</div></div>
                     </div>` : ''}
                 </div>
@@ -814,7 +952,7 @@ async function renderContadorDigital(periodoOverride = null) {
                         <div class="sub">${diffNeto !== null ? `${diffNeto > 0 ? '+' : ''}${diffNeto}% vs mes anterior` : 'Sin datos previos'}</div>
                     </div>
                     <div class="sii-cell">
-                        <div class="lbl">IVA Crédito Fiscal</div>
+                        <div class="lbl">IVA Credito Fiscal</div>
                         <div class="val" style="color:#16a34a;">${totalIva < 0 ? '-' : ''}${fmt(totalIva)}</div>
                         <div class="sub">IVA recuperable</div>
                     </div>
@@ -839,16 +977,296 @@ async function renderContadorDigital(periodoOverride = null) {
                         <div class="sub">RUTs distintos</div>
                     </div>
                 </div>
+
+                <!-- DESGLOSE F29 EXPANDIBLE -->
+                <div style="border-top:1px solid var(--border);">
+                    <button id="btn-toggle-desglose" style="width:100%; padding:12px 20px; background:none; border:none;
+                        cursor:pointer; display:flex; justify-content:space-between; align-items:center;
+                        font-size:0.85rem; font-weight:600; color:var(--text-muted);">
+                        <span><i class="ph ph-list-numbers"></i> Ver desglose del F29</span>
+                        <i class="ph ph-caret-down" id="desglose-caret"></i>
+                    </button>
+                    <div id="sii-desglose-panel" style="display:none; padding:0 20px 20px; font-size:0.82rem;">
+                        <!-- IVA Credito: facturas de compra -->
+                        <div style="margin-bottom:12px;">
+                            <div style="font-weight:700; color:#16a34a; margin-bottom:6px;">
+                                <i class="ph ph-shopping-cart"></i> IVA Credito (compras) — ${fmt(ivaCredito)}
+                            </div>
+                            ${del_mes.length === 0 ? '<div style="color:var(--text-muted);">Sin facturas de compra este mes</div>' : desgloseCompras}
+                        </div>
+                        <!-- IVA Debito: ventas SII -->
+                        <div style="margin-bottom:12px;">
+                            <div style="font-weight:700; color:#dc2626; margin-bottom:6px;">
+                                <i class="ph ph-storefront"></i> IVA Debito (ventas SII) — ${fmt(ivaDebito)}
+                            </div>
+                            <div style="display:flex; justify-content:space-between; padding:4px 0; color:var(--text-muted);">
+                                <span>${ventas.facturas || 0} facturas · ${ventas.boletas || 0} boletas${ventas.notasCredito > 0 ? ` · ${ventas.notasCredito} NC` : ''}</span>
+                                <span style="font-weight:600; color:#dc2626;">${fmt(ivaDebito)}</span>
+                            </div>
+                        </div>
+                        ${remMesAnterior > 0 ? `
+                        <div style="margin-bottom:12px;">
+                            <div style="font-weight:700; color:#2563eb; margin-bottom:6px;">
+                                <i class="ph ph-arrow-bend-down-right"></i> Remanente arrastrado (${prevPeriodo})
+                            </div>
+                            <div style="color:var(--text-muted);">Se descuenta del IVA Debito: -${fmt(remMesAnterior)}</div>
+                        </div>` : ''}
+                        <!-- Balance total -->
+                        <div style="background:var(--bg-input); border-radius:8px; padding:10px 14px; display:flex; flex-direction:column; gap:4px;">
+                            <div style="display:flex; justify-content:space-between;">
+                                <span>IVA Debito</span><span style="color:#dc2626;">${fmt(ivaDebito)}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between;">
+                                <span>- IVA Credito</span><span style="color:#16a34a;">${fmt(ivaCredito)}</span>
+                            </div>
+                            ${remMesAnterior > 0 ? `<div style="display:flex; justify-content:space-between;">
+                                <span>- Remanente anterior</span><span style="color:#2563eb;">${fmt(remMesAnterior)}</span>
+                            </div>` : ''}
+                            <div style="display:flex; justify-content:space-between;">
+                                <span>+ PPM (1%)</span><span style="color:#f59e0b;">${fmt(ppmSobreVentas)}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-weight:800;
+                                border-top:1px solid var(--border); padding-top:6px; margin-top:4px; font-size:1rem;">
+                                <span>Total F29 estimado</span>
+                                <span style="color:${f29Estimado > 0 ? '#dc2626' : '#16a34a'};">${f29Estimado > 0 ? '' : '-'}${fmt(f29Estimado)}</span>
+                            </div>
+                        </div>
+                        ${comprasParaCero > 0 && tieneVentas ? `
+                        <div style="margin-top:10px; background:#eff6ff; border-radius:8px; padding:10px;
+                            font-size:0.8rem; color:#1e40af; border:1px solid #bfdbfe;">
+                            <i class="ph ph-lightbulb"></i> Luis, si compras <b>${fmt(comprasParaCero)}</b> mas con factura, el IVA queda en $0. Solo pagarias PPM (${fmt(ppmSobreVentas)}).
+                        </div>` : ''}
+                        ${balanceIvaReal < 0 ? `
+                        <div style="margin-top:10px; background:#f0fdf4; border-radius:8px; padding:10px;
+                            font-size:0.8rem; color:#166534; border:1px solid #bbf7d0;">
+                            <i class="ph ph-piggy-bank"></i> Tienes ${fmt(Math.abs(balanceIvaReal))} de remanente IVA a favor. Se arrastra al mes siguiente.
+                        </div>` : ''}
+                    </div>
+                </div>
             </div>
         `;
 
-        // Listener para cambiar de mes
+        // Listener para cambiar de mes (dentro del contador)
         document.getElementById('contador-periodo-select')?.addEventListener('change', (e) => {
             renderContadorDigital(e.target.value);
         });
 
+        // Toggle desglose
+        document.getElementById('btn-toggle-desglose')?.addEventListener('click', () => {
+            const desglosePanel = document.getElementById('sii-desglose-panel');
+            const caret = document.getElementById('desglose-caret');
+            if (!desglosePanel) return;
+            const abierto = desglosePanel.style.display !== 'none';
+            desglosePanel.style.display = abierto ? 'none' : 'block';
+            if (caret) caret.className = abierto ? 'ph ph-caret-down' : 'ph ph-caret-up';
+        });
+
+        // Alertas tributarias (solo mes actual, con debounce)
+        if (tieneVentas) {
+            dispararAlertasTributarias({
+                periodo: currentPeriodo, f29: f29Estimado, remAnterior: remMesAnterior,
+                ivaCredito, ivaDebito, ventas, ppm: ppmSobreVentas
+            });
+        }
+
     } catch (e) {
         console.error('Error renderContadorDigital:', e);
+        panel.innerHTML = '';
+    }
+}
+
+// --- PROXIMOS PAGOS (Calendario Consolidado) ---
+async function renderProximosPagos() {
+    const panel = document.getElementById('proximos-pagos-panel');
+    if (!panel) return;
+
+    try {
+        const invoices = await window.db.purchase_invoices.toArray();
+        const suppliers = await window.db.suppliers.toArray();
+        const supplierMap = {};
+        suppliers.forEach(s => { if (!s.deleted) supplierMap[s.id] = s.name || s.rut || 'Proveedor'; });
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const now = new Date();
+        const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        // 1. Facturas a crédito pendientes con fecha de vencimiento
+        const creditPending = invoices.filter(i =>
+            !i.deleted &&
+            i.paymentMethod === 'Crédito' &&
+            (i.paymentStatus === 'Pendiente' || i.paymentStatus === 'Abonado') &&
+            i.dueDate
+        );
+
+        // Construir lista de eventos
+        const eventos = [];
+
+        creditPending.forEach(inv => {
+            const due = new Date(inv.dueDate);
+            due.setHours(0, 0, 0, 0);
+            const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+            const remaining = Math.max(0, (parseFloat(inv.amount) || 0) - (parseFloat(inv.paidAmount) || 0));
+            const nombre = supplierMap[inv.supplierId] || inv.supplierName || inv.siiRutProveedor || 'Proveedor';
+
+            eventos.push({
+                tipo: 'factura',
+                fecha: due,
+                dias: diff,
+                monto: remaining,
+                label: nombre,
+                detalle: `#${inv.siiFolio || inv.invoiceNumber || '?'} · ${inv.creditDays || '?'}d credito`,
+                vencida: diff < 0,
+                hoy: diff === 0,
+                id: inv.id
+            });
+        });
+
+        // 2. F29 del mes actual
+        const vencF29 = getF29Vencimiento(mesActual);
+        // Leer F29 estimado del localStorage o calcular rápido
+        const ventasCache = localStorage.getItem(`sii_ventas_v4_${mesActual}`) || localStorage.getItem(`sii_ventas_v3_${mesActual}`);
+        let f29Monto = 0;
+        if (ventasCache) {
+            const ventas = JSON.parse(ventasCache);
+            const compras = invoices.filter(i => !i.deleted && i.siiImportado && i.date && i.date.startsWith(mesActual));
+            let ivaCredito = 0;
+            compras.forEach(inv => {
+                const iva = inv.siiMontoIva || 0;
+                ivaCredito += inv.siiTipoDoc === 61 ? -iva : iva;
+            });
+            const remCache = localStorage.getItem(`sii_remanente_iva_v1_${
+                new Date(now.getFullYear(), now.getMonth() - 1, 1).getFullYear()}-${
+                String(new Date(now.getFullYear(), now.getMonth() - 1, 1).getMonth() + 1).padStart(2, '0')}`);
+            const rem = remCache ? (JSON.parse(remCache).remanente || 0) : 0;
+            const balance = (ventas.iva || 0) - ivaCredito - rem;
+            const ppm = Math.round((ventas.neto || 0) * 0.01);
+            f29Monto = Math.max(0, balance) + ppm;
+        }
+
+        eventos.push({
+            tipo: 'f29',
+            fecha: vencF29.fecha,
+            dias: vencF29.diasRestantes,
+            monto: f29Monto,
+            label: 'Declaracion F29 (IVA + PPM)',
+            detalle: `Periodo ${mesActual}`,
+            vencida: vencF29.diasRestantes < 0,
+            hoy: vencF29.diasRestantes === 0,
+            id: 'f29'
+        });
+
+        // 3. F29 del mes anterior si aún no vence
+        const mesAnterior = `${new Date(now.getFullYear(), now.getMonth() - 1, 1).getFullYear()}-${String(new Date(now.getFullYear(), now.getMonth() - 1, 1).getMonth() + 1).padStart(2, '0')}`;
+        const vencF29Prev = getF29Vencimiento(mesAnterior);
+        if (vencF29Prev.diasRestantes >= 0) {
+            eventos.push({
+                tipo: 'f29',
+                fecha: vencF29Prev.fecha,
+                dias: vencF29Prev.diasRestantes,
+                monto: 0,
+                label: 'Declaracion F29 (IVA + PPM)',
+                detalle: `Periodo ${mesAnterior}`,
+                vencida: false,
+                hoy: vencF29Prev.diasRestantes === 0,
+                id: 'f29_prev'
+            });
+        }
+
+        // Ordenar por fecha (vencidas primero, luego cronológico)
+        eventos.sort((a, b) => {
+            if (a.vencida && !b.vencida) return -1;
+            if (!a.vencida && b.vencida) return 1;
+            return a.fecha - b.fecha;
+        });
+
+        // Filtrar: mostrar vencidas + próximos 45 días
+        const limite = new Date(today);
+        limite.setDate(limite.getDate() + 45);
+        const visibles = eventos.filter(e => e.vencida || e.fecha <= limite);
+
+        if (visibles.length === 0) {
+            panel.innerHTML = '';
+            return;
+        }
+
+        const totalProximo = visibles.filter(e => !e.vencida).reduce((s, e) => s + e.monto, 0);
+        const totalVencido = visibles.filter(e => e.vencida).reduce((s, e) => s + e.monto, 0);
+        const fmt = n => '$' + Math.abs(n).toLocaleString('es-CL');
+        const escHTML = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
+
+        const formatFecha = (fecha) => fecha.toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
+
+        const renderEvento = (ev) => {
+            const esF29 = ev.tipo === 'f29';
+            let borderColor, bgColor, icon, diasTxt;
+
+            if (ev.vencida) {
+                borderColor = '#dc2626'; bgColor = 'rgba(220,38,38,0.04)';
+                icon = esF29 ? 'ph-seal-warning' : 'ph-warning-circle';
+                diasTxt = `<span style="color:#dc2626; font-weight:700;">VENCIDO hace ${Math.abs(ev.dias)} dias</span>`;
+            } else if (ev.hoy) {
+                borderColor = '#dc2626'; bgColor = 'rgba(220,38,38,0.04)';
+                icon = esF29 ? 'ph-calendar-x' : 'ph-alarm';
+                diasTxt = `<span style="color:#dc2626; font-weight:700;">HOY</span>`;
+            } else if (ev.dias <= 3) {
+                borderColor = '#ea580c'; bgColor = 'rgba(234,88,12,0.04)';
+                icon = esF29 ? 'ph-calendar-check' : 'ph-clock-countdown';
+                diasTxt = `<span style="color:#ea580c; font-weight:600;">${ev.dias} dias</span>`;
+            } else if (ev.dias <= 7) {
+                borderColor = '#f59e0b'; bgColor = 'rgba(245,158,11,0.04)';
+                icon = esF29 ? 'ph-calendar-check' : 'ph-clock';
+                diasTxt = `<span style="color:#f59e0b;">${ev.dias} dias</span>`;
+            } else {
+                borderColor = '#6b7280'; bgColor = 'transparent';
+                icon = esF29 ? 'ph-calendar' : 'ph-receipt';
+                diasTxt = `<span style="color:#6b7280;">${ev.dias} dias</span>`;
+            }
+
+            return `
+                <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; border-left:3px solid ${borderColor}; background:${bgColor}; border-radius:0 8px 8px 0; margin-bottom:6px;">
+                    <div style="width:36px; height:36px; border-radius:50%; background:${esF29 ? 'linear-gradient(135deg,#1e293b,#334155)' : borderColor}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <i class="ph ${icon}" style="color:white; font-size:1.1rem;"></i>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-weight:700; font-size:0.88rem; color:var(--text-primary); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                            ${escHTML(ev.label)}
+                            ${esF29 ? '<span style="background:#1e293b; color:white; font-size:0.6rem; padding:2px 6px; border-radius:4px; font-weight:700;">SII</span>' : ''}
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                            ${escHTML(ev.detalle)}
+                        </div>
+                    </div>
+                    <div style="text-align:right; flex-shrink:0;">
+                        <div style="font-weight:800; font-size:0.95rem; color:${borderColor}; font-variant-numeric:tabular-nums;">${ev.monto > 0 ? fmt(ev.monto) : '-'}</div>
+                        <div style="font-size:0.72rem; margin-top:2px;">${diasTxt}</div>
+                        <div style="font-size:0.68rem; color:var(--text-muted);">${formatFecha(ev.fecha)}</div>
+                    </div>
+                </div>
+            `;
+        };
+
+        panel.innerHTML = `
+            <div style="background:var(--bg-card); border:2px solid var(--border); border-radius:16px; overflow:hidden;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; background:linear-gradient(135deg,#0f172a,#1e293b); color:white; flex-wrap:wrap; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <i class="ph ph-calendar-dots" style="font-size:1.2rem;"></i>
+                        <h3 style="margin:0; font-size:1rem; font-weight:700;">Proximos Pagos</h3>
+                    </div>
+                    <div style="display:flex; gap:14px; font-size:0.78rem; opacity:0.9;">
+                        ${totalVencido > 0 ? `<span style="color:#fca5a5;">Vencido: ${fmt(totalVencido)}</span>` : ''}
+                        <span>Por pagar: ${fmt(totalProximo)}</span>
+                        <span>${visibles.length} evento${visibles.length !== 1 ? 's' : ''}</span>
+                    </div>
+                </div>
+                <div style="padding:12px 16px; max-height:400px; overflow-y:auto;">
+                    ${visibles.map(renderEvento).join('')}
+                </div>
+            </div>
+        `;
+
+    } catch (e) {
+        console.error('Error renderProximosPagos:', e);
         panel.innerHTML = '';
     }
 }
