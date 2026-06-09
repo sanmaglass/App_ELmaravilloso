@@ -64,10 +64,7 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
             <!-- Injected by renderProximosPagos() -->
         </div>
 
-        <!-- 📊 ANALYTICS PANEL (cards resumen) -->
-        <div id="invoice-analytics" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;">
-            <!-- Stats cards will be injected here -->
-        </div>
+        <!-- Analytics removido: el Contador Tributario ya cubre estos datos -->
 
         <!-- 🚨 PENDING DOCUMENTS ALERT PANEL -->
         <div id="pending-docs-alert" style="margin-bottom:20px;">
@@ -136,9 +133,10 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     // Initialize component
     await initDateFilter();
     await populateSupplierFilter();
-    await renderContadorDigital();
+    // Sincronizar contador con el mes que el filtro eligió
+    const filterVal = document.getElementById('filter-date')?.value;
+    await renderContadorDigital(filterVal && filterVal !== 'all' ? filterVal : null);
     await renderProximosPagos();
-    await renderAnalytics();
     await renderPendingDocuments();
     await renderCreditAlerts();
     renderInvoices();
@@ -216,7 +214,6 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
             if (!document.getElementById('invoices-list')) return;
             console.log("🔄 Sync update detected: refreshing invoices...");
             // NO llamar initDateFilter aquí — los meses solo se actualizan al guardar/cargar
-            renderAnalytics();
             renderPendingDocuments();
             renderProximosPagos();
             renderInvoices();
