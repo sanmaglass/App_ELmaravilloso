@@ -27,15 +27,15 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .bg-glass { backdrop-filter:blur(10px); background:rgba(255,255,255,0.5); border:1px solid rgba(255,255,255,0.3); }
         body.dark-mode .bg-glass { background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1); }
 
-        .premium-card { background:var(--bg-card); border-radius:18px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,0.05); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); border:1px solid rgba(0,0,0,0.02); }
-        .premium-card:hover { transform: translateY(-4px); box-shadow: 0 15px 35px rgba(0,0,0,0.08); }
+        .premium-card { background:var(--bg-card); border-radius:18px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,0.05); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); border:1px solid rgba(0,0,0,0.02); }
+        .premium-card:hover { transform: translateY(-2px); box-shadow: 0 15px 35px rgba(0,0,0,0.08); }
 
         /* KPI Card Animated */
         .kpi-card { position:relative; overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .kpi-card:hover { transform:translateY(-5px) scale(1.02); box-shadow:0 12px 40px rgba(0,0,0,0.1); }
+        .kpi-card:hover { transform:translateY(-2px) scale(1.01); box-shadow:0 12px 40px rgba(0,0,0,0.1); }
         
-        .stat-value-mega { font-size: clamp(2.5rem, 5vw, 4rem); line-height: 1; font-weight: 900; letter-spacing: -2px; }
-        .stat-label-premium { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 8px; }
+        .stat-value-mega { font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1; font-weight: 900; letter-spacing: -1px; }
+        .stat-label-premium { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 4px; }
 
         /* Card animation */
         @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
@@ -45,23 +45,23 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .delay-3 { animation-delay: 0.3s; }
 
         /* ---- Dash Header responsive ---- */
-        .dash-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; flex-wrap:wrap; gap:1rem; }
+        .dash-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem; }
         .dash-header-btns { display:flex; gap:0.75rem; }
 
         /* ---- PL Chart container ---- */
         .pl-chart-grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
         }
 
         /* ---- Bottom 2-widget row ---- */
         .bottom-widgets-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
         }
 
         /* ---- MOBILE OVERRIDES ---- */
@@ -70,8 +70,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             .pl-chart-grid { grid-template-columns: 1fr; }
             .bottom-widgets-grid { grid-template-columns: 1fr; }
             .dash-header { margin-bottom: 1rem; }
-            .premium-card, .card { padding: 16px !important; }
-            .text-3xl { font-size: 1.5rem !important; }
+            .premium-card, .card { padding: 14px !important; }
+            .text-3xl { font-size: 1.3rem !important; }
             
             /* AI Panel Mobile Adjustments */
             .predict-header { flex-direction: column; align-items: flex-start !important; gap: 16px; }
@@ -177,12 +177,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }
 
         /* ============== CEO COCKPIT ============== */
-        .ceo-row-3 { display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; }
+        .ceo-row-3 { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
         @media (max-width: 900px) { .ceo-row-3 { grid-template-columns: 1fr; } }
 
-        .ceo-mini { padding:16px 18px; display:flex; flex-direction:column; gap:4px; }
+        .ceo-mini { padding:12px 14px; display:flex; flex-direction:column; gap:3px; }
         .ceo-mini-label { font-size:0.72rem; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; color:var(--text-muted); display:flex; align-items:center; gap:6px; }
-        .ceo-mini-value { font-size:1.9rem; font-weight:900; color:var(--text-primary); line-height:1.1; margin-top:4px; letter-spacing:-0.5px; }
+        .ceo-mini-value { font-size:1.5rem; font-weight:900; color:var(--text-primary); line-height:1.1; margin-top:4px; letter-spacing:-0.5px; }
         .ceo-mini-sub { font-size:0.78rem; color:var(--text-muted); font-weight:600; }
         .ceo-mini-foot { font-size:0.78rem; font-weight:700; margin-top:8px; }
         .ceo-cash-breakdown { margin-top:10px; display:flex; flex-direction:column; gap:4px; font-size:0.78rem; }
@@ -241,7 +241,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             .ceo-hide-mobile { display:none; }
             .ceo-product-table td.name { max-width:150px; }
             .ceo-product-table td, .ceo-product-table th { padding:8px 8px; font-size:0.8rem; }
-            .ceo-mini-value { font-size:1.5rem; }
+            .ceo-mini-value { font-size:1.3rem; }
             .ceo-payment-wrap canvas { width:90px !important; height:90px !important; }
         }
 
@@ -279,44 +279,44 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
-        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
+        <div style="display:flex; align-items:center; gap:10px; margin:20px 0 10px 0;">
             <div style="width:4px; height:22px; border-radius:4px; background:#10b981;"></div>
             <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Resumen del Mes</h2>
             <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
         </div>
         <!-- KPI Cards con Estética Premium -->
-        <div class="grid grid-cols-auto gap-6 mb-8">
+        <div class="grid grid-cols-auto gap-4 mb-4">
             <!-- Ventas mes -->
-            <div class="premium-card card-anim" style="border-top:5px solid #10b981; background: linear-gradient(180deg, rgba(16,185,129,0.05) 0%, var(--bg-card, white) 100%);">
-                <div class="flex justify-between items-start mb-6">
-                    <div class="p-3 rounded-2xl" style="background:rgba(16,185,129,0.1); color:#10b981;">
-                        <i class="ph ph-chart-line-up text-3xl"></i>
+            <div class="premium-card card-anim" style="border-top:4px solid #10b981; background: linear-gradient(180deg, rgba(16,185,129,0.05) 0%, var(--bg-card, white) 100%);">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="p-2 rounded-2xl" style="background:rgba(16,185,129,0.1); color:#10b981;">
+                        <i class="ph ph-chart-line-up text-xl"></i>
                     </div>
                     <div id="kpi-ventas-mes-badge" class="status-badge" style="background:rgba(16,185,129,0.1); color:#059669; border:1px solid rgba(16,185,129,0.2);">Calculando...</div>
                 </div>
                 <div class="stat-label-premium">Ventas del Mes</div>
                 <div id="kpi-ventas-mes" class="stat-value-mega text-primary mt-1">...</div>
-                <div class="spark-container mt-6"><canvas id="spark-ventas"></canvas></div>
+                <div class="spark-container mt-2" style="height:40px;"><canvas id="spark-ventas"></canvas></div>
             </div>
 
             <!-- Gasto mes -->
-            <div class="premium-card card-anim delay-1" style="border-top:5px solid var(--primary); background: linear-gradient(180deg, rgba(230,0,0,0.03) 0%, var(--bg-card, white) 100%);">
-                <div class="flex justify-between items-start mb-6">
-                    <div class="p-3 rounded-2xl" style="background:rgba(230,0,0,0.1); color:var(--primary);" title="Incluye: Sueldos confirmados y Gastos del Local. NO incluye facturas de mercadería.">
-                        <i class="ph ph-hand-coins text-3xl"></i>
+            <div class="premium-card card-anim delay-1" style="border-top:4px solid var(--primary); background: linear-gradient(180deg, rgba(230,0,0,0.03) 0%, var(--bg-card, white) 100%);">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="p-2 rounded-2xl" style="background:rgba(230,0,0,0.1); color:var(--primary);" title="Suma de todos los gastos registrados este mes. No incluye mercadería.">
+                        <i class="ph ph-hand-coins text-xl"></i>
                     </div>
-                    <div id="kpi-gasto-mes-badge" class="status-badge status-overdue">Fijos + Sueldos</div>
+                    <div id="kpi-gasto-mes-badge" class="status-badge status-overdue">Este Mes</div>
                 </div>
-                <div class="stat-label-premium text-primary">Gastos Operativos <i class="ph ph-info" title="No incluye facturas de compra/inventario. Solo gastos puros del local y nómina."></i></div>
+                <div class="stat-label-premium text-primary">Gastos del Mes <i class="ph ph-info" title="Sueldos, servicios, contabilidad y otros gastos registrados."></i></div>
                 <div id="kpi-gasto-mes" class="stat-value-mega text-primary mt-1">...</div>
-                <div class="spark-container mt-6"><canvas id="spark-gastos"></canvas></div>
+                <div class="spark-container mt-2" style="height:40px;"><canvas id="spark-gastos"></canvas></div>
             </div>
 
             <!-- Margen Neto / Salud -->
-            <div class="premium-card card-anim delay-2" style="border-top:5px solid #84cc16; background: linear-gradient(180deg, rgba(132,204,22,0.05) 0%, var(--bg-card, white) 100%);">
-                <div class="flex justify-between items-start mb-6">
-                    <div class="p-3 rounded-2xl" style="background:rgba(132,204,22,0.1); color:#84cc16;">
-                        <i class="ph ph-heartbeat text-3xl"></i>
+            <div class="premium-card card-anim delay-2" style="border-top:4px solid #84cc16; background: linear-gradient(180deg, rgba(132,204,22,0.05) 0%, var(--bg-card, white) 100%);">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="p-2 rounded-2xl" style="background:rgba(132,204,22,0.1); color:#84cc16;">
+                        <i class="ph ph-heartbeat text-xl"></i>
                     </div>
                     <div id="health-label" class="status-badge" style="background:rgba(132,204,22,0.1); color:#65a30d; font-weight:700;">Salud</div>
                 </div>
@@ -325,15 +325,15 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     <div id="kpi-margen-neto" class="stat-value-mega mt-1" style="color:#65a30d;">...</div>
                     <div id="health-ratio-pct" class="text-sm font-black text-muted">0%</div>
                 </div>
-                <div id="health-bar-wrap" class="w-full h-3 rounded-full overflow-hidden mt-6" style="background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.03);">
+                <div id="health-bar-wrap" class="w-full h-3 rounded-full overflow-hidden mt-3" style="background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.03);">
                     <div id="health-bar" class="h-full" style="width:0%; background:linear-gradient(90deg, #84cc16, #22c55e); transition:width 1s ease;"></div>
                 </div>
-                <div id="health-detail" class="text-xs text-muted mt-4 font-medium italic">Calculando métricas de salud...</div>
+                <div id="health-detail" class="text-xs text-muted mt-2 font-medium italic">Calculando métricas de salud...</div>
             </div>
         </div>
 
         <!-- Proyección Mes -->
-        <div id="prediction-container" class="hidden" style="margin-bottom:16px;">
+        <div id="prediction-container" class="hidden" style="margin-bottom:10px;">
             <div class="premium-card" style="background: var(--ia-panel-bg); color: var(--ia-panel-text); border: none; padding: 14px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div>
@@ -364,7 +364,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
-        <div class="premium-card mb-6" style="padding:14px;">
+        <div class="premium-card mb-4" style="padding:12px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <h3 style="font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:6px; margin:0;">
                     <div style="width:7px;height:7px;background:#ef4444;border-radius:50%;box-shadow:0 0 6px #ef4444;"></div>
@@ -382,13 +382,13 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
              CEO COCKPIT — Widgets inteligentes (mes en curso)
              ============================================================ -->
 
-        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
+        <div style="display:flex; align-items:center; gap:10px; margin:20px 0 10px 0;">
             <div style="width:4px; height:22px; border-radius:4px; background:#6366f1;"></div>
             <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Indicadores Clave</h2>
             <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
         </div>
         <!-- FILA: Ticket promedio · Resumen caja · Forma de pago -->
-        <div class="ceo-row-3 mb-6">
+        <div class="ceo-row-3 mb-4">
             <!-- Ticket promedio + Tendencia -->
             <div class="premium-card ceo-mini">
                 <div class="ceo-mini-label"><i class="ph ph-receipt"></i> Ticket Promedio</div>
@@ -416,7 +416,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         </div>
 
         <!-- ALERTAS INTELIGENTES -->
-        <div class="premium-card mb-6" id="ceo-alerts-card" style="background:linear-gradient(135deg, rgba(249,115,22,0.06), var(--bg-card, #fff)); border-left:4px solid #f97316;">
+        <div class="premium-card mb-4" id="ceo-alerts-card" style="background:linear-gradient(135deg, rgba(249,115,22,0.06), var(--bg-card, #fff)); border-left:4px solid #f97316;">
             <div class="flex justify-between items-center mb-3">
                 <h3 class="font-bold flex items-center gap-2" style="color:#c2410c; font-size:1.05rem;">
                     <i class="ph ph-siren text-xl"></i> Alertas
@@ -428,13 +428,13 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
         </div>
 
-        <div style="display:flex; align-items:center; gap:10px; margin:28px 0 16px 0;">
+        <div style="display:flex; align-items:center; gap:10px; margin:20px 0 10px 0;">
             <div style="width:4px; height:22px; border-radius:4px; background:#3b82f6;"></div>
             <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Decisiones</h2>
             <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
         </div>
         <!-- PANEL DECISIONES -->
-        <div class="decision-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:24px;">
+        <div class="decision-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px;">
             <div class="premium-card" style="padding:14px;" id="dec-buy">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
                     <i class="ph ph-shopping-cart" style="color:#3b82f6; font-size:1.1rem;"></i>
@@ -474,7 +474,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         </div>
 
         <!-- CTA → Márgenes -->
-        <button class="ceo-margins-cta mb-6" id="ceo-margins-cta-btn" onclick="window._goToMargenes()" style="padding:12px 16px;">
+        <button class="ceo-margins-cta mb-4" id="ceo-margins-cta-btn" onclick="window._goToMargenes()" style="padding:12px 16px;">
             <div class="ceo-margins-cta-left">
                 <div>
                     <div class="ceo-margins-cta-title" style="font-size:0.85rem;">Márgenes por Producto</div>
@@ -493,7 +493,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     </h3>
                     <div class="text-muted" style="font-size:0.75rem;">Últimos 6 meses</div>
                 </div>
-                <div style="height:250px; width:100%;"><canvas id="plChart"></canvas></div>
+                <div style="height:200px; width:100%;"><canvas id="plChart"></canvas></div>
             </div>
             <!-- Top 3 proveedores -->
             <div class="card card-anim p-4">
@@ -509,7 +509,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <!-- Widgets fila inferior -->
         <div class="bottom-widgets-grid">
             <!-- Próximos pagos empleados -->
-            <div class="card card-anim p-5" style="background:linear-gradient(135deg, rgba(239,68,68,0.05), var(--bg-card, #fff)); border-bottom:4px solid #ffcccc;">
+            <div class="card card-anim p-4" style="background:linear-gradient(135deg, rgba(239,68,68,0.05), var(--bg-card, #fff)); border-bottom:4px solid #ffcccc;">
                 <h3 class="mb-3 font-bold flex items-center gap-2" style="color:#b91c1c; font-size:1rem;">
                     <i class="ph ph-money text-xl"></i> Próximos Pagos a Equipo
                 </h3>
@@ -518,7 +518,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 </div>
             </div>
             <!-- Facturas a crédito -->
-            <div class="card card-anim p-5" id="credit-widget" style="background:linear-gradient(135deg, rgba(245,158,11,0.05), var(--bg-card, #fff)); border-bottom:4px solid #fde68a; cursor:pointer;">
+            <div class="card card-anim p-4" id="credit-widget" style="background:linear-gradient(135deg, rgba(245,158,11,0.05), var(--bg-card, #fff)); border-bottom:4px solid #fde68a; cursor:pointer;">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="font-bold flex items-center gap-2" style="color:#92400e; font-size:1rem;">
                         <i class="ph ph-clock-countdown text-xl"></i> Facturas por Pagar (Crédito)
@@ -736,42 +736,15 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const gananciaBrutaMes = thisMonthEleventa.reduce((s, t) => s + (parseFloat(t.profit) || 0), 0);
         const gananciaBrutaPrev = prevMonthEleventa.reduce((s, t) => s + (parseFloat(t.profit) || 0), 0);
 
-        // 3. Operational Expenses (Local Bills, etc.)
-        // Separamos el Retiro del Dueño de los gastos generales para el desglose
+        // 3. Gastos del mes (suma directa de todo lo registrado)
         const thisMonthExpenses = allExpenses.filter(e => !e.deleted && e.date && e.date.startsWith(currentMonthStr));
         const prevMonthExpenses = allExpenses.filter(e => !e.deleted && e.date && e.date.startsWith(prevMonthStr));
 
-        const gastosRetiroDueno = thisMonthExpenses
-            .filter(e => e.category === 'Retiro del Due\u00f1o')
-            .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+        const gastosDelMes = thisMonthExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+        const gastoTotal = gastosDelMes + comisionMPMes;
 
-        const gastosOperativosPrev = prevMonthExpenses
-            .filter(e => e.category !== 'Retiro del Due\u00f1o')
-            .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-
-        // 4. CÁLCULO DE RENTABILIDAD (basado en gastos REALES confirmados)
-        // Burn rate solo prorratea gastos fijos (arriendos, servicios, etc.)
-        const burnRateInfo = await window.Utils.calculateDailyBurnRate(allExpenses, employees, now);
-        const currentDayOfMoth = now.getDate();
-        const gastoTotalProrrateado = burnRateInfo.dailyBurnRate * currentDayOfMoth;
-
-        // Gastos variables del mes (incluye Sueldos y Adelantos confirmados)
-        const gastosVariablesMes = thisMonthExpenses
-            .filter(e => !e.isFixed && e.category !== 'Retiro del Dueño')
-            .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-
-        // 5. RETIROS DEL DUEÑO (van directo como gasto)
-        const ownerExtraDraw = gastosRetiroDueno;
-
-        // Gasto Total = Fijos prorrateados + Variables (sueldos, adelantos, etc.) + Retiros dueño + Comisión MP
-        const gastoTotal = gastoTotalProrrateado + gastosVariablesMes + ownerExtraDraw + comisionMPMes;
-        const gastosRetiroDuenoPrev = prevMonthExpenses
-            .filter(e => e.category === 'Retiro del Due\u00f1o')
-            .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-        const gastosFijosPrev = prevMonthExpenses
-            .filter(e => e.isFixed)
-            .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-        const gastoPrev = gastosFijosPrev + gastosOperativosPrev + gastosRetiroDuenoPrev + comisionMPPrev;
+        const gastosDelMesPrev = prevMonthExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+        const gastoPrev = gastosDelMesPrev + comisionMPPrev;
 
         // 6. Invoices (Cashflow only, informational. Mercadería comprada)
         // NOTA: purchase_invoices NO se restan aquí porque gananciaBrutaMes (Eleventa) ya tiene costo descontado.
@@ -878,8 +851,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             }
         }
 
-        // ---- CEO Metrics: True Profitability (Utilidad Neta) ----
-        // Utilidad Neta REAL = Ganancia Bruta (API) - Sueldos Personal - Retiro Dueño - Gastos Operativos
+        // ---- Utilidad Neta = Ganancia Bruta - Gastos del Mes - Comisión Tarjeta ----
         const utilidadNetaMonto = gananciaBrutaMes - gastoTotal;
         const margenNetoPct = ventasMes > 0 ? (utilidadNetaMonto / ventasMes * 100) : 0;
 
@@ -906,25 +878,17 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
             const netColor = utilidadNetaMonto >= 0 ? '#16a34a' : '#dc2626';
 
-            let balanceMsg = gastosRetiroDueno > 0
-                ? `Total retirado este mes`
-                : `Sin retiros este mes`;
-            let balanceColor = 'var(--text-muted)';
+            // Agrupar gastos por categoría para el desglose
+            const gastosPorCategoria = {};
+            thisMonthExpenses.forEach(e => {
+                const cat = e.category || 'Otros';
+                gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + (parseFloat(e.amount) || 0);
+            });
 
-            // --- Generar sub-lista del Prorrateo ---
-            const factorProrrateo = currentDayOfMoth / burnRateInfo.daysInMonth;
-            const prorrateoItemsHtml = [
-               ...(burnRateInfo.salariesDetails || []).map(s => `
-                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; opacity:0.8;">
-                        <span>• ${window.Utils.escapeHTML(s.name)}</span>
-                        <span>-${window.Utils.formatCurrency(s.amount * factorProrrateo)}</span>
-                    </div>`),
-               ...(burnRateInfo.fixedExpensesDetails || []).map(e => `
-                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; opacity:0.8;">
-                        <span>• ${window.Utils.escapeHTML(e.title)}</span>
-                        <span>-${window.Utils.formatCurrency(e.amount * factorProrrateo)}</span>
-                    </div>`)
-            ].join('');
+            const categoriasHtml = Object.entries(gastosPorCategoria)
+                .sort((a, b) => b[1] - a[1])
+                .map(([cat, amount]) => fmtRow(cat, -amount, '#ef4444', 'ph ph-minus-circle'))
+                .join('');
 
             elHealthDetail.innerHTML = `
                 <div style="margin-top:12px; background:rgba(0,0,0,0.02); border-radius:14px; padding:14px; font-family: var(--font-primary, Arial, sans-serif); border:1px solid rgba(0,0,0,0.03);">
@@ -932,62 +896,18 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     <details>
                         <summary style="list-style:none; cursor:pointer; outline:none; padding:4px 0 8px; font-size:0.82rem; font-weight:700; color:var(--text-muted);">Ver desglose de gastos</summary>
 
-                        <!-- Resumen Principal -->
                         ${fmtRow('Ganancia Bruta (Cierre Caja)', gananciaBrutaMes, '#10b981', 'ph ph-coins')}
 
-                        ${burnRateInfo.dailyBurnRate > 0 ? `
-                            <details style="margin: 4px 0;">
-                                <summary style="list-style:none; cursor:pointer; outline:none;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
-                                        <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-                                            <i class="ph ph-chart-line-down"></i> Gastos Fijos (Prorrateo)
-                                            <i class="ph ph-caret-down" style="font-size:0.7rem; opacity:0.5;"></i>
-                                        </span>
-                                        <span style="font-weight:700; font-size:0.9rem; color:#ef4444;">-${window.Utils.formatCurrency(gastoTotalProrrateado)}</span>
-                                    </div>
-                                </summary>
-                                <div style="padding: 8px 12px; background: rgba(239,68,68,0.03); border-radius:8px; font-size:0.72rem; color:var(--text-muted); margin-bottom:8px;">
-                                    <div style="font-weight:700; margin-bottom:6px; text-transform:uppercase; font-size:0.6rem; letter-spacing:0.5px; opacity:0.6;">Detalle de Prorrateo (${currentDayOfMoth} días)</div>
-                                    ${prorrateoItemsHtml}
-                                </div>
-                            </details>
-                        ` : ''}
-
-                        ${gastosVariablesMes > 0 ? fmtRow('Gastos Variables', -gastosVariablesMes, '#f59e0b', 'ph ph-receipt') : ''}
+                        ${categoriasHtml}
 
                         ${comisionMPMes > 0 ? `
                         <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed rgba(0,0,0,0.06);">
                             <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-                                <i class="ph ph-credit-card"></i> Comisión MercadoPago (2%)
+                                <i class="ph ph-credit-card"></i> Comisión Tarjeta (2%)
                                 <span style="font-size:0.65rem; opacity:0.6;">sobre ${window.Utils.formatCurrency(tarjetaMes)}</span>
                             </span>
                             <span style="font-weight:700; font-size:0.9rem; color:#e11d48;">-${window.Utils.formatCurrency(comisionMPMes)}</span>
                         </div>` : ''}
-
-                        <!-- Cuenta Dueño (Compacta) -->
-                        ${ownerExtraDraw > 0 ? `
-                        <details style="margin: 4px 0;">
-                            <summary style="list-style:none; cursor:pointer; outline:none;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
-                                    <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-                                        <i class="ph ph-wallet"></i> Cuenta Anticipos Dueño
-                                        <i class="ph ph-caret-down" style="font-size:0.7rem; opacity:0.5;"></i>
-                                    </span>
-                                    <span style="font-weight:700; font-size:0.9rem; color:${ownerExtraDraw > 0 ? '#9333ea' : 'var(--text-muted)'};">
-                                        ${ownerExtraDraw > 0 ? '-' + window.Utils.formatCurrency(ownerExtraDraw) : 'Al día'}
-                                    </span>
-                                </div>
-                            </summary>
-                            <div style="padding: 10px; background: rgba(59,130,246,0.03); border-radius:10px; margin-bottom:8px; border:1px solid rgba(59,130,246,0.1);">
-                               <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
-                                   <span style="color:var(--text-muted);">Retiros del Dueño:</span>
-                                   <span style="font-weight:600;">${window.Utils.formatCurrency(gastosRetiroDueno)}</span>
-                               </div>
-                               <div style="font-size:0.7rem; color:${balanceColor}; font-weight:700; text-align:right; margin-top:6px; border-top:1px solid rgba(0,0,0,0.03); padding-top:6px;">
-                                    ${balanceMsg}
-                               </div>
-                            </div>
-                        </details>` : ''}
 
                     </details>
 
@@ -995,11 +915,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                         <span style="font-size:0.9rem; font-weight:800; color:var(--text-primary);">UTILIDAD NETA FINAL</span>
                         <span style="font-weight:900; font-size:1.4rem; color:${netColor}; letter-spacing:-0.5px;">${utilidadNetaMonto >= 0 ? '+' : ''}${window.Utils.formatCurrency(utilidadNetaMonto)}</span>
                     </div>
-                    ${currentDayOfMoth <= 7 ? `
-<div style="display:flex; align-items:center; gap:6px; margin-top:8px; padding:8px 12px; background:rgba(245,158,11,0.08); border-radius:10px; border:1px solid rgba(245,158,11,0.15);">
-    <i class="ph ph-warning" style="color:#f59e0b; font-size:0.9rem;"></i>
-    <span style="font-size:0.72rem; color:#92400e; font-weight:600;">Inicio de mes — gastos fijos parcialmente prorrateados</span>
-</div>` : ''}
                 </div>
             `;
         }

@@ -8,7 +8,7 @@ window.Views.expenses = async (container) => {
                 <h1 style="margin-bottom:8px; color:var(--text-primary); display:flex; align-items:center; gap:10px;">
                     <i class="ph ph-coin" style="color:var(--primary);"></i> Gastos Generales
                 </h1>
-                <p style="color:var(--text-muted);">Registro de costos operativos (Luz, Agua, Arriendo, etc.)</p>
+                <p style="color:var(--text-muted);">Registro de gastos del negocio</p>
             </div>
             <button class="btn btn-primary" id="btn-add-expense">
                 <i class="ph ph-plus-circle"></i> Nuevo Gasto
@@ -27,14 +27,9 @@ window.Views.expenses = async (container) => {
             </select>
             <select id="filter-category" class="form-input">
                 <option value="all">Todas las Categorías</option>
-                <option value="Retiro del Dueño">💼 Retiro del Dueño</option>
-                <option value="Servicios">Servicios Básicos</option>
-                <option value="Alquiler">Alquiler</option>
+                <option value="Sueldos">Sueldos</option>
+                <option value="Servicios">Servicios (Luz, etc.)</option>
                 <option value="Contabilidad">Contabilidad</option>
-                <option value="Transporte">Transporte</option>
-                <option value="Insumos">Insumos</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Mantenimiento">Mantenimiento</option>
                 <option value="Otros">Otros</option>
             </select>
         </div>
@@ -216,7 +211,6 @@ async function renderExpenses() {
                         <span><i class="ph ph-calendar-blank"></i> ${formatDate(exp.date)}</span>
                         <span>•</span>
                         <span style="color:var(--primary); background:rgba(255,0,0,0.05); padding:2px 8px; border-radius:4px;">${exp.category}</span>
-                        ${exp.isFixed ? '<span style="color:#f59e0b; background:rgba(245,158,11,0.1); padding:2px 8px; border-radius:4px; font-weight:bold;"><i class="ph ph-push-pin"></i> Fijo Mensual</span>' : ''}
                         ${pmBadge}
                     </div>
                 </div>
@@ -291,17 +285,10 @@ function showExpenseModal(expenseToEdit = null) {
                     <div class="form-group">
                         <label class="form-label">Categoría</label>
                         <select id="exp-category" class="form-input">
-                            <option value="Retiro del Dueño" ${isEdit && expenseToEdit.category === 'Retiro del Dueño' ? 'selected' : ''}>💼 Retiro del Dueño (tu sueldo)</option>
-                            <option value="Sueldos" ${isEdit && expenseToEdit.category === 'Sueldos' ? 'selected' : ''}>👷 Sueldos / Nómina</option>
-                            <option value="Adelantos" ${isEdit && expenseToEdit.category === 'Adelantos' ? 'selected' : ''}>💸 Adelantos</option>
-                            <option value="Servicios" ${isEdit && expenseToEdit.category === 'Servicios' ? 'selected' : ''}>Servicios Básicos</option>
-                            <option value="Alquiler" ${isEdit && expenseToEdit.category === 'Alquiler' ? 'selected' : ''}>Alquiler</option>
+                            <option value="Sueldos" ${isEdit && expenseToEdit.category === 'Sueldos' ? 'selected' : ''}>Sueldos</option>
+                            <option value="Servicios" ${isEdit && expenseToEdit.category === 'Servicios' ? 'selected' : ''}>Servicios (Luz, etc.)</option>
                             <option value="Contabilidad" ${isEdit && expenseToEdit.category === 'Contabilidad' ? 'selected' : ''}>Contabilidad</option>
-                            <option value="Transporte" ${isEdit && expenseToEdit.category === 'Transporte' ? 'selected' : ''}>Transporte</option>
-                            <option value="Insumos" ${isEdit && expenseToEdit.category === 'Insumos' ? 'selected' : ''}>Insumos</option>
-                            <option value="Marketing" ${isEdit && expenseToEdit.category === 'Marketing' ? 'selected' : ''}>Marketing</option>
-                            <option value="Mantenimiento" ${isEdit && expenseToEdit.category === 'Mantenimiento' ? 'selected' : ''}>Mantenimiento</option>
-                             <option value="Otros" ${isEdit && expenseToEdit.category === 'Otros' ? 'selected' : ''}>Otros</option>
+                            <option value="Otros" ${isEdit && expenseToEdit.category === 'Otros' ? 'selected' : ''}>Otros</option>
                         </select>
                     </div>
 
@@ -319,13 +306,6 @@ function showExpenseModal(expenseToEdit = null) {
                         <input type="date" id="exp-date" class="form-input" value="${isEdit ? expenseToEdit.date : today}">
                     </div>
 
-                    <div class="form-group" style="display:flex; align-items:center; gap:8px; margin-top:8px; padding:12px; background:rgba(245,158,11,0.05); border-radius:8px; border:1px solid rgba(245,158,11,0.2);">
-                        <input type="checkbox" id="exp-isfixed" style="width:18px; height:18px; cursor:pointer;" ${isEdit && expenseToEdit.isFixed ? 'checked' : ''}>
-                        <div style="display:flex; flex-direction:column;">
-                            <label for="exp-isfixed" style="font-weight:600; cursor:pointer; color:var(--text-primary); margin:0;">¿Es un Gasto Fijo Mensual?</label>
-                            <span style="font-size:0.75rem; color:var(--text-muted);">El sistema usará este valor para calcular tu costo diario de operación (Prorrateo).</span>
-                        </div>
-                    </div>
 
                 </form>
             </div>
@@ -345,8 +325,6 @@ function showExpenseModal(expenseToEdit = null) {
         const category = document.getElementById('exp-category').value;
         const paymentMethod = document.getElementById('exp-method').value;
         const date = document.getElementById('exp-date').value;
-        const isFixed = document.getElementById('exp-isfixed').checked;
-
         if (!title || amount <= 0) {
             alert('Por favor ingresa un título y un monto válido.');
             return;
@@ -359,7 +337,7 @@ function showExpenseModal(expenseToEdit = null) {
                 category,
                 paymentMethod,
                 date,
-                isFixed,
+                isFixed: false,
                 deleted: false
             };
 
