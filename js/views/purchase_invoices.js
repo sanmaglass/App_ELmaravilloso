@@ -605,10 +605,19 @@ async function initDateFilter() {
             filter.appendChild(option);
         });
 
-        // Por defecto mostrar el mes actual
+        // Por defecto mostrar el mes actual, o el último mes con datos si el actual no tiene
         const now2 = new Date();
         const mesActual = `${now2.getFullYear()}-${String(now2.getMonth() + 1).padStart(2, '0')}`;
-        filter.value = mesActual;
+        const tieneFacturasMesActual = active.some(i => i.date && i.date.startsWith(mesActual));
+        if (tieneFacturasMesActual) {
+            filter.value = mesActual;
+        } else if (sortedMonths.length > 0 && monthsFromDB.size > 0) {
+            // Seleccionar el mes más reciente que tenga facturas
+            const ultimoConDatos = sortedMonths.find(m => monthsFromDB.has(m));
+            filter.value = ultimoConDatos || mesActual;
+        } else {
+            filter.value = mesActual;
+        }
 
     } catch (e) { console.error('Error init date filter', e); }
 }
