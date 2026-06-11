@@ -254,30 +254,96 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         .quick-access-grid {
             grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            padding: 16px;
+            gap: 10px;
+            padding: 12px 16px;
             margin-bottom: 16px;
         }
+
+        @media (max-width: 400px) {
+            .quick-access-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        .quick-btn:nth-child(1) { --btn-color: #3b82f6; --btn-color-rgb: 59,130,246; --btn-grad: linear-gradient(145deg, rgba(59,130,246,0.12) 0%, rgba(59,130,246,0.04) 100%); }
+        .quick-btn:nth-child(2) { --btn-color: #10b981; --btn-color-rgb: 16,185,129; --btn-grad: linear-gradient(145deg, rgba(16,185,129,0.12) 0%, rgba(16,185,129,0.04) 100%); }
+        .quick-btn:nth-child(3) { --btn-color: #f59e0b; --btn-color-rgb: 245,158,11; --btn-grad: linear-gradient(145deg, rgba(245,158,11,0.12) 0%, rgba(245,158,11,0.04) 100%); }
+        .quick-btn:nth-child(4) { --btn-color: #8b5cf6; --btn-color-rgb: 139,92,246; --btn-grad: linear-gradient(145deg, rgba(139,92,246,0.12) 0%, rgba(139,92,246,0.04) 100%); }
+        .quick-btn:nth-child(5) { --btn-color: #dc2626; --btn-color-rgb: 220,38,38; --btn-grad: linear-gradient(145deg, rgba(220,38,38,0.12) 0%, rgba(220,38,38,0.04) 100%); }
+        .quick-btn:nth-child(6) { --btn-color: #06b6d4; --btn-color-rgb: 6,182,212; --btn-grad: linear-gradient(145deg, rgba(6,182,212,0.12) 0%, rgba(6,182,212,0.04) 100%); }
+        .quick-btn:nth-child(7) { --btn-color: #ec4899; --btn-color-rgb: 236,72,153; --btn-grad: linear-gradient(145deg, rgba(236,72,153,0.12) 0%, rgba(236,72,153,0.04) 100%); }
+        .quick-btn:nth-child(8) { --btn-color: #64748b; --btn-color-rgb: 100,116,139; --btn-grad: linear-gradient(145deg, rgba(100,116,139,0.12) 0%, rgba(100,116,139,0.04) 100%); }
 
         .quick-btn {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 6px;
-            padding: 14px 8px;
-            background: var(--bg-glass, rgba(255,255,255,0.75));
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm, 12px);
+            gap: 8px;
+            padding: 16px 8px;
+            background: var(--btn-grad, rgba(255,255,255,0.9));
+            border: 1px solid rgba(var(--btn-color-rgb, 0,0,0), 0.1);
+            border-radius: 16px;
             color: var(--text-primary);
-            font-size: 11px;
-            font-weight: 600;
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
             -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 2px 8px rgba(var(--btn-color-rgb, 0,0,0), 0.12), 0 1px 2px rgba(0,0,0,0.06);
+            opacity: 0;
+            animation: quickBtnIn 0.35s ease forwards;
         }
 
-        .quick-btn i { font-size: 22px; color: var(--primary, #e60000); }
-        .quick-btn:active { transform: scale(0.93); background: var(--bg-glass-hover); }
+        .quick-btn:nth-child(1) { animation-delay: 0ms; }
+        .quick-btn:nth-child(2) { animation-delay: 50ms; }
+        .quick-btn:nth-child(3) { animation-delay: 100ms; }
+        .quick-btn:nth-child(4) { animation-delay: 150ms; }
+        .quick-btn:nth-child(5) { animation-delay: 200ms; }
+        .quick-btn:nth-child(6) { animation-delay: 250ms; }
+        .quick-btn:nth-child(7) { animation-delay: 300ms; }
+        .quick-btn:nth-child(8) { animation-delay: 350ms; }
+
+        @keyframes quickBtnIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .quick-btn:active {
+            transform: scale(0.90);
+            box-shadow: 0 4px 16px rgba(var(--btn-color-rgb, 0,0,0), 0.28), 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .quick-btn-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(var(--btn-color-rgb, 0,0,0), 0.12);
+            flex-shrink: 0;
+        }
+
+        .quick-btn-icon i {
+            font-size: 28px;
+            color: var(--btn-color, #e60000);
+        }
+
+        /* Dark mode */
+        body.dark-mode .quick-btn {
+            background: var(--btn-grad, rgba(30,30,40,0.85));
+            border-color: rgba(var(--btn-color-rgb, 255,255,255), 0.15);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2);
+        }
+        body.dark-mode .quick-btn:active {
+            box-shadow: 0 5px 20px rgba(var(--btn-color-rgb, 255,255,255), 0.22), 0 2px 6px rgba(0,0,0,0.3);
+        }
+        body.dark-mode .quick-btn-icon {
+            background: rgba(var(--btn-color-rgb, 255,255,255), 0.18);
+        }
+        body.dark-mode .quick-btn-icon i {
+            filter: brightness(1.25);
+        }
     </style>
 
     <!-- Header -->
@@ -300,35 +366,35 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
     <!-- Accesos Rápidos — solo mobile -->
     <div class="quick-access-grid mobile-only">
         <button class="quick-btn" onclick="window.navigateToView('cash_register', 'Arqueo')">
-            <i class="ph ph-vault"></i>
+            <div class="quick-btn-icon"><i class="ph ph-vault"></i></div>
             <span>Arqueo</span>
         </button>
         <button class="quick-btn" onclick="window.navigateToView('profit_monitor', 'Márgenes')">
-            <i class="ph ph-chart-line-up"></i>
+            <div class="quick-btn-icon"><i class="ph ph-chart-line-up"></i></div>
             <span>Márgenes</span>
         </button>
         <button class="quick-btn" onclick="window.navigateToView('purchase_invoices', 'Facturas')">
-            <i class="ph ph-receipt"></i>
+            <div class="quick-btn-icon"><i class="ph ph-receipt"></i></div>
             <span>Facturas</span>
         </button>
         <button class="quick-btn" onclick="window.navigateToView('employees', 'Personal')">
-            <i class="ph ph-users"></i>
+            <div class="quick-btn-icon"><i class="ph ph-users"></i></div>
             <span>Personal</span>
         </button>
         <button class="quick-btn" onclick="window.navigateToView('credits', 'Créditos')">
-            <i class="ph ph-hand-holding-dollar"></i>
+            <div class="quick-btn-icon"><i class="ph ph-hand-holding-dollar"></i></div>
             <span>Créditos</span>
         </button>
         <button class="quick-btn" onclick="window.navigateToView('suppliers', 'Proveedores')">
-            <i class="ph ph-buildings"></i>
+            <div class="quick-btn-icon"><i class="ph ph-buildings"></i></div>
             <span>Proveedores</span>
         </button>
         <button class="quick-btn" onclick="window.navigateToView('loans', 'Préstamos')">
-            <i class="ph ph-hand-coins"></i>
+            <div class="quick-btn-icon"><i class="ph ph-hand-coins"></i></div>
             <span>Préstamos</span>
         </button>
         <button class="quick-btn" onclick="window.navigateToView('settings', 'Ajustes')">
-            <i class="ph ph-gear"></i>
+            <div class="quick-btn-icon"><i class="ph ph-gear"></i></div>
             <span>Ajustes</span>
         </button>
     </div>
