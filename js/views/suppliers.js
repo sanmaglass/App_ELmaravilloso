@@ -130,6 +130,7 @@ async function handleDeleteSupplier(id) {
     if (await window.showConfirmDialog('Eliminar Proveedor', '¿Eliminar este proveedor?')) {
         try {
             await window.DataManager.deleteAndSync('suppliers', id);
+            window.showToast('Proveedor eliminado', 'success');
             renderSuppliers(document.getElementById('supplier-search').value);
         } catch (e) { window.showToast('Error: ' + e.message, 'error'); }
     }
@@ -192,7 +193,13 @@ function showSupplierModal(supplierToEdit = null) {
         const address = document.getElementById('sup-address')?.value.trim() || '';
         const contact = document.getElementById('sup-contact')?.value.trim() || '';
 
-        if (!name) { window.showToast('El nombre es obligatorio', 'error'); return; }
+        if (!name) {
+            const nameInput = document.getElementById('sup-name');
+            nameInput.classList.add('input-error');
+            nameInput.addEventListener('input', () => nameInput.classList.remove('input-error'), { once: true });
+            window.showToast('El nombre es obligatorio', 'error');
+            return;
+        }
 
         try {
             const supplierData = { name, rut, giro, address, contact, deleted: false };

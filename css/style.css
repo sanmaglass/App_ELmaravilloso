@@ -1513,3 +1513,28 @@ body.dark-mode .more-menu-overlay {
     background: rgba(0,0,0,0.5);
 }
 
+body.dark-mode .input-error {
+    border-color: #f87171 !important;
+    background: rgba(248, 113, 113, 0.1) !important;
+    color: #fca5a5 !important;
+}
+
+body.dark-mode .form-input::placeholder {
+    color: #6b7280 !important;
+}
+
+@media (max-width: 375px) {
+    #page-title {
+        max-width: 120px;
+        font-size: 0.9rem;
+    }
+    .modal {
+        width: 100% !important;
+        border-radius: 12px !important;
+        margin: 8px !important;
+    }
+    .top-bar {
+        padding: 0 8px;
+    }
+}
+

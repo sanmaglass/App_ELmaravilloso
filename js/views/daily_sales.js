@@ -51,8 +51,8 @@ window.Views.daily_sales = async (container) => {
         </div>
     `;
 
-    await initDailyMonthFilter();
-    renderDailySales();
+    const prefetchedSales = await initDailyMonthFilter();
+    renderDailySales({ prefetchedManual: prefetchedSales });
 
     // Events
     document.getElementById('btn-add-daily-sale').addEventListener('click', () => showDailySaleModal());
@@ -88,6 +88,7 @@ async function initDailyMonthFilter() {
     try {
         const sales = await window.db.daily_sales.toArray();
         const active = sales.filter(s => !s.deleted);
+        return sales;
 
         const monthsFromDB = new Set();
         active.forEach(s => { if (s.date && s.date.length >= 7) monthsFromDB.add(s.date.substring(0, 7)); });
@@ -113,14 +114,18 @@ async function initDailyMonthFilter() {
         filter.value = curMonth;
 
     } catch (e) { console.error('Error init daily month filter', e); }
+    return null;
 }
 
-async function renderDailySales() {
+async function renderDailySales({ prefetchedManual } = {}) {
     const list = document.getElementById('daily-sales-list');
     const search = document.getElementById('daily-search')?.value.toLowerCase() || '';
     const monthFilter = document.getElementById('daily-filter-month')?.value || 'all';
 
     if (!list) return;
+
+    const vc = document.getElementById('view-container');
+    const scrollPos = vc?.scrollTop || 0;
 
     try {
         const formatCurrency = window.Utils.formatCurrency;
@@ -184,7 +189,7 @@ async function renderDailySales() {
         });
 
         // Incluir cierres manuales existentes
-        const manualSales = await window.db.daily_sales.toArray();
+        const manualSales = prefetchedManual || await window.db.daily_sales.toArray();
         const activeManual = manualSales.filter(s => !s.deleted);
         activeManual.forEach(s => {
             if (s.date && !byDate.has(s.date)) {
@@ -386,6 +391,8 @@ async function renderDailySales() {
                 renderDailySales();
             });
         }
+
+        requestAnimationFrame(() => { if (vc) vc.scrollTop = scrollPos; });
 
     } catch (e) {
         console.error("Error in renderDailySales:", e);

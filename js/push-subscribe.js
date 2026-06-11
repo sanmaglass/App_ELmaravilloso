@@ -19,7 +19,7 @@ window.PushSubscribe = {
 
         try {
             // Registrar Service Worker
-            this._registration = await navigator.serviceWorker.register('./service-worker.js');
+            this._registration = await navigator.serviceWorker.register(`./service-worker.js?v=${window.AppConfig?.version || '1'}`);
             console.log('[Push] SW registrado:', this._registration.scope);
 
             // Esperar a que el SW esté activo

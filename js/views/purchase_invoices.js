@@ -1665,6 +1665,9 @@ async function renderInvoices() {
 
     if (!list) return;
 
+    const vc = document.getElementById('view-container');
+    const scrollPos = vc?.scrollTop || 0;
+
     try {
         const [invoices, suppliers] = await Promise.all([
             window.db.purchase_invoices.toArray(),
@@ -1926,6 +1929,8 @@ async function renderInvoices() {
             if (btn) handleDeleteInvoice(Number(btn.dataset.id));
         };
         list.addEventListener('click', list._deleteHandler);
+
+        requestAnimationFrame(() => { if (vc) vc.scrollTop = scrollPos; });
 
     } catch (e) {
         console.error("Error in renderInvoices:", e);

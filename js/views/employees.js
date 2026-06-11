@@ -138,6 +138,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
         if (await window.showConfirmDialog('Eliminar Empleado', '¿Eliminar este empleado?')) {
             try {
                 await window.DataManager.deleteAndSync('employees', id);
+                window.showToast('Empleado eliminado', 'success');
                 window.Views.employees(container);
             } catch (err) {
                 window.showToast('Error al eliminar: ' + err.message, 'error');
@@ -224,11 +225,23 @@ window.Views.employees = async (container, _tab = 'equipo') => {
             if (!form.reportValidity()) return;
 
             const formData = new FormData(form);
+            const nameInput = form.querySelector('[name="name"]');
             const name = formData.get('name').trim();
-            if (!name) { window.showToast('El nombre es obligatorio.', 'error'); return; }
+            if (!name) {
+                nameInput.classList.add('input-error');
+                nameInput.addEventListener('input', () => nameInput.classList.remove('input-error'), { once: true });
+                window.showToast('El nombre es obligatorio.', 'error');
+                return;
+            }
 
+            const baseSalaryInput = form.querySelector('[name="baseSalary"]');
             const baseSalary = Number(formData.get('baseSalary')) || 0;
-            if (baseSalary <= 0) { window.showToast('El sueldo base debe ser mayor a 0.', 'error'); return; }
+            if (baseSalary <= 0) {
+                baseSalaryInput.classList.add('input-error');
+                baseSalaryInput.addEventListener('input', () => baseSalaryInput.classList.remove('input-error'), { once: true });
+                window.showToast('El sueldo base debe ser mayor a 0.', 'error');
+                return;
+            }
 
             const employeeData = {
                 name,
