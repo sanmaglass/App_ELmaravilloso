@@ -18,7 +18,7 @@
          ============================================================ -->
     <script>
     (function cacheNuker() {
-        var NUKE_VERSION = 'v1056';
+        var NUKE_VERSION = 'v1057';
         var FLAG = 'wm_cache_nuked_' + NUKE_VERSION;
         if (localStorage.getItem(FLAG)) return;
 
@@ -104,8 +104,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js" defer></script>
 
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css?v=1031">
-    <link rel="stylesheet" href="css/components.css?v=1032">
+    <link rel="stylesheet" href="css/style.css?v=1057">
+    <link rel="stylesheet" href="css/components.css?v=1057">
     <!-- Critical: Dark mode init before DOM renders to prevent flash -->
     <script>
         (function () {
@@ -289,7 +289,7 @@
 
     <!-- App Logic (Loaded in order) -->
     <script src="js/config.js?v=1018"></script>
-    <script src="js/auth.js?v=1000"></script>
+    <script src="js/auth.js?v=1057"></script>
     <script src="js/constants.js?v=1050"></script>
     <script src="js/utils.js?v=1051"></script>
     <script src="js/db.js?v=1051"></script>
@@ -303,7 +303,7 @@
     <!-- Legacy sync -->
     <script src="js/sync.js?v=1052"></script>
     <script src="js/sii_api.js?v=1050"></script>
-    <script src="js/confirm-dialog.js?v=1000"></script>
+    <script src="js/confirm-dialog.js?v=1057"></script>
     <!-- Views — defer: no son críticos para el primer render -->
     <script src="js/views/auth.js?v=1018" defer></script>
     <script src="js/views/dashboard.js?v=1057" defer></script>
@@ -329,7 +329,7 @@
     <script src="js/notifications.js?v=1018" defer></script>
     <script src="js/push-subscribe.js?v=1054" defer></script>
     <!-- Main controller - MUST be last to initialize app -->
-    <script src="main.js?v=1054" defer></script>
+    <script src="main.js?v=1057" defer></script>
 
     <!-- Dark Mode Toggle Logic -->
     <script>
