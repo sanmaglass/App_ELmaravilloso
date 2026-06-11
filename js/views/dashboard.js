@@ -295,8 +295,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         /* Dark mode */
         body.dark-mode .quick-btn {
             background: var(--bg-card);
-            border-color: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.14);
             color: var(--text-secondary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
         body.dark-mode .quick-btn i {
             color: var(--text-secondary);

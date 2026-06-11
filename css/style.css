@@ -477,21 +477,24 @@ body {
 
     /* Header buttons más visibles en mobile */
     .actions .btn-icon {
-        width: 36px !important;
-        height: 36px !important;
-        background: white !important;
-        border: 1.5px solid rgba(0, 0, 0, 0.12) !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-        color: var(--text-primary, #1a1a2e) !important;
-        font-size: 1.1rem !important;
+        width: 38px !important;
+        height: 38px !important;
+        background: var(--bg-card, #fff) !important;
+        border: 1.5px solid rgba(0, 0, 0, 0.15) !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+        color: #374151 !important;
+        font-size: 1.15rem !important;
         border-radius: 10px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
     body.dark-mode .actions .btn-icon {
-        background: #161b22 !important;
-        border-color: rgba(255, 255, 255, 0.12) !important;
+        background: #1c2128 !important;
+        border-color: rgba(255, 255, 255, 0.15) !important;
         color: #e6edf3 !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
     }
 
     /* Sync: solo icono en mobile */
@@ -521,7 +524,7 @@ body {
         width: 32px !important;
         height: 32px !important;
         font-size: 1rem !important;
-        border-radius: 8px !important;
+        border-radius: 10px !important;
     }
 
     #sync-indicator {
@@ -942,9 +945,9 @@ body.dark-mode .btn-secondary:hover {
 
 body.dark-mode .btn-icon {
     background: rgba(22, 27, 34, 0.9) !important;
-    border: 1px solid rgba(240, 246, 252, 0.08) !important;
-    color: #8b949e !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(240, 246, 252, 0.12) !important;
+    color: #9ca3af !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
 }
 
 body.dark-mode .btn-icon:hover {
@@ -1025,21 +1028,21 @@ body.dark-mode #sync-indicator {
 
 /* ── Status Badges en Dark ── */
 body.dark-mode .status-paid {
-    background: rgba(0, 200, 83, 0.12) !important;
-    color: #3dd68c !important;
-    border-color: rgba(0, 200, 83, 0.25) !important;
+    background: rgba(16, 185, 129, 0.15) !important;
+    color: #6ee7b7 !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
 }
 
 body.dark-mode .status-pending {
-    background: rgba(245, 158, 11, 0.12) !important;
-    color: #fbbf24 !important;
-    border-color: rgba(245, 158, 11, 0.25) !important;
+    background: rgba(245, 158, 11, 0.15) !important;
+    color: #fcd34d !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
 }
 
 body.dark-mode .status-overdue {
-    background: rgba(255, 23, 68, 0.12) !important;
-    color: #ff6b6b !important;
-    border-color: rgba(255, 23, 68, 0.25) !important;
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #fca5a5 !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
 }
 
 /* ── Scrollbar premium dark ── */
@@ -1178,20 +1181,8 @@ body,
     height: 72px;
     /* Fondo con toque rosado/rojo muy sutil — más cálido que gris plano */
     background: linear-gradient(to top, #ffffff, #fef2f2);
-    /* Línea superior con gradiente rojo brillante — más gruesa y saturada */
-    border-top: 2.5px solid transparent;
-    border-image: linear-gradient(90deg,
-        transparent 0%,
-        rgba(230, 0, 0, 0.25) 20%,
-        rgba(230, 0, 0, 0.9) 50%,
-        rgba(230, 0, 0, 0.25) 80%,
-        transparent 100%) 1;
-    /* Sombra más dramática — 4 capas */
-    box-shadow:
-        0 -12px 40px rgba(0, 0, 0, 0.12),
-        0 -4px 16px rgba(0, 0, 0, 0.08),
-        0 -2px 6px rgba(230, 0, 0, 0.08),
-        0 -1px 0 rgba(230, 0, 0, 0.18);
+    border-top: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 -1px 8px rgba(0,0,0,0.08);
     z-index: 999;
     padding-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -1276,7 +1267,7 @@ body,
     width: 48px;
     height: 32px;
     border-radius: 16px;
-    background: rgba(230, 0, 0, 0.15);
+    background: rgba(230, 0, 0, 0.08);
     transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
     pointer-events: none;
 }
@@ -1293,13 +1284,9 @@ body,
     left: 50%;
     transform: translateX(-50%) scaleX(0);
     width: 28px;
-    height: 5px;
-    border-radius: 3px;
+    height: 3px;
+    border-radius: 2px;
     background: var(--primary, #e60000);
-    box-shadow:
-        0 0 10px rgba(230, 0, 0, 0.8),
-        0 0 20px rgba(230, 0, 0, 0.55),
-        0 0 36px rgba(230, 0, 0, 0.3);
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -1320,13 +1307,7 @@ body,
 
 .bottom-tab.active i {
     color: var(--primary, #e60000);
-    transform: scale(1.12);
-    text-shadow:
-        0 0 6px rgba(230, 0, 0, 0.7),
-        0 0 14px rgba(230, 0, 0, 0.5),
-        0 0 24px rgba(230, 0, 0, 0.3),
-        0 0 40px rgba(230, 0, 0, 0.15);
-    animation: tabBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    transform: scale(1.08);
 }
 
 /* ---- Hover en tabs inactivos ---- */
@@ -1348,19 +1329,10 @@ body,
 
 /* ===== DARK MODE — bottom nav ===== */
 body.dark-mode #bottom-nav {
-    /* Fondo oscuro con toque rojo apenas perceptible — da calidez */
-    background: linear-gradient(to top, #0d1117, #1a0505) !important;
-    box-shadow:
-        0 -12px 48px rgba(0, 0, 0, 0.6),
-        0 -4px 16px rgba(0, 0, 0, 0.45),
-        0 -2px 8px rgba(230, 0, 0, 0.12),
-        0 -1px 0 rgba(230, 0, 0, 0.3) !important;
-    border-image: linear-gradient(90deg,
-        transparent 0%,
-        rgba(230, 0, 0, 0.2) 20%,
-        rgba(230, 0, 0, 0.85) 50%,
-        rgba(230, 0, 0, 0.2) 80%,
-        transparent 100%) 1 !important;
+    background: linear-gradient(to top, #0d1117, #161b22) !important;
+    box-shadow: 0 -1px 8px rgba(0,0,0,0.3) !important;
+    border-top: 1px solid rgba(255,255,255,0.06) !important;
+    border-image: none !important;
 }
 
 body.dark-mode .bottom-tab {
@@ -1377,19 +1349,11 @@ body.dark-mode .bottom-tab.active {
 
 body.dark-mode .bottom-tab.active i {
     color: var(--primary, #e60000) !important;
-    /* Glow full red intensity — 5 capas */
-    text-shadow:
-        0 0 6px rgba(230, 0, 0, 0.9),
-        0 0 14px rgba(230, 0, 0, 0.7),
-        0 0 24px rgba(230, 0, 0, 0.5),
-        0 0 40px rgba(230, 0, 0, 0.3),
-        0 0 64px rgba(230, 0, 0, 0.15) !important;
+    text-shadow: none !important;
 }
 
 body.dark-mode .bottom-tab::after {
-    box-shadow:
-        0 0 10px rgba(230, 0, 0, 0.8),
-        0 0 22px rgba(230, 0, 0, 0.45) !important;
+    box-shadow: none !important;
 }
 
 body.dark-mode .bottom-tab:not(.active):hover i,
