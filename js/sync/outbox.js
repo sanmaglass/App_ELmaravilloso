@@ -87,7 +87,8 @@ window.Outbox = {
               retries: item.retries,
               status: 'pending'
             });
-            console.warn(`⚠️ Reintento ${item.retries}/5 para ${item.tableName}#${JSON.parse(item.payload).id}`);
+            const retryId = (() => { try { return JSON.parse(item.payload).id; } catch (_) { return '?'; } })();
+            console.warn(`⚠️ Reintento ${item.retries}/5 para ${item.tableName}#${retryId}`);
           } else {
             await window.db.sync_outbox.update(item.id, { status: 'error' });
             console.error(`❌ Máx reintentos para ${item.tableName}, marcado como error`);

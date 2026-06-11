@@ -1,12 +1,66 @@
 // Security View - CCTV Integration (Hikvision)
 window.Views = window.Views || {};
 
+// --- NVR Password obfuscation via AES-GCM (Web Crypto API) ---
+// Clave derivada del device-id + salt fijo. No es military-grade pero
+// evita texto plano en IndexedDB para credenciales NVR.
+const _NVR_SALT = new TextEncoder().encode('elmaravilloso-nvr-v1');
+
+async function _nvrDeriveKey() {
+    const deviceId = (window.DeviceId && window.DeviceId.get())
+        ? window.DeviceId.get()
+        : (navigator.userAgent + location.hostname);
+    const rawKey = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(deviceId),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: _NVR_SALT, iterations: 10000, hash: 'SHA-256' },
+        rawKey,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+    );
+}
+
+async function _nvrEncrypt(plaintext) {
+    if (!plaintext) return '';
+    const key = await _nvrDeriveKey();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(plaintext);
+    const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+    // Almacenamos iv + ciphertext concatenados, en base64
+    const combined = new Uint8Array(iv.byteLength + cipherBuf.byteLength);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(cipherBuf), iv.byteLength);
+    return btoa(String.fromCharCode(...combined));
+}
+
+async function _nvrDecrypt(b64) {
+    if (!b64) return '';
+    try {
+        const combined = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        const iv = combined.slice(0, 12);
+        const cipherBuf = combined.slice(12);
+        const key = await _nvrDeriveKey();
+        const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipherBuf);
+        return new TextDecoder().decode(plainBuf);
+    } catch {
+        // Si falla (ej: dato legacy en texto plano), devolver tal cual
+        return b64;
+    }
+}
+// --- fin ofuscación NVR ---
+
 window.Views.security = async (container) => {
     // Load current NVR settings
     const esc = window.Utils.escapeHTML;
     const nvrIp = esc((await window.db.settings.get('nvr_ip'))?.value || '192.168.1.22');
     const nvrUser = esc((await window.db.settings.get('nvr_user'))?.value || 'admin');
-    const nvrPass = (await window.db.settings.get('nvr_pass'))?.value || '';
+    const nvrPass = await _nvrDecrypt((await window.db.settings.get('nvr_pass'))?.value || '');
     const nvrPort = esc((await window.db.settings.get('nvr_port'))?.value || '80');
     const camCount = (await window.db.settings.get('cam_count'))?.value || 4;
     const streamType = esc((await window.db.settings.get('nvr_stream_type'))?.value || '02');
@@ -246,7 +300,7 @@ window.Views.security = async (container) => {
                 await window.db.settings.put({ key: 'nvr_ip', value: newIp });
                 await window.db.settings.put({ key: 'nvr_port', value: newPort });
                 await window.db.settings.put({ key: 'nvr_user', value: newUser });
-                await window.db.settings.put({ key: 'nvr_pass', value: newPass });
+                await window.db.settings.put({ key: 'nvr_pass', value: await _nvrEncrypt(newPass) });
                 await window.db.settings.put({ key: 'cam_count', value: parseInt(newCount) });
                 await window.db.settings.put({ key: 'nvr_stream_type', value: newStream });
                 await window.db.settings.put({ key: 'nvr_endpoint', value: newEndpoint });

@@ -553,17 +553,22 @@ window.SII_API = {
 
         // Contador mensual
         const mesKey = `sii_quota_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const usage = JSON.parse(localStorage.getItem(mesKey) || '{"calls":0,"history":[]}');
+        let usage;
+        try { usage = JSON.parse(localStorage.getItem(mesKey) || '{}'); } catch (_) { usage = {}; }
+        if (!usage.calls) usage.calls = 0;
+        if (!usage.history) usage.history = [];
         usage.calls++;
         usage.history.push({ ts: Date.now(), type: 'api_call' });
-        localStorage.setItem(mesKey, JSON.stringify(usage));
+        try { localStorage.setItem(mesKey, JSON.stringify(usage)); } catch (_) { /* Safari privado */ }
 
         // Contador diario
         const diaKey = `sii_daily_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const daily = JSON.parse(localStorage.getItem(diaKey) || '{"calls":0}');
+        let daily;
+        try { daily = JSON.parse(localStorage.getItem(diaKey) || '{}'); } catch (_) { daily = {}; }
+        if (!daily.calls) daily.calls = 0;
         daily.calls++;
         daily.lastCall = Date.now();
-        localStorage.setItem(diaKey, JSON.stringify(daily));
+        try { localStorage.setItem(diaKey, JSON.stringify(daily)); } catch (_) { /* Safari privado */ }
     },
 
     /**
@@ -573,9 +578,10 @@ window.SII_API = {
     getDailyUsage() {
         const now = new Date();
         const diaKey = `sii_daily_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const daily = JSON.parse(localStorage.getItem(diaKey) || '{"calls":0}');
+        let daily;
+        try { daily = JSON.parse(localStorage.getItem(diaKey) || '{}'); } catch (_) { daily = {}; }
         return {
-            used: daily.calls,
+            used: daily.calls || 0,
             budget: this.DAILY_BUDGET,
             remaining: Math.max(0, this.DAILY_BUDGET - daily.calls),
             lastCall: daily.lastCall ? new Date(daily.lastCall) : null,
@@ -590,8 +596,9 @@ window.SII_API = {
     getQuotaUsage() {
         const now = new Date();
         const mesKey = `sii_quota_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const usage = JSON.parse(localStorage.getItem(mesKey) || '{"calls":0,"history":[]}');
-        const used = usage.calls;
+        let usage;
+        try { usage = JSON.parse(localStorage.getItem(mesKey) || '{}'); } catch (_) { usage = {}; }
+        const used = usage.calls || 0;
         return {
             used,
             budget: this.MONTHLY_BUDGET,

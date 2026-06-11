@@ -110,8 +110,8 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                         </div>
                     </div>
                     <div style="display:flex; gap:8px;">
-                        <button onclick="window.showEmployeeModal(${emp.id})" class="btn-icon" style="width:36px; height:36px; font-size:1.1rem;" title="Editar"><i class="ph ph-pencil-simple"></i></button>
-                        <button onclick="window.deleteEmployee(${emp.id})" class="btn-icon" style="width:36px; height:36px; font-size:1.1rem; color:var(--danger); border-color:var(--danger);" title="Borrar"><i class="ph ph-trash"></i></button>
+                        <button onclick="window.showEmployeeModal(${emp.id})" class="btn-icon" style="width:44px; height:44px; font-size:1.1rem;" aria-label="Editar ${Utils.escapeHTML(emp.name)}" title="Editar"><i class="ph ph-pencil-simple"></i></button>
+                        <button onclick="window.deleteEmployee(${emp.id})" class="btn-icon" style="width:44px; height:44px; font-size:1.1rem; color:var(--danger); border-color:var(--danger);" aria-label="Borrar ${Utils.escapeHTML(emp.name)}" title="Borrar"><i class="ph ph-trash"></i></button>
                     </div>
                 </div>
 
@@ -422,7 +422,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                                 <span style="color:var(--text-muted);">${window.Utils.formatDate(a.date)} ${a.note ? '· ' + Utils.escapeHTML(a.note) : ''}</span>
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <strong style="color:#c2410c;">${window.Utils.formatCurrency(a.amount)}</strong>
-                                    <button onclick="window.deleteAdvance(${a.id})" class="btn-icon" style="width:22px; height:22px; font-size:0.8rem; color:var(--danger);" title="Eliminar"><i class="ph ph-x"></i></button>
+                                    <button onclick="window.deleteAdvance(${a.id})" class="btn-icon" style="min-width:36px; min-height:36px; font-size:0.85rem; color:var(--danger);" aria-label="Eliminar adelanto" title="Eliminar"><i class="ph ph-x"></i></button>
                                 </div>
                             </div>
                         `).join('')}
