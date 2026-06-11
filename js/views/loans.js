@@ -334,30 +334,30 @@ window.Views.loans = async (container, filterSupplierId = null) => {
 
                     <div class="form-group mb-4" id="group-person" style="display: ${isEdit && loanToEdit.supplierId === null ? 'block' : 'none'};">
                         <label class="form-label">Nombre de la Persona *</label>
-                        <input type="text" id="loan-borrower-name" class="form-input" placeholder="Ej: Juan Pérez" value="${isEdit ? (loanToEdit.borrowerName || '') : ''}">
+                        <input type="text" id="loan-borrower-name" class="form-input" placeholder="Ej: Juan Pérez" value="${isEdit ? Utils.escapeHTML(loanToEdit.borrowerName || '') : ''}">
                     </div>
 
                     <div class="form-group mb-4">
                         <label class="form-label" id="label-item">Ítem / Descripción *</label>
-                        <input type="text" id="loan-item" class="form-input" placeholder="Ej: Mangas de sushi" required value="${isEdit ? loanToEdit.item : ''}">
+                        <input type="text" id="loan-item" class="form-input" placeholder="Ej: Mangas de sushi" required value="${isEdit ? Utils.escapeHTML(loanToEdit.item) : ''}">
                     </div>
 
                     <!-- Fields for Product -->
                     <div id="fields-product" class="responsive-grid-2 gap-3 mb-4" style="display: ${loanType === 'Producto' ? 'grid' : 'none'};">
                         <div class="form-group">
                             <label class="form-label">Cantidad *</label>
-                            <input type="number" id="loan-quantity" class="form-input" placeholder="0" value="${isEdit ? loanToEdit.quantity : ''}">
+                            <input type="number" id="loan-quantity" class="form-input" placeholder="0" value="${isEdit ? Utils.escapeHTML(loanToEdit.quantity) : ''}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Precio Unit. (Est.)</label>
-                            <input type="number" id="loan-unit-price" class="form-input" placeholder="0" value="${isEdit ? loanToEdit.unitPrice : ''}">
+                            <input type="number" id="loan-unit-price" class="form-input" placeholder="0" value="${isEdit ? Utils.escapeHTML(loanToEdit.unitPrice) : ''}">
                         </div>
                     </div>
 
                     <!-- Fields for Money -->
                     <div id="fields-money" class="form-group mb-4" style="display: ${loanType === 'Dinero' ? 'block' : 'none'};">
                         <label class="form-label">Monto Total ($) *</label>
-                        <input type="number" id="loan-total-money" class="form-input" placeholder="0" value="${isEdit ? loanToEdit.total : ''}">
+                        <input type="number" id="loan-total-money" class="form-input" placeholder="0" value="${isEdit ? Utils.escapeHTML(loanToEdit.total) : ''}">
                     </div>
 
                     <div class="form-group mb-4">
@@ -366,7 +366,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                     </div>
                     <div class="form-group">
                         <label class="form-label">Notas / Observaciones</label>
-                        <textarea id="loan-notes" class="form-input" style="min-height:80px;">${isEdit ? (loanToEdit.notes || '') : ''}</textarea>
+                        <textarea id="loan-notes" class="form-input" style="min-height:80px;">${isEdit ? Utils.escapeHTML(loanToEdit.notes || '') : ''}</textarea>
                     </div>
                 </div>
                 <div class="modal-footer p-6">

@@ -53,7 +53,7 @@ async function renderPromos() {
             }
                 <div style="padding:20px; flex:1; display:flex; flex-direction:column; background:var(--bg-card);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <h3 style="color:var(--text-primary); font-size:1rem; font-weight:700; margin:0;">${p.title}</h3>
+                        <h3 style="color:var(--text-primary); font-size:1rem; font-weight:700; margin:0;">${Utils.escapeHTML(p.title)}</h3>
                         <span style="font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:20px; background:${p.isActive ? 'rgba(16,185,129,0.1)' : 'var(--bg-input)'}; color:${p.isActive ? 'var(--success)' : 'var(--text-muted)'};">${p.isActive ? 'ACTIVA' : 'INACTIVA'}</span>
                     </div>
                     <div style="background:var(--bg-input); padding:10px; border-radius:8px; margin-bottom:16px; font-size:0.85rem; color:var(--text-secondary); max-height:80px; overflow:hidden; position:relative;">
@@ -262,7 +262,7 @@ function showPromoModal() {
 
 function formatWhatsAppText(text) {
     if (!text) return '<span style="color:#d1d5db;">Escribe tu mensaje...</span>';
-    return text.replace(/\*(.*?)\*/g, '<b>$1</b>')
+    return Utils.escapeHTML(text).replace(/\*(.*?)\*/g, '<b>$1</b>')
         .replace(/_(.*?)_/g, '<i>$1</i>')
         .replace(/\n/g, '<br>');
 }

@@ -234,7 +234,7 @@ async function showSaleModal() {
     const updateCart = () => {
         tbody.innerHTML = cart.map((item, index) => `
             <tr style="border-bottom:1px solid var(--bg-input);">
-                <td style="padding:8px;">${item.name}</td>
+                <td style="padding:8px;">${Utils.escapeHTML(item.name)}</td>
                 <td style="padding:8px;">${item.qty}</td>
                 <td style="padding:8px;">${formatCurrency(item.price)}</td>
                 <td style="padding:8px;">${formatCurrency(item.price * item.qty)}</td>

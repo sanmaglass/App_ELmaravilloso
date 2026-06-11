@@ -452,7 +452,7 @@ async function renderCajaView() {
                                 <div style="font-weight:600; font-size:0.9rem; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(m.description)}</div>
                                 <div style="font-size:0.75rem; color:var(--text-muted); display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:2px;">
                                     <span class="caja-badge" style="background:${m.bg}; color:${m.color};">${typeLabel}</span>
-                                    <span>${m.category}</span>
+                                    <span>${escapeHTML(m.category)}</span>
                                 </div>
                             </div>
                         </div>

@@ -154,12 +154,12 @@ window.Views.employees = async (container, _tab = 'equipo') => {
 
                         <div class="form-group">
                             <label class="form-label">Nombre Completo</label>
-                            <input type="text" name="name" class="form-input" required placeholder="Ej. Juan Pérez" value="${emp?.name || ''}">
+                            <input type="text" name="name" class="form-input" required placeholder="Ej. Juan Pérez" value="${Utils.escapeHTML(emp?.name || '')}">
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">Cargo / Rol</label>
-                            <input type="text" name="role" class="form-input" placeholder="Ej. Vendedor, Bodeguero" value="${emp?.role || ''}">
+                            <input type="text" name="role" class="form-input" placeholder="Ej. Vendedor, Bodeguero" value="${Utils.escapeHTML(emp?.role || '')}">
                         </div>
 
                         <!-- Tipo de Empleado -->

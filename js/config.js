@@ -7,8 +7,8 @@ const _defaultUrl = 'https://ybonpeapvpdseqbtlysx.supabase.co';
 const _defaultKey = 'sb_publishable_WPhGxSOnQ4RN1aJBKGnj0g_TnZFPWIB';
 
 window.AppConfig = {
-    supabaseUrl: localStorage.getItem('supabase_url') || _defaultUrl,
-    supabaseKey: localStorage.getItem('supabase_key') || _defaultKey,
+    supabaseUrl: _defaultUrl,
+    supabaseKey: _defaultKey,
     version: '1.7.1'
 };
 

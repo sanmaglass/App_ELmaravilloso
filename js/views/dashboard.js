@@ -1535,7 +1535,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             : topSuppliers.map(([id, amount], idx) => `
                     <div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-                        <span style="font-size:0.83rem;font-weight:600;color:var(--text-primary);">${supplierMap[id] || 'Desconocido'}</span>
+                        <span style="font-size:0.83rem;font-weight:600;color:var(--text-primary);">${Utils.escapeHTML(supplierMap[id] || 'Desconocido')}</span>
                         <span style="font-size:0.8rem;font-weight:700;color:${colors[idx]};">${fmt(amount)}</span>
                     </div>
                     <div class="supplier-bar-bg">

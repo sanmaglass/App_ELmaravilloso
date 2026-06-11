@@ -262,7 +262,7 @@ async function loadInventory(container) {
 
         container.innerHTML = activeProducts.reverse().map(p => `
             <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
-                <div style="font-weight:600; margin-bottom:4px;">${p.name}</div>
+                <div style="font-weight:600; margin-bottom:4px;">${Utils.escapeHTML(p.name)}</div>
                 <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
                     <span style="color:var(--text-muted);">Costo: ${window.Utils.formatCurrency(p.costUnit)}</span>
                     <span style="color:var(--accent); font-weight:600;">Venta: ${window.Utils.formatCurrency(p.salePrice)}</span>

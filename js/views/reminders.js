@@ -253,7 +253,7 @@ window.Views.reminders = async (container) => {
             </button>
             <div style="flex-grow:1; min-width:0;">
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <span style="font-weight:600; font-size:0.95rem; ${t.completed ? 'text-decoration:line-through; color:var(--text-muted);' : ''}">${t.title}</span>
+                    <span style="font-weight:600; font-size:0.95rem; ${t.completed ? 'text-decoration:line-through; color:var(--text-muted);' : ''}">${Utils.escapeHTML(t.title)}</span>
                     <span style="font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:99px; background:${pri.bg}; color:${pri.color};">
                         <i class="ph ${pri.icon}"></i> ${pri.label}
                     </span>
@@ -262,7 +262,7 @@ window.Views.reminders = async (container) => {
                 <div style="font-size:0.8rem; color:var(--text-muted); margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                     <i class="ph ${isOver ? 'ph-warning' : 'ph-clock'}" style="${isOver ? 'color:#ef4444;' : ''}"></i>
                     <span style="${isOver ? 'color:#ef4444; font-weight:600;' : ''}">${date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} ${date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</span>
-                    ${t.notes ? `· <i class="ph ph-note"></i> ${t.notes.substring(0, 40)}${t.notes.length > 40 ? '…' : ''}` : ''}
+                    ${t.notes ? `· <i class="ph ph-note"></i> ${Utils.escapeHTML(t.notes.substring(0, 40))}${t.notes.length > 40 ? '…' : ''}` : ''}
                 </div>
                 ${(!t.completed && isOver) ? `
                 <div style="font-size:0.75rem; color:#ef4444; margin-top:4px; font-weight:600;">

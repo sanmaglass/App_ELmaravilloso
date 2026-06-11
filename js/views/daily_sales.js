@@ -466,7 +466,7 @@ function showDailySaleModal(saleToEdit = null) {
 
                     <div class="form-group">
                         <label class="form-label">Notas (Opcional)</label>
-                        <textarea id="ds-notes" class="form-input" style="height:60px;">${isEdit && saleToEdit.notes ? saleToEdit.notes : ''}</textarea>
+                        <textarea id="ds-notes" class="form-input" style="height:60px;">${isEdit && saleToEdit.notes ? Utils.escapeHTML(saleToEdit.notes) : ''}</textarea>
                     </div>
 
                 </form>

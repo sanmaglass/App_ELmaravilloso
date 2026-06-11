@@ -151,25 +151,25 @@ function showSupplierModal(supplierToEdit = null) {
             <div class="p-6">
                 <div class="form-group mb-4">
                     <label class="form-label">Nombre de Empresa *</label>
-                    <input type="text" id="sup-name" class="form-input" required value="${isEdit ? supplierToEdit.name : ''}">
+                    <input type="text" id="sup-name" class="form-input" required value="${isEdit ? Utils.escapeHTML(supplierToEdit.name) : ''}">
                 </div>
                 <div class="responsive-grid-2 gap-3 mb-4">
                     <div class="form-group">
                         <label class="form-label">RUT</label>
-                        <input type="text" id="sup-rut" class="form-input" placeholder="12.345.678-9" value="${isEdit ? (supplierToEdit.rut || '') : ''}">
+                        <input type="text" id="sup-rut" class="form-input" placeholder="12.345.678-9" value="${isEdit ? Utils.escapeHTML(supplierToEdit.rut || '') : ''}">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Giro</label>
-                        <input type="text" id="sup-giro" class="form-input" placeholder="Venta de..." value="${isEdit ? (supplierToEdit.giro || '') : ''}">
+                        <input type="text" id="sup-giro" class="form-input" placeholder="Venta de..." value="${isEdit ? Utils.escapeHTML(supplierToEdit.giro || '') : ''}">
                     </div>
                 </div>
                 <div class="form-group mb-4">
                     <label class="form-label">Dirección</label>
-                    <input type="text" id="sup-address" class="form-input" placeholder="Calle #123, Comuna" value="${isEdit ? (supplierToEdit.address || '') : ''}">
+                    <input type="text" id="sup-address" class="form-input" placeholder="Calle #123, Comuna" value="${isEdit ? Utils.escapeHTML(supplierToEdit.address || '') : ''}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Contacto / Teléfono</label>
-                    <input type="text" id="sup-contact" class="form-input" value="${isEdit ? (supplierToEdit.contact || '') : ''}">
+                    <input type="text" id="sup-contact" class="form-input" value="${isEdit ? Utils.escapeHTML(supplierToEdit.contact || '') : ''}">
                 </div>
             </div>
             <div class="modal-footer p-6">

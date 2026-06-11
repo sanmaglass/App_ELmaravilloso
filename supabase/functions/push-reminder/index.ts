@@ -4,15 +4,17 @@
 // Se ejecuta via pg_cron cada 1 minuto o via HTTP invoke.
 //
 // Variables de entorno requeridas:
-//   VAPID_PRIVATE_KEY — clave privada VAPID
-//   SUPABASE_URL      — (auto-inyectada)
+//   VAPID_PRIVATE_KEY  — clave privada VAPID
+//   VAPID_PUBLIC_KEY   — clave pública VAPID
+//   CRON_SECRET        — secreto para autenticar invocaciones
+//   SUPABASE_URL       — (auto-inyectada)
 //   SUPABASE_SERVICE_ROLE_KEY — (auto-inyectada)
 // ──────────────────────────────────────────────────────────────
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 
-const VAPID_PUBLIC_KEY = 'BMbsRGjcT_5ZY4MS1efA8SPoxqvbMeuVM6GfaKNCzi3vfZ8YzPZ8HxG0wHxGlP-nzwA9bTlBuP7tAXPawFSEvuQ';
+const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY') ?? 'BMbsRGjcT_5ZY4MS1efA8SPoxqvbMeuVM6GfaKNCzi3vfZ8YzPZ8HxG0wHxGlP-nzwA9bTlBuP7tAXPawFSEvuQ';
 const VAPID_SUBJECT = 'mailto:admin@elmaravilloso.cl';
 
 interface PushSub {
@@ -33,7 +35,28 @@ interface Reminder {
   tenant_id: string;
 }
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+  // CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+      },
+    });
+  }
+
+  // Auth: Bearer <CRON_SECRET>
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  if (cronSecret) {
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+  }
+
   try {
     const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY');
     if (!VAPID_PRIVATE_KEY) {
@@ -62,7 +85,7 @@ Deno.serve(async (_req) => {
 
     if (remErr) {
       console.error('Error buscando reminders:', remErr);
-      return jsonResponse({ error: remErr.message }, 500);
+      return jsonResponse({ error: 'Internal server error' }, 500);
     }
 
     if (!reminders || reminders.length === 0) {
@@ -152,7 +175,7 @@ Deno.serve(async (_req) => {
 
   } catch (err) {
     console.error('Error general:', err);
-    return jsonResponse({ error: String(err) }, 500);
+    return jsonResponse({ error: 'Internal server error' }, 500);
   }
 });
 

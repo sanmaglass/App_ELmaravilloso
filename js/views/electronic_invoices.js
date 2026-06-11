@@ -62,25 +62,25 @@ async function renderDTEs() {
             <div class="card p-4 flex flex-col gap-4">
                 <div class="flex justify-between items-start gap-3">
                     <div style="flex:1;">
-                        <div class="font-bold text-primary" style="font-size:1.1rem;">${dte.receiverName}</div>
+                        <div class="font-bold text-primary" style="font-size:1.1rem;">${Utils.escapeHTML(dte.receiverName)}</div>
                         <div class="text-xs text-muted mt-1">
-                            <i class="ph ph-identification-card"></i> ${dte.receiverRut} 
+                            <i class="ph ph-identification-card"></i> ${Utils.escapeHTML(dte.receiverRut)} 
                             <span style="margin:0 6px;">•</span> 
                             <i class="ph ph-calendar-blank"></i> ${dte.date}
                         </div>
                     </div>
                     <div class="badge ${dte.status === 'Enviado' ? 'badge-up' : 'badge-down'}" style="padding:4px 10px; font-weight:700;">
-                        ${dte.status}
+                        ${Utils.escapeHTML(dte.status)}
                     </div>
                 </div>
 
                 <div class="flex justify-between items-center pt-3" style="border-top: 1px dashed var(--border);">
                     <div>
-                        <div class="text-xs text-muted uppercase font-bold letter-spacing-1">Folio: ${dte.folio || 'Pendiente'}</div>
+                        <div class="text-xs text-muted uppercase font-bold letter-spacing-1">Folio: ${Utils.escapeHTML(dte.folio || 'Pendiente')}</div>
                         <div class="text-xl font-bold text-primary mt-1">${window.Utils.formatCurrency(dte.total)}</div>
                     </div>
                     <div class="flex gap-2">
-                        <button class="btn btn-icon btn-secondary" style="width:40px; height:40px;" title="Ver PDF" onclick="window.open('${dte.pdfUrl}', '_blank')"><i class="ph ph-file-pdf"></i></button>
+                        <button class="btn btn-icon btn-secondary" style="width:40px; height:40px;" title="Ver PDF" onclick="window.open('${encodeURI(dte.pdfUrl || '')}', '_blank')"><i class="ph ph-file-pdf"></i></button>
                         ${dte.status !== 'Enviado' ? `<button class="btn btn-icon btn-primary" style="width:40px; height:40px;" title="Reintentar"> <i class="ph ph-arrows-clockwise"></i> </button>` : ''}
                     </div>
                 </div>
@@ -109,7 +109,7 @@ async function showDTEModal() {
                     <label class="form-label font-bold mb-1">Empresa / Proveedor Destino</label>
                     <select id="dte-supplier-select" class="form-input">
                         <option value="">-- Nuevo o Seleccionar --</option>
-                        ${activeSuppliers.map(s => `<option value="${s.id}" data-rut="${s.rut || ''}" data-giro="${s.giro || ''}" data-address="${s.address || ''}">${s.name}</option>`).join('')}
+                        ${activeSuppliers.map(s => `<option value="${s.id}" data-rut="${Utils.escapeHTML(s.rut || '')}" data-giro="${Utils.escapeHTML(s.giro || '')}" data-address="${Utils.escapeHTML(s.address || '')}">${Utils.escapeHTML(s.name)}</option>`).join('')}
                     </select>
                 </div>
 

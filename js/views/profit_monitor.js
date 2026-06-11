@@ -167,7 +167,7 @@ window.Views.profit_monitor = async (container) => {
             return `
                 <tr style="border-bottom:1px solid var(--border);" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
                     <td style="padding:12px 16px; max-width:200px;">
-                        <div style="font-weight:700; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.name}</div>
+                        <div style="font-weight:700; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${Utils.escapeHTML(p.name)}</div>
                         <div style="font-size:0.7rem; color:var(--text-muted);">Últ: ${p.latestDate.toLocaleDateString()}</div>
                     </td>
                     <td style="padding:12px 16px; font-weight:600;">${fmt(p.price)}</td>

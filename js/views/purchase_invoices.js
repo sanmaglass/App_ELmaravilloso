@@ -1979,7 +1979,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
                     <div class="form-group" style="grid-column:1/-1;">
                         <label class="form-label">Proveedor *</label>
                         <div style="display:flex; gap:8px;">
-                            <input type="text" id="inv-supplier-input" class="form-input" list="supplier-list-dl" placeholder="Escribe para buscar..." value="${currentSupplierName}" autocomplete="off" required>
+                            <input type="text" id="inv-supplier-input" class="form-input" list="supplier-list-dl" placeholder="Escribe para buscar..." value="${Utils.escapeHTML(currentSupplierName)}" autocomplete="off" required>
                             <datalist id="supplier-list-dl">
                                 ${supplierDatalist}
                             </datalist>
@@ -1992,7 +1992,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
                     <div class="form-group">
                         <label class="form-label">N° Factura / Documento</label>
                         <div style="display:flex; gap:8px;">
-                            <input type="text" id="inv-number" class="form-input" placeholder="Ej. 12345" value="${isEdit ? (invoiceToEdit.invoiceNumber || invoiceToEdit.invoice_number || '') : ''}">
+                            <input type="text" id="inv-number" class="form-input" placeholder="Ej. 12345" value="${isEdit ? Utils.escapeHTML(invoiceToEdit.invoiceNumber || invoiceToEdit.invoice_number || '') : ''}">
                             <button type="button" class="btn btn-secondary" id="btn-pending-number" title="Marcar como Pendiente" style="white-space:nowrap; padding:0 10px; font-size:0.75rem;">
                                 <i class="ph ph-clock"></i> Pendiente
                             </button>
@@ -2006,7 +2006,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
 
                      <div class="form-group">
                         <label class="form-label">Período de Uso <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">(se autocompleta con la fecha)</span></label>
-                        <input type="text" id="inv-period" class="form-input" placeholder="Ej. Enero 2026" value="${isEdit ? (invoiceToEdit.period || '') : ''}">
+                        <input type="text" id="inv-period" class="form-input" placeholder="Ej. Enero 2026" value="${isEdit ? Utils.escapeHTML(invoiceToEdit.period || '') : ''}">
                     </div>
 
                     <div class="form-group">
@@ -2624,5 +2624,5 @@ async function populateSupplierFilter() {
 
     const currentValue = select.value;
     select.innerHTML = '<option value="all">Todos los Proveedores</option>' +
-        supplierOptions.map(s => `<option value="${s.id}" ${String(s.id) === String(currentValue) ? 'selected' : ''}>${s.name}</option>`).join('');
+        supplierOptions.map(s => `<option value="${s.id}" ${String(s.id) === String(currentValue) ? 'selected' : ''}>${Utils.escapeHTML(s.name)}</option>`).join('');
 }

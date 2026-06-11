@@ -1,0 +1,30 @@
+# Sensitive files
+settings.json
+.env
+.env.*
+
+# Server-side / development only
+migrations/
+supabase/
+tests/
+node_modules/
+
+# Scripts and tools
+*.bat
+*.vbs
+*.sh
+debug_eleventa.js
+send-test-push.js
+launcher.bat
+launcher.vbs
+
+# Documentation (not needed in deploy)
+CLAUDE.md
+RECORDATORIO.txt
+PROGRESO_SII.txt
+graphify-out/
+docs/
+*.md
+
+# Claude config
+.claude/

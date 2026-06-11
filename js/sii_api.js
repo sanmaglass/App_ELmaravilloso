@@ -5,11 +5,11 @@
  */
 window.SII_API = {
 
-    // Defaults de la cuenta principal (sobreescribibles desde Settings)
+    // Defaults vacíos — las credenciales se configuran desde Settings (localStorage)
     _defaults: {
-        apiKey: 'sk_8bc5fa1e06cb022e94f09760069cedd3cb3709af8622ea46',
-        rut: '14061423-8',
-        password: 'Ubiobio56!'
+        apiKey: '',
+        rut: '',
+        password: ''
     },
 
     // --- Política de sincronización ---

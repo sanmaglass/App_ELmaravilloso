@@ -33,8 +33,8 @@ window.SyncV2 = {
       return true;
     }
 
-    const url = localStorage.getItem('supabase_url') || window.AppConfig.supabaseUrl;
-    const key = localStorage.getItem('supabase_key') || window.AppConfig.supabaseKey;
+    const url = window.AppConfig.supabaseUrl;
+    const key = window.AppConfig.supabaseKey;
 
     if (!url || !key) {
       console.warn('❌ Supabase config missing');

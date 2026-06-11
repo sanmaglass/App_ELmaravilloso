@@ -9,8 +9,8 @@ window.Auth = {
 
     // Inicializa el cliente Supabase Auth
     init() {
-        const url = localStorage.getItem('supabase_url') || window.AppConfig.supabaseUrl;
-        const key = localStorage.getItem('supabase_key') || window.AppConfig.supabaseKey;
+        const url = window.AppConfig.supabaseUrl;
+        const key = window.AppConfig.supabaseKey;
         if (!url || !key) return false;
         this.client = supabase.createClient(url, key);
         return true;

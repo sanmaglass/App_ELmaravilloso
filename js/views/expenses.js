@@ -274,7 +274,7 @@ function showExpenseModal(expenseToEdit = null) {
                     
                     <div class="form-group">
                         <label class="form-label">Título del Gasto</label>
-                        <input type="text" id="exp-title" class="form-input" placeholder="Ej. Pago de Luz" value="${isEdit ? expenseToEdit.title : ''}" required>
+                        <input type="text" id="exp-title" class="form-input" placeholder="Ej. Pago de Luz" value="${isEdit ? Utils.escapeHTML(expenseToEdit.title) : ''}" required>
                     </div>
 
                     <div class="form-group">
