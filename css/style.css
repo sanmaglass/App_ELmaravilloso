@@ -1155,6 +1155,18 @@ body,
     }
 }
 
+/* Pulse del borde del escáner — permanente y sutil */
+@keyframes scannerBorderPulse {
+    0%, 100% {
+        border-color: rgba(230, 0, 0, 0.32);
+        box-shadow: none;
+    }
+    50% {
+        border-color: rgba(230, 0, 0, 0.65);
+        box-shadow: 0 0 8px rgba(230, 0, 0, 0.3), inset 0 0 6px rgba(230, 0, 0, 0.08);
+    }
+}
+
 /* Destello leve en hover/focus tab inactivo */
 @keyframes tabFlash {
     0%   { opacity: 1; }
@@ -1169,22 +1181,23 @@ body,
     bottom: 0;
     left: 0;
     right: 0;
-    height: 68px;
-    /* Fondo sólido — sin transparencia, siempre visible en light mode */
-    background: linear-gradient(180deg, #ffffff 0%, #f8f9fb 100%);
-    /* Línea superior con gradiente rojo brillante */
-    border-top: 2px solid transparent;
+    height: 72px;
+    /* Fondo con toque rosado/rojo muy sutil — más cálido que gris plano */
+    background: linear-gradient(to top, #ffffff, #fef2f2);
+    /* Línea superior con gradiente rojo brillante — más gruesa y saturada */
+    border-top: 2.5px solid transparent;
     border-image: linear-gradient(90deg,
         transparent 0%,
-        rgba(230, 0, 0, 0.15) 20%,
-        rgba(230, 0, 0, 0.7) 50%,
-        rgba(230, 0, 0, 0.15) 80%,
+        rgba(230, 0, 0, 0.25) 20%,
+        rgba(230, 0, 0, 0.9) 50%,
+        rgba(230, 0, 0, 0.25) 80%,
         transparent 100%) 1;
-    /* Sombra profunda hacia arriba */
+    /* Sombra más dramática — 4 capas */
     box-shadow:
-        0 -8px 32px rgba(0, 0, 0, 0.10),
-        0 -2px 8px rgba(0, 0, 0, 0.06),
-        0 -1px 0 rgba(230, 0, 0, 0.12);
+        0 -12px 40px rgba(0, 0, 0, 0.12),
+        0 -4px 16px rgba(0, 0, 0, 0.08),
+        0 -2px 6px rgba(230, 0, 0, 0.08),
+        0 -1px 0 rgba(230, 0, 0, 0.18);
     z-index: 999;
     padding-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -1234,9 +1247,10 @@ body,
     border: none;
     /* Color inactivo OSCURO — claramente visible en fondo blanco */
     color: #4a5568;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.025em;
+    font-size: 12.5px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
     padding: 6px 8px;
     cursor: pointer;
     transition:
@@ -1250,7 +1264,7 @@ body,
 
 /* Icono base */
 .bottom-tab i {
-    font-size: 26px;
+    font-size: 30px;
     line-height: 1;
     transition:
         color 0.2s ease,
@@ -1268,7 +1282,7 @@ body,
     width: 48px;
     height: 32px;
     border-radius: 16px;
-    background: rgba(230, 0, 0, 0.08);
+    background: rgba(230, 0, 0, 0.15);
     transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
     pointer-events: none;
 }
@@ -1284,13 +1298,14 @@ body,
     bottom: 6px;
     left: 50%;
     transform: translateX(-50%) scaleX(0);
-    width: 24px;
-    height: 4px;
+    width: 28px;
+    height: 5px;
     border-radius: 3px;
     background: var(--primary, #e60000);
     box-shadow:
-        0 0 8px rgba(230, 0, 0, 0.6),
-        0 0 16px rgba(230, 0, 0, 0.3);
+        0 0 10px rgba(230, 0, 0, 0.8),
+        0 0 20px rgba(230, 0, 0, 0.55),
+        0 0 36px rgba(230, 0, 0, 0.3);
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -1303,13 +1318,20 @@ body,
     color: var(--primary, #e60000);
 }
 
+/* Label activo — rojo y bold */
+.bottom-tab.active span {
+    color: var(--primary, #e60000);
+    font-weight: 800;
+}
+
 .bottom-tab.active i {
     color: var(--primary, #e60000);
     transform: scale(1.12);
     text-shadow:
-        0 0 6px rgba(230, 0, 0, 0.55),
-        0 0 16px rgba(230, 0, 0, 0.28),
-        0 0 30px rgba(230, 0, 0, 0.12);
+        0 0 6px rgba(230, 0, 0, 0.7),
+        0 0 14px rgba(230, 0, 0, 0.5),
+        0 0 24px rgba(230, 0, 0, 0.3),
+        0 0 40px rgba(230, 0, 0, 0.15);
     animation: tabBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
@@ -1345,16 +1367,18 @@ body,
     width: 44px;
     height: 36px;
     border-radius: 18px;
-    background: rgba(230, 0, 0, 0.06);
-    border: 1.5px solid rgba(230, 0, 0, 0.18);
+    background: rgba(230, 0, 0, 0.12);
+    border: 2px solid rgba(230, 0, 0, 0.32);
     transition: background 0.2s ease, border-color 0.2s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
     pointer-events: none;
+    animation: scannerBorderPulse 2.5s ease-in-out infinite;
 }
 
 .bottom-tab[data-view="barcode"].active::before {
-    background: rgba(230, 0, 0, 0.10);
-    border-color: rgba(230, 0, 0, 0.35);
+    background: rgba(230, 0, 0, 0.16);
+    border-color: rgba(230, 0, 0, 0.55);
     transform: translateX(-50%) scale(1);
+    animation: none;
 }
 
 /* Pulso sutil del escáner cuando inactivo */
@@ -1369,21 +1393,23 @@ body,
 
 /* ===== DARK MODE — bottom nav ===== */
 body.dark-mode #bottom-nav {
-    background: #0d1117 !important;
+    /* Fondo oscuro con toque rojo apenas perceptible — da calidez */
+    background: linear-gradient(to top, #0d1117, #1a0505) !important;
     box-shadow:
-        0 -8px 36px rgba(0, 0, 0, 0.5),
-        0 -2px 8px rgba(0, 0, 0, 0.35),
-        0 -1px 0 rgba(230, 0, 0, 0.2) !important;
+        0 -12px 48px rgba(0, 0, 0, 0.6),
+        0 -4px 16px rgba(0, 0, 0, 0.45),
+        0 -2px 8px rgba(230, 0, 0, 0.12),
+        0 -1px 0 rgba(230, 0, 0, 0.3) !important;
     border-image: linear-gradient(90deg,
         transparent 0%,
-        rgba(230, 0, 0, 0.12) 20%,
-        rgba(230, 0, 0, 0.65) 50%,
-        rgba(230, 0, 0, 0.12) 80%,
+        rgba(230, 0, 0, 0.2) 20%,
+        rgba(230, 0, 0, 0.85) 50%,
+        rgba(230, 0, 0, 0.2) 80%,
         transparent 100%) 1 !important;
 }
 
 body.dark-mode .bottom-tab {
-    color: #8b949e !important;
+    color: #a0aec0 !important;
 }
 
 body.dark-mode .bottom-tab::before {
@@ -1396,10 +1422,13 @@ body.dark-mode .bottom-tab.active {
 
 body.dark-mode .bottom-tab.active i {
     color: var(--primary, #e60000) !important;
+    /* Glow full red intensity — 5 capas */
     text-shadow:
-        0 0 8px rgba(230, 0, 0, 0.8),
-        0 0 20px rgba(230, 0, 0, 0.5),
-        0 0 40px rgba(230, 0, 0, 0.25) !important;
+        0 0 6px rgba(230, 0, 0, 0.9),
+        0 0 14px rgba(230, 0, 0, 0.7),
+        0 0 24px rgba(230, 0, 0, 0.5),
+        0 0 40px rgba(230, 0, 0, 0.3),
+        0 0 64px rgba(230, 0, 0, 0.15) !important;
 }
 
 body.dark-mode .bottom-tab::after {

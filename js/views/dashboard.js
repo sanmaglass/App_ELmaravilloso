@@ -254,7 +254,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         .quick-access-grid {
             grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
+            gap: 12px;
             padding: 12px 16px;
             margin-bottom: 16px;
         }
@@ -263,35 +263,35 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             .quick-access-grid { grid-template-columns: repeat(3, 1fr); }
         }
 
-        .quick-btn:nth-child(1) { --btn-color: #3b82f6; --btn-color-rgb: 59,130,246; --btn-grad: linear-gradient(145deg, rgba(59,130,246,0.12) 0%, rgba(59,130,246,0.04) 100%); }
-        .quick-btn:nth-child(2) { --btn-color: #10b981; --btn-color-rgb: 16,185,129; --btn-grad: linear-gradient(145deg, rgba(16,185,129,0.12) 0%, rgba(16,185,129,0.04) 100%); }
-        .quick-btn:nth-child(3) { --btn-color: #f59e0b; --btn-color-rgb: 245,158,11; --btn-grad: linear-gradient(145deg, rgba(245,158,11,0.12) 0%, rgba(245,158,11,0.04) 100%); }
-        .quick-btn:nth-child(4) { --btn-color: #8b5cf6; --btn-color-rgb: 139,92,246; --btn-grad: linear-gradient(145deg, rgba(139,92,246,0.12) 0%, rgba(139,92,246,0.04) 100%); }
-        .quick-btn:nth-child(5) { --btn-color: #dc2626; --btn-color-rgb: 220,38,38; --btn-grad: linear-gradient(145deg, rgba(220,38,38,0.12) 0%, rgba(220,38,38,0.04) 100%); }
-        .quick-btn:nth-child(6) { --btn-color: #06b6d4; --btn-color-rgb: 6,182,212; --btn-grad: linear-gradient(145deg, rgba(6,182,212,0.12) 0%, rgba(6,182,212,0.04) 100%); }
-        .quick-btn:nth-child(7) { --btn-color: #ec4899; --btn-color-rgb: 236,72,153; --btn-grad: linear-gradient(145deg, rgba(236,72,153,0.12) 0%, rgba(236,72,153,0.04) 100%); }
-        .quick-btn:nth-child(8) { --btn-color: #64748b; --btn-color-rgb: 100,116,139; --btn-grad: linear-gradient(145deg, rgba(100,116,139,0.12) 0%, rgba(100,116,139,0.04) 100%); }
+        .quick-btn:nth-child(1) { --btn-color: #3b82f6; --btn-color-rgb: 59,130,246; --btn-grad: linear-gradient(145deg, rgba(59,130,246,0.18) 0%, rgba(59,130,246,0.06) 100%); }
+        .quick-btn:nth-child(2) { --btn-color: #10b981; --btn-color-rgb: 16,185,129; --btn-grad: linear-gradient(145deg, rgba(16,185,129,0.18) 0%, rgba(16,185,129,0.06) 100%); }
+        .quick-btn:nth-child(3) { --btn-color: #f59e0b; --btn-color-rgb: 245,158,11; --btn-grad: linear-gradient(145deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.06) 100%); }
+        .quick-btn:nth-child(4) { --btn-color: #8b5cf6; --btn-color-rgb: 139,92,246; --btn-grad: linear-gradient(145deg, rgba(139,92,246,0.18) 0%, rgba(139,92,246,0.06) 100%); }
+        .quick-btn:nth-child(5) { --btn-color: #dc2626; --btn-color-rgb: 220,38,38; --btn-grad: linear-gradient(145deg, rgba(220,38,38,0.18) 0%, rgba(220,38,38,0.06) 100%); }
+        .quick-btn:nth-child(6) { --btn-color: #06b6d4; --btn-color-rgb: 6,182,212; --btn-grad: linear-gradient(145deg, rgba(6,182,212,0.18) 0%, rgba(6,182,212,0.06) 100%); }
+        .quick-btn:nth-child(7) { --btn-color: #ec4899; --btn-color-rgb: 236,72,153; --btn-grad: linear-gradient(145deg, rgba(236,72,153,0.18) 0%, rgba(236,72,153,0.06) 100%); }
+        .quick-btn:nth-child(8) { --btn-color: #64748b; --btn-color-rgb: 100,116,139; --btn-grad: linear-gradient(145deg, rgba(100,116,139,0.18) 0%, rgba(100,116,139,0.06) 100%); }
 
         .quick-btn {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 8px;
-            padding: 16px 8px;
+            padding: 18px 10px;
             background: var(--btn-grad, rgba(255,255,255,0.9));
-            border: 1px solid rgba(var(--btn-color-rgb, 0,0,0), 0.1);
-            border-radius: 16px;
-            color: var(--text-primary);
-            font-size: 10.5px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            border: 1.5px solid rgba(var(--btn-color-rgb, 0,0,0), 0.18);
+            border-radius: 18px;
+            color: var(--btn-color, var(--text-primary));
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: none;
+            letter-spacing: 0;
             cursor: pointer;
             transition: transform 0.15s ease, box-shadow 0.15s ease;
             -webkit-tap-highlight-color: transparent;
-            box-shadow: 0 2px 8px rgba(var(--btn-color-rgb, 0,0,0), 0.12), 0 1px 2px rgba(0,0,0,0.06);
+            box-shadow: 0 4px 14px rgba(var(--btn-color-rgb, 0,0,0), 0.2), 0 1px 3px rgba(0,0,0,0.08);
             opacity: 0;
-            animation: quickBtnIn 0.35s ease forwards;
+            animation: quickBtnIn 0.4s ease forwards;
         }
 
         .quick-btn:nth-child(1) { animation-delay: 0ms; }
@@ -304,45 +304,46 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .quick-btn:nth-child(8) { animation-delay: 350ms; }
 
         @keyframes quickBtnIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(20px); }
             to   { opacity: 1; transform: translateY(0); }
         }
 
         .quick-btn:active {
-            transform: scale(0.90);
-            box-shadow: 0 4px 16px rgba(var(--btn-color-rgb, 0,0,0), 0.28), 0 2px 4px rgba(0,0,0,0.1);
+            transform: scale(0.85);
+            box-shadow: 0 6px 24px rgba(var(--btn-color-rgb, 0,0,0), 0.38), 0 3px 8px rgba(var(--btn-color-rgb, 0,0,0), 0.18), 0 1px 3px rgba(0,0,0,0.12);
         }
 
         .quick-btn-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(var(--btn-color-rgb, 0,0,0), 0.12);
+            background: linear-gradient(145deg, rgba(var(--btn-color-rgb, 0,0,0), 0.22) 0%, rgba(var(--btn-color-rgb, 0,0,0), 0.10) 100%);
             flex-shrink: 0;
         }
 
         .quick-btn-icon i {
-            font-size: 28px;
+            font-size: 32px;
             color: var(--btn-color, #e60000);
         }
 
         /* Dark mode */
         body.dark-mode .quick-btn {
-            background: var(--btn-grad, rgba(30,30,40,0.85));
-            border-color: rgba(var(--btn-color-rgb, 255,255,255), 0.15);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2);
+            background: linear-gradient(145deg, rgba(var(--btn-color-rgb, 255,255,255), 0.15) 0%, rgba(30,30,40,0.85) 100%);
+            border-color: rgba(var(--btn-color-rgb, 255,255,255), 0.25);
+            box-shadow: 0 4px 14px rgba(var(--btn-color-rgb, 0,0,0), 0.28), 0 1px 3px rgba(0,0,0,0.3);
+            color: var(--btn-color);
         }
         body.dark-mode .quick-btn:active {
-            box-shadow: 0 5px 20px rgba(var(--btn-color-rgb, 255,255,255), 0.22), 0 2px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 6px 24px rgba(var(--btn-color-rgb, 255,255,255), 0.38), 0 3px 8px rgba(var(--btn-color-rgb, 255,255,255), 0.2), 0 1px 3px rgba(0,0,0,0.3);
         }
         body.dark-mode .quick-btn-icon {
-            background: rgba(var(--btn-color-rgb, 255,255,255), 0.18);
+            background: linear-gradient(145deg, rgba(var(--btn-color-rgb, 255,255,255), 0.28) 0%, rgba(var(--btn-color-rgb, 255,255,255), 0.12) 100%);
         }
         body.dark-mode .quick-btn-icon i {
-            filter: brightness(1.25);
+            filter: brightness(1.4);
         }
     </style>
 
