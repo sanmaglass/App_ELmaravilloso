@@ -76,7 +76,50 @@ function showEmailGate() {
         toggleBtn.innerHTML = isPass ? '<i class="ph ph-eye-slash"></i>' : '<i class="ph ph-eye"></i>';
     });
 
+    // --- Rate limiting: máx 5 intentos, luego bloqueo progresivo ---
+    const MAX_ATTEMPTS = 5;
+    const BASE_LOCKOUT_MS = 30000; // 30s base, se duplica cada ronda
+    let _loginAttempts = 0;
+    let _lockedUntil = 0;
+    let _lockoutRound = 0;
+    let _countdownTimer = null;
+
+    // Restaurar estado de bloqueo si quedó guardado (evita refresh bypass)
+    try {
+        const saved = JSON.parse(sessionStorage.getItem('wm_login_rl') || '{}');
+        if (saved.until && saved.until > Date.now()) {
+            _lockedUntil = saved.until;
+            _loginAttempts = MAX_ATTEMPTS;
+            _lockoutRound = saved.round || 1;
+        }
+    } catch (_) { /* ignore */ }
+
+    function _startCountdown() {
+        btn.disabled = true;
+        if (_countdownTimer) clearInterval(_countdownTimer);
+        _countdownTimer = setInterval(() => {
+            const remaining = Math.ceil((_lockedUntil - Date.now()) / 1000);
+            if (remaining <= 0) {
+                clearInterval(_countdownTimer);
+                _countdownTimer = null;
+                _loginAttempts = 0;
+                btn.disabled = false;
+                btn.textContent = 'Ingresar';
+                errorEl.textContent = '';
+                return;
+            }
+            btn.textContent = `Bloqueado (${remaining}s)`;
+            errorEl.textContent = 'Demasiados intentos. Espera antes de reintentar.';
+        }, 1000);
+    }
+
+    // Si ya está bloqueado al cargar, iniciar countdown
+    if (_lockedUntil > Date.now()) _startCountdown();
+
     async function attemptLogin() {
+        // Verificar bloqueo activo
+        if (_lockedUntil > Date.now()) return;
+
         const email = (emailInput.value || '').trim().toLowerCase();
         const pass = passInput.value || '';
 
@@ -96,19 +139,37 @@ function showEmailGate() {
 
         try {
             await window.Auth.login(email, pass);
-            // Login exitoso — reload para inicializar app con sesión
+            // Login exitoso — limpiar rate limit y reload
+            sessionStorage.removeItem('wm_login_rl');
             window.location.reload();
         } catch (err) {
+            _loginAttempts++;
             const msg = err.message || '';
+
             if (msg.includes('Invalid login')) {
-                errorEl.textContent = 'Correo o contraseña incorrectos';
+                const left = MAX_ATTEMPTS - _loginAttempts;
+                errorEl.textContent = left > 0
+                    ? `Correo o contraseña incorrectos (${left} intento${left === 1 ? '' : 's'} restante${left === 1 ? '' : 's'})`
+                    : 'Correo o contraseña incorrectos';
             } else if (msg.includes('Email not confirmed')) {
                 errorEl.textContent = 'Confirma tu email antes de ingresar';
             } else {
                 errorEl.textContent = 'Error de conexión. Intenta de nuevo.';
             }
+
             emailInput.style.borderColor = '#ff6b6b';
             passInput.style.borderColor = '#ff6b6b';
+
+            // Activar bloqueo si se alcanzó el máximo
+            if (_loginAttempts >= MAX_ATTEMPTS) {
+                _lockoutRound++;
+                const lockMs = BASE_LOCKOUT_MS * Math.pow(2, _lockoutRound - 1); // 30s, 60s, 120s...
+                _lockedUntil = Date.now() + lockMs;
+                sessionStorage.setItem('wm_login_rl', JSON.stringify({ until: _lockedUntil, round: _lockoutRound }));
+                _startCountdown();
+                return;
+            }
+
             btn.textContent = 'Ingresar';
             btn.disabled = false;
             console.warn('Login error:', msg);
