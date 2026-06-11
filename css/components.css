@@ -546,7 +546,7 @@
     background: rgba(255, 255, 255, 0.8);
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
-    color: var(--text-muted);
+    color: var(--text-secondary, #4a5568);
     cursor: pointer;
     font-size: 1.2rem;
     transition: all 0.25s var(--ease-smooth);
