@@ -63,7 +63,7 @@ window.Outbox = {
 
       if (!pending.length) return;
 
-      console.log(`📤 Drenando ${pending.length} items del outbox...`);
+      if (localStorage.getItem('sync_debug')) console.log(`📤 Drenando ${pending.length} items del outbox...`);
 
       for (const item of pending) {
         try {
@@ -88,7 +88,7 @@ window.Outbox = {
 
           // Marcar como done
           await window.db.sync_outbox.update(item.id, { status: 'done' });
-          console.log(`✅ ${item.tableName}#${payload.id} sincronizado`);
+          if (localStorage.getItem('sync_debug')) console.log(`✅ ${item.tableName}#${payload.id} sincronizado`);
 
           // Throttle: pausa entre requests para no saturar Supabase
           if (this._THROTTLE_MS > 0) await new Promise(r => setTimeout(r, this._THROTTLE_MS));

@@ -205,6 +205,6 @@ window.ErrorLogger = {
 };
 
 // Limpiar errores antiguos cada 24 horas
-setInterval(() => {
+window.ErrorLogger._cleanupInterval = setInterval(() => {
     window.ErrorLogger?.cleanOldErrors();
 }, 24 * 60 * 60 * 1000);

@@ -1,4 +1,7 @@
 // Sync v2: Pull incremental + HLC + Realtime robusto + Outbox
+// Debug logs: solo en desarrollo (localStorage sync_debug=1)
+const _syncDebug = (...args) => { if (localStorage.getItem('sync_debug')) console.log(...args); };
+
 window.SyncV2 = {
   client: null,
   isSyncing: false,
@@ -29,7 +32,7 @@ window.SyncV2 = {
     // Reusar el cliente autenticado de Auth si existe
     if (window.Auth?.client) {
       this.client = window.Auth.client;
-      console.log('✅ SyncV2 inicializado (con sesión autenticada)');
+      _syncDebug('✅ SyncV2 inicializado (con sesión autenticada)');
       return true;
     }
 
@@ -42,7 +45,7 @@ window.SyncV2 = {
     }
 
     this.client = supabase.createClient(url, key);
-    console.log('✅ SyncV2 inicializado (anon)');
+    _syncDebug('✅ SyncV2 inicializado (anon)');
     return true;
   },
 
@@ -53,7 +56,7 @@ window.SyncV2 = {
     }
 
     this.isSyncing = true;
-    console.log('🔄 SyncV2.syncAll() iniciado');
+    _syncDebug('🔄 SyncV2.syncAll() iniciado');
 
     try {
       const changed = await this.pullIncremental();
@@ -151,7 +154,7 @@ window.SyncV2 = {
 
         await window.db.sync_state.put({ table_name: remote, last_seen_hlc: lastHlc, last_seen_id: lastId, device_id: DeviceId.get(), updated_at: new Date() });
         if (totalFetched > 0) {
-          console.log(`✅ ${remote}: ${totalFetched} registros sincronizados (HLC=${lastHlc})`);
+          _syncDebug(`✅ ${remote}: ${totalFetched} registros sincronizados (HLC=${lastHlc})`);
           changedLocalTables.push(local);
         }
       } catch (e) {
@@ -185,7 +188,7 @@ window.SyncV2 = {
           if (status === 'SUBSCRIBED') {
             this._subscribedCount++;
             this.isRealtimeActive = true;
-            console.log(`📡 Realtime activo para ${table} (${this._subscribedCount}/${totalTables})`);
+            _syncDebug(`📡 Realtime activo para ${table} (${this._subscribedCount}/${totalTables})`);
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
             console.warn(`📡 Realtime ${status} en ${table}`, err || '');
             this._subscribedCount = Math.max(0, this._subscribedCount - 1);
@@ -226,7 +229,7 @@ window.SyncV2 = {
         if (shouldApply) {
           rec.updated_at_hlc = remoteHlc;
           await window.db[local].put(rec);
-          console.log(`📡✅ ${table}#${rec.id} aplicado`);
+          _syncDebug(`📡✅ ${table}#${rec.id} aplicado`);
         }
       } else if (eventType === 'DELETE') {
         // Soft-delete consistente: marcar deleted en vez de borrar físicamente
@@ -262,7 +265,7 @@ window.SyncV2 = {
   // Forzar resync completo: borra sync_state para que pullIncremental
   // descargue TODOS los registros desde cero (sin borrar datos locales).
   async forceFullResync() {
-    console.log('🔄 Forzando resync completo...');
+    _syncDebug('🔄 Forzando resync completo...');
     await window.db.sync_state.clear();
     return this.syncAll();
   },

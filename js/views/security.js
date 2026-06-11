@@ -313,7 +313,13 @@ window.Views.security = async (container) => {
 
     startStreaming();
 
-    // Clean up on view change
+    // Clean up on view change (garantizado via _viewCleanup)
+    window._viewCleanup = () => {
+        refreshTimers.forEach(t => clearInterval(t));
+        refreshTimers.length = 0;
+    };
+
+    // Fallback: limpiar al hacer click en nav
     const viewButtons = document.querySelectorAll('.nav-item');
     viewButtons.forEach(btn => {
         btn.addEventListener('click', () => {
