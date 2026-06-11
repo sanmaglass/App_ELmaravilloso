@@ -1,6 +1,9 @@
 // Outbox - Encolamiento confiable de cambios para sincronización
 window.Outbox = {
   _draining: false,
+  _drainStartedAt: 0,
+  _DRAIN_TIMEOUT_MS: 120000, // 2 min máx por drain completo
+  _THROTTLE_MS: 150, // pausa entre requests a Supabase
 
   async enqueue(tableName, op, payload, hlc) {
     try {
@@ -40,12 +43,18 @@ window.Outbox = {
       return;
     }
 
-    // Prevenir drain concurrente (race condition)
+    // Prevenir drain concurrente — con timeout de seguridad
     if (this._draining) {
-      console.log('⏳ Drain ya en progreso, saltando');
-      return;
+      if (Date.now() - this._drainStartedAt > this._DRAIN_TIMEOUT_MS) {
+        console.warn('⚠️ Drain anterior excedió timeout, reseteando flag');
+        this._draining = false;
+      } else {
+        console.log('⏳ Drain ya en progreso, saltando');
+        return;
+      }
     }
     this._draining = true;
+    this._drainStartedAt = Date.now();
 
     try {
       const pending = await window.db.sync_outbox
@@ -80,6 +89,9 @@ window.Outbox = {
           // Marcar como done
           await window.db.sync_outbox.update(item.id, { status: 'done' });
           console.log(`✅ ${item.tableName}#${payload.id} sincronizado`);
+
+          // Throttle: pausa entre requests para no saturar Supabase
+          if (this._THROTTLE_MS > 0) await new Promise(r => setTimeout(r, this._THROTTLE_MS));
         } catch (e) {
           item.retries++;
           if (item.retries < 5) {

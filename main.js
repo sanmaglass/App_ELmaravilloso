@@ -643,5 +643,54 @@ if (localStorage.getItem('wm_privacy') === 'true') {
 // El usuario solo vuelve a ver login si cierra sesión manualmente (botón logout)
 // o si se incrementa SESSION_VERSION para forzar re-login global.
 
+// --- Focus Trap para modales (accesibilidad) ---
+(function initFocusTrap() {
+    const mc = document.getElementById('modal-container');
+    if (!mc) return;
+
+    const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    function trapFocus(e) {
+        if (e.key !== 'Tab') return;
+        const focusable = mc.querySelectorAll(FOCUSABLE);
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }
+
+    function onEscape(e) {
+        if (e.key === 'Escape' && !mc.classList.contains('hidden')) {
+            mc.classList.add('hidden');
+        }
+    }
+
+    const observer = new MutationObserver(() => {
+        if (!mc.classList.contains('hidden')) {
+            // Modal abierto: activar trap + foco al primer elemento
+            document.addEventListener('keydown', trapFocus);
+            document.addEventListener('keydown', onEscape);
+            document.body.style.overflow = 'hidden';
+            requestAnimationFrame(() => {
+                const first = mc.querySelector(FOCUSABLE);
+                if (first) first.focus();
+            });
+        } else {
+            // Modal cerrado: desactivar
+            document.removeEventListener('keydown', trapFocus);
+            document.removeEventListener('keydown', onEscape);
+            document.body.style.overflow = '';
+        }
+    });
+
+    observer.observe(mc, { attributes: true, attributeFilter: ['class'] });
+})();
+
 // Start
 init();
