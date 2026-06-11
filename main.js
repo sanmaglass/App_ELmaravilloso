@@ -276,11 +276,11 @@ async function init() {
         });
 
         // Bottom Nav — tabs mobile
-        const bottomTabs = document.querySelectorAll('#bottom-nav .bottom-tab');
+        const bottomTabs = document.querySelectorAll('#bottom-nav .bottom-nav-item');
 
         function syncBottomNav(viewName) {
             bottomTabs.forEach(t => t.classList.remove('active'));
-            const activeTab = document.querySelector(`#bottom-nav .bottom-tab[data-view="${viewName}"]`);
+            const activeTab = document.querySelector(`#bottom-nav .bottom-nav-item[data-view="${viewName}"]`);
             if (activeTab) activeTab.classList.add('active');
         }
 
