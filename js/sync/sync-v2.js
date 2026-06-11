@@ -188,6 +188,7 @@ window.SyncV2 = {
             console.log(`📡 Realtime activo para ${table} (${this._subscribedCount}/${totalTables})`);
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
             console.warn(`📡 Realtime ${status} en ${table}`, err || '');
+            this._subscribedCount = Math.max(0, this._subscribedCount - 1);
             // Si TODOS los canales fallan, marcar como inactivo
             if (this._subscribedCount === 0) {
               this.isRealtimeActive = false;

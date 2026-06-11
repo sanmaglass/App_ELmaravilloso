@@ -109,6 +109,18 @@ window.Outbox = {
         }
       }
 
+      // Reintentar errores antiguos (>1h) con retry count reseteado
+      const errorCutoff = Date.now() - 60 * 60 * 1000;
+      const staleErrors = await window.db.sync_outbox
+          .where('status').equals('error')
+          .filter(item => item.created_at < errorCutoff)
+          .toArray();
+
+      for (const item of staleErrors) {
+          await window.db.sync_outbox.update(item.id, { status: 'pending', retries: 0 });
+      }
+      if (staleErrors.length) console.log(`♻️ ${staleErrors.length} errores antiguos re-encolados`);
+
       // Purgar registros completados con más de 24h
       await this.purge();
     } finally {
