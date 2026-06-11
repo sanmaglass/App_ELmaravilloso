@@ -165,16 +165,18 @@ body {
 @media (max-width: 768px) {
     .sidebar {
         position: fixed;
-        left: -320px;
+        left: 0;
         top: 0;
         bottom: 0;
         width: 260px;
         padding: 12px 10px;
         box-shadow: none;
+        transform: translateX(-100%);
+        will-change: transform;
     }
 
     .sidebar.open {
-        left: 0;
+        transform: translateX(0);
         box-shadow: 20px 0 50px rgba(0, 0, 0, 0.3);
     }
 

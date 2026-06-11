@@ -39,7 +39,7 @@ window.Views.sales_invoices = async (container) => {
 
     // Events
     document.getElementById('btn-new-sale').addEventListener('click', () => showSaleModal());
-    document.getElementById('sale-search').addEventListener('input', () => renderSales());
+    document.getElementById('sale-search').addEventListener('input', window.debounce ? window.debounce(() => renderSales(), 250) : () => renderSales());
     document.getElementById('btn-export-sales').addEventListener('click', exportSalesToExcel);
 
     // --- REALTIME REFRESH ---

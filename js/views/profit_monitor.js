@@ -484,7 +484,7 @@ window.Views.profit_monitor = async (container) => {
         });
     });
 
-    document.getElementById('profit-search')?.addEventListener('input', renderTable);
+    document.getElementById('profit-search')?.addEventListener('input', window.debounce ? window.debounce(renderTable, 250) : renderTable);
     document.getElementById('profit-filter-status')?.addEventListener('change', renderTable);
     document.getElementById('profit-filter-time')?.addEventListener('change', renderProfits);
 

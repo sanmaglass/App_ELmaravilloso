@@ -535,8 +535,15 @@ async function init() {
 
         // Sincronizar cuando se conecta a internet
         window.addEventListener('online', () => {
-            console.log("🌐 Online - drenando outbox...");
+            console.log("🌐 Online - sincronizando...");
             window.Outbox?.drain();
+            window.SyncV2?.syncAll();
+            if (window.showToast) window.showToast('Conexión restaurada', 'success');
+        });
+
+        // Aviso cuando se pierde conexión
+        window.addEventListener('offline', () => {
+            if (window.showToast) window.showToast('Sin conexión — los cambios se guardan localmente', 'warning');
         });
     } catch (err) {
         console.error("Critical Init Error:", err);

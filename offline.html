@@ -97,6 +97,10 @@
     <p>La app necesita internet para cargar. Conéctate a WiFi o a datos móviles e intenta nuevamente.</p>
     <button onclick="window.location.reload()">🔄 Reintentar</button>
     <p class="hint">El Maravilloso — Sistema de Gestión Comercial</p>
+    <script>
+        // Auto-recargar cuando vuelve la conexión
+        window.addEventListener('online', () => window.location.reload());
+    </script>
 </body>
 
 </html>
