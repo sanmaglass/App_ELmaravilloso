@@ -247,6 +247,37 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         /* Section dividers dark mode */
         body.dark-mode .section-divider-line { background:rgba(255,255,255,0.08) !important; }
+
+        /* ---- Accesos Rápidos (solo mobile) ---- */
+        .mobile-only { display: none; }
+        @media (max-width: 768px) { .mobile-only { display: grid; } }
+
+        .quick-access-grid {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .quick-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 14px 8px;
+            background: var(--bg-glass, rgba(255,255,255,0.75));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm, 12px);
+            color: var(--text-primary);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .quick-btn i { font-size: 22px; color: var(--primary, #e60000); }
+        .quick-btn:active { transform: scale(0.93); background: var(--bg-glass-hover); }
     </style>
 
     <!-- Header -->
@@ -264,6 +295,42 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 <i class="ph ph-file-xls"></i> <span class="hide-mobile">Excel</span>
             </button>
         </div>
+    </div>
+
+    <!-- Accesos Rápidos — solo mobile -->
+    <div class="quick-access-grid mobile-only">
+        <button class="quick-btn" onclick="window.navigateToView('cash_register', 'Arqueo')">
+            <i class="ph ph-vault"></i>
+            <span>Arqueo</span>
+        </button>
+        <button class="quick-btn" onclick="window.navigateToView('profit_monitor', 'Márgenes')">
+            <i class="ph ph-chart-line-up"></i>
+            <span>Márgenes</span>
+        </button>
+        <button class="quick-btn" onclick="window.navigateToView('purchase_invoices', 'Facturas')">
+            <i class="ph ph-receipt"></i>
+            <span>Facturas</span>
+        </button>
+        <button class="quick-btn" onclick="window.navigateToView('employees', 'Personal')">
+            <i class="ph ph-users"></i>
+            <span>Personal</span>
+        </button>
+        <button class="quick-btn" onclick="window.navigateToView('credits', 'Créditos')">
+            <i class="ph ph-hand-holding-dollar"></i>
+            <span>Créditos</span>
+        </button>
+        <button class="quick-btn" onclick="window.navigateToView('suppliers', 'Proveedores')">
+            <i class="ph ph-buildings"></i>
+            <span>Proveedores</span>
+        </button>
+        <button class="quick-btn" onclick="window.navigateToView('loans', 'Préstamos')">
+            <i class="ph ph-hand-coins"></i>
+            <span>Préstamos</span>
+        </button>
+        <button class="quick-btn" onclick="window.navigateToView('settings', 'Ajustes')">
+            <i class="ph ph-gear"></i>
+            <span>Ajustes</span>
+        </button>
     </div>
 
     <!-- ===================== TAB 1: RESUMEN ===================== -->

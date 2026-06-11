@@ -269,6 +269,54 @@ async function init() {
                 if (sidebar.classList.contains('open')) {
                     toggleSidebar();
                 }
+
+                // Sincronizar bottom-nav active state
+                syncBottomNav(viewName);
+            });
+        });
+
+        // Bottom Nav — tabs mobile
+        const BOTTOM_NAV_VIEWS = ['dashboard', 'daily_sales', 'barcode'];
+        const bottomTabs = document.querySelectorAll('#bottom-nav .bottom-tab');
+
+        function syncBottomNav(viewName) {
+            bottomTabs.forEach(t => t.classList.remove('active'));
+            const activeTab = document.querySelector(`#bottom-nav .bottom-tab[data-view="${viewName}"]`);
+            if (activeTab) activeTab.classList.add('active');
+        }
+
+        function navigateToView(viewName, label) {
+            // Cleanup previous view
+            if (window._viewCleanup) {
+                try { window._viewCleanup(); } catch (e) { /* ignore */ }
+                window._viewCleanup = null;
+            }
+            // Fade-in transition
+            const vc = document.getElementById('view-container');
+            if (vc) {
+                vc.classList.remove('view-fade-in');
+                void vc.offsetWidth;
+                vc.classList.add('view-fade-in');
+            }
+            if (label) document.getElementById('page-title').textContent = label;
+            if (views[viewName]) views[viewName]();
+        }
+        // Exponer globalmente para accesos rápidos del dashboard
+        window.navigateToView = navigateToView;
+
+        bottomTabs.forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const viewName = tab.dataset.view;
+                // Sync bottom-nav active
+                bottomTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                // Sync sidebar active (in case sidebar is visible)
+                navItems.forEach(b => b.classList.remove('active'));
+                const matchingSidebarItem = document.querySelector(`.nav-item[data-view="${viewName}"]`);
+                if (matchingSidebarItem) matchingSidebarItem.classList.add('active');
+                // Navigate
+                const label = tab.querySelector('span')?.textContent;
+                navigateToView(viewName, label);
             });
         });
 
