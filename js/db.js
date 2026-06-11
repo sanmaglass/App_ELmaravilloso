@@ -208,7 +208,7 @@ window.DataManager = {
 
     // Optional columns added by Pro migration — not all Supabase tables have them
     _remindersCoreFields: ['id', 'title', 'type', 'frequency_unit', 'frequency_value',
-        'next_run', 'completed', 'deleted', 'priority', 'notes', 'snoozed_until', 'created_at'],
+        'next_run', 'completed', 'deleted', 'priority', 'notes', 'snoozed_until', 'created_at', 'updated_at_hlc'],
     _purchaseInvoicesCoreFields: ['id', 'supplierId', 'supplierName', 'invoiceNumber', 'date', 'amount', 'period',
         'paymentMethod', 'paymentStatus', 'dueDate', 'creditDays', 'paidAmount', 'notes', 'deleted', 'version',
         'siiTipoDoc', 'siiRutProveedor', 'siiFolio', 'siiMontoNeto', 'siiMontoIva', 'siiMontoExento', 'siiImportado', 'siiImportDate'],

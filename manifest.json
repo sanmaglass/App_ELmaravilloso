@@ -18,7 +18,7 @@
       "icons": [
         {
           "src": "assets/icon-512.png",
-          "sizes": "192x192",
+          "sizes": "512x512",
           "type": "image/png"
         }
       ]
@@ -27,7 +27,7 @@
   "icons": [
     {
       "src": "assets/icon-512.png",
-      "sizes": "192x192",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
@@ -39,7 +39,7 @@
     },
     {
       "src": "assets/icon-512.png",
-      "sizes": "192x192",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },

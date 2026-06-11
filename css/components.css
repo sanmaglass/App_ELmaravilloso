@@ -12,19 +12,19 @@
 }
 
 .text-success {
-    color: #10b981;
+    color: var(--color-success);
 }
 
 .text-danger {
-    color: #ef4444;
+    color: var(--danger);
 }
 
 .text-warning {
-    color: #f59e0b;
+    color: var(--color-warning);
 }
 
 .text-info {
-    color: #3b82f6;
+    color: var(--color-info);
 }
 
 /* Fluid Font Classes */
@@ -413,12 +413,12 @@
 
 .badge-success {
     background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
+    color: var(--color-success);
 }
 
 .badge-danger {
     background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    color: var(--danger);
 }
 
 /* UI Components (Living Red Theme) */
@@ -877,7 +877,7 @@
 }
 
 .toast-success {
-    border-left-color: #10b981 !important;
+    border-left-color: var(--color-success) !important;
 }
 
 .toast-info {
@@ -885,7 +885,7 @@
 }
 
 .toast-error {
-    border-left-color: #ef4444 !important;
+    border-left-color: var(--danger) !important;
 }
 
 .sync-toast.fading {
@@ -1062,7 +1062,7 @@
     height: 36px;
     border-radius: 12px;
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(52, 211, 153, 0.1));
-    color: #10b981;
+    color: var(--color-success);
     display: flex;
     align-items: center;
     justify-content: center;

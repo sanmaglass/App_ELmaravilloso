@@ -94,45 +94,15 @@ window.Views.settings = async (container) => {
                         Sincronización en la Nube (Auto)
                     </h3>
                     <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:16px;">
-                        Conecta tu cuenta de <strong>Supabase</strong> para sincronizar PC y móvil al instante.
+                        La conexión a <strong>Supabase</strong> está configurada de forma segura en el servidor.
                     </p>
-                    
-                    <div class="form-group" style="margin-bottom:12px;">
-                        <label class="form-label">Project URL</label>
-                        <input type="text" id="supa-url" class="form-input" placeholder="https://xyz.supabase.co">
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom:20px;">
-                        <label class="form-label">Anon Key</label>
-                        <div style="display:flex; gap:8px;">
-                            <input type="password" id="supa-key" class="form-input" placeholder="Tu API Key Pública" style="flex:1;">
-                            <button id="btn-toggle-key" class="btn btn-secondary" style="padding:0 12px;" title="Mostrar/Ocultar">
-                                <i class="ph ph-eye"></i>
-                            </button>
-                        </div>
-                    </div>
 
                     <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
                         <div style="display:flex; gap:12px;">
-                            <button id="btn-connect-cloud" class="btn btn-secondary" style="flex:1;">
-                                <i class="ph ph-plug"></i> Conectar
-                            </button>
                             <button id="btn-sync-now" class="btn btn-primary" style="flex:1;">
                                 <i class="ph ph-arrows-clockwise"></i> Sincronizar Ahora
                             </button>
                         </div>
-                        <button id="btn-disconnect-cloud" class="btn btn-secondary" style="width:100%; color:var(--warning); border-color:var(--warning); opacity:0.8;">
-                            <i class="ph ph-plug-zap"></i> Desconectar y Borrar Credenciales
-                        </button>
-                    </div>
-
-                    <!-- Botón Generar QR -->
-                    <button id="btn-gen-qr" class="btn btn-secondary" style="width:100%; margin-bottom:10px; border-color:var(--accent); color:var(--accent);">
-                        <i class="ph ph-qr-code"></i> Generar QR de Conexión
-                    </button>
-                    <div id="qr-container" style="display:none; text-align:center; padding:15px; background:white; border-radius:12px; margin-top:10px;">
-                        <div id="qrcode"></div>
-                        <p style="font-size:0.8rem; color:#666; margin-top:10px;">Escanea esto con tu celular para copiar las claves.</p>
                     </div>
 
                     <div id="cloud-status" style="margin-top:16px; font-size:0.85rem; padding:8px; border-radius:6px; background:rgba(0,0,0,0.03); display:none;">
@@ -325,15 +295,8 @@ window.Views.settings = async (container) => {
         }
 
         // --- ELEMENTS ---
-        const supaUrl = document.getElementById('supa-url');
-        const supaKey = document.getElementById('supa-key');
-        const btnConnect = document.getElementById('btn-connect-cloud');
         const btnSync = document.getElementById('btn-sync-now');
-        const btnDisconnect = document.getElementById('btn-disconnect-cloud');
         const cloudStatus = document.getElementById('cloud-status');
-        const btnToggleKey = document.getElementById('btn-toggle-key');
-        const btnGenQr = document.getElementById('btn-gen-qr');
-        const qrContainer = document.getElementById('qr-container');
 
         if (!btnSync) console.error("Critical: btnSync not found");
 
@@ -346,13 +309,6 @@ window.Views.settings = async (container) => {
             cloudStatus.style.display = 'block';
             cloudStatus.innerHTML = msg;
             cloudStatus.style.color = type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : 'var(--text-muted)');
-        };
-
-        const cleanUrl = (u) => {
-            u = u.trim();
-            if (!u) return '';
-            if (!u.startsWith('http')) u = 'https://' + u;
-            return u.replace(/\/$/, '');
         };
 
         // --- SYNC HANDLERS ---
@@ -381,105 +337,6 @@ window.Views.settings = async (container) => {
                     btnSync.disabled = false;
                     btnSync.innerHTML = original;
                 }
-            });
-        }
-
-        // --- CONNECT HANDLER ---
-        if (btnConnect) {
-            btnConnect.addEventListener('click', async () => {
-                const url = cleanUrl(supaUrl.value);
-                const key = supaKey.value.trim();
-
-                // Validaciones de seguridad
-                const urlPattern = /^https:\/\/[a-z0-9]+\.supabase\.co$/;
-                if (!urlPattern.test(url)) {
-                    updateStatus('URL de Supabase inválida. Debe ser: https://xyz.supabase.co', 'error');
-                    return;
-                }
-
-                if (key.length < 50) {
-                    updateStatus('API Key demasiado corta. Debe ser la "Anon Public Key".', 'error');
-                    return;
-                }
-
-                localStorage.setItem('supabase_url', url);
-                localStorage.setItem('supabase_key', key);
-                
-                // Actualizar AppConfig inmediatamente
-                if (window.AppConfig) {
-                    window.AppConfig.supabaseUrl = url;
-                    window.AppConfig.supabaseKey = key;
-                }
-
-                const result = await window.Sync.init();
-                if (result.success) {
-                    btnSync.disabled = false;
-                    updateStatus('<i class="ph ph-check-circle"></i> Conectado con éxito.', 'success');
-                    window.showToast('Conectado correctamente a Supabase.', 'success');
-                } else {
-                    updateStatus('Error: ' + result.error, 'error');
-                }
-            });
-        }
-
-        // --- DISCONNECT HANDLER ---
-        if (btnDisconnect) {
-            btnDisconnect.addEventListener('click', async () => {
-                if (await window.showConfirmDialog('Desconectar', '¿Seguro que quieres desconectar? Se borrarán las credenciales y la sesión de este dispositivo.')) {
-                    localStorage.removeItem('supabase_url');
-                    localStorage.removeItem('supabase_key');
-                    localStorage.removeItem('wm_auth');
-                    localStorage.removeItem('wm_user');
-
-                    if (window.AppConfig) {
-                        window.AppConfig.supabaseUrl = null;
-                        window.AppConfig.supabaseKey = null;
-                    }
-                    if (window.Sync) window.Sync.client = null;
-
-                    window.showToast('Credenciales y sesión borradas. La app se reiniciará.', 'success');
-                    setTimeout(() => window.location.reload(), 1200);
-                }
-            });
-        }
-
-        // --- PASSWORD TOGGLE ---
-        if (btnToggleKey) {
-            btnToggleKey.addEventListener('click', () => {
-                const type = supaKey.getAttribute('type') === 'password' ? 'text' : 'password';
-                supaKey.setAttribute('type', type);
-                btnToggleKey.innerHTML = type === 'text' ? '<i class="ph ph-eye-slash"></i>' : '<i class="ph ph-eye"></i>';
-            });
-        }
-
-        // --- QR CODE GENERATION ---
-        if (btnGenQr) {
-            btnGenQr.addEventListener('click', () => {
-                const url = supaUrl.value.trim();
-                const key = supaKey.value.trim();
-
-                if (!url || !key) {
-                    window.showToast('Primero ingresa y guarda (Conectar) la URL y Key.', 'error');
-                    return;
-                }
-
-                if (typeof QRCode === 'undefined') {
-                    window.showToast('Librería QR no cargada. Revisa tu conexión.', 'error');
-                    return;
-                }
-
-                qrContainer.style.display = 'block';
-                document.getElementById('qrcode').innerHTML = "";
-                const qrData = "CONFIG:" + JSON.stringify({ u: url, k: key });
-
-                new QRCode(document.getElementById('qrcode'), {
-                    text: qrData,
-                    width: 200,
-                    height: 200,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
             });
         }
 
@@ -649,34 +506,15 @@ window.Views.settings = async (container) => {
 
         // --- INIT STATE ---
         // Load saved values
-        supaUrl.value = localStorage.getItem('supabase_url') || '';
-        supaKey.value = localStorage.getItem('supabase_key') || '';
-
         if (companyName) companyName.value = localStorage.getItem('company_name') || '';
         if (companyRut) companyRut.value = localStorage.getItem('company_rut') || '';
         if (companyGiro) companyGiro.value = localStorage.getItem('company_giro') || '';
 
-        // PRO MODE OVERRIDE
-        if (window.AppConfig && window.AppConfig.supabaseUrl) {
-            supaUrl.value = window.AppConfig.supabaseUrl;
-            supaKey.value = "**********************************";
-            supaUrl.disabled = true;
-            supaKey.disabled = true;
-            if (btnConnect) btnConnect.disabled = true;
-            if (btnToggleKey) btnToggleKey.disabled = true;
-            if (btnGenQr) btnGenQr.style.display = 'none';
-
-            const proBadge = document.createElement('div');
-            proBadge.innerHTML = '<i class="ph ph-crown"></i> MODO PRO ACTIVO';
-            proBadge.style.cssText = 'background:#FFD700; color:black; padding:10px; border-radius:8px; font-weight:bold; text-align:center; margin-bottom:15px;';
-            const grp = supaUrl.closest('.form-group');
-            if (grp) grp.parentNode.insertBefore(proBadge, grp);
-
-            if (window.Sync && window.Sync.client) {
-                updateStatus('<i class="ph ph-wifi-high"></i> Conectado (Pro Mode)', 'success');
-            } else {
-                updateStatus('<i class="ph ph-warning"></i> Conectando...', 'warning');
-            }
+        // Show sync connection status
+        if (window.Sync && window.Sync.client) {
+            updateStatus('<i class="ph ph-wifi-high"></i> Conectado a la nube', 'success');
+        } else {
+            updateStatus('<i class="ph ph-warning"></i> Sin conexión a la nube', 'warning');
         }
 
         // --- NOTIFICATIONS LOGIC ---

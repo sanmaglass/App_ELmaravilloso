@@ -1,0 +1,20 @@
+{
+  "name": "el-maravilloso",
+  "version": "1.0.0",
+  "description": "PWA gestión comercial para Distribuidora El Maravilloso",
+  "type": "module",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": ["pwa", "distribuidora", "pos"],
+  "author": "Sanma",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "fake-indexeddb": "^5.0.2",
+    "dexie": "^3.2.4"
+  }
+}

@@ -8,15 +8,12 @@ async function _cleanLegacyPersonal() {
     try {
         // Borrar local
         const emps = await window.db.employees.toArray();
-        for (const emp of emps) {
-            emp.deleted = true;
-            await window.db.employees.put(emp);
-        }
+        const empsToUpdate = emps.map(emp => ({ ...emp, deleted: true }));
+        await window.db.employees.bulkPut(empsToUpdate);
+
         const logs = await window.db.workLogs.toArray();
-        for (const log of logs) {
-            log.deleted = true;
-            await window.db.workLogs.put(log);
-        }
+        const logsToUpdate = logs.map(log => ({ ...log, deleted: true }));
+        await window.db.workLogs.bulkPut(logsToUpdate);
         // Borrar en Supabase
         const client = window.SyncV2?.client || window.Sync?.client;
         if (client) {
