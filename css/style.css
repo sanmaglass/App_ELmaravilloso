@@ -471,8 +471,27 @@ body {
     }
 
     .actions {
-        gap: 4px !important;
+        gap: 6px !important;
         flex-shrink: 0;
+    }
+
+    /* Header buttons más visibles en mobile */
+    .actions .btn-icon {
+        width: 36px !important;
+        height: 36px !important;
+        background: white !important;
+        border: 1.5px solid rgba(0, 0, 0, 0.12) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+        color: var(--text-primary, #1a1a2e) !important;
+        font-size: 1.1rem !important;
+        border-radius: 10px !important;
+    }
+
+    body.dark-mode .actions .btn-icon {
+        background: #161b22 !important;
+        border-color: rgba(255, 255, 255, 0.12) !important;
+        color: #e6edf3 !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
     }
 
     /* Sync: solo icono en mobile */
@@ -498,10 +517,11 @@ body {
         font-size: 1.05rem !important;
     }
 
-    .btn-icon {
-        width: 34px !important;
-        height: 34px !important;
+    .actions .btn-icon {
+        width: 32px !important;
+        height: 32px !important;
         font-size: 1rem !important;
+        border-radius: 8px !important;
     }
 
     #sync-indicator {
