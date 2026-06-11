@@ -1209,12 +1209,9 @@ body,
         align-items: center;
     }
 
-    /* Ocultar sidebar en mobile (salvo cuando está abierto) */
+    /* Ocultar sidebar en mobile */
     .sidebar {
         display: none !important;
-    }
-    .sidebar.open {
-        display: flex !important;
     }
 
     /* Ocultar botón hamburguesa — bottom nav lo reemplaza */
@@ -1345,38 +1342,112 @@ body,
     color: rgba(230, 0, 0, 0.7);
 }
 
-/* ---- Botón central Escanear (destacado) ---- */
+/* ---- Botón central Escanear (destacado, diferente a los demás) ---- */
 .bottom-nav-scan {
     position: relative;
+    margin-top: -18px;
 }
 
 .bottom-nav-scan i {
-    font-size: 26px !important;
-    background: rgba(230, 0, 0, 0.08);
-    color: var(--primary, #e60000) !important;
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
+    font-size: 24px !important;
+    background: var(--primary, #e60000);
+    color: #fff !important;
+    width: 50px;
+    height: 50px;
+    border-radius: 16px;
     display: flex !important;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 4px 12px rgba(230, 0, 0, 0.3);
+    transition: background 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
 }
 
 .bottom-nav-scan span {
     color: var(--primary, #e60000) !important;
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 10px;
+    margin-top: 2px;
 }
 
-.bottom-nav-scan.active i,
+.bottom-nav-scan.active i {
+    background: #c00;
+    transform: scale(1.08);
+    box-shadow: 0 6px 16px rgba(230, 0, 0, 0.4);
+}
+
 .bottom-nav-scan:active i {
-    background: rgba(230, 0, 0, 0.15);
-    transform: scale(1.1);
+    transform: scale(0.92);
+    box-shadow: 0 2px 8px rgba(230, 0, 0, 0.25);
 }
 
 .bottom-nav-scan::before,
 .bottom-nav-scan::after {
     display: none !important;
+}
+
+/* ---- Popup menú "Más" ---- */
+.more-menu-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 1000;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.more-menu-overlay.active {
+    display: block;
+}
+
+.more-menu {
+    display: none;
+    position: fixed;
+    bottom: 80px;
+    right: 12px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08);
+    z-index: 1001;
+    padding: 8px 0;
+    min-width: 180px;
+    transform-origin: bottom right;
+    animation: moreMenuIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.more-menu.active {
+    display: block;
+}
+
+@keyframes moreMenuIn {
+    0%   { opacity: 0; transform: scale(0.9) translateY(8px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.more-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 20px;
+    border: none;
+    background: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.more-menu-item:active {
+    background: rgba(230, 0, 0, 0.06);
+}
+
+.more-menu-item i {
+    font-size: 20px;
+    color: #6b7280;
+    width: 24px;
+    text-align: center;
 }
 
 /* ===== DARK MODE — bottom nav ===== */
@@ -1414,6 +1485,29 @@ body.dark-mode .bottom-nav-item:not(.active):focus-visible i {
 }
 
 body.dark-mode .bottom-nav-scan i {
-    background: rgba(230, 0, 0, 0.12) !important;
+    background: var(--primary, #e60000) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(230, 0, 0, 0.4) !important;
+}
+
+body.dark-mode .more-menu {
+    background: #1e2530 !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important;
+}
+
+body.dark-mode .more-menu-item {
+    color: #d1d5db !important;
+}
+
+body.dark-mode .more-menu-item i {
+    color: #9ca3af !important;
+}
+
+body.dark-mode .more-menu-item:active {
+    background: rgba(230, 0, 0, 0.1) !important;
+}
+
+body.dark-mode .more-menu-overlay {
+    background: rgba(0,0,0,0.5);
 }
 

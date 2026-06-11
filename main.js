@@ -356,11 +356,45 @@ async function init() {
                 });
             });
 
-            // "Más" button opens sidebar
+            // "Más" button opens popup menu (not full sidebar)
             const btnMore = document.getElementById('btn-bottom-more');
-            if (btnMore) {
-                btnMore.addEventListener('click', () => {
-                    toggleSidebar();
+            const moreMenu = document.getElementById('more-menu');
+            const moreOverlay = document.getElementById('more-menu-overlay');
+
+            function toggleMoreMenu() {
+                moreMenu.classList.toggle('active');
+                moreOverlay.classList.toggle('active');
+            }
+
+            if (btnMore && moreMenu) {
+                btnMore.addEventListener('click', toggleMoreMenu);
+                moreOverlay.addEventListener('click', toggleMoreMenu);
+
+                // Each menu item navigates and closes popup
+                moreMenu.querySelectorAll('.more-menu-item[data-view]').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const viewName = item.dataset.view;
+                        if (!views[viewName]) return;
+
+                        toggleMoreMenu();
+
+                        // Clear bottom nav active (none of these views are in bottom nav)
+                        bottomNav.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+
+                        // Sync sidebar
+                        navItems.forEach(b => b.classList.remove('active'));
+                        const sidebarMatch = document.querySelector(`.nav-item[data-view="${viewName}"]`);
+                        if (sidebarMatch) sidebarMatch.classList.add('active');
+
+                        const titleMap2 = { cash_register: 'Arqueo de Caja', employees: 'Personal', expenses: 'Gastos', suppliers: 'Proveedores', purchase_invoices: 'Facturas', loans: 'Préstamos', profit_monitor: 'Márgenes', abc_analysis: 'ABC Productos', calculator: 'Costeo', settings: 'Ajustes' };
+                        document.getElementById('page-title').textContent = titleMap2[viewName] || viewName;
+
+                        if (window._viewCleanup) {
+                            try { window._viewCleanup(); } catch (e) { /* ignore */ }
+                            window._viewCleanup = null;
+                        }
+                        views[viewName]();
+                    });
                 });
             }
 
