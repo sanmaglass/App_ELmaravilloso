@@ -1209,9 +1209,12 @@ body,
         align-items: center;
     }
 
-    /* Ocultar sidebar en mobile */
+    /* Ocultar sidebar en mobile (salvo cuando está abierto) */
     .sidebar {
         display: none !important;
+    }
+    .sidebar.open {
+        display: flex !important;
     }
 
     /* Ocultar botón hamburguesa — bottom nav lo reemplaza */
@@ -1342,6 +1345,40 @@ body,
     color: rgba(230, 0, 0, 0.7);
 }
 
+/* ---- Botón central Escanear (destacado) ---- */
+.bottom-nav-scan {
+    position: relative;
+}
+
+.bottom-nav-scan i {
+    font-size: 26px !important;
+    background: rgba(230, 0, 0, 0.08);
+    color: var(--primary, #e60000) !important;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bottom-nav-scan span {
+    color: var(--primary, #e60000) !important;
+    font-weight: 600;
+}
+
+.bottom-nav-scan.active i,
+.bottom-nav-scan:active i {
+    background: rgba(230, 0, 0, 0.15);
+    transform: scale(1.1);
+}
+
+.bottom-nav-scan::before,
+.bottom-nav-scan::after {
+    display: none !important;
+}
+
 /* ===== DARK MODE — bottom nav ===== */
 body.dark-mode #bottom-nav {
     background: #161b22 !important;
@@ -1374,5 +1411,9 @@ body.dark-mode .bottom-nav-item::after {
 body.dark-mode .bottom-nav-item:not(.active):hover i,
 body.dark-mode .bottom-nav-item:not(.active):focus-visible i {
     color: rgba(230, 0, 0, 0.65) !important;
+}
+
+body.dark-mode .bottom-nav-scan i {
+    background: rgba(230, 0, 0, 0.12) !important;
 }
 

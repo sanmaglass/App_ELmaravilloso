@@ -344,7 +344,7 @@ async function init() {
                     if (sidebarMatch) sidebarMatch.classList.add('active');
 
                     // Update page title
-                    const titleMap = { dashboard: 'Resumen', daily_sales: 'Cierres Diarios', cash_register: 'Arqueo de Caja', credits: 'Créditos' };
+                    const titleMap = { dashboard: 'Resumen', daily_sales: 'Cierres Diarios', cash_register: 'Arqueo de Caja', credits: 'Créditos', barcode: 'Escáner' };
                     document.getElementById('page-title').textContent = titleMap[viewName] || viewName;
 
                     // Cleanup and navigate
