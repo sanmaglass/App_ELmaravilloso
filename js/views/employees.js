@@ -125,12 +125,12 @@ window.Views.employees = async (container, _tab = 'equipo') => {
 
     // --- ACTIONS ---
     window.deleteEmployee = async (id) => {
-        if (confirm('¿Eliminar este empleado?')) {
+        if (await window.showConfirmDialog('Eliminar Empleado', '¿Eliminar este empleado?')) {
             try {
                 await window.DataManager.deleteAndSync('employees', id);
                 window.Views.employees(container);
             } catch (err) {
-                alert('Error al eliminar: ' + err.message);
+                window.showToast('Error al eliminar: ' + err.message, 'error');
             }
         }
     };
@@ -187,7 +187,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
 
                         <div class="form-group">
                             <label class="form-label">Sueldo Base Mensual ($)</label>
-                            <input type="number" name="baseSalary" class="form-input" required placeholder="Ej. 580000" value="${emp?.baseSalary || ''}">
+                            <input type="number" name="baseSalary" class="form-input" inputmode="decimal" required placeholder="Ej. 580000" value="${emp?.baseSalary || ''}">
                         </div>
 
                         <div class="form-group">
@@ -215,10 +215,10 @@ window.Views.employees = async (container, _tab = 'equipo') => {
 
             const formData = new FormData(form);
             const name = formData.get('name').trim();
-            if (!name) { alert('El nombre es obligatorio.'); return; }
+            if (!name) { window.showToast('El nombre es obligatorio.', 'error'); return; }
 
             const baseSalary = Number(formData.get('baseSalary')) || 0;
-            if (baseSalary <= 0) { alert('El sueldo base debe ser mayor a 0.'); return; }
+            if (baseSalary <= 0) { window.showToast('El sueldo base debe ser mayor a 0.', 'error'); return; }
 
             const employeeData = {
                 name,
@@ -262,7 +262,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                 modalContainer.classList.add('hidden');
                 window.Views.employees(container);
             } catch (err) {
-                alert('Error al guardar: ' + err.message);
+                window.showToast('Error al guardar: ' + err.message, 'error');
             }
         });
 
@@ -467,7 +467,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
 
                         <div class="form-group">
                             <label class="form-label">Monto Final a Pagar ($)</label>
-                            <input type="number" id="pay-final-amount" class="form-input" value="${suggestedNet}" style="font-size:1.2rem; font-weight:700; text-align:center;">
+                            <input type="number" id="pay-final-amount" class="form-input" inputmode="decimal" value="${suggestedNet}" style="font-size:1.2rem; font-weight:700; text-align:center;">
                             <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Puedes ajustar el monto si necesitas.</p>
                         </div>
 
@@ -492,7 +492,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
 
             document.getElementById('confirm-pay-btn').addEventListener('click', async () => {
                 const finalAmount = Number(document.getElementById('pay-final-amount').value) || 0;
-                if (finalAmount <= 0) { alert('El monto debe ser mayor a 0.'); return; }
+                if (finalAmount <= 0) { window.showToast('El monto debe ser mayor a 0.', 'error'); return; }
                 const payMethod = document.getElementById('pay-method').value;
 
                 try {
@@ -523,10 +523,10 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                     await window.DataManager.saveAndSync('employees', emp);
 
                     modalContainer.classList.add('hidden');
-                    alert(`Pago de ${window.Utils.formatCurrency(finalAmount)} a ${emp.name} registrado.`);
+                    window.showToast(`Pago de ${window.Utils.formatCurrency(finalAmount)} a ${emp.name} registrado.`, 'success');
                     await renderPagosTab(tabContainer);
                 } catch (err) {
-                    alert('Error al registrar pago: ' + err.message);
+                    window.showToast('Error al registrar pago: ' + err.message, 'error');
                 }
             });
         };
@@ -550,7 +550,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
 
                         <div class="form-group">
                             <label class="form-label">Monto del Adelanto ($)</label>
-                            <input type="number" id="adv-amount" class="form-input" required placeholder="Ej. 50000" style="font-size:1.1rem; text-align:center;">
+                            <input type="number" id="adv-amount" class="form-input" inputmode="decimal" required placeholder="Ej. 50000" style="font-size:1.1rem; text-align:center;">
                         </div>
 
                         <div class="form-group">
@@ -578,7 +578,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
 
             document.getElementById('save-adv-btn').addEventListener('click', async () => {
                 const amount = Number(document.getElementById('adv-amount').value) || 0;
-                if (amount <= 0) { alert('El monto debe ser mayor a 0.'); return; }
+                if (amount <= 0) { window.showToast('El monto debe ser mayor a 0.', 'error'); return; }
                 const note = document.getElementById('adv-note').value.trim();
                 const payMethod = document.getElementById('adv-method').value;
                 const today = new Date().toISOString().split('T')[0];
@@ -611,22 +611,22 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                     await window.DataManager.saveAndSync('expenses', expenseData);
 
                     modalContainer.classList.add('hidden');
-                    alert(`Adelanto de ${window.Utils.formatCurrency(amount)} registrado para ${emp.name}.`);
+                    window.showToast(`Adelanto de ${window.Utils.formatCurrency(amount)} registrado para ${emp.name}.`, 'success');
                     await renderPagosTab(tabContainer);
                 } catch (err) {
-                    alert('Error al registrar adelanto: ' + err.message);
+                    window.showToast('Error al registrar adelanto: ' + err.message, 'error');
                 }
             });
         };
 
         // --- ELIMINAR ADELANTO ---
         window.deleteAdvance = async (advId) => {
-            if (!confirm('¿Eliminar este adelanto?')) return;
+            if (!await window.showConfirmDialog('Eliminar Adelanto', '¿Eliminar este adelanto?')) return;
             try {
                 await window.DataManager.deleteAndSync('advances', advId);
                 await renderPagosTab(tabContainer);
             } catch (err) {
-                alert('Error: ' + err.message);
+                window.showToast('Error: ' + err.message, 'error');
             }
         };
     }

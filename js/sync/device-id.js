@@ -13,9 +13,14 @@ window.DeviceId = {
   },
 
   uuid4() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-      const r = Math.random() * 16 | 0;
-      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-    });
+    if (crypto && crypto.randomUUID) return crypto.randomUUID();
+    // fallback con valores criptográficamente seguros
+    const buf = new Uint8Array(16);
+    crypto.getRandomValues(buf);
+    buf[6] = (buf[6] & 0x0f) | 0x40;
+    buf[8] = (buf[8] & 0x3f) | 0x80;
+    return [...buf].map((b, i) =>
+      ([4,6,8,10].includes(i) ? '-' : '') + b.toString(16).padStart(2,'0')
+    ).join('');
   }
 };

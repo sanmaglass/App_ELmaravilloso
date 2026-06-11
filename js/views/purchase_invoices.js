@@ -179,7 +179,7 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
 
     // Events
     document.getElementById('btn-add-invoice').addEventListener('click', () => showInvoiceModal());
-    document.getElementById('invoice-search').addEventListener('input', () => { window.state.invoicesPage = 1; renderInvoices(); });
+    document.getElementById('invoice-search').addEventListener('input', window.debounce ? window.debounce(() => { window.state.invoicesPage = 1; renderInvoices(); }, 250) : () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('filter-tipo-doc').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('filter-status').addEventListener('change', () => { window.state.invoicesPage = 1; renderInvoices(); });
     document.getElementById('filter-date').addEventListener('change', (e) => {
@@ -230,7 +230,7 @@ async function syncFromSII(silent = false) {
     const btn = document.getElementById('btn-sync-sii');
 
     if (!window.SII_API.isConfigured()) {
-        if (!silent) alert('Configura tus credenciales SII en Ajustes → Integración SII.');
+        if (!silent) window.showToast('Configura tus credenciales SII en Ajustes → Integración SII.', 'error');
         return;
     }
 
@@ -1357,7 +1357,7 @@ async function renderPendingDocuments() {
                     const invoice = await window.db.purchase_invoices.get(id);
                     if (invoice) showInvoiceModal(invoice); // Open edit modal
                 } catch (err) {
-                    alert('Error: ' + err.message);
+                    window.showToast('Error: ' + err.message, 'error');
                 }
             });
         });
@@ -1513,7 +1513,7 @@ async function renderCreditAlerts() {
         document.querySelectorAll('.btn-credit-pay').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = Number(e.currentTarget.dataset.id);
-                if (confirm('¿Confirmar que esta factura fue pagada en su totalidad?')) {
+                if (await window.showConfirmDialog('Liquidar Factura', '¿Confirmar que esta factura fue pagada en su totalidad?')) {
                     try {
                         // SAFE: Read complete record first, then merge
                         const existing = await window.db.purchase_invoices.get(id);
@@ -1526,7 +1526,7 @@ async function renderCreditAlerts() {
                         await renderCreditAlerts();
                         await renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
                         renderInvoices();
-                    } catch (err) { alert('Error: ' + err.message); }
+                    } catch (err) { window.showToast('Error: ' + err.message, 'error'); }
                 }
             });
         });
@@ -1556,7 +1556,7 @@ async function renderCreditAlerts() {
 
                         <div style="margin-bottom:16px;">
                             <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:6px;">Monto a Abonar ($)</label>
-                            <input type="number" id="abono-amount-input" class="form-input" placeholder="0" min="1" max="${remaining}" step="1" style="width:100%;font-size:1.1rem;font-weight:700;text-align:center;" autofocus>
+                            <input type="number" id="abono-amount-input" class="form-input" inputmode="decimal" placeholder="0" min="1" max="${remaining}" step="1" style="width:100%;font-size:1.1rem;font-weight:700;text-align:center;" autofocus>
                             <div style="display:flex;gap:6px;margin-top:8px;justify-content:center;flex-wrap:wrap;">
                                 <button type="button" class="abono-preset" data-val="${Math.round(remaining * 0.25)}" style="padding:4px 10px;border-radius:20px;border:1px solid #d97706;background:white;color:#92400e;font-size:0.75rem;font-weight:600;cursor:pointer;">25%</button>
                                 <button type="button" class="abono-preset" data-val="${Math.round(remaining * 0.5)}" style="padding:4px 10px;border-radius:20px;border:1px solid #d97706;background:white;color:#92400e;font-size:0.75rem;font-weight:600;cursor:pointer;">50%</button>
@@ -1585,9 +1585,9 @@ async function renderCreditAlerts() {
 
                 document.getElementById('abono-confirm').addEventListener('click', async () => {
                     const abonoMonto = parseFloat(document.getElementById('abono-amount-input').value) || 0;
-                    if (abonoMonto <= 0) { alert('Ingresa un monto mayor a 0.'); return; }
+                    if (abonoMonto <= 0) { window.showToast('Ingresa un monto mayor a 0.', 'error'); return; }
                     if (abonoMonto > remaining + 0.01) {
-                        alert(`El abono (${formatCurrency(abonoMonto)}) supera el monto pendiente (${formatCurrency(remaining)}).`);
+                        window.showToast(`El abono (${formatCurrency(abonoMonto)}) supera el monto pendiente (${formatCurrency(remaining)}).`, 'error');
                         return;
                     }
 
@@ -1603,16 +1603,14 @@ async function renderCreditAlerts() {
                         // Detectar conflicto: version cambió entre snapshot y confirmación
                         const currentVersion = freshLoan.version;
                         if (currentVersion !== undefined && snapshotVersion !== undefined && currentVersion !== snapshotVersion) {
-                            const overwrite = confirm(
-                                `La factura fue modificada mientras tenías el modal abierto.\n\n` +
-                                `Monto pagado actual: ${formatCurrency(freshLoan.paidAmount)}\n` +
-                                `Tu abono: ${formatCurrency(abonoMonto)}\n\n` +
-                                `¿Deseas aplicar el abono sobre el monto actual?`
+                            const overwrite = await window.showConfirmDialog(
+                                'Conflicto de versión',
+                                `La factura fue modificada mientras tenías el modal abierto.\n\nMonto pagado actual: ${formatCurrency(freshLoan.paidAmount)}\nTu abono: ${formatCurrency(abonoMonto)}\n\n¿Deseas aplicar el abono sobre el monto actual?`
                             );
                             if (!overwrite) { overlay.remove(); return; }
                         } else if (freshLoan.paidAmount !== alreadyPaid && currentVersion === undefined) {
                             // Fallback: si la tabla aún no tiene version, comparar por paidAmount
-                            alert(`La factura fue actualizada por otro usuario.\n\nMonto anterior: ${formatCurrency(alreadyPaid)}\nMonto actual: ${formatCurrency(freshLoan.paidAmount)}\n\nPor favor recarga la página.`);
+                            window.showToast(`La factura fue actualizada por otro usuario. Por favor recarga la página.`, 'error');
                             overlay.remove();
                             return;
                         }
@@ -1631,7 +1629,7 @@ async function renderCreditAlerts() {
                         renderInvoices();
                     } catch (err) {
                         overlay.remove();
-                        alert('Error al registrar abono: ' + err.message);
+                        window.showToast('Error al registrar abono: ' + err.message, 'error');
                     }
                 });
             });
@@ -1928,13 +1926,13 @@ async function renderInvoices() {
 
 // --- CRUD HANDLERS ---
 async function handleDeleteInvoice(id) {
-    if (confirm('¿Eliminar esta factura?')) {
+    if (await window.showConfirmDialog('Eliminar Factura', '¿Eliminar esta factura?')) {
         try {
             await window.DataManager.deleteAndSync('purchase_invoices', id);
             renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
             renderPendingDocuments();
             renderInvoices();
-        } catch (e) { alert('Error: ' + e.message); }
+        } catch (e) { window.showToast('Error: ' + e.message, 'error'); }
     }
 }
 
@@ -2011,7 +2009,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
 
                     <div class="form-group">
                         <label class="form-label">Monto Total ($)</label>
-                        <input type="number" id="inv-amount" class="form-input" placeholder="0" value="${isEdit ? invoiceToEdit.amount : ''}">
+                        <input type="number" id="inv-amount" class="form-input" inputmode="decimal" placeholder="0" value="${isEdit ? invoiceToEdit.amount : ''}">
                     </div>
 
                     <div class="form-group">
@@ -2043,7 +2041,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:end;">
                             <div class="form-group" style="margin:0;">
                                 <label class="form-label" style="color:#3730a3;">Monto Pagado Hoy ($)</label>
-                                <input type="number" id="inv-paid-amount" class="form-input" placeholder="Ej. 150000" min="0" value="${isEdit && invoiceToEdit.paidAmount ? invoiceToEdit.paidAmount : ''}">
+                                <input type="number" id="inv-paid-amount" class="form-input" inputmode="decimal" placeholder="Ej. 150000" min="0" value="${isEdit && invoiceToEdit.paidAmount ? invoiceToEdit.paidAmount : ''}">
                             </div>
                             <div style="margin:0; padding-bottom:10px;">
                                 <div style="font-size:0.8rem; color:#4f46e5; font-weight:700;">Deuda Pendiente:</div>
@@ -2278,7 +2276,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
                     const input = document.getElementById('inv-supplier-input');
                     if (input) input.value = newName.trim();
                 }, 200);
-            } catch (e) { alert('Error creando proveedor: ' + e.message); }
+            } catch (e) { window.showToast('Error creando proveedor: ' + e.message, 'error'); }
         }
     };
 
@@ -2319,7 +2317,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
     numberInput.onblur = async () => {
         const val = numberInput.value.trim();
         if (await isDuplicate(val)) {
-            alert(`❌ Ya existe una factura con el número "${val}".\n\nPor favor usa un número diferente.`);
+            window.showToast(`Ya existe una factura con el número "${val}". Por favor usa un número diferente.`, 'error');
         }
     };
 
@@ -2377,7 +2375,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
         }
 
         if (errors.length > 0) {
-            alert('⚠️ Ups! Faltan datos necesarios:\n\n- ' + errors.join('\n- '));
+            window.showToast('Faltan datos necesarios: ' + errors.join(', '), 'error');
             return;
         }
 
@@ -2394,12 +2392,11 @@ async function showInvoiceModal(invoiceToEdit = null) {
             paidAmount = parseFloat(document.getElementById('inv-paid-amount').value) || 0;
             // BUG FIX: Validar abono con tolerancia
             if (paidAmount >= amount && amount > 0) {
-                if (!confirm(`💡 El monto pagado (${window.Utils.formatCurrency(paidAmount)}) cubre la factura completa (${window.Utils.formatCurrency(amount)}).\n\n¿Deseas marcar como PAGADO en su totalidad?`)) {
-                    // Keep as "Abonado" with partial payment
-                } else {
+                if (await window.showConfirmDialog('Monto completo', `El monto pagado (${window.Utils.formatCurrency(paidAmount)}) cubre la factura completa (${window.Utils.formatCurrency(amount)}).\n\n¿Deseas marcar como PAGADO en su totalidad?`)) {
                     paymentStatus = 'Pagado';
                     paidAmount = amount;
                 }
+                // else: keep as "Abonado" with partial payment
             }
         } else if (paymentStatus === 'Pagado') {
             paidAmount = amount;
@@ -2411,7 +2408,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
 
         // ✅ DUPLICATE CHECK: Verify invoice number doesn't already exist
         if (!isEdit && await isDuplicate(invoiceNumber)) {
-            if (!confirm(`⚠️ Ya existe una factura con el número "${invoiceNumber}".\n\n¿Deseas ACTUALIZAR la factura existente con esta nueva información?`)) {
+            if (!await window.showConfirmDialog('Factura duplicada', `Ya existe una factura con el número "${invoiceNumber}".\n\n¿Deseas ACTUALIZAR la factura existente con esta nueva información?`)) {
                 return;
             }
             // If they said yes, we find the existing ID and turn this into an Edit
@@ -2423,8 +2420,8 @@ async function showInvoiceModal(invoiceToEdit = null) {
                 invoiceToEdit = existing;
             }
         } else if (isEdit && await isDuplicate(invoiceNumber)) {
-             alert(`❌ Ya existe OTRA factura con el número "${invoiceNumber}".\n\nPor favor usa un número diferente.`);
-             return;
+            window.showToast(`Ya existe OTRA factura con el número "${invoiceNumber}". Por favor usa un número diferente.`, 'error');
+            return;
         }
 
         try {
@@ -2472,7 +2469,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
             renderPendingDocuments();
             renderInvoices();
             await renderCreditAlerts();
-        } catch (e) { alert('Error: ' + e.message); }
+        } catch (e) { window.showToast('Error: ' + e.message, 'error'); }
     };
 }
 
@@ -2483,7 +2480,7 @@ async function exportInvoicesToExcel() {
         const activeInvoices = invoices.filter(i => !i.deleted);
 
         if (activeInvoices.length === 0) {
-            alert('No hay datos para exportar');
+            window.showToast('No hay datos para exportar', 'error');
             return;
         }
 
@@ -2511,7 +2508,7 @@ async function exportInvoicesToExcel() {
 
     } catch (e) {
         console.error(e);
-        alert('Error exportando: ' + e.message);
+        window.showToast('Error exportando: ' + e.message, 'error');
     }
 }
 

@@ -312,7 +312,7 @@ window.Views.settings = async (container) => {
         const btnLogout = document.getElementById('btn-logout');
         if (btnLogout) {
             btnLogout.addEventListener('click', async () => {
-                if (confirm('¿Cerrar sesión en este dispositivo?')) {
+                if (await window.showConfirmDialog('Cerrar Sesión', '¿Cerrar sesión en este dispositivo?')) {
                     if (typeof window.AppSignOut === 'function') {
                         await window.AppSignOut();
                     } else {
@@ -368,15 +368,15 @@ window.Views.settings = async (container) => {
                     const result = await window.Sync.syncAll();
                     if (result.success) {
                         updateStatus('<i class="ph ph-check-circle"></i> Sincronización completada.', 'success');
-                        alert('¡Datos sincronizados! La app se refrescará.');
+                        window.showToast('¡Datos sincronizados! La app se refrescará.', 'success');
                         window.location.reload();
                     } else {
                         updateStatus('Fallo: ' + result.error, 'error');
-                        alert('Error Sync: ' + result.error);
+                        window.showToast('Error Sync: ' + result.error, 'error');
                     }
                 } catch (e) {
                     updateStatus('Error inesperado: ' + e.message, 'error');
-                    alert('Excepción Sync: ' + e.message);
+                    window.showToast('Excepción Sync: ' + e.message, 'error');
                 } finally {
                     btnSync.disabled = false;
                     btnSync.innerHTML = original;
@@ -415,7 +415,7 @@ window.Views.settings = async (container) => {
                 if (result.success) {
                     btnSync.disabled = false;
                     updateStatus('<i class="ph ph-check-circle"></i> Conectado con éxito.', 'success');
-                    alert('Conectado correctamente a Supabase.');
+                    window.showToast('Conectado correctamente a Supabase.', 'success');
                 } else {
                     updateStatus('Error: ' + result.error, 'error');
                 }
@@ -424,21 +424,21 @@ window.Views.settings = async (container) => {
 
         // --- DISCONNECT HANDLER ---
         if (btnDisconnect) {
-            btnDisconnect.addEventListener('click', () => {
-                if (confirm('¿Seguro que quieres desconectar? Se borrarán las credenciales y la sesión de este dispositivo.')) {
+            btnDisconnect.addEventListener('click', async () => {
+                if (await window.showConfirmDialog('Desconectar', '¿Seguro que quieres desconectar? Se borrarán las credenciales y la sesión de este dispositivo.')) {
                     localStorage.removeItem('supabase_url');
                     localStorage.removeItem('supabase_key');
                     localStorage.removeItem('wm_auth');
                     localStorage.removeItem('wm_user');
-                    
+
                     if (window.AppConfig) {
                         window.AppConfig.supabaseUrl = null;
                         window.AppConfig.supabaseKey = null;
                     }
                     if (window.Sync) window.Sync.client = null;
 
-                    alert('Credenciales y sesión borradas. La app se reiniciará.');
-                    window.location.reload();
+                    window.showToast('Credenciales y sesión borradas. La app se reiniciará.', 'success');
+                    setTimeout(() => window.location.reload(), 1200);
                 }
             });
         }
@@ -459,12 +459,12 @@ window.Views.settings = async (container) => {
                 const key = supaKey.value.trim();
 
                 if (!url || !key) {
-                    alert("Primero ingresa y guarda (Conectar) la URL y Key.");
+                    window.showToast('Primero ingresa y guarda (Conectar) la URL y Key.', 'error');
                     return;
                 }
 
                 if (typeof QRCode === 'undefined') {
-                    alert("Librería QR no cargada. Revisa tu conexión.");
+                    window.showToast('Librería QR no cargada. Revisa tu conexión.', 'error');
                     return;
                 }
 
@@ -492,10 +492,10 @@ window.Views.settings = async (container) => {
                 if (window.Utils && window.Utils.exportDatabase) {
                     await window.Utils.exportDatabase();
                 } else {
-                    alert("Error: Utils no cargado");
+                    window.showToast('Error: Utils no cargado', 'error');
                 }
             } catch (e) {
-                alert('Error al exportar: ' + e.message);
+                window.showToast('Error al exportar: ' + e.message, 'error');
             } finally {
                 btn.innerHTML = original;
             }
@@ -506,11 +506,11 @@ window.Views.settings = async (container) => {
             try {
                 const success = await window.Utils.importDatabase(e.target.files[0]);
                 if (success) {
-                    alert('¡Datos restaurados! La aplicación se reiniciará.');
-                    window.location.reload();
+                    window.showToast('¡Datos restaurados! La aplicación se reiniciará.', 'success');
+                    setTimeout(() => window.location.reload(), 1200);
                 }
             } catch (err) {
-                alert('Error al importar: ' + err.message);
+                window.showToast('Error al importar: ' + err.message, 'error');
             } finally {
                 e.target.value = '';
             }
@@ -534,10 +534,10 @@ window.Views.settings = async (container) => {
                 await window.db.settings.clear();
 
                 localStorage.setItem('wm_skip_seed', 'true');
-                alert('¡Datos locales borrados! La app se refrescará.');
-                window.location.reload();
+                window.showToast('¡Datos locales borrados! La app se refrescará.', 'success');
+                setTimeout(() => window.location.reload(), 1200);
             } catch (e) {
-                alert('Error: ' + e.message);
+                window.showToast('Error: ' + e.message, 'error');
                 btn.disabled = false;
             }
         });
@@ -557,7 +557,7 @@ window.Views.settings = async (container) => {
                 };
 
                 if (!data.name || !data.rut) {
-                    alert('La Razón Social y el RUT son obligatorios.');
+                    window.showToast('La Razón Social y el RUT son obligatorios.', 'error');
                     return;
                 }
 
@@ -565,7 +565,7 @@ window.Views.settings = async (container) => {
                 localStorage.setItem('company_rut', data.rut);
                 localStorage.setItem('company_giro', data.giro);
 
-                alert('Configuración de empresa guardada con éxito.');
+                window.showToast('Configuración de empresa guardada con éxito.', 'success');
             });
         }
 
@@ -652,9 +652,9 @@ window.Views.settings = async (container) => {
         supaUrl.value = localStorage.getItem('supabase_url') || '';
         supaKey.value = localStorage.getItem('supabase_key') || '';
 
-        if (companyName) companyName.value = localStorage.getItem('company_name') || 'NELSON RODRIGO ARROYO NOVOA';
-        if (companyRut) companyRut.value = localStorage.getItem('company_rut') || '14.061.423-8';
-        if (companyGiro) companyGiro.value = localStorage.getItem('company_giro') || 'MINIMARKET, PROVISIONES Y BAZAR';
+        if (companyName) companyName.value = localStorage.getItem('company_name') || '';
+        if (companyRut) companyRut.value = localStorage.getItem('company_rut') || '';
+        if (companyGiro) companyGiro.value = localStorage.getItem('company_giro') || '';
 
         // PRO MODE OVERRIDE
         if (window.AppConfig && window.AppConfig.supabaseUrl) {
@@ -729,11 +729,11 @@ window.Views.settings = async (container) => {
                 btnTest.addEventListener('click', () => {
                     const state = window.Utils.NotificationManager.getPermissionState();
                     if (state !== 'granted') {
-                        alert('Primero debes activar las notificaciones.');
+                        window.showToast('Primero debes activar las notificaciones.', 'error');
                         return;
                     }
 
-                    alert('En 5 segundos llegará la prueba. BLOQUEA TU CELULAR AHORA o salte de la app.');
+                    window.showToast('En 5 segundos llegará la prueba. ¡Bloquea tu celular ahora!', 'info');
 
                     setTimeout(() => {
                         window.Utils.NotificationManager.show(
@@ -775,12 +775,12 @@ window.Views.settings = async (container) => {
         document.getElementById('btn-refresh-stats').addEventListener('click', updateStorageStats);
 
         document.getElementById('btn-clear-local').addEventListener('click', async () => {
-            if (!confirm("¿Borrar datos locales?")) return;
+            if (!await window.showConfirmDialog('Borrar Datos Locales', '¿Borrar datos locales?')) return;
             await window.db.employees.clear();
             await window.db.workLogs.clear();
             await window.db.products.clear();
             await window.db.promotions.clear();
-            alert("Datos locales borrados.");
+            window.showToast('Datos locales borrados.', 'success');
             updateStorageStats();
         });
 

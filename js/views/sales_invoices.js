@@ -137,7 +137,7 @@ async function renderSales() {
 
 // --- CRUD ---
 async function handleDeleteSale(id) {
-    if (confirm('¿Eliminar esta venta?')) {
+    if (await window.showConfirmDialog('Eliminar Venta', '¿Eliminar esta venta?')) {
         try {
             await window.db.sales_invoices.update(id, { deleted: true });
             renderSales();
@@ -145,7 +145,7 @@ async function handleDeleteSale(id) {
             if (window.Sync?.client) {
                 await window.Sync.client.from('sales_invoices').update({ deleted: true }).eq('id', id);
             }
-        } catch (e) { alert('Error: ' + e.message); }
+        } catch (e) { window.showToast('Error: ' + e.message, 'error'); }
     }
 }
 
@@ -283,7 +283,7 @@ async function showSaleModal() {
         const total = parseFloat(totalDisplay.dataset.value) || 0;
 
         if (!clientName || cart.length === 0) {
-            alert('Falta cliente o productos');
+            window.showToast('Falta cliente o productos', 'error');
             return;
         }
 
@@ -295,7 +295,7 @@ async function showSaleModal() {
         );
 
         if (duplicateExists) {
-            alert(`❌ Ya existe una factura de venta con el número "${nextNum}".\n\nEsto no debería pasar (error en auto-numeración). Contacta soporte.`);
+            window.showToast(`Ya existe una factura de venta con el número "${nextNum}". Contacta soporte.`, 'error');
             return;
         }
 
@@ -324,11 +324,11 @@ async function showSaleModal() {
             modal.classList.add('hidden');
             renderSales();
 
-            if (confirm('Venta guardada. ¿Generar PDF?')) {
+            if (await window.showConfirmDialog('Venta guardada', '¿Generar PDF?')) {
                 generateInvoicePDF(saleData.id);
             }
 
-        } catch (e) { alert('Error: ' + e.message); }
+        } catch (e) { window.showToast('Error: ' + e.message, 'error'); }
     });
 }
 
@@ -338,7 +338,7 @@ async function generateInvoicePDF(id) {
     if (!sale) return;
 
     if (!window.jspdf) {
-        alert('Cargando librería PDF, intenta en 5 segundos...');
+        window.showToast('Cargando librería PDF, intenta en 5 segundos...', 'info');
         return;
     }
 
@@ -402,6 +402,6 @@ async function exportSalesToExcel() {
         XLSX.writeFile(wb, `Ventas_${new Date().toISOString().split('T')[0]}.xlsx`);
 
     } catch (e) {
-        alert('Error: ' + e.message);
+        window.showToast('Error: ' + e.message, 'error');
     }
 }

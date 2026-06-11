@@ -119,7 +119,7 @@ window.Views.credits = async (container) => {
     }
 
     // Eventos
-    document.getElementById('credits-search').addEventListener('input', render);
+    document.getElementById('credits-search').addEventListener('input', window.debounce ? window.debounce(render, 250) : render);
     document.getElementById('btn-refresh-credits').addEventListener('click', () => {
          const btn = document.getElementById('btn-refresh-credits');
          btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Cargando...';

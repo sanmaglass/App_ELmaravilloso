@@ -554,7 +554,7 @@ async function showExtractionModal() {
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                         <div class="form-group">
                             <label class="form-label">Monto ($)</label>
-                            <input type="number" id="ext-amount" class="form-input" placeholder="0" min="1" required style="font-size:1.1rem; font-weight:700;">
+                            <input type="number" id="ext-amount" class="form-input" inputmode="decimal" placeholder="0" min="1" required style="font-size:1.1rem; font-weight:700;">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Fecha</label>
@@ -644,8 +644,8 @@ async function showExtractionModal() {
         const reference = document.getElementById('ext-reference').value.trim();
         const notes = document.getElementById('ext-notes').value.trim();
 
-        if (amount <= 0) { alert('Ingresa un monto mayor a 0.'); return; }
-        if (!description) { alert('Ingresa una descripción.'); return; }
+        if (amount <= 0) { window.showToast('Ingresa un monto mayor a 0.', 'error'); return; }
+        if (!description) { window.showToast('Ingresa una descripción.', 'error'); return; }
 
         try {
             if (selectedType === 'proveedor') {
@@ -655,12 +655,12 @@ async function showExtractionModal() {
 
                 if (supplierId === '__other') {
                     supplierName = document.getElementById('ext-supplier-name').value.trim();
-                    if (!supplierName) { alert('Ingresa el nombre del proveedor.'); return; }
+                    if (!supplierName) { window.showToast('Ingresa el nombre del proveedor.', 'error'); return; }
                 } else if (supplierId) {
                     const sup = await window.db.suppliers.get(Number(supplierId));
                     supplierName = sup ? sup.name : 'Proveedor';
                 } else {
-                    alert('Selecciona un proveedor.'); return;
+                    window.showToast('Selecciona un proveedor.', 'error'); return;
                 }
 
                 // Create purchase invoice
@@ -759,7 +759,7 @@ async function showExtractionModal() {
             }
 
         } catch (e) {
-            alert('Error: ' + e.message);
+            window.showToast('Error: ' + e.message, 'error');
         }
     });
 }
@@ -931,7 +931,7 @@ async function showArqueoModal() {
         const date = document.getElementById('arqueo-date').value;
         const notes = document.getElementById('arqueo-notes').value.trim();
 
-        if (isNaN(realCash) || realCash < 0) { alert('Ingresa el monto contado en caja.'); return; }
+        if (isNaN(realCash) || realCash < 0) { window.showToast('Ingresa el monto contado en caja.', 'error'); return; }
 
         const difference = realCash - expectedCash;
 
@@ -960,7 +960,7 @@ async function showArqueoModal() {
             }
 
         } catch (e) {
-            alert('Error: ' + e.message);
+            window.showToast('Error: ' + e.message, 'error');
         }
     });
 }

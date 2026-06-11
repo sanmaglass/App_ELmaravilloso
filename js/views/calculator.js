@@ -237,10 +237,10 @@ window.Views.calculator = async (container) => {
             window.Sync.syncAll();
 
             // Toast or visual feedback?
-            alert(`¡"${name}" guardado!`);
+            window.showToast(`¡"${name}" guardado!`, 'success');
             loadInventory(document.getElementById('inventory-list-mini'));
         } catch (e) {
-            alert('Error al guardar: ' + e.message);
+            window.showToast('Error al guardar: ' + e.message, 'error');
         }
     });
 

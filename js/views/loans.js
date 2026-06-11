@@ -66,7 +66,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
 
         // Events
         document.getElementById('btn-add-loan').addEventListener('click', () => showLoanModal());
-        document.getElementById('loan-search').addEventListener('input', () => renderLoans());
+        document.getElementById('loan-search').addEventListener('input', window.debounce ? window.debounce(() => renderLoans(), 250) : () => renderLoans());
         document.getElementById('filter-loan-supplier').addEventListener('change', (e) => {
             viewState.supplierId = e.target.value === 'all' ? null : Number(e.target.value);
             renderLoans();
@@ -350,14 +350,14 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                         </div>
                         <div class="form-group">
                             <label class="form-label">Precio Unit. (Est.)</label>
-                            <input type="number" id="loan-unit-price" class="form-input" placeholder="0" value="${isEdit ? Utils.escapeHTML(loanToEdit.unitPrice) : ''}">
+                            <input type="number" id="loan-unit-price" class="form-input" inputmode="decimal" placeholder="0" value="${isEdit ? Utils.escapeHTML(loanToEdit.unitPrice) : ''}">
                         </div>
                     </div>
 
                     <!-- Fields for Money -->
                     <div id="fields-money" class="form-group mb-4" style="display: ${loanType === 'Dinero' ? 'block' : 'none'};">
                         <label class="form-label">Monto Total ($) *</label>
-                        <input type="number" id="loan-total-money" class="form-input" placeholder="0" value="${isEdit ? Utils.escapeHTML(loanToEdit.total) : ''}">
+                        <input type="number" id="loan-total-money" class="form-input" inputmode="decimal" placeholder="0" value="${isEdit ? Utils.escapeHTML(loanToEdit.total) : ''}">
                     </div>
 
                     <div class="form-group mb-4">
@@ -437,7 +437,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
             }
 
             if ((entityType === 'supplier' && !supplierId) || (entityType === 'person' && !borrowerName) || !item || (type === 'Producto' && !quantity) || (type === 'Dinero' && !total)) {
-                alert('Por favor completa los campos obligatorios (*)');
+                window.showToast('Por favor completa los campos obligatorios (*)', 'error');
                 return;
             }
 
@@ -467,7 +467,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                 modal.classList.add('hidden');
                 renderLoans();
             } catch (e) {
-                alert('Error: ' + e.message);
+                window.showToast('Error: ' + e.message, 'error');
             }
         });
     }
@@ -517,7 +517,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                 renderLoans();
                 window.Sync.showToast(`Préstamo liquidado (${type})`, 'success');
             } catch (e) {
-                alert('Error: ' + e.message);
+                window.showToast('Error: ' + e.message, 'error');
             }
         };
 
@@ -531,12 +531,12 @@ window.Views.loans = async (container, filterSupplierId = null) => {
     }
 
     async function handleDeleteLoan(id) {
-        if (confirm('¿Eliminar este registro de préstamo?')) {
+        if (await window.showConfirmDialog('Eliminar Préstamo', '¿Eliminar este registro de préstamo?')) {
             try {
                 await window.DataManager.deleteAndSync('loans', id);
                 renderLoans();
             } catch (e) {
-                alert('Error: ' + e.message);
+                window.showToast('Error: ' + e.message, 'error');
             }
         }
     }

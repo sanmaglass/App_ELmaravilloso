@@ -890,6 +890,10 @@
     border-left-color: var(--primary) !important;
 }
 
+.toast-error {
+    border-left-color: #ef4444 !important;
+}
+
 .sync-toast.fading {
     opacity: 0;
     transform: translateX(100px);
@@ -1084,4 +1088,54 @@
     color: rgba(16, 185, 129, 0.05);
     transform: rotate(-15deg);
     pointer-events: none;
+}
+
+/* ============================================================
+   MOBILE UX FIXES
+   ============================================================ */
+
+/* 1. font-size 16px en inputs para evitar zoom automático en iOS */
+@media (max-width: 768px) {
+    .form-input,
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="tel"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+}
+
+/* 2. Touch targets mínimo 44px para nav-items y botones de cerrar modal */
+.nav-item {
+    min-height: 44px;
+}
+
+.modal-close {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+}
+
+/* 3. Safe-area-inset en modales para notch de celulares */
+#modal-container {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.modal {
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 768px) {
+    .modal {
+        max-height: calc(95vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+        margin-top: env(safe-area-inset-top, 0px);
+    }
 }

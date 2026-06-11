@@ -36,7 +36,7 @@ window.Views.suppliers = async (container) => {
 
     // Events
     document.getElementById('btn-add-supplier').addEventListener('click', showSupplierModal);
-    document.getElementById('supplier-search').addEventListener('input', (e) => renderSuppliers(e.target.value));
+    document.getElementById('supplier-search').addEventListener('input', window.debounce ? window.debounce((e) => renderSuppliers(e.target.value), 250) : (e) => renderSuppliers(e.target.value));
 };
 
 // --- RENDER LOGIC ---
@@ -124,11 +124,11 @@ async function renderSuppliers(filterText = '') {
 
 // --- CRUD HANDLERS ---
 async function handleDeleteSupplier(id) {
-    if (confirm('¿Eliminar este proveedor?')) {
+    if (await window.showConfirmDialog('Eliminar Proveedor', '¿Eliminar este proveedor?')) {
         try {
             await window.DataManager.deleteAndSync('suppliers', id);
             renderSuppliers(document.getElementById('supplier-search').value);
-        } catch (e) { alert('Error: ' + e.message); }
+        } catch (e) { window.showToast('Error: ' + e.message, 'error'); }
     }
 }
 
@@ -189,7 +189,7 @@ function showSupplierModal(supplierToEdit = null) {
         const address = document.getElementById('sup-address')?.value.trim() || '';
         const contact = document.getElementById('sup-contact')?.value.trim() || '';
 
-        if (!name) { alert('El nombre es obligatorio'); return; }
+        if (!name) { window.showToast('El nombre es obligatorio', 'error'); return; }
 
         try {
             const supplierData = { name, rut, giro, address, contact, deleted: false };
@@ -199,7 +199,7 @@ function showSupplierModal(supplierToEdit = null) {
 
             modal.classList.add('hidden');
             renderSuppliers();
-        } catch (e) { alert('Error: ' + e.message); }
+        } catch (e) { window.showToast('Error: ' + e.message, 'error'); }
     });
 }
 

@@ -87,14 +87,14 @@ async function renderPromos() {
         // Event delegation for delete button
         grid._deleteHandler = async (e) => {
             const btn = e.target.closest('.btn-delete-promo');
-            if (btn && confirm('¿Eliminar campaña definitivamente?')) {
+            if (btn && await window.showConfirmDialog('Eliminar Campaña', '¿Eliminar campaña definitivamente?')) {
                 try {
                     const id = Number(btn.dataset.id);
                     btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
                     await window.DataManager.deleteAndSync('promotions', id);
                     renderPromos();
                 } catch (err) {
-                    alert('Error al eliminar: ' + err.message);
+                    window.showToast('Error al eliminar: ' + err.message, 'error');
                 }
             }
         };
@@ -230,7 +230,7 @@ function showPromoModal() {
         const isActive = document.getElementById('promo-active').checked;
 
         if (!title || !text) {
-            alert('Por favor, completa el título y el mensaje.');
+            window.showToast('Por favor, completa el título y el mensaje.', 'error');
             return;
         }
 
@@ -253,7 +253,7 @@ function showPromoModal() {
             modalContainer.classList.add('hidden');
             renderPromos();
         } catch (err) {
-            alert('Error al guardar: ' + err.message);
+            window.showToast('Error al guardar: ' + err.message, 'error');
             btn.innerHTML = '<i class="ph ph-floppy-disk"></i> Guardar Campaña';
             btn.disabled = false;
         }

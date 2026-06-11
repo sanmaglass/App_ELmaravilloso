@@ -61,7 +61,7 @@ window.Views.expenses = async (container) => {
 
     // Events
     document.getElementById('btn-add-expense').addEventListener('click', () => showExpenseModal());
-    document.getElementById('expense-search').addEventListener('input', () => renderExpenses());
+    document.getElementById('expense-search').addEventListener('input', window.debounce ? window.debounce(() => renderExpenses(), 250) : () => renderExpenses());
     document.getElementById('filter-date').addEventListener('change', () => renderExpenses());
     document.getElementById('filter-category').addEventListener('change', () => renderExpenses());
 
@@ -244,11 +244,11 @@ async function renderExpenses() {
 
 // --- CRUD ---
 async function handleDeleteExpense(id) {
-    if (confirm('¿Eliminar este gasto?')) {
+    if (await window.showConfirmDialog('Eliminar Gasto', '¿Eliminar este gasto?')) {
         try {
             await window.DataManager.deleteAndSync('expenses', id);
             renderExpenses();
-        } catch (e) { alert('Error: ' + e.message); }
+        } catch (e) { window.showToast('Error: ' + e.message, 'error'); }
     }
 }
 
@@ -279,7 +279,7 @@ function showExpenseModal(expenseToEdit = null) {
 
                     <div class="form-group">
                         <label class="form-label">Monto ($)</label>
-                        <input type="number" id="exp-amount" class="form-input" placeholder="0" value="${isEdit ? expenseToEdit.amount : ''}" required>
+                        <input type="number" id="exp-amount" class="form-input" inputmode="decimal" placeholder="0" value="${isEdit ? expenseToEdit.amount : ''}" required>
                     </div>
 
                     <div class="form-group">
@@ -326,7 +326,7 @@ function showExpenseModal(expenseToEdit = null) {
         const paymentMethod = document.getElementById('exp-method').value;
         const date = document.getElementById('exp-date').value;
         if (!title || amount <= 0) {
-            alert('Por favor ingresa un título y un monto válido.');
+            window.showToast('Por favor ingresa un título y un monto válido.', 'error');
             return;
         }
 
@@ -350,6 +350,6 @@ function showExpenseModal(expenseToEdit = null) {
             modal.classList.add('hidden');
             if (!isEdit) await initDateFilter(); // Refresh filters if new date
             renderExpenses();
-        } catch (e) { alert('Error: ' + e.message); }
+        } catch (e) { window.showToast('Error: ' + e.message, 'error'); }
     });
 }

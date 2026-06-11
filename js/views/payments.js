@@ -443,7 +443,7 @@ window.Views.payments = async (container) => {
     };
 
     window.clearOwedHours = async (empId) => {
-        if (confirm('¿Estás seguro de que deseas anular la deuda (perdonar) de este empleado?')) {
+        if (await window.showConfirmDialog('Anular Deuda', '¿Estás seguro de que deseas anular la deuda (perdonar) de este empleado?')) {
             const emp = await window.db.employees.get(empId);
             if (emp) {
                 emp.owedMinutes = 0;

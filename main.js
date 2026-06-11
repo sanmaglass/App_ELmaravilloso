@@ -159,7 +159,8 @@ async function init() {
         localStorage.setItem('wm_auth_email', session.user.email);
         localStorage.setItem('wm_user', session.user.email.split('@')[0]);
 
-        // Auth passed - continue with initialization
+        // Auth passed - iniciar guard de inactividad
+        if (window.InactivityGuard) window.InactivityGuard.start();
 
         // Database initialization
         try {
@@ -174,69 +175,57 @@ async function init() {
             return;
         }
 
-        // Cloud sync initialization v2 (non-blocking)
-        try {
-            console.log("1️⃣ Inicializando SyncV2...");
-            const synced = await window.SyncV2.init();
+        // Cloud sync initialization v2 — FIRE-AND-FORGET (no bloquea el render del dashboard)
+        // El dashboard se muestra inmediatamente con datos locales de Dexie; sync corre en background.
+        (async () => {
+            try {
+                console.log("1️⃣ Inicializando SyncV2 (background)...");
+                const synced = await window.SyncV2.init();
 
-            if (synced) {
-                window.Sync?.updateIndicator?.('syncing');
-                console.log("2️⃣ SyncV2 listo - iniciando pull incremental...");
-                await window.SyncV2.syncAll();
+                if (synced) {
+                    window.Sync?.updateIndicator?.('syncing');
+                    console.log("2️⃣ SyncV2 listo - iniciando pull incremental...");
+                    await window.SyncV2.syncAll();
 
-                console.log("3️⃣ Pull completado - iniciando Realtime...");
-                await window.SyncV2.initRealtimeSync();
+                    console.log("3️⃣ Pull completado - iniciando Realtime...");
+                    await window.SyncV2.initRealtimeSync();
 
-                // Polling cada 90s como red de seguridad aunque la pestaña esté oculta.
-                // Caso de uso real: un monitor que muestra el dashboard 24/7. Si la pestaña
-                // pierde el foco (otra app al frente, otra pestaña activa), el navegador la
-                // marca "hidden". No queremos dejar de refrescar en ese caso — los datos en
-                // pantalla tienen que estar siempre al día. 90s es un compromiso: suficiente
-                // para tapar caídas silenciosas del WebSocket Realtime sin saturar la red.
-                setInterval(() => {
-                    if (!window.SyncV2.isSyncing) {
-                        window.SyncV2.syncAll();
-                    }
-                }, 90 * 1000);
-
-                // Heartbeat Realtime: cada 30s revisa si todos los canales siguen "joined".
-                // Si alguno murió (timeout del proxy, blip de red, suspend del laptop),
-                // cerramos y re-suscribimos. Sin esto, un canal caído en background nunca
-                // se recupera hasta recargar la página.
-                // Guard de reentrada: si un tick anterior todavía está reconectando, el
-                // siguiente se salta su ciclo. Evita que dos reconexiones se pisen si la
-                // red está lenta y close+init tarda más de 30s.
-                let _heartbeatRunning = false;
-                setInterval(async () => {
-                    if (_heartbeatRunning) return;
-                    _heartbeatRunning = true;
-                    try {
-                        const channels = window.SyncV2.realtimeChannels || [];
-                        const alive = channels.filter(c => c?.state === 'joined').length;
-                        const expected = Object.keys(window.Constants.REMOTE_TABLE_MAP).length;
-                        if (alive < expected) {
-                            console.warn(`💔 Realtime degradado (${alive}/${expected}) — reconectando...`);
-                            await window.SyncV2.closeRealtime();
-                            await window.SyncV2.initRealtimeSync();
-                            // Pull inmediato para recuperar lo perdido mientras estuvo caído
+                    // Polling cada 90s como red de seguridad aunque la pestaña esté oculta.
+                    setInterval(() => {
+                        if (!window.SyncV2.isSyncing) {
                             window.SyncV2.syncAll();
                         }
-                    } catch (e) { console.error('heartbeat error:', e); }
-                    finally { _heartbeatRunning = false; }
-                }, 30 * 1000);
+                    }, 90 * 1000);
 
-                // El badge del header lo mantiene la función legacy Sync.updateIndicator.
-                // SyncV2 reemplazó al sistema viejo pero el indicador visual seguía huérfano,
-                // por eso quedaba en "Sin Nube" aunque Realtime estuviera perfectamente activo.
-                window.Sync?.updateIndicator?.('realtime');
-                console.log("✅ SyncV2 activado (Realtime + Polling 5min)");
-            } else {
-                window.Sync?.updateIndicator?.('off');
+                    // Heartbeat Realtime: cada 30s revisa si todos los canales siguen "joined".
+                    let _heartbeatRunning = false;
+                    setInterval(async () => {
+                        if (_heartbeatRunning) return;
+                        _heartbeatRunning = true;
+                        try {
+                            const channels = window.SyncV2.realtimeChannels || [];
+                            const alive = channels.filter(c => c?.state === 'joined').length;
+                            const expected = Object.keys(window.Constants.REMOTE_TABLE_MAP).length;
+                            if (alive < expected) {
+                                console.warn(`💔 Realtime degradado (${alive}/${expected}) — reconectando...`);
+                                await window.SyncV2.closeRealtime();
+                                await window.SyncV2.initRealtimeSync();
+                                window.SyncV2.syncAll();
+                            }
+                        } catch (e) { console.error('heartbeat error:', e); }
+                        finally { _heartbeatRunning = false; }
+                    }, 30 * 1000);
+
+                    window.Sync?.updateIndicator?.('realtime');
+                    console.log("✅ SyncV2 activado (Realtime + Polling 90s)");
+                } else {
+                    window.Sync?.updateIndicator?.('off');
+                }
+            } catch (syncError) {
+                console.error("❌ SyncV2 init falló:", syncError);
+                window.Sync?.updateIndicator?.('error', syncError.message || 'Error de sincronización');
             }
-        } catch (syncError) {
-            console.error("❌ SyncV2 init falló:", syncError);
-            window.Sync?.updateIndicator?.('error', syncError.message || 'Error de sincronización');
-        }
+        })();
 
         // Navigation Logic
         const navItems = document.querySelectorAll('.nav-item');
@@ -264,6 +253,14 @@ async function init() {
                     if (window._viewCleanup) {
                         try { window._viewCleanup(); } catch (e) { /* ignore */ }
                         window._viewCleanup = null;
+                    }
+                    // Fade-in transition al cambiar de vista (150ms)
+                    const vc = document.getElementById('view-container');
+                    if (vc) {
+                        vc.classList.remove('view-fade-in');
+                        // Force reflow para reiniciar la animación
+                        void vc.offsetWidth;
+                        vc.classList.add('view-fade-in');
                     }
                     views[viewName]();
                 }

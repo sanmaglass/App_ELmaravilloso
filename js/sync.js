@@ -501,7 +501,7 @@ window.Sync = {
         const toast = document.createElement('div');
         toast.className = `sync-toast toast-${type}`;
         const icon = document.createElement('i');
-        icon.className = `ph ${type === 'success' ? 'ph-check-circle' : 'ph-info'}`;
+        icon.className = `ph ${type === 'success' ? 'ph-check-circle' : type === 'error' ? 'ph-warning-circle' : 'ph-info'}`;
         icon.style.fontSize = '1.2rem';
         const span = document.createElement('span');
         span.textContent = message;

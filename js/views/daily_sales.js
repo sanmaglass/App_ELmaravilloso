@@ -56,7 +56,7 @@ window.Views.daily_sales = async (container) => {
 
     // Events
     document.getElementById('btn-add-daily-sale').addEventListener('click', () => showDailySaleModal());
-    document.getElementById('daily-search').addEventListener('input', () => { window._dailyShowAll = false; renderDailySales(); });
+    document.getElementById('daily-search').addEventListener('input', window.debounce ? window.debounce(() => { window._dailyShowAll = false; renderDailySales(); }, 250) : () => { window._dailyShowAll = false; renderDailySales(); });
     document.getElementById('daily-filter-month').addEventListener('change', () => { window._dailyShowAll = false; renderDailySales(); });
     document.getElementById('btn-export-daily').addEventListener('click', exportDailySalesToExcel);
 
@@ -395,11 +395,11 @@ async function renderDailySales() {
 
 // --- CRUD ---
 async function handleDeleteDailySale(id) {
-    if (confirm('¿Eliminar este registro diario?')) {
+    if (await window.showConfirmDialog('Eliminar Registro', '¿Eliminar este registro diario?')) {
         try {
             await window.DataManager.deleteAndSync('daily_sales', id);
             renderDailySales();
-        } catch (e) { alert('Error: ' + e.message); }
+        } catch (e) { window.showToast('Error: ' + e.message, 'error'); }
     }
 }
 
@@ -538,7 +538,7 @@ function showDailySaleModal(saleToEdit = null) {
         const total = cash + transfer + debit + credit;
 
         if (total <= 0) {
-            alert('El total debe ser mayor a 0');
+            window.showToast('El total debe ser mayor a 0', 'error');
             return;
         }
 
@@ -547,7 +547,7 @@ function showDailySaleModal(saleToEdit = null) {
             const allSales = await window.db.daily_sales.toArray();
             const existing = allSales.find(s => s.date === date && !s.deleted);
             if (existing && !existing.deleted && (!isEdit || existing.id !== saleToEdit.id)) {
-                if (!confirm(`Ya existe un cierre para la fecha ${date}. ¿Deseas guardar otro registro para este día?`)) {
+                if (!await window.showConfirmDialog('Registro duplicado', `Ya existe un cierre para la fecha ${date}. ¿Deseas guardar otro registro para este día?`)) {
                     return;
                 }
             }
@@ -571,7 +571,7 @@ function showDailySaleModal(saleToEdit = null) {
 
             modal.classList.add('hidden');
             renderDailySales();
-        } catch (e) { alert('Error: ' + e.message); }
+        } catch (e) { window.showToast('Error: ' + e.message, 'error'); }
     });
 }
 
@@ -582,7 +582,7 @@ async function exportDailySalesToExcel() {
         const activeSales = sales.filter(s => !s.deleted);
 
         if (activeSales.length === 0) {
-            alert('No hay datos para exportar');
+            window.showToast('No hay datos para exportar', 'error');
             return;
         }
 
@@ -628,6 +628,6 @@ async function exportDailySalesToExcel() {
 
     } catch (e) {
         console.error(e);
-        alert('Error exportando: ' + e.message);
+        window.showToast('Error exportando: ' + e.message, 'error');
     }
 }

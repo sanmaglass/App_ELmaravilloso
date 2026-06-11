@@ -114,3 +114,40 @@ window.Auth = {
 
 // Función global para logout (usada por settings.js)
 window.AppSignOut = () => window.Auth.logout();
+
+// --- Session Inactivity Timeout ---
+window.InactivityGuard = {
+    _timer: null,
+
+    start() {
+        const limit = (window.Constants && window.Constants.INACTIVITY_LIMIT_MS) || (5 * 60 * 1000);
+        const reset = () => {
+            clearTimeout(this._timer);
+            this._timer = setTimeout(() => this._handleTimeout(), limit);
+        };
+        const events = ['click', 'keypress', 'scroll', 'touchstart', 'mousemove'];
+        events.forEach(e => document.addEventListener(e, reset, { passive: true }));
+        reset(); // arrancar el timer inicial
+    },
+
+    _handleTimeout() {
+        // Limpiar datos sensibles de sesión
+        const keysToRemove = [
+            'wm_auth', 'wm_auth_token', 'wm_auth_email', 'wm_user',
+            'wm_session_version', 'wm_tenant_id', 'wm_user_role',
+            'sii_api_key', 'sii_rut', 'sii_password',
+            'company_rut', 'company_name', 'company_giro'
+        ];
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        // También limpiar cualquier cache SII con prefijo
+        Object.keys(localStorage)
+            .filter(k => k.startsWith('sii_') || k.startsWith('cache_sii'))
+            .forEach(k => localStorage.removeItem(k));
+
+        // Logout Supabase si hay sesión activa
+        if (window.Auth && window.Auth.client) {
+            window.Auth.client.auth.signOut().catch(() => {});
+        }
+        window.location.reload();
+    }
+};

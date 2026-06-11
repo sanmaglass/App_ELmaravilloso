@@ -218,7 +218,7 @@ async function openDayModal(dateStr) {
 
     // DELETE
     window.deleteLog = async (id) => {
-        if (confirm('¿Seguro que deseas eliminar este registro?')) {
+        if (await window.showConfirmDialog('Eliminar Registro', '¿Seguro que deseas eliminar este registro?')) {
             try {
                 // Soft Delete: Mark as deleted in cloud first (if connected)
                 if (window.Sync.client) {
@@ -241,7 +241,7 @@ async function openDayModal(dateStr) {
                 const container = document.getElementById('view-container');
                 if (window.Views.calendar) window.Views.calendar(container);
             } catch (err) {
-                alert('Error al eliminar: ' + err.message);
+                window.showToast('Error al eliminar: ' + err.message, 'error');
             }
         }
     };
@@ -362,11 +362,11 @@ async function openDayModal(dateStr) {
             if (window.Views.calendar) window.Views.calendar(container);
 
         } catch (err) {
-            alert('Error: ' + err.message);
+            window.showToast('Error: ' + err.message, 'error');
         }
     });
     } catch (err) {
         console.error('Error opening day modal:', err);
-        alert('Error al abrir el registro del día: ' + err.message);
+        window.showToast('Error al abrir el registro del día: ' + err.message, 'error');
     }
 }

@@ -326,7 +326,7 @@ window.Views.reminders = async (container) => {
     };
 
     const deleteTask = async (id) => {
-        if (!confirm('¿Eliminar tarea?')) return;
+        if (!await window.showConfirmDialog('Eliminar Tarea', '¿Eliminar tarea?')) return;
         await window.DataManager.deleteAndSync('reminders', id);
         await loadTasks();
         window.AppNotify?.updateBadge();

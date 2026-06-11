@@ -570,9 +570,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const prevMonthStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
         // Fetch all data in parallel
-        const [allEmployees, allLogs, allInvoices, allSuppliers, allDailySales, allProducts, allExpenses, allEleventaSales] = await Promise.all([
+        // Nota: workLogs ya NO se trae aquí — era una variable "logs" que nunca se usaba en el dashboard.
+        // El fetch de workLogs para el Excel se hace de forma lazy dentro del handler de exportación.
+        const [allEmployees, allInvoices, allSuppliers, allDailySales, allProducts, allExpenses, allEleventaSales] = await Promise.all([
             window.db.employees.toArray(),
-            window.db.workLogs.toArray(),
             window.db.purchase_invoices.toArray(),
             window.db.suppliers.toArray(),
             window.db.daily_sales.toArray(),
@@ -582,7 +583,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         ]);
 
         const employees = allEmployees.filter(e => !e.deleted);
-        const logs = allLogs.filter(l => !l.deleted);
         const invoices = allInvoices.filter(i => !i.deleted);
         const suppliers = allSuppliers.filter(s => !s.deleted);
 
@@ -1757,7 +1757,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     deleted: false
                 }).then(res => {
                     if (res.success) {
-                        alert('✅ Pago registrado correctamente.');
+                        window.showToast('Pago registrado correctamente.', 'success');
                         window.Views.dashboard(container); // Refresh
                     }
                 });
@@ -1778,7 +1778,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lgs.filter(l => !l.deleted).map(l => { const e = emps.find(x => x.id === l.employeeId); return { Empleado: e?.name || 'Eliminado', Fecha: l.date, Horas: l.totalHours, Pago: l.payAmount }; })), 'Asistencia');
                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prods.map(p => ({ Nombre: p.name, Costo: p.costUnit, Precio: p.salePrice, Stock: p.stock || 0 }))), 'Inventario');
                 XLSX.writeFile(wb, `Reporte_ElMaravilloso_${todayStr}.xlsx`);
-            } catch (err) { alert('Error: ' + err.message); }
+            } catch (err) { window.showToast('Error: ' + err.message, 'error'); }
             finally { btn.innerHTML = '<i class="ph ph-file-xls" style="font-size:1.1rem;"></i> <span class="hide-mobile">Exportar Excel</span>'; btn.disabled = false; }
         });
 

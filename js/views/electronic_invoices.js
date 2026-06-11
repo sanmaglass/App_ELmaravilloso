@@ -141,7 +141,7 @@ async function showDTEModal() {
                     <h4 class="mb-3 font-bold text-sm">DETALLE DE FACTURA</h4>
                     <div class="flex gap-2 mb-4">
                         <input type="text" id="item-name" class="form-input" placeholder="Descripción..." style="flex:2;">
-                        <input type="number" id="item-price" class="form-input" placeholder="Neto $" style="flex:1;">
+                        <input type="number" id="item-price" class="form-input" inputmode="decimal" placeholder="Neto $" style="flex:1;">
                         <button class="btn btn-primary" id="btn-add-dte-item"><i class="ph ph-plus"></i></button>
                     </div>
                     <table class="w-full text-sm" id="dte-items-table">
@@ -214,8 +214,8 @@ async function showDTEModal() {
         const n = document.getElementById('item-name').value.trim();
         const p = parseFloat(document.getElementById('item-price').value);
         // BUG FIX: Validar que precio sea número válido, no NaN
-        if (!n) { alert('Ingresa nombre del ítem'); return; }
-        if (isNaN(p) || p <= 0) { alert('Ingresa un precio válido (> 0)'); return; }
+        if (!n) { window.showToast('Ingresa nombre del ítem', 'error'); return; }
+        if (isNaN(p) || p <= 0) { window.showToast('Ingresa un precio válido (> 0)', 'error'); return; }
         items.push({ name: n, price: p });
         updateTotals();
         document.getElementById('item-name').value = '';
@@ -225,7 +225,7 @@ async function showDTEModal() {
     document.getElementById('btn-copy-dte-data').addEventListener('click', () => {
         const text = `FACTURA PARA: ${document.getElementById('dte-name').value}\nRUT: ${document.getElementById('dte-rut').value}\nGIRO: ${document.getElementById('dte-giro').value}\nTOTAL: ${document.getElementById('dte-total').textContent}`;
         navigator.clipboard.writeText(text);
-        alert('Datos copiados al portapapeles');
+        window.showToast('Datos copiados al portapapeles', 'success');
     });
 
     // Logic: EMIT
@@ -236,7 +236,7 @@ async function showDTEModal() {
         const address = document.getElementById('dte-address').value.trim();
 
         if (!name || !rut || items.length === 0) {
-            alert('Falta nombre, RUT o productos');
+            window.showToast('Falta nombre, RUT o productos', 'error');
             return;
         }
 
@@ -273,7 +273,7 @@ async function showDTEModal() {
                         .where('folio').equals(result.folio).toArray();
                     const activeDuplicate = folioCheck.filter(f => !f.deleted);
                     if (activeDuplicate.length > 0) {
-                        alert(`ERROR: El folio ${result.folio} ya existe en la base de datos.\n\nEsto indica un conflicto con SII. Contacta a soporte técnico.`);
+                        window.showToast(`ERROR: El folio ${result.folio} ya existe. Conflicto con SII. Contacta soporte técnico.`, 'error');
                         btn.disabled = false;
                         btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> EMITIR FACTURA ELECTRÓNICA';
                         return;
@@ -296,24 +296,24 @@ async function showDTEModal() {
                     ], { description: 'emit_electronic_invoice' });
 
                     if (!txResult.success) {
-                        alert(`Error al guardar la factura: ${txResult.error}`);
+                        window.showToast(`Error al guardar la factura: ${txResult.error}`, 'error');
                         btn.disabled = false;
                         btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> EMITIR FACTURA ELECTRÓNICA';
                         return;
                     }
 
-                    alert(`Factura Folio ${result.folio} emitida con éxito.`);
+                    window.showToast(`Factura Folio ${result.folio} emitida con éxito.`, 'success');
                     modal.classList.add('hidden');
                     renderDTEs();
                 }
             } catch (err) {
-                alert('Error al emitir: ' + err.message);
+                window.showToast('Error al emitir: ' + err.message, 'error');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> EMITIR FACTURA ELECTRÓNICA';
             }
 
         } catch (e) {
-            alert('Error: ' + e.message);
+            window.showToast('Error: ' + e.message, 'error');
             btn.disabled = false;
         }
     });
