@@ -2,7 +2,7 @@
     /* --- Living Red Theme Variables --- */
 
     /* Colores Principales */
-    --primary: #e60000;
+    --primary: #d10000;
     --primary-dark: #990000;
     --primary-glow: rgba(255, 0, 0, 0.5);
     --accent: #0044ff;
@@ -22,8 +22,8 @@
 
     /* Radii */
     --radius-sm: 12px;
-    --radius-md: 20px;
-    --radius-lg: 28px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
 
     /* Glass */
     --bg-glass: rgba(255, 255, 255, 0.75);
@@ -78,15 +78,7 @@ body {
     color: var(--text-primary);
     line-height: 1.5;
     /* --- ATMÓSFERA 'EL MARAVILLOSO' --- */
-    background-color: #f8f6f4;
-    background-image:
-        radial-gradient(ellipse at 15% 10%, rgba(220, 38, 38, 0.06) 0%, transparent 50%),
-        radial-gradient(ellipse at 85% 90%, rgba(185, 28, 28, 0.04) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.9) 0%, transparent 70%),
-        linear-gradient(160deg, #faf8f7 0%, #f3efed 50%, #f8f6f4 100%);
-    background-size: 200% 200%;
-    background-attachment: fixed;
-    animation: atmosphereMove 25s ease-in-out infinite alternate;
+    background: #f4f6f8;
 }
 
 @keyframes atmosphereMove {
@@ -252,7 +244,6 @@ body {
     max-height: 90px;
     border-radius: var(--radius-md);
     box-shadow: 0 12px 32px -4px rgba(230, 0, 0, 0.3);
-    animation: floatLogo 6s ease-in-out infinite;
     transition: transform 0.3s var(--ease-elastic);
 }
 
@@ -327,10 +318,11 @@ body {
 }
 
 .nav-item.active {
-    background: var(--grad-primary);
-    color: white;
-    box-shadow: 0 6px 20px rgba(230, 0, 0, 0.3);
-    border: none;
+    background: rgba(230, 0, 0, 0.08);
+    color: var(--primary);
+    font-weight: 700;
+    border: 1px solid rgba(230, 0, 0, 0.12);
+    box-shadow: none;
 }
 
 .nav-item.active i {
@@ -736,16 +728,10 @@ body.dark-mode {
     --bg-glass: rgba(22, 27, 34, 0.92);
     --bg-glass-hover: rgba(30, 38, 50, 0.98);
     --radius-sm: 12px;
-    --radius-md: 20px;
+    --radius-md: 14px;
 
     /* Fondo profundo animado — muy sutil glow rojo en esquinas */
-    background-color: #090d13 !important;
-    background-image:
-        radial-gradient(ellipse at 8% 12%, rgba(220, 38, 38, 0.10) 0%, transparent 45%),
-        radial-gradient(ellipse at 92% 85%, rgba(180, 28, 28, 0.07) 0%, transparent 45%),
-        radial-gradient(ellipse at 50% 50%, rgba(30, 41, 59, 0.50) 0%, transparent 70%),
-        linear-gradient(160deg, #0d1117 0%, #0a0f18 50%, #0d1117 100%) !important;
-    animation: darkAtmosphere 25s ease-in-out infinite alternate !important;
+    background: #0d1117 !important;
 }
 
 @keyframes darkAtmosphere {
@@ -843,10 +829,7 @@ body.dark-mode div {
 }
 
 body.dark-mode #page-title {
-    background: -webkit-linear-gradient(45deg, #f0f6fc 0%, #8b949e 100%) !important;
-    -webkit-background-clip: text !important;
-    background-clip: text !important;
-    -webkit-text-fill-color: transparent !important;
+    color: #f0f6fc !important;
 }
 
 /* ── Cards ── */
@@ -1055,12 +1038,12 @@ body.dark-mode ::-webkit-scrollbar-track {
 }
 
 body.dark-mode ::-webkit-scrollbar-thumb {
-    background: rgba(220, 38, 38, 0.25);
+    background: rgba(255, 255, 255, 0.15);
     border-radius: 99px;
 }
 
 body.dark-mode ::-webkit-scrollbar-thumb:hover {
-    background: rgba(220, 38, 38, 0.5);
+    background: rgba(255, 255, 255, 0.3);
 }
 
 /* ── Bordes/separadores ── */
@@ -1180,7 +1163,7 @@ body,
     right: 0;
     height: 72px;
     /* Fondo con toque rosado/rojo muy sutil — más cálido que gris plano */
-    background: linear-gradient(to top, #ffffff, #fef2f2);
+    background: #ffffff;
     border-top: 1px solid rgba(0,0,0,0.08);
     box-shadow: 0 -1px 8px rgba(0,0,0,0.08);
     z-index: 999;
@@ -1232,10 +1215,10 @@ body,
     border: none;
     /* Color inactivo OSCURO — claramente visible en fondo blanco */
     color: #4a5568;
-    font-size: 12.5px;
-    font-weight: 800;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
     padding: 6px 8px;
     cursor: pointer;
     transition:
@@ -1249,7 +1232,7 @@ body,
 
 /* Icono base */
 .bottom-tab i {
-    font-size: 30px;
+    font-size: 22px;
     line-height: 1;
     transition:
         color 0.2s ease,
@@ -1329,7 +1312,7 @@ body,
 
 /* ===== DARK MODE — bottom nav ===== */
 body.dark-mode #bottom-nav {
-    background: linear-gradient(to top, #0d1117, #161b22) !important;
+    background: #161b22 !important;
     box-shadow: 0 -1px 8px rgba(0,0,0,0.3) !important;
     border-top: 1px solid rgba(255,255,255,0.06) !important;
     border-image: none !important;
