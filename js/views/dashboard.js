@@ -20,7 +20,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         /* ---- Glassmorphism & Premium UI ---- */
         .card { backdrop-filter:none; background:var(--bg-card, #ffffff); border:1px solid rgba(255,255,255,0.4); box-shadow:0 8px 24px rgba(0,0,0,0.04); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
-        .card:hover { transform: translateY(-4px); box-shadow: 0 14px 28px rgba(0,0,0,0.08); border-color: rgba(255,255,255,0.6); }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.07); border-color: rgba(255,255,255,0.6); }
         body.dark-mode .card { background:rgba(30, 41, 59, 0.75); border:1px solid rgba(255,255,255,0.1); }
         body.dark-mode .card:hover { border-color: rgba(255,255,255,0.2); box-shadow: 0 14px 28px rgba(0,0,0,0.3); }
         
@@ -35,7 +35,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .kpi-card:hover { transform:translateY(-2px) scale(1.01); box-shadow:0 12px 40px rgba(0,0,0,0.1); }
         
         .stat-value-mega { font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1; font-weight: 900; letter-spacing: -1px; }
-        .stat-label-premium { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 4px; }
+        .stat-label-premium { font-size: 0.75rem; font-weight: 800; text-transform: none; letter-spacing: 0; color: var(--text-muted); margin-bottom: 4px; }
 
         /* Card animation */
         @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
@@ -318,7 +318,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             <select id="dash-month-selector" class="btn bg-glass" style="border:1px solid rgba(0,0,0,0.1); font-weight:bold; cursor:pointer; color:var(--text-primary);">
                 <option value="">Cargando...</option>
             </select>
-            <button id="btn-export-excel" class="btn btn-premium" style="background:var(--grad-success); box-shadow: 0 10px 20px rgba(0, 200, 83, 0.2);">
+            <button id="btn-export-excel" class="btn btn-premium" style="background:var(--grad-success); box-shadow: 0 2px 8px rgba(0,0,0,0.12);">
                 <i class="ph ph-file-xls"></i> <span class="hide-mobile">Excel</span>
             </button>
         </div>

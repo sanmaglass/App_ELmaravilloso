@@ -4,7 +4,7 @@
     /* Colores Principales */
     --primary: #d10000;
     --primary-dark: #990000;
-    --primary-glow: rgba(255, 0, 0, 0.5);
+    --primary-glow: rgba(209, 0, 0, 0.08);
     --accent: #0044ff;
 
     /* Colores Semánticos (Light Mode base) */
@@ -54,7 +54,7 @@
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.08);
-    --shadow-glow: 0 8px 24px rgba(230, 0, 0, 0.15);
+    --shadow-glow: 0 8px 24px rgba(0, 0, 0, 0.10);
 
     /* Animation */
     --ease-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
@@ -243,8 +243,8 @@ body {
 .brand img {
     max-height: 90px;
     border-radius: var(--radius-md);
-    box-shadow: 0 12px 32px -4px rgba(230, 0, 0, 0.3);
-    transition: transform 0.3s var(--ease-elastic);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+    transition: transform 0.25s var(--ease-smooth);
 }
 
 .brand:hover img {
@@ -326,8 +326,8 @@ body {
 }
 
 .nav-item.active i {
-    color: white;
-    animation: shakeIcon 0.5s;
+    color: var(--primary);
+    animation: none;
 }
 
 @keyframes shakeIcon {
