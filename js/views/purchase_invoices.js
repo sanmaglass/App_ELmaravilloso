@@ -1548,7 +1548,7 @@ async function renderCreditAlerts() {
                 const id = Number(e.currentTarget.dataset.id);
                 const totalAmount = parseFloat(e.currentTarget.dataset.amount) || 0;
                 const alreadyPaid = parseFloat(e.currentTarget.dataset.paid) || 0;
-                const remaining = Math.max(0, totalAmount - alreadyPaid);
+                const remaining = Math.max(0, Math.round((parseFloat(totalAmount || 0) - parseFloat(alreadyPaid || 0)) * 100) / 100);
 
                 // Mini-modal overlay
                 const overlay = document.createElement('div');
@@ -1619,14 +1619,14 @@ async function renderCreditAlerts() {
                                 `La factura fue modificada mientras tenías el modal abierto.\n\nMonto pagado actual: ${formatCurrency(freshLoan.paidAmount)}\nTu abono: ${formatCurrency(abonoMonto)}\n\n¿Deseas aplicar el abono sobre el monto actual?`
                             );
                             if (!overwrite) { overlay.remove(); return; }
-                        } else if (freshLoan.paidAmount !== alreadyPaid && currentVersion === undefined) {
+                        } else if (parseFloat(freshLoan.paidAmount || 0) !== parseFloat(alreadyPaid || 0) && currentVersion === undefined) {
                             // Fallback: si la tabla aún no tiene version, comparar por paidAmount
                             window.showToast(`La factura fue actualizada por otro usuario. Por favor recarga la página.`, 'error');
                             overlay.remove();
                             return;
                         }
 
-                        const newPaid = Math.round((freshLoan.paidAmount + abonoMonto) * 100) / 100;
+                        const newPaid = Math.round((parseFloat(freshLoan.paidAmount || 0) * 100) + (parseFloat(abonoMonto || 0) * 100)) / 100;
                         const isFullyPaid = newPaid >= (totalAmount - 0.01);
                         await window.DataManager.saveAndSync('purchase_invoices', {
                             ...freshLoan,

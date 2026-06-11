@@ -13,6 +13,7 @@ const db = new Dexie('ElMaravillosoApp');
 // v18:    cash_register — Arqueo y movimientos de caja
 // v19:    advances — Adelantos de sueldo para empleados
 // v20:    eleventa_abonos — Pagos recibidos en cuentas de crédito
+// v21:    sync_conflicts — conflictos de sincronización
 db.version(14).stores({
     employees: 'id, rut, deleted',
     workLogs: 'id, employeeId, date, deleted',
@@ -169,6 +170,31 @@ db.version(20).stores({
     cash_register: 'id, date, type, category, deleted, updated_at_hlc',
     advances: 'id, employeeId, date, status, deleted, updated_at_hlc',
     eleventa_abonos: 'id, abono_id, date_local, cancelado'
+});
+
+// v21: sync_conflicts — tabla local para registrar conflictos de sincronización
+db.version(21).stores({
+    employees: 'id, rut, deleted, updated_at_hlc',
+    workLogs: 'id, employeeId, date, deleted, updated_at_hlc',
+    products: 'id, category, deleted, updated_at_hlc',
+    promotions: 'id, deleted, updated_at_hlc',
+    suppliers: 'id, name, deleted, updated_at_hlc',
+    purchase_invoices: 'id, supplierId, date, paymentStatus, paymentMethod, invoiceNumber, deleted, version, updated_at_hlc',
+    sales_invoices: 'id, date, clientName, invoiceNumber, deleted, updated_at_hlc',
+    electronic_invoices: 'id, date, folio, status, deleted, version, updated_at_hlc',
+    expenses: 'id, date, deleted, updated_at_hlc',
+    daily_sales: 'id, date, deleted, updated_at_hlc',
+    settings: 'key',
+    reminders: 'id, deleted, completed, [completed+deleted], updated_at_hlc',
+    eleventa_sales: 'id, ticket_id, date, deleted, updated_at_hlc',
+    loans: 'id, supplierId, date, deleted, direction, status, version, updated_at_hlc',
+    error_logs: 'id, timestamp, level, [level+timestamp]',
+    sync_outbox: '++id, tableName, status, created_at',
+    sync_state: 'table_name',
+    cash_register: 'id, date, type, category, deleted, updated_at_hlc',
+    advances: 'id, employeeId, date, status, deleted, updated_at_hlc',
+    eleventa_abonos: 'id, abono_id, date_local, cancelado',
+    sync_conflicts: '++id, table_name, record_id, created_at'
 });
 
 // ──────────────────────────────────────────────────────────────

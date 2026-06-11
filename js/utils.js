@@ -66,6 +66,11 @@ window.Utils = {
 
     // --- Funciones Comerciales (Distribuidora) ---
 
+    // Suma de montos con redondeo a centavo (evita floating point)
+    sumMoney: function(...values) {
+        return Math.round(values.reduce((s, v) => s + (parseFloat(v) || 0) * 100, 0)) / 100;
+    },
+
     // Calcula desglose de IVA (19% Chile)
     // Retorna { net: number, tax: number, gross: number }
     calculateTaxDetails: (amount, isNet) => {

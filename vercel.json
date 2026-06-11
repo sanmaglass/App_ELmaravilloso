@@ -5,7 +5,8 @@
     {
       "source": "/api/sii/:path*",
       "destination": "https://api.baseapi.cl/api/v1/sii/:path*"
-    }
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {

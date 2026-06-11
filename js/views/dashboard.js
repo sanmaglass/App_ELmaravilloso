@@ -683,7 +683,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // --- FILTRADO ESTRICTO Y GUARDIA DE NEGOCIO ---
         // Excluimos registros marcados como borrados y aquellos con montos absurdos (TESTS)
         const dailySales = allDailySales.filter(d => {
-            if (d.deleted === true) return false;
+            if (d.deleted) return false;
             const val = parseFloat(d.total) || 0;
             return val < 1000000000; // Máximo 1 Billon CLP (Guardia contra basura)
         });

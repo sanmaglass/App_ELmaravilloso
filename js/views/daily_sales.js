@@ -519,6 +519,7 @@ function showDailySaleModal(saleToEdit = null) {
             expenses.filter(e => !e.deleted && e.date === dateStr && e.paymentMethod === 'Efectivo').forEach(e => {
                 cashOut += (parseFloat(e.amount) || 0);
             });
+            cashOut = Math.round(cashOut * 100) / 100;
 
             const alertBox = document.getElementById('ds-cash-alert');
             if (cashOut > 0) {
@@ -542,7 +543,7 @@ function showDailySaleModal(saleToEdit = null) {
         const credit = parseFloat(document.getElementById('ds-credit').value) || 0;
         const notes = document.getElementById('ds-notes').value.trim();
 
-        const total = cash + transfer + debit + credit;
+        const total = Utils.sumMoney(cash, transfer, debit, credit);
 
         if (total <= 0) {
             window.showToast('El total debe ser mayor a 0', 'error');
