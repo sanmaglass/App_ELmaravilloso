@@ -555,7 +555,7 @@ window.Sync = {
             case 'off':
             default:
                 el.style.color = 'var(--text-muted)';
-                el.innerHTML = '<i class="ph ph-cloud-slash"></i> <span id="sync-text">Sin Nube</span>';
+                el.innerHTML = '<i class="ph ph-cloud-slash"></i> <span id="sync-text">Solo Local</span>';
                 el.title = "Trabajando en modo local. Haz clic para intentar conectar.";
                 break;
         }

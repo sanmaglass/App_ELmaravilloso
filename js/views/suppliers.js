@@ -8,7 +8,7 @@ window.Views.suppliers = async (container) => {
                 <h1 class="mb-2 text-primary flex items-center gap-2">
                     <i class="ph ph-package"></i> Proveedores
                 </h1>
-                <p class="text-muted">Gestión de distribuidores y empresas</p>
+                <p class="text-muted">Tus proveedores y contactos</p>
             </div>
             <button class="btn btn-primary" id="btn-add-supplier">
                 <i class="ph ph-plus-circle"></i> Nuevo Proveedor
@@ -59,6 +59,9 @@ async function renderSuppliers(filterText = '') {
                 <div class="p-6 text-center" style="grid-column: 1/-1; background:rgba(0,0,0,0.02); border-radius:12px; border:1px dashed var(--border);">
                     <i class="ph ph-package mb-3 text-muted" style="font-size:3rem;"></i>
                     <h3 class="text-muted">No se encontraron proveedores</h3>
+                    <button class="btn btn-primary" onclick="document.getElementById('btn-add-supplier').click()" style="margin-top:16px;">
+                        <i class="ph ph-plus-circle"></i> Agregar Proveedor
+                    </button>
                 </div>
             `;
             return;

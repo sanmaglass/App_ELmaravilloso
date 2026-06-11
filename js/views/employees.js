@@ -41,10 +41,10 @@ window.Views.employees = async (container, _tab = 'equipo') => {
 
     const tabBarHTML = `
         <div style="display:flex; gap:0; background:var(--bg-input); border-radius:14px; padding:4px; margin-bottom:24px; width:fit-content; box-shadow:0 1px 4px rgba(0,0,0,0.07);">
-            <button onclick="window.Views.employees(document.getElementById('view-container'), 'equipo')" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='equipo'?'var(--primary)':'transparent'}; color:${_tab==='equipo'?'white':'var(--text-muted)'};">
+            <button class="emp-tab-btn" data-tab="equipo" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='equipo'?'var(--primary)':'transparent'}; color:${_tab==='equipo'?'white':'var(--text-muted)'};">
                 <i class="ph ph-users"></i> Equipo
             </button>
-            <button onclick="window.Views.employees(document.getElementById('view-container'), 'pagos')" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='pagos'?'var(--primary)':'transparent'}; color:${_tab==='pagos'?'white':'var(--text-muted)'};">
+            <button class="emp-tab-btn" data-tab="pagos" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='pagos'?'var(--primary)':'transparent'}; color:${_tab==='pagos'?'white':'var(--text-muted)'};">
                 <i class="ph ph-wallet"></i> Pagos
             </button>
         </div>
@@ -52,6 +52,12 @@ window.Views.employees = async (container, _tab = 'equipo') => {
 
     if (_tab === 'pagos') {
         container.innerHTML = tabBarHTML + '<div id="empleados-tab-content"></div>';
+        // Wire tab buttons (replaces inline onclick)
+        container.querySelectorAll('.emp-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                window.Views.employees(document.getElementById('view-container'), btn.dataset.tab);
+            });
+        });
         await renderPagosTab(document.getElementById('empleados-tab-content'));
         return;
     }
@@ -75,6 +81,13 @@ window.Views.employees = async (container, _tab = 'equipo') => {
             ${activeEmployees.length === 0 ? '<p style="grid-column:1/-1; text-align:center; padding:40px;">No hay empleados registrados.</p>' : ''}
         </div>
     `;
+
+    // Wire tab buttons (replaces inline onclick)
+    container.querySelectorAll('.emp-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            window.Views.employees(document.getElementById('view-container'), btn.dataset.tab);
+        });
+    });
 
     const grid = container.querySelector('.grid-employees');
 

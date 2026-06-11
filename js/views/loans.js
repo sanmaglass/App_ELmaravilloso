@@ -21,7 +21,11 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                 <!-- Stats cards will be injected here -->
             </div>
 
-            <div class="filters-bar mb-4">
+            <button class="filters-toggle" id="filters-toggle" onclick="this.classList.toggle('open'); document.querySelector('.filters-bar.collapsible').classList.toggle('open');">
+                <span><i class="ph ph-funnel"></i> Filtros</span>
+                <i class="ph ph-caret-down"></i>
+            </button>
+            <div class="filters-bar collapsible mb-4">
                 <div style="position:relative; flex: 2 1 300px;">
                     <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
                     <input type="text" id="loan-search" class="form-input" placeholder="Buscar por ítem o proveedor..." style="padding-left:36px; width:100%;">
@@ -155,6 +159,9 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                     <div class="card p-10 text-center text-muted border-dashed">
                         <i class="ph ph-hand-coins mb-2" style="font-size:3rem; opacity:0.3;"></i>
                         <p>No se encontraron préstamos registrados</p>
+                        <button class="btn btn-primary" onclick="document.getElementById('btn-add-loan').click()" style="margin-top:16px;">
+                            <i class="ph ph-plus-circle"></i> Registrar Préstamo
+                        </button>
                     </div>
                 `;
                 return;

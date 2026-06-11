@@ -233,9 +233,9 @@ async function init() {
             btn.addEventListener('click', (e) => {
                 // Logout Check
                 if (btn.dataset.view === 'logout') {
-                    if (confirm('¿Cerrar sesión?')) {
+                    showConfirmModal('¿Cerrar sesión?', 'Se cerrará tu sesión en este dispositivo.', () => {
                         window.Auth.logout();
-                    }
+                    });
                     return;
                 }
 
@@ -324,6 +324,57 @@ async function init() {
                 navigateToView(viewName, label);
             });
         });
+
+        // Bottom Nav Logic (Mobile)
+        const bottomNav = document.getElementById('bottom-nav');
+        if (bottomNav) {
+            const bottomItems = bottomNav.querySelectorAll('.bottom-nav-item[data-view]');
+            bottomItems.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const viewName = btn.dataset.view;
+                    if (!views[viewName]) return;
+
+                    // Update bottom nav active state
+                    bottomNav.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    // Also sync sidebar active state
+                    navItems.forEach(b => b.classList.remove('active'));
+                    const sidebarMatch = document.querySelector(`.nav-item[data-view="${viewName}"]`);
+                    if (sidebarMatch) sidebarMatch.classList.add('active');
+
+                    // Update page title
+                    const titleMap = { dashboard: 'Resumen', daily_sales: 'Cierres Diarios', cash_register: 'Arqueo de Caja', credits: 'Créditos' };
+                    document.getElementById('page-title').textContent = titleMap[viewName] || viewName;
+
+                    // Cleanup and navigate
+                    if (window._viewCleanup) {
+                        try { window._viewCleanup(); } catch (e) { /* ignore */ }
+                        window._viewCleanup = null;
+                    }
+                    views[viewName]();
+                });
+            });
+
+            // "Más" button opens sidebar
+            const btnMore = document.getElementById('btn-bottom-more');
+            if (btnMore) {
+                btnMore.addEventListener('click', () => {
+                    toggleSidebar();
+                });
+            }
+
+            // Sync bottom nav when sidebar nav is used
+            navItems.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const viewName = btn.dataset.view;
+                    if (!viewName || viewName === 'logout') return;
+                    bottomNav.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+                    const bottomMatch = bottomNav.querySelector(`[data-view="${viewName}"]`);
+                    if (bottomMatch) bottomMatch.classList.add('active');
+                });
+            });
+        }
 
         // Ocultar splash y mostrar app
         const splash = document.getElementById('splash-screen');
@@ -424,6 +475,39 @@ function showError(title, message, details) {
         </div>
     `;
 }
+
+// Custom confirm modal (replaces native confirm)
+function showConfirmModal(title, message, onConfirm) {
+    const modalContainer = document.getElementById('modal-container');
+    modalContainer.innerHTML = `
+        <div class="modal" style="max-width:400px; text-align:center; padding:32px;">
+            <div style="font-size:2.5rem; margin-bottom:16px; color:var(--text-muted);"><i class="ph ph-warning-circle"></i></div>
+            <h3 style="margin:0 0 8px; font-size:1.15rem; color:var(--text-primary);">${title}</h3>
+            <p style="margin:0 0 24px; font-size:0.9rem; color:var(--text-muted);">${message}</p>
+            <div style="display:flex; gap:12px; justify-content:center;">
+                <button class="btn btn-secondary" id="confirm-cancel" style="flex:1; max-width:140px;">Cancelar</button>
+                <button class="btn btn-danger" id="confirm-ok" style="flex:1; max-width:140px; background:var(--danger); color:white; border:none;">Confirmar</button>
+            </div>
+        </div>
+    `;
+    modalContainer.classList.remove('hidden');
+    document.getElementById('confirm-cancel').addEventListener('click', () => {
+        modalContainer.classList.add('hidden');
+        modalContainer.innerHTML = '';
+    });
+    document.getElementById('confirm-ok').addEventListener('click', () => {
+        modalContainer.classList.add('hidden');
+        modalContainer.innerHTML = '';
+        onConfirm();
+    });
+    modalContainer.addEventListener('click', (e) => {
+        if (e.target === modalContainer) {
+            modalContainer.classList.add('hidden');
+            modalContainer.innerHTML = '';
+        }
+    }, { once: true });
+}
+window.showConfirmModal = showConfirmModal;
 
 // Mobile Menu Toggle Logic
 const sidebar = document.querySelector('.sidebar');

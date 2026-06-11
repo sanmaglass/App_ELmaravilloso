@@ -44,18 +44,22 @@ window.Views.cash_register = async (container) => {
         </div>
 
         <!-- Filters -->
-        <div class="filters-bar" style="margin-bottom:20px;">
+        <button class="filters-toggle" id="filters-toggle" onclick="this.classList.toggle('open'); document.querySelector('.filters-bar.collapsible').classList.toggle('open');">
+            <span><i class="ph ph-funnel"></i> Filtros</span>
+            <i class="ph ph-caret-down"></i>
+        </button>
+        <div class="filters-bar collapsible" style="margin-bottom:20px;">
             <select id="caja-filter-date" class="form-input">
                 <option value="all">Todo el Historial</option>
             </select>
             <select id="caja-filter-type" class="form-input">
                 <option value="all">Todos los Tipos</option>
-                <option value="entrada">🟢 Entradas</option>
-                <option value="salida_proveedor">📦 Pago a Proveedor</option>
-                <option value="salida_gasto">🔧 Gasto de Caja Chica</option>
-                <option value="salida_sueldo">👷 Pago a Trabajador</option>
-                <option value="salida_retiro">💼 Retiro del Dueño</option>
-                <option value="arqueo">📊 Arqueos</option>
+                <option value="entrada">Entradas</option>
+                <option value="salida_proveedor">Pago a Proveedor</option>
+                <option value="salida_gasto">Gasto de Caja Chica</option>
+                <option value="salida_sueldo">Pago a Trabajador</option>
+                <option value="salida_retiro">Retiro del Dueño</option>
+                <option value="arqueo">Arqueos</option>
             </select>
         </div>
 

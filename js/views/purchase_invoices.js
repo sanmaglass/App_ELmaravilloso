@@ -8,18 +8,25 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     container.innerHTML = `
         <!-- SUB-TAB BAR -->
         <div style="display:flex; gap:0; background:var(--bg-input); border-radius:14px; padding:4px; margin-bottom:24px; width:fit-content; box-shadow:0 1px 4px rgba(0,0,0,0.07);">
-            <button id="ftab-compras" onclick="window.Views.purchase_invoices(document.getElementById('view-container'), 'compras')" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='compras'?'var(--primary)':'transparent'}; color:${_tab==='compras'?'white':'var(--text-muted)'};">
+            <button id="ftab-compras" class="factura-tab-btn" data-tab="compras" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='compras'?'var(--primary)':'transparent'}; color:${_tab==='compras'?'white':'var(--text-muted)'};">
                 <i class="ph ph-receipt"></i> Compras
             </button>
-            <button id="ftab-ventas" onclick="window.Views.purchase_invoices(document.getElementById('view-container'), 'ventas')" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='ventas'?'var(--primary)':'transparent'}; color:${_tab==='ventas'?'white':'var(--text-muted)'};">
+            <button id="ftab-ventas" class="factura-tab-btn" data-tab="ventas" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='ventas'?'var(--primary)':'transparent'}; color:${_tab==='ventas'?'white':'var(--text-muted)'};">
                 <i class="ph ph-file-text"></i> Ventas
             </button>
-            <button id="ftab-gastos" onclick="window.Views.purchase_invoices(document.getElementById('view-container'), 'gastos')" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='gastos'?'var(--primary)':'transparent'}; color:${_tab==='gastos'?'white':'var(--text-muted)'};">
+            <button id="ftab-gastos" class="factura-tab-btn" data-tab="gastos" style="padding:8px 20px; border:none; border-radius:10px; font-weight:600; font-size:0.88rem; cursor:pointer; transition:all 0.2s; background:${_tab==='gastos'?'var(--primary)':'transparent'}; color:${_tab==='gastos'?'white':'var(--text-muted)'};">
                 <i class="ph ph-coin"></i> Gastos
             </button>
         </div>
         <div id="facturas-tab-content"></div>
     `;
+
+    // Wire tab buttons (replaces inline onclick)
+    container.querySelectorAll('.factura-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            window.Views.purchase_invoices(document.getElementById('view-container'), btn.dataset.tab);
+        });
+    });
 
     const tabContainer = document.getElementById('facturas-tab-content');
 
@@ -77,7 +84,11 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
         </div>
 
         <!-- Filters -->
-        <div class="filters-bar">
+        <button class="filters-toggle" id="filters-toggle" onclick="this.classList.toggle('open'); document.querySelector('.filters-bar.collapsible').classList.toggle('open');">
+            <span><i class="ph ph-funnel"></i> Filtros</span>
+            <i class="ph ph-caret-down"></i>
+        </button>
+        <div class="filters-bar collapsible">
              <div style="position:relative; flex: 2 1 300px;">
                 <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
                 <input type="text" id="invoice-search" class="form-input" placeholder="Buscar por proveedor o N° factura..." style="padding-left:36px; width:100%;">

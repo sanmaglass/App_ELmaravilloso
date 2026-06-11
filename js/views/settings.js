@@ -7,7 +7,7 @@ window.Views.settings = async (container) => {
         <div class="stack-on-mobile" style="justify-content:space-between; align-items:center; margin-bottom:24px;">
             <div>
                 <h1>Configuración</h1>
-                <p style="color:var(--text-muted);">Gestión de datos y sincronización</p>
+                <p style="color:var(--text-muted);">Respaldos, empresa y sesión</p>
             </div>
         </div>
 
@@ -22,7 +22,7 @@ window.Views.settings = async (container) => {
                     </h3>
                     <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px; background:rgba(16,185,129,0.1); padding:8px 12px; border-radius:10px; border:1px solid rgba(16,185,129,0.2);">
                         <div class="security-pulse" style="width:10px; height:10px; background:#10b981; border-radius:50%; box-shadow:0 0 10px #10b981;"></div>
-                        <span style="font-size:0.8rem; color:#10b981; font-weight:700; letter-spacing:1px;">PROTECCIÓN RLS ACTIVA</span>
+                        <span style="font-size:0.8rem; color:#10b981; font-weight:700; letter-spacing:1px;">SESIÓN SEGURA</span>
                     </div>
                     <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:16px;">
                         Conectado como <strong style="color:var(--text-primary);" id="session-user-label">—</strong>

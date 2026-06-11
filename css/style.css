@@ -92,6 +92,19 @@ body {
 }
 
 
+@media (prefers-reduced-motion: reduce), (max-width: 768px) {
+    body {
+        animation: none !important;
+        background-size: 100% 100% !important;
+    }
+    body.dark-mode {
+        animation: none !important;
+    }
+    .brand img {
+        animation: none !important;
+    }
+}
+
 @keyframes gradientBG {
     0% {
         background-position: 0% 50%;
@@ -310,6 +323,10 @@ body {
         transform: none;
         box-shadow: none;
     }
+    .card:hover, .premium-card:hover, .kpi-card:hover {
+        transform: none;
+        box-shadow: var(--shadow-md);
+    }
 }
 
 .nav-item:hover i {
@@ -427,7 +444,17 @@ body {
 @media (max-width: 768px) {
     /* Hamburger ya no se necesita — hay bottom nav */
     .mobile-toggle {
-        display: none !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #page-title {
+        font-size: 1.4rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 220px;
     }
 
     .top-bar {
@@ -510,17 +537,22 @@ body {
 
     #page-title {
         font-size: 1.05rem !important;
+        max-width: 180px;
     }
 
-    .actions .btn-icon {
-        width: 32px !important;
-        height: 32px !important;
-        font-size: 1rem !important;
-        border-radius: 10px !important;
+    .btn-icon {
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 1.2rem !important;
     }
 
     #sync-indicator {
-        display: none !important;
+        padding: 4px !important;
+        gap: 0 !important;
+        min-width: unset !important;
+    }
+    #sync-indicator #sync-text {
+        display: none;
     }
 
     .actions {
@@ -1344,4 +1376,3 @@ body.dark-mode .bottom-tab:not(.active):focus-visible i {
     color: rgba(230, 0, 0, 0.65) !important;
 }
 
-

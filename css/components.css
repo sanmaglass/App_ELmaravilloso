@@ -564,7 +564,7 @@
     font-size: 0.85rem;
     color: var(--text-muted);
     margin-bottom: 12px;
-    font-weight: 600;
+    font-weight: 500;
     text-transform: none;
     letter-spacing: 0;
 }
@@ -963,8 +963,8 @@
 
     /* Botones de acción de la lista más accesibles en touch */
     .btn-icon {
-        width: 40px !important;
-        height: 40px !important;
+        width: 44px !important;
+        height: 44px !important;
     }
 
     /* Analytics grid — 2 columnas en móvil */
@@ -1132,4 +1132,254 @@
         max-height: calc(95vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
         margin-top: env(safe-area-inset-top, 0px);
     }
+}
+
+/* ============================================
+   VIEW HEADER — Reusable pattern for all views
+   ============================================ */
+.view-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.view-header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: var(--step-2);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.view-header-title i {
+    color: var(--primary);
+    font-size: 1.2em;
+}
+
+.view-header-sub {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+    margin-top: 4px;
+}
+
+.view-header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .view-header {
+        margin-bottom: 16px;
+    }
+    .view-header-title {
+        font-size: var(--step-1);
+    }
+}
+
+/* ============================================
+   COLLAPSIBLE FILTERS — Mobile pattern
+   ============================================ */
+.filters-toggle {
+    display: none;
+    width: 100%;
+    padding: 10px 16px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-family: var(--font-main);
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+}
+
+.filters-toggle i {
+    transition: transform 0.2s ease;
+}
+
+.filters-toggle.open i {
+    transform: rotate(180deg);
+}
+
+body.dark-mode .filters-toggle {
+    background: rgba(22, 27, 34, 0.8);
+    border-color: rgba(240, 246, 252, 0.08);
+    color: #c9d1d9;
+}
+
+@media (max-width: 768px) {
+    .filters-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .filters-bar.collapsible {
+        max-height: 0;
+        overflow: hidden;
+        margin-bottom: 0;
+        transition: max-height 0.3s ease, margin-bottom 0.3s ease;
+    }
+
+    .filters-bar.collapsible.open {
+        max-height: 500px;
+        margin-bottom: 20px;
+    }
+}
+
+/* ============================================
+   SECONDARY ACTIONS — Overflow menu on mobile
+   ============================================ */
+.actions-overflow {
+    position: relative;
+}
+
+.actions-overflow-btn {
+    display: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--bg-glass);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-main);
+}
+
+.actions-overflow-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    min-width: 180px;
+    padding: 6px;
+    animation: modalPop 0.2s ease;
+}
+
+.actions-overflow-menu.show {
+    display: flex;
+    flex-direction: column;
+}
+
+.actions-overflow-menu .btn {
+    width: 100%;
+    justify-content: flex-start;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    padding: 10px 14px;
+}
+
+.actions-overflow-menu .btn:hover {
+    background: rgba(0,0,0,0.04);
+}
+
+body.dark-mode .actions-overflow-btn {
+    background: rgba(22, 27, 34, 0.9);
+    border-color: rgba(240, 246, 252, 0.08);
+    color: #8b949e;
+}
+
+body.dark-mode .actions-overflow-menu {
+    background: #161b22;
+    border-color: rgba(240, 246, 252, 0.08);
+}
+
+body.dark-mode .actions-overflow-menu .btn:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+@media (max-width: 768px) {
+    .actions-overflow-btn {
+        display: flex;
+    }
+    .actions-overflow > .btn,
+    .actions-overflow > .btn-secondary,
+    .actions-overflow > .btn-primary:not(:first-child) {
+        display: none !important;
+    }
+    .actions-overflow > .btn-primary:first-child {
+        display: inline-flex;
+    }
+}
+
+/* ============================================
+   MOBILE CARD TABLE — Alternative to tables
+   ============================================ */
+.mobile-card-list {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .desktop-table {
+        display: none !important;
+    }
+    .mobile-card-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+@media (min-width: 769px) {
+    .desktop-table {
+        display: block;
+    }
+}
+
+.mobile-data-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mobile-data-card:hover {
+    border-color: rgba(230, 0, 0, 0.15);
+}
+
+.mobile-data-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+}
+
+.mobile-data-label {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.75rem;
+}
+
+.mobile-data-value {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+body.dark-mode .mobile-data-card {
+    background: rgba(22, 27, 34, 0.8);
+    border-color: rgba(240, 246, 252, 0.07);
 }

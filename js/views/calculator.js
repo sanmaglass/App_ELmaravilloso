@@ -8,7 +8,7 @@ window.Views.calculator = async (container) => {
             <!-- SECTION 1: CALCULATOR -->
             <div class="card">
                 <h2 style="margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:12px;">
-                    <i class="ph ph-calculator" style="color:var(--accent);"></i> Calculadora de Precios
+                    <i class="ph ph-calculator" style="color:var(--accent);"></i> Costeo de Productos
                 </h2>
 
                 <form id="calc-form">

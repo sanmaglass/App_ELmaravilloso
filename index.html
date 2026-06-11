@@ -132,7 +132,7 @@
             <img src="assets/logo-dark.png" alt="El Maravilloso" id="splash-logo-img">
         </div>
         <div id="splash-app-name">El Maravilloso</div>
-        <div id="splash-tagline">Sistema de Gestión</div>
+        <div id="splash-tagline">Tu distribuidora, bajo control</div>
         <div id="splash-status-text">Iniciando...</div>
         <div id="splash-bar-track">
             <div id="splash-bar"></div>
@@ -154,7 +154,7 @@
             <nav class="nav-menu">
                 <button class="nav-item active" data-view="dashboard">
                     <i class="ph ph-squares-four"></i>
-                    <span>Dashboard</span>
+                    <span>Resumen</span>
                 </button>
                 <button class="nav-item" data-view="employees">
                     <i class="ph ph-users"></i>
@@ -181,11 +181,15 @@
                 </button>
                 <button class="nav-item" data-view="calculator">
                     <i class="ph ph-calculator"></i>
-                    <span>Calculadora</span>
+                    <span>Costeo</span>
                 </button>
                 <button class="nav-item" data-view="credits" style="color:var(--danger);">
                     <i class="ph ph-hand-holding-dollar"></i>
                     <span>Créditos</span>
+                </button>
+                <button class="nav-item" data-view="expenses">
+                    <i class="ph ph-coin"></i>
+                    <span>Gastos</span>
                 </button>
 
                 <div style="height:1px; background:var(--border); margin:8px 16px;"></div>
@@ -240,14 +244,14 @@
                     <button class="btn btn-icon mobile-toggle" id="btn-mobile-menu">
                         <i class="ph ph-list"></i>
                     </button>
-                    <h1 id="page-title">Dashboard</h1>
+                    <h1 id="page-title">Resumen</h1>
                 </div>
                 <div class="actions">
                     <!-- Sync Indicator -->
                     <div id="sync-indicator" title="Estado de Nube"
                         style="display:flex; align-items:center; gap:6px; margin-right:12px; font-size:0.8rem; font-weight:600; color:var(--text-muted); padding:4px 8px; border-radius:12px; background:rgba(0,0,0,0.03);">
                         <i class="ph ph-cloud-slash"></i>
-                        <span id="sync-text">Sin Nube</span>
+                        <span id="sync-text">Solo Local</span>
                     </div>
 
                     <button class="btn btn-icon" id="btn-toggle-privacy" title="Ocultar Montos"><i
@@ -267,6 +271,29 @@
                 </div>
             </div>
         </main>
+        <!-- Mobile Bottom Navigation -->
+        <nav class="bottom-nav" id="bottom-nav">
+            <button class="bottom-nav-item active" data-view="dashboard">
+                <i class="ph ph-squares-four"></i>
+                <span>Resumen</span>
+            </button>
+            <button class="bottom-nav-item" data-view="daily_sales">
+                <i class="ph ph-currency-dollar"></i>
+                <span>Cierres</span>
+            </button>
+            <button class="bottom-nav-item" data-view="cash_register">
+                <i class="ph ph-vault"></i>
+                <span>Caja</span>
+            </button>
+            <button class="bottom-nav-item" data-view="credits">
+                <i class="ph ph-hand-holding-dollar"></i>
+                <span>Créditos</span>
+            </button>
+            <button class="bottom-nav-item" id="btn-bottom-more">
+                <i class="ph ph-list"></i>
+                <span>Más</span>
+            </button>
+        </nav>
     </div>
 
     <!-- Bottom Nav — mobile only -->
@@ -366,7 +393,7 @@
             // Enviar notificación de prueba via SW
             try {
                 const reg = await navigator.serviceWorker.ready;
-                await reg.showNotification('Notificacion de prueba — El Maravilloso', {
+                await reg.showNotification('Notificación de prueba — El Maravilloso', {
                     body: 'Si ves esto, las push notifications funcionan en tu dispositivo!',
                     icon: '/assets/icon-512.png',
                     badge: '/assets/icon-512.png',
@@ -374,7 +401,7 @@
                     requireInteraction: true,
                     vibrate: [200, 100, 200, 100, 400]
                 });
-                window.Sync?.showToast('Notificacion de prueba enviada', 'success');
+                window.Sync?.showToast('Notificación de prueba enviada', 'success');
             } catch (e) {
                 window.Sync?.showToast('Error: ' + e.message, 'error');
             }

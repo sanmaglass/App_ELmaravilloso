@@ -37,7 +37,7 @@ window.Views.credits = async (container) => {
         <div id="credits-list" class="grid-cols-auto gap-4">
             <div class="loading-state" style="grid-column:1/-1;">
                 <div class="spinner"></div>
-                <p>Cargando Saldos desde Supabase...</p>
+                <p>Cargando saldos...</p>
             </div>
         </div>
     `;
@@ -59,7 +59,7 @@ window.Views.credits = async (container) => {
             render();
         } catch (e) {
             console.error(e);
-            list.innerHTML = `<div class="p-6 text-center text-danger" style="grid-column:1/-1;">Error consultando Supabase. Revisa las políticas RLS: ${window.Utils.escapeHTML(e.message)}</div>`;
+            list.innerHTML = `<div class="p-6 text-center text-danger" style="grid-column:1/-1;">Error al cargar datos. Intenta de nuevo.</div>`;
         }
     }
 

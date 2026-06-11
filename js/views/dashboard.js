@@ -311,7 +311,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
     <div class="dash-header">
         <div>
             <h1 class="text-primary font-bold flex items-center gap-2 text-xl">
-                <i class="ph ph-squares-four"></i> Dashboard
+                <i class="ph ph-squares-four"></i> Resumen
             </h1>
         </div>
         <div class="dash-header-btns">

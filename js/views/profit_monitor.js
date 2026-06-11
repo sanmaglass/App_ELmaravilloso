@@ -21,7 +21,11 @@ window.Views.profit_monitor = async (container) => {
         </div>
 
         <!-- Filters -->
-        <div class="filters-bar" style="margin-bottom:16px;">
+        <button class="filters-toggle" id="filters-toggle" onclick="this.classList.toggle('open'); document.querySelector('.filters-bar.collapsible').classList.toggle('open');">
+            <span><i class="ph ph-funnel"></i> Filtros</span>
+            <i class="ph ph-caret-down"></i>
+        </button>
+        <div class="filters-bar collapsible" style="margin-bottom:16px;">
             <div style="position:relative; flex: 1 1 200px;">
                 <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
                 <input type="text" id="profit-search" class="form-input" placeholder="Buscar producto..." style="padding-left:36px; width:100%;">
@@ -78,7 +82,7 @@ window.Views.profit_monitor = async (container) => {
         </div>
 
         <!-- Table -->
-        <div class="table-container shadow-premium" style="overflow-x:auto;">
+        <div class="table-container shadow-premium desktop-table" style="overflow-x:auto;">
             <table style="width:100%; border-collapse:collapse; min-width:820px;">
                 <thead>
                     <tr style="background:rgba(0,0,0,0.02); text-align:left; font-size:0.78rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">
@@ -96,6 +100,9 @@ window.Views.profit_monitor = async (container) => {
                     <tr><td colspan="8" style="padding:40px; text-align:center;"><div class="spinner"></div></td></tr>
                 </tbody>
             </table>
+        </div>
+        <div class="mobile-card-list" id="profit-mobile-cards">
+            <!-- Populated by JS -->
         </div>
     `;
 
@@ -191,6 +198,42 @@ window.Views.profit_monitor = async (container) => {
                     <td style="padding:12px 16px; text-align:right; white-space:nowrap;">${deltaPill(p.profitTotal, p.prevProfitTotal)}</td>
                 </tr>`;
         }).join('');
+
+        // Populate mobile card view
+        const mobileCards = document.getElementById('profit-mobile-cards');
+        if (mobileCards) {
+            mobileCards.innerHTML = list.map(p => {
+                let color;
+                if (p.marginPct < 1)        color = '#dc2626';
+                else if (p.marginPct <= 5)  color = '#ef4444';
+                else if (p.marginPct <= 15) color = '#f59e0b';
+                else                        color = '#10b981';
+                return `
+                <div class="mobile-data-card">
+                    <div style="font-weight:700; color:var(--text-primary); font-size:0.95rem; margin-bottom:2px;">${p.name}</div>
+                    <div class="mobile-data-row">
+                        <span class="mobile-data-label">Precio</span>
+                        <span class="mobile-data-value">${fmt(p.price)}</span>
+                    </div>
+                    <div class="mobile-data-row">
+                        <span class="mobile-data-label">Costo</span>
+                        <span style="color:var(--text-muted);">${fmt(p.cost)}</span>
+                    </div>
+                    <div class="mobile-data-row">
+                        <span class="mobile-data-label">Ingresos</span>
+                        <span class="mobile-data-value" style="color:#8b5cf6;">${fmt(p.revenue)}</span>
+                    </div>
+                    <div class="mobile-data-row">
+                        <span class="mobile-data-label">Ganancia</span>
+                        <span class="mobile-data-value" style="color:${p.profitTotal < 0 ? '#ef4444' : '#f59e0b'};">${fmt(p.profitTotal)}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding-top:6px; border-top:1px solid var(--border); margin-top:4px;">
+                        <span style="font-weight:800; color:${color}; font-size:0.9rem;">${p.marginPct.toFixed(1)}%</span>
+                        <span style="font-size:0.75rem; color:var(--text-muted);">${p.qty.toFixed(1)} uds · ${p.latestDate.toLocaleDateString()}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
     };
 
     const updateSortIcons = () => {
