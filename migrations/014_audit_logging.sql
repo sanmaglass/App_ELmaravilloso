@@ -147,7 +147,7 @@ WHERE
     AND created_at >= now() - INTERVAL '24 hours'
 GROUP BY
     user_id, tenant_id, table_name,
-    date_trunc('minute', created_at) / 5   -- ventana de 5 min (PostgreSQL no soporta division directa en date_trunc)
+    floor(EXTRACT(EPOCH FROM created_at) / 300)  -- ventana de 5 min
 HAVING COUNT(*) > 10
 
 UNION ALL
