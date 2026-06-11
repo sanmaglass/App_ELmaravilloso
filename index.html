@@ -10,58 +10,8 @@
     <title>El Maravilloso</title>
     <meta name="description" content="Sistema de gestión comercial para distribuidoras. Control de ventas, inventario, empleados y contabilidad.">
 
-    <!-- ============================================================
-         CACHE NUKER — corre UNA vez por usuario.
-         Razón: hay navegadores con un Service Worker viejo instalado que
-         intercepta fetches y devuelve JS cacheado ignorando los query
-         strings ?v=. Esto dejaba a la gente ejecutando código de hace
-         varios commits sin saberlo. Al detectar que no se ha nukeado
-         todavía, desregistra SWs, borra Cache Storage, borra IndexedDB
-         (la app volverá a bajar todo de Supabase, que tiene los HLCs
-         frescos) y recarga. En recargas posteriores no hace nada.
-         ============================================================ -->
-    <script>
-    (function cacheNuker() {
-        var NUKE_VERSION = 'v1062';
-        var FLAG = 'wm_cache_nuked_' + NUKE_VERSION;
-        if (localStorage.getItem(FLAG)) return;
-
-        console.log('🧨 Cache Nuker: limpiando estado viejo para', NUKE_VERSION);
-
-        var tasks = [];
-
-        if ('serviceWorker' in navigator) {
-            tasks.push(
-                navigator.serviceWorker.getRegistrations().then(function(regs) {
-                    return Promise.all(regs.map(function(r) { return r.unregister(); }));
-                }).catch(function(){})
-            );
-        }
-
-        if (typeof caches !== 'undefined') {
-            tasks.push(
-                caches.keys().then(function(keys) {
-                    return Promise.all(keys.map(function(k) { return caches.delete(k); }));
-                }).catch(function(){})
-            );
-        }
-
-        if (typeof indexedDB !== 'undefined') {
-            tasks.push(new Promise(function(resolve) {
-                try {
-                    var req = indexedDB.deleteDatabase('ElMaravillosoApp');
-                    req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
-                } catch (e) { resolve(); }
-            }));
-        }
-
-        Promise.all(tasks).then(function() {
-            localStorage.setItem(FLAG, Date.now().toString());
-            console.log('✅ Cache Nuker: listo, recargando con código fresco...');
-            location.reload();
-        });
-    })();
-    </script>
+    <!-- Cache Nuker — MUST load first, blocking, before anything else -->
+    <script src="js/cache-nuker.js?v=1062"></script>
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="./manifest.json">
@@ -111,19 +61,7 @@
     <link rel="stylesheet" href="css/style.css?v=1061">
     <link rel="stylesheet" href="css/components.css?v=1061">
     <!-- Critical: Dark mode init before DOM renders to prevent flash -->
-    <script>
-        (function () {
-            if (localStorage.getItem('wm_dark_mode') === 'true') {
-                // Apply immediately to <html> for instant background color
-                document.documentElement.style.backgroundColor = '#0d1117';
-                // Then on DOMContentLoaded, move class to body (where CSS expects it)
-                document.addEventListener('DOMContentLoaded', function () {
-                    document.body.classList.add('dark-mode');
-                    document.documentElement.style.backgroundColor = '';
-                }, { once: true });
-            }
-        })();
-    </script>
+    <script src="js/dark-mode-init.js?v=1062"></script>
 </head>
 
 <body>
@@ -348,54 +286,8 @@
     <!-- Main controller - MUST be last to initialize app -->
     <script src="main.js?v=1057" defer></script>
 
-    <!-- Dark Mode Toggle Logic -->
-    <script>
-        document.getElementById('btn-toggle-dark').addEventListener('click', () => {
-            const isDark = document.body.classList.toggle('dark-mode');
-            localStorage.setItem('wm_dark_mode', isDark);
-            const icon = document.querySelector('#btn-toggle-dark i');
-            icon.className = isDark ? 'ph ph-sun' : 'ph ph-moon';
-        });
-        // Set correct icon on load
-        if (localStorage.getItem('wm_dark_mode') === 'true') {
-            const icon = document.querySelector('#btn-toggle-dark i');
-            if (icon) icon.className = 'ph ph-sun';
-        }
-    </script>
-
-    <!-- Bell Button Logic -->
-    <script>
-        document.getElementById('btn-header-bell').addEventListener('click', async () => {
-            // Si no tiene push, suscribir primero
-            if (window.PushSubscribe && !window.PushSubscribe.isSubscribed()) {
-                const subscribed = await window.PushSubscribe.subscribe();
-                if (subscribed) {
-                    window.AppNotify?.playChime('success');
-                    window.Sync?.showToast('✅ Push activado! Enviando test...', 'success');
-                } else {
-                    window.Sync?.showToast('No se pudo activar push', 'error');
-                    return;
-                }
-            }
-            // Enviar notificación de prueba via SW
-            try {
-                const reg = await navigator.serviceWorker.ready;
-                await reg.showNotification('Notificación de prueba — El Maravilloso', {
-                    body: 'Si ves esto, las push notifications funcionan en tu dispositivo!',
-                    icon: '/assets/icon-512.png',
-                    badge: '/assets/icon-512.png',
-                    tag: 'wm-test-' + Date.now(),
-                    requireInteraction: true,
-                    vibrate: [200, 100, 200, 100, 400]
-                });
-                window.Sync?.showToast('Notificación de prueba enviada', 'success');
-            } catch (e) {
-                window.Sync?.showToast('Error: ' + e.message, 'error');
-            }
-        });
-    </script>
-
-    <!-- Testing scripts removed from production -->
+    <!-- Header buttons (dark mode toggle + bell) -->
+    <script src="js/header-buttons.js?v=1062"></script>
 
 </body>
 
