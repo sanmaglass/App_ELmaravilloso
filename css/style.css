@@ -77,8 +77,6 @@ body {
     font-family: var(--font-main);
     color: var(--text-primary);
     line-height: 1.5;
-}
-
     /* --- ATMÓSFERA 'EL MARAVILLOSO' --- */
     background-color: #f8f6f4;
     background-image:
@@ -1184,7 +1182,7 @@ body,
     box-shadow:
         0 -4px 24px rgba(0, 0, 0, 0.06),
         0 -1px 0px rgba(230, 0, 0, 0.08);
-    z-index: 1000;
+    z-index: 999;
     padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 

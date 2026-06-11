@@ -276,7 +276,6 @@ async function init() {
         });
 
         // Bottom Nav — tabs mobile
-        const BOTTOM_NAV_VIEWS = ['dashboard', 'daily_sales', 'barcode'];
         const bottomTabs = document.querySelectorAll('#bottom-nav .bottom-tab');
 
         function syncBottomNav(viewName) {
@@ -300,6 +299,12 @@ async function init() {
             }
             if (label) document.getElementById('page-title').textContent = label;
             if (views[viewName]) views[viewName]();
+            // Sync sidebar active state
+            navItems.forEach(b => b.classList.remove('active'));
+            const sidebarMatch = document.querySelector(`.nav-item[data-view="${viewName}"]`);
+            if (sidebarMatch) sidebarMatch.classList.add('active');
+            // Sync bottom-nav active state
+            syncBottomNav(viewName);
         }
         // Exponer globalmente para accesos rápidos del dashboard
         window.navigateToView = navigateToView;
