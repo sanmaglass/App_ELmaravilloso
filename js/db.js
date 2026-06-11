@@ -239,7 +239,11 @@ window.DataManager = {
             if (data.id) data.id = Number(data.id);
 
             if (!data.id) {
-                data.id = crypto.getRandomValues(new Uint32Array(1))[0];
+                // 53-bit safe random ID (Number.MAX_SAFE_INTEGER = 2^53-1)
+                // Combines timestamp prefix + random suffix for uniqueness
+                const ts = Date.now() % 8589934592; // 33 bits de timestamp (~272 años)
+                const rnd = crypto.getRandomValues(new Uint32Array(1))[0] % 1048576; // 20 bits random
+                data.id = ts * 1048576 + rnd;
                 data.created_at = new Date().toISOString();
             }
 
@@ -525,18 +529,20 @@ window.DataManager = {
         const remoteTable = (window.Constants?.REMOTE_TABLE_MAP?.[tableName]) || tableName;
 
         try {
-            // 1. Borrado local inmediato (Soft delete)
+            // 1. Borrado local inmediato (Soft delete) con HLC para sync correcto
             const numericId = Number(id);
-            await window.db[tableName].update(numericId, { deleted: true });
+            const hlcValue = window.HLC ? window.HLC.encode(window.HLC.now()) : Date.now() * 1000000;
+            await window.db[tableName].update(numericId, { deleted: true, updated_at_hlc: hlcValue });
 
             // 2. Intentar borrar en la nube con retry
+            const deletePayload = { id: numericId, deleted: true, updated_at_hlc: hlcValue };
             const activeClient = window.SyncV2?.client || window.Sync?.client;
             if (activeClient) {
-                const result = await this._syncWithRetry(tableName, remoteTable, { id: numericId, deleted: true });
+                const result = await this._syncWithRetry(tableName, remoteTable, deletePayload);
 
                 if (!result.success) {
                     // Encolar soft delete en outbox persistente para retry
-                    await window.Outbox.enqueue(tableName, 'DELETE', { id: numericId, deleted: true });
+                    await window.Outbox.enqueue(tableName, 'DELETE', deletePayload);
                     return { success: true, syncError: result.error, queued: true };
                 }
             }

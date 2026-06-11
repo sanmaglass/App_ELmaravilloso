@@ -3,14 +3,15 @@ window.Views = window.Views || {};
 
 window.Views.security = async (container) => {
     // Load current NVR settings
-    const nvrIp = (await window.db.settings.get('nvr_ip'))?.value || '192.168.1.22';
-    const nvrUser = (await window.db.settings.get('nvr_user'))?.value || 'admin';
+    const esc = window.Utils.escapeHTML;
+    const nvrIp = esc((await window.db.settings.get('nvr_ip'))?.value || '192.168.1.22');
+    const nvrUser = esc((await window.db.settings.get('nvr_user'))?.value || 'admin');
     const nvrPass = (await window.db.settings.get('nvr_pass'))?.value || '';
-    const nvrPort = (await window.db.settings.get('nvr_port'))?.value || '80';
+    const nvrPort = esc((await window.db.settings.get('nvr_port'))?.value || '80');
     const camCount = (await window.db.settings.get('cam_count'))?.value || 4;
-    const streamType = (await window.db.settings.get('nvr_stream_type'))?.value || '02'; // Default to sub-stream (02) for better compatibility
-    const nvrEndpoint = (await window.db.settings.get('nvr_endpoint'))?.value || 'Streaming'; // 'Streaming' or 'ContentMgmt/StreamingProxy'
-    const channelFormat = (await window.db.settings.get('nvr_channel_format'))?.value || '101'; // '101' (101, 201...) or '1' (1, 2, 3...)
+    const streamType = esc((await window.db.settings.get('nvr_stream_type'))?.value || '02');
+    const nvrEndpoint = esc((await window.db.settings.get('nvr_endpoint'))?.value || 'Streaming');
+    const channelFormat = esc((await window.db.settings.get('nvr_channel_format'))?.value || '101');
 
     container.innerHTML = `
         <style>

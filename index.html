@@ -8,6 +8,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>El Maravilloso</title>
+    <meta name="description" content="Sistema de gestión comercial para distribuidoras. Control de ventas, inventario, empleados y contabilidad.">
 
     <!-- ============================================================
          CACHE NUKER — corre UNA vez por usuario.
@@ -21,7 +22,7 @@
          ============================================================ -->
     <script>
     (function cacheNuker() {
-        var NUKE_VERSION = 'v1061';
+        var NUKE_VERSION = 'v1062';
         var FLAG = 'wm_cache_nuked_' + NUKE_VERSION;
         if (localStorage.getItem(FLAG)) return;
 
@@ -83,7 +84,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700&display=swap" rel="stylesheet">
 
     <!-- Icons (Phosphor Icons) -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -241,7 +242,7 @@
         <main class="main-content">
             <header class="top-bar">
                 <div class="header-left">
-                    <button class="btn btn-icon mobile-toggle" id="btn-mobile-menu">
+                    <button class="btn btn-icon mobile-toggle" id="btn-mobile-menu" aria-label="Abrir menú lateral">
                         <i class="ph ph-list"></i>
                     </button>
                     <h1 id="page-title">Resumen</h1>
@@ -254,11 +255,11 @@
                         <span id="sync-text">Solo Local</span>
                     </div>
 
-                    <button class="btn btn-icon" id="btn-toggle-privacy" title="Ocultar Montos"><i
+                    <button class="btn btn-icon" id="btn-toggle-privacy" title="Ocultar Montos" aria-label="Ocultar montos"><i
                             class="ph ph-eye"></i></button>
-                    <button class="btn btn-icon" id="btn-toggle-dark" title="Modo Oscuro"><i
+                    <button class="btn btn-icon" id="btn-toggle-dark" title="Modo Oscuro" aria-label="Cambiar modo oscuro"><i
                             class="ph ph-moon"></i></button>
-                    <button class="btn btn-icon" id="btn-header-bell" title="Activar alertas"><i
+                    <button class="btn btn-icon" id="btn-header-bell" title="Activar alertas" aria-label="Activar notificaciones"><i
                             class="ph ph-bell"></i></button>
                 </div>
             </header>
@@ -296,21 +297,7 @@
         </nav>
     </div>
 
-    <!-- Bottom Nav — mobile only -->
-    <nav id="bottom-nav">
-        <button class="bottom-tab active" data-view="dashboard">
-            <i class="ph ph-squares-four"></i>
-            <span>Inicio</span>
-        </button>
-        <button class="bottom-tab" data-view="daily_sales">
-            <i class="ph ph-currency-dollar"></i>
-            <span>Ventas</span>
-        </button>
-        <button class="bottom-tab" data-view="barcode">
-            <i class="ph ph-barcode"></i>
-            <span>Escáner</span>
-        </button>
-    </nav>
+    <!-- Bottom nav duplicado eliminado — el principal está arriba con class="bottom-nav" -->
 
     <!-- Modals Container -->
     <div id="modal-container" class="modal-backdrop hidden">

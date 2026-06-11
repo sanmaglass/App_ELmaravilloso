@@ -228,7 +228,11 @@ window.SyncV2 = {
           console.log(`📡✅ ${table}#${rec.id} aplicado`);
         }
       } else if (eventType === 'DELETE') {
-        await window.db[local].delete(rec.id);
+        // Soft-delete consistente: marcar deleted en vez de borrar físicamente
+        const existing = await window.db[local].get(rec.id);
+        if (existing) {
+          await window.db[local].update(rec.id, { deleted: true });
+        }
       }
 
       this._notifyUI([local]);

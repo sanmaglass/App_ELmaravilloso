@@ -578,7 +578,7 @@ window.Views.settings = async (container) => {
         // Load saved SII values
         if (siiApiKey) siiApiKey.value = localStorage.getItem('sii_baseapi_key') || '';
         if (siiRut) siiRut.value = localStorage.getItem('sii_rut') || '';
-        if (siiPassword) siiPassword.value = localStorage.getItem('sii_password') || '';
+        if (siiPassword) siiPassword.value = sessionStorage.getItem('sii_password') || '';
 
         // Toggle visibility buttons
         document.getElementById('btn-toggle-sii-key')?.addEventListener('click', () => {
@@ -607,8 +607,8 @@ window.Views.settings = async (container) => {
 
             localStorage.setItem('sii_baseapi_key', key);
             localStorage.setItem('sii_rut', rut);
-            localStorage.setItem('sii_password', pass);
-            updateSiiStatus('<i class="ph ph-check-circle"></i> Credenciales guardadas correctamente.', 'success');
+            sessionStorage.setItem('sii_password', pass);
+            updateSiiStatus('<i class="ph ph-check-circle"></i> Credenciales guardadas (contraseña solo en esta sesión).', 'success');
         });
 
         document.getElementById('btn-test-sii')?.addEventListener('click', async () => {
@@ -621,7 +621,7 @@ window.Views.settings = async (container) => {
                 // Guardar primero
                 localStorage.setItem('sii_baseapi_key', siiApiKey.value.trim());
                 localStorage.setItem('sii_rut', siiRut.value.trim());
-                localStorage.setItem('sii_password', siiPassword.value.trim());
+                sessionStorage.setItem('sii_password', siiPassword.value.trim());
 
                 const now = new Date();
                 const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;

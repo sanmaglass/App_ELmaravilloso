@@ -50,7 +50,7 @@ window.Outbox = {
     try {
       const pending = await window.db.sync_outbox
         .where('status').equals('pending')
-        .toArray();
+        .sortBy('created_at');
 
       if (!pending.length) return;
 

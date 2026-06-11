@@ -1,6 +1,7 @@
 // Hybrid Logical Clock - Versioning monótono con tolerancia a skew
 window.HLC = {
   local: { physical: Date.now(), logical: 0 },
+  MAX_SKEW_MS: 120000, // 2 minutos máximo de desfase tolerable
 
   now() {
     const physical = Date.now();
@@ -8,12 +9,21 @@ window.HLC = {
       this.local = { physical, logical: 0 };
     } else {
       this.local.logical++;
+      if (this.local.logical > 999999) {
+        console.warn('⚠️ HLC logical overflow — forzando reset al reloj del sistema');
+        this.local = { physical, logical: 0 };
+      }
     }
     return { ...this.local };
   },
 
   receive(remote) {
     const local = this.now();
+    const skew = Math.abs(remote.physical - local.physical);
+    if (skew > this.MAX_SKEW_MS) {
+      console.warn(`⚠️ HLC: skew de ${skew}ms excede límite (${this.MAX_SKEW_MS}ms), ignorando remote`);
+      return { ...this.local };
+    }
     if (remote.physical > local.physical) {
       this.local = { physical: remote.physical, logical: remote.logical + 1 };
     } else if (remote.physical === local.physical && remote.logical >= local.logical) {

@@ -135,10 +135,11 @@ window.InactivityGuard = {
         const keysToRemove = [
             'wm_auth', 'wm_auth_token', 'wm_auth_email', 'wm_user',
             'wm_session_version', 'wm_tenant_id', 'wm_user_role',
-            'sii_api_key', 'sii_rut', 'sii_password',
+            'sii_api_key', 'sii_rut',
             'company_rut', 'company_name', 'company_giro'
         ];
         keysToRemove.forEach(k => localStorage.removeItem(k));
+        sessionStorage.removeItem('sii_password');
         // También limpiar cualquier cache SII con prefijo
         Object.keys(localStorage)
             .filter(k => k.startsWith('sii_') || k.startsWith('cache_sii'))

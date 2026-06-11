@@ -57,15 +57,9 @@ window.Sync = {
             window.Sync._syncListenerRegistered = true;
         }
 
-        // 1. Try Config File (Pro Mode)
-        let url = window.AppConfig ? window.AppConfig.supabaseUrl : null;
-        let key = window.AppConfig ? window.AppConfig.supabaseKey : null;
-
-        // 2. Fallback to LocalStorage (Manual Mode)
-        if (!url || !key) {
-            url = localStorage.getItem('supabase_url');
-            key = localStorage.getItem('supabase_key');
-        }
+        // Config from AppConfig (frozen, not overridable)
+        const url = window.AppConfig?.supabaseUrl;
+        const key = window.AppConfig?.supabaseKey;
 
         if (url && key) {
             try {
