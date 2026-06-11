@@ -552,7 +552,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
         container.innerHTML = `
             <div style="padding: 20px; text-align: center; color: var(--danger);">
                 <p>Error al cargar los préstamos</p>
-                <small>${err.message}</small>
+                <small>${Utils.escapeHTML(err.message)}</small>
             </div>
         `;
     }

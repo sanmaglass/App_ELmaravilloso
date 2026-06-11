@@ -432,7 +432,7 @@ async function init() {
                         if(!toastContainer) return;
                         const toast = document.createElement('div');
                         toast.className = `toast toast-${isCredit ? 'warning' : 'error'}`;
-                        toast.innerHTML = `<div style="display:flex; align-items:center; gap:8px;">${icon} <span style="font-weight:bold;">${alertData.mensaje}</span></div>`;
+                        toast.innerHTML = `<div style="display:flex; align-items:center; gap:8px;">${icon} <span style="font-weight:bold;">${Utils.escapeHTML(alertData.mensaje)}</span></div>`;
                         toastContainer.appendChild(toast);
 
                         setTimeout(() => {

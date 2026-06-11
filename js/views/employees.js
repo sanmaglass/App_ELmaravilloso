@@ -99,7 +99,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                 <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px;">
                     <div style="display:flex; align-items:center; gap:16px;">
                         <div class="avatar" style="width:56px; height:56px; font-size:1.4rem; background:${emp.isOwner ? 'linear-gradient(135deg, #d97706, #f59e0b)' : 'linear-gradient(135deg, var(--primary), #880000)'}; box-shadow:0 4px 10px ${emp.isOwner ? 'rgba(245,158,11,0.3)' : 'rgba(136,0,0,0.3)'}; position:relative;">
-                            ${emp.avatar || Utils.escapeHTML(emp.name.substring(0, 2).toUpperCase())}
+                            ${Utils.escapeHTML(emp.avatar) || Utils.escapeHTML(emp.name.substring(0, 2).toUpperCase())}
                             ${emp.isOwner ? '<span style="position:absolute; top:-6px; right:-6px; background:#f59e0b; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:0.55rem; border:2px solid white;">👑</span>' : ''}
                         </div>
                         <div>

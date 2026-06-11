@@ -435,7 +435,10 @@ window.Views.settings = async (container) => {
         // Load saved SII values
         if (siiApiKey) siiApiKey.value = localStorage.getItem('sii_baseapi_key') || '';
         if (siiRut) siiRut.value = localStorage.getItem('sii_rut') || '';
-        if (siiPassword) siiPassword.value = sessionStorage.getItem('sii_password') || '';
+        if (siiPassword) {
+            siiPassword.value = '';
+            siiPassword.placeholder = sessionStorage.getItem('sii_password') ? '••••••••' : 'Contraseña SII';
+        }
 
         // Toggle visibility buttons
         document.getElementById('btn-toggle-sii-key')?.addEventListener('click', () => {
@@ -497,7 +500,7 @@ window.Views.settings = async (container) => {
                     updateSiiStatus('<i class="ph ph-x-circle"></i> La API respondió pero sin datos.', 'error');
                 }
             } catch (err) {
-                updateSiiStatus(`<i class="ph ph-x-circle"></i> Error: ${err.message}`, 'error');
+                updateSiiStatus(`<i class="ph ph-x-circle"></i> Error: ${Utils.escapeHTML(err.message)}`, 'error');
             }
 
             btn.disabled = false;

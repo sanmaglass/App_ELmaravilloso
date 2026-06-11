@@ -382,7 +382,7 @@ async function syncFromSII(silent = false) {
                         <i class="ph ph-warning-circle" style="font-size:1.5rem; color:#dc2626;"></i>
                         <div>
                             <div style="font-weight:700; color:#991b1b;">Error al conectar con SII</div>
-                            <div style="font-size:0.85rem; color:#dc2626;">${err.message}</div>
+                            <div style="font-size:0.85rem; color:#dc2626;">${Utils.escapeHTML(err.message)}</div>
                         </div>
                     </div>
                 `;
@@ -464,7 +464,7 @@ async function autoSyncSII() {
                 banner.innerHTML = `
                     <div style="background:#fef2f2; border:2px solid #dc2626; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px;">
                         <i class="ph ph-warning-circle" style="font-size:1.5rem; color:#dc2626;"></i>
-                        <div><b style="color:#991b1b;">Error:</b> <span style="color:#dc2626;">${err.message}</span></div>
+                        <div><b style="color:#991b1b;">Error:</b> <span style="color:#dc2626;">${Utils.escapeHTML(err.message)}</span></div>
                     </div>
                 `;
             }
@@ -559,7 +559,7 @@ async function autoSyncSII() {
             banner.innerHTML = `
                 <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:10px;">
                     <i class="ph ph-warning-circle" style="font-size:1.2rem; color:#dc2626;"></i>
-                    <span style="font-size:0.85rem; color:#991b1b;">${err.message}</span>
+                    <span style="font-size:0.85rem; color:#991b1b;">${Utils.escapeHTML(err.message)}</span>
                 </div>
             `;
         }
