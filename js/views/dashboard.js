@@ -18,24 +18,25 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         body.dark-mode .dash-tab.active { background:#21262d; color:#e6edf3; }
         body.dark-mode .dash-tabs { background:rgba(255,255,255,0.05); }
 
-        /* ---- Glassmorphism & Premium UI ---- */
-        .card { backdrop-filter:none; background:var(--bg-card, #ffffff); border:1px solid rgba(255,255,255,0.4); box-shadow:0 8px 24px rgba(0,0,0,0.04); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.07); border-color: rgba(255,255,255,0.6); }
-        body.dark-mode .card { background:rgba(30, 41, 59, 0.75); border:1px solid rgba(255,255,255,0.1); }
-        body.dark-mode .card:hover { border-color: rgba(255,255,255,0.2); box-shadow: 0 14px 28px rgba(0,0,0,0.3); }
-        
-        .bg-glass { backdrop-filter:none; background:var(--bg-card, #ffffff); border:1px solid rgba(255,255,255,0.3); }
-        body.dark-mode .bg-glass { background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1); }
+        /* ---- Unified Card System ---- */
+        .card { backdrop-filter:none; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.04); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        .card:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.07); }
+        body.dark-mode .card { background:var(--bg-card); border:1px solid rgba(255,255,255,0.08); }
+        body.dark-mode .card:hover { box-shadow:0 6px 16px rgba(0,0,0,0.25); }
 
-        .premium-card { background:var(--bg-card); border-radius:18px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,0.05); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); border:1px solid rgba(0,0,0,0.02); }
-        .premium-card:hover { transform: translateY(-2px); box-shadow: 0 15px 35px rgba(0,0,0,0.08); }
+        .bg-glass { backdrop-filter:none; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; }
+        body.dark-mode .bg-glass { background:var(--bg-card); border-color:rgba(255,255,255,0.08); }
+
+        .premium-card { background:var(--bg-card); border-radius:16px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.04); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); border:1px solid var(--border); }
+        .premium-card:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.07); }
+        body.dark-mode .premium-card { border-color:rgba(255,255,255,0.08); }
 
         /* KPI Card Animated */
         .kpi-card { position:relative; overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .kpi-card:hover { transform:translateY(-2px) scale(1.01); box-shadow:0 12px 40px rgba(0,0,0,0.1); }
         
-        .stat-value-mega { font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1; font-weight: 900; letter-spacing: -1px; }
-        .stat-label-premium { font-size: 0.75rem; font-weight: 800; text-transform: none; letter-spacing: 0; color: var(--text-muted); margin-bottom: 4px; }
+        .stat-value-mega { font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1; font-weight: 800; letter-spacing: -1px; }
+        .stat-label-premium { font-size: 0.75rem; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--text-muted); margin-bottom: 4px; }
 
         /* Card animation */
         @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
@@ -52,16 +53,16 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .pl-chart-grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
+            gap: 12px;
+            margin-bottom: 16px;
         }
 
         /* ---- Bottom 2-widget row ---- */
         .bottom-widgets-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            gap: 12px;
+            margin-bottom: 16px;
         }
 
         /* ---- MOBILE OVERRIDES ---- */
@@ -81,9 +82,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         /* AI Panel Theme Variables */
         :root {
-            --ia-panel-bg: linear-gradient(135deg, #1e293b 0%, #020617 100%);
+            --ia-panel-bg: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             --ia-panel-text: #ffffff;
-            --ia-accent: #818cf8;
+            --ia-accent: #94a3b8;
             --ia-muted: #94a3b8;
             --ia-glass: rgba(255, 255, 255, 0.05);
         }
@@ -91,14 +92,14 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         body:not(.dark-mode) {
             --ia-panel-bg: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
             --ia-panel-text: #1e293b;
-            --ia-accent: #4f46e5;
+            --ia-accent: #64748b;
             --ia-muted: #64748b;
-            --ia-glass: rgba(0, 0, 0, 0.03);
+            --ia-glass: rgba(0, 0, 0, 0.04);
         }
 
         .predict-header { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; }
         .predict-title { margin: 0; font-size: 2.5rem; font-weight: 800; letter-spacing: -1.5px; display: flex; align-items: baseline; gap: 10px; }
-        .predict-badge { background: var(--ia-glass); padding: 5px 14px; border-radius: 99px; font-size: 0.7rem; font-weight: 800; color: var(--ia-muted); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px); }
+        .predict-badge { background: var(--ia-glass); padding: 5px 14px; border-radius: 99px; font-size: 0.72rem; font-weight: 600; color: var(--ia-muted); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px); }
         body:not(.dark-mode) .predict-badge { border-color: rgba(0,0,0,0.05); color: var(--ia-accent); }
 
         /* Responsive Dashboard List Items */
@@ -107,17 +108,17 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         body.dark-mode .dash-list-item:hover { background: rgba(255,255,255,0.03); }
         
         .product-name-wrap { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-        .product-rank { font-weight: 800; color: var(--text-muted); width: 22px; flex-shrink: 0; font-size: 0.75rem; }
+        .product-rank { font-weight: 600; color: var(--text-muted); width: 22px; flex-shrink: 0; font-size: 0.75rem; }
         .product-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
         .product-name { font-weight: 600; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); }
-        .product-meta { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
-        .product-stat { font-weight: 800; flex-shrink: 0; padding-left: 12px; font-size: 0.9rem; }
-        .badge-pct { padding: 4px 8px; border-radius: 8px; font-weight: 800; font-size: 0.72rem; flex-shrink: 0; margin-left: 10px; white-space: nowrap; }
+        .product-meta { font-size: 0.75rem; font-weight: 500; color: var(--text-muted); }
+        .product-stat { font-weight: 700; flex-shrink: 0; padding-left: 12px; font-size: 0.9rem; }
+        .badge-pct { padding: 4px 8px; border-radius: 8px; font-weight: 600; font-size: 0.72rem; flex-shrink: 0; margin-left: 10px; white-space: nowrap; }
 
         @media (max-width: 480px) {
             .product-name { font-size: 0.82rem; }
             .product-stat { font-size: 0.82rem; }
-            .badge-pct { padding: 3px 6px; font-size: 0.68rem; margin-left: 6px; }
+            .badge-pct { padding: 3px 6px; font-size: 0.72rem; margin-left: 6px; }
             .dash-list-item { padding: 8px 0; }
         }
 
@@ -142,10 +143,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         .live-ticket-left { display:flex; align-items:center; gap:8px; min-width:0; }
         .live-ticket-id { font-weight:700; color:var(--text-primary); white-space:nowrap; }
-        .live-ticket-time { color:var(--text-muted); font-size:0.7rem; }
+        .live-ticket-time { color:var(--text-muted); font-size:0.72rem; }
         .live-ticket-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
-        .live-ticket-total { font-weight:800; color:#10b981; }
-        .live-ticket-profit { font-size:0.7rem; color:var(--text-muted); }
+        .live-ticket-total { font-weight:700; color:#10b981; }
+        .live-ticket-profit { font-size:0.72rem; color:var(--text-muted); }
 
         /* Horizontal Product Cards (Hooks & Zero Margin) */
         .h-scroll-container {
@@ -166,9 +167,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .h-product-card:hover { transform: translateY(-3px); }
         body.dark-mode .h-product-card { background: rgba(255,255,255,0.05); }
         
-        .h-product-name { font-weight: 800; font-size: 0.85rem; margin-bottom: 6px; height: 40px; overflow: hidden; color: var(--text-primary); text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; }
+        .h-product-name { font-weight: 700; font-size: 0.85rem; margin-bottom: 6px; height: 40px; overflow: hidden; color: var(--text-primary); text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; }
         .h-product-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
-        .h-product-badge { margin-top: 10px; display: inline-block; padding: 4px 8px; border-radius: 8px; font-weight: 800; font-size: 0.7rem; }
+        .h-product-badge { margin-top: 10px; display: inline-block; padding: 4px 8px; border-radius: 8px; font-weight: 600; font-size: 0.72rem; }
 
         /* Ajustes Mobile */
         @media (max-width: 768px) {
@@ -180,11 +181,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .ceo-row-3 { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
         @media (max-width: 900px) { .ceo-row-3 { grid-template-columns: 1fr; } }
 
-        .ceo-mini { padding:12px 14px; display:flex; flex-direction:column; gap:3px; }
-        .ceo-mini-label { font-size:0.72rem; font-weight:800; letter-spacing:0.8px; text-transform:uppercase; color:var(--text-muted); display:flex; align-items:center; gap:6px; }
-        .ceo-mini-value { font-size:1.5rem; font-weight:900; color:var(--text-primary); line-height:1.1; margin-top:4px; letter-spacing:-0.5px; }
-        .ceo-mini-sub { font-size:0.78rem; color:var(--text-muted); font-weight:600; }
-        .ceo-mini-foot { font-size:0.78rem; font-weight:700; margin-top:8px; }
+        .ceo-mini { padding:16px; display:flex; flex-direction:column; gap:3px; }
+        .ceo-mini-label { font-size:0.72rem; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; color:var(--text-muted); display:flex; align-items:center; gap:6px; }
+        .ceo-mini-value { font-size:1.5rem; font-weight:800; color:var(--text-primary); line-height:1.1; margin-top:4px; letter-spacing:-0.5px; }
+        .ceo-mini-sub { font-size:0.78rem; color:var(--text-muted); font-weight:500; }
+        .ceo-mini-foot { font-size:0.78rem; font-weight:600; margin-top:8px; }
         .ceo-cash-breakdown { margin-top:10px; display:flex; flex-direction:column; gap:4px; font-size:0.78rem; }
         .ceo-cash-breakdown .row { display:flex; justify-content:space-between; }
         .ceo-cash-breakdown .row b { font-weight:700; }
@@ -195,19 +196,20 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .ceo-payment-legend .leg-row { display:flex; align-items:center; gap:6px; justify-content:space-between; }
         .ceo-payment-legend .leg-dot { width:9px; height:9px; border-radius:50%; display:inline-block; flex-shrink:0; }
         .ceo-payment-legend .leg-label { display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .ceo-payment-legend .leg-pct { font-weight:800; color:var(--text-primary); }
+        .ceo-payment-legend .leg-pct { font-weight:700; color:var(--text-primary); }
 
         .ceo-alerts-list { display:flex; flex-direction:column; gap:8px; }
         .ceo-alert-item { display:flex; align-items:center; gap:12px; padding:10px 12px; background:rgba(255,255,255,0.6); border-radius:10px; border-left:3px solid transparent; font-size:0.85rem; }
         body.dark-mode .ceo-alert-item { background:rgba(255,255,255,0.04); }
         .ceo-alert-item.sev-high { border-left-color:#dc2626; background:rgba(220,38,38,0.06); }
         .ceo-alert-item.sev-med  { border-left-color:#f59e0b; background:rgba(245,158,11,0.06); }
-        .ceo-alert-item.sev-low  { border-left-color:#6366f1; background:rgba(99,102,241,0.06); }
+        .ceo-alert-item.sev-low  { border-left-color:var(--border); background:rgba(0,0,0,0.02); }
+        body.dark-mode .ceo-alert-item.sev-low { background:rgba(255,255,255,0.02); }
         .ceo-alert-item i.main { font-size:1.3rem; flex-shrink:0; }
         .ceo-alert-text { flex:1; line-height:1.35; color:var(--text-primary); }
         .ceo-alert-text b { color:var(--text-primary); }
-        .ceo-alert-meta { font-size:0.72rem; color:var(--text-muted); font-weight:700; }
-        .ceo-alerts-count { background:#f97316; color:white; border-radius:99px; min-width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:0.8rem; padding:0 9px; }
+        .ceo-alert-meta { font-size:0.72rem; color:var(--text-muted); font-weight:600; }
+        .ceo-alerts-count { background:#f97316; color:white; border-radius:99px; min-width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:0.8rem; padding:0 9px; }
         .ceo-alerts-count.zero { background:#10b981; }
 
         .ceo-alert-wrap { display:flex; flex-direction:column; }
@@ -224,17 +226,18 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .ceo-alert-detail-row .cd-main { flex:1; min-width:0; }
         .ceo-alert-detail-row .cd-name { font-weight:600; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .ceo-alert-detail-row .cd-sub { font-size:0.72rem; color:var(--text-muted); margin-top:2px; }
-        .ceo-alert-detail-row .cd-right { font-weight:800; font-variant-numeric:tabular-nums; color:var(--text-primary); font-size:0.82rem; white-space:nowrap; flex-shrink:0; }
+        .ceo-alert-detail-row .cd-right { font-weight:700; font-variant-numeric:tabular-nums; color:var(--text-primary); font-size:0.82rem; white-space:nowrap; flex-shrink:0; }
         .ceo-alert-more { padding:8px 14px; text-align:center; }
 
         /* CTA Margen banner */
-        .ceo-margins-cta { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:16px 20px; background:linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.06) 100%); border:1px solid rgba(99,102,241,0.18); border-radius:14px; cursor:pointer; transition:all 0.2s; text-decoration:none; }
-        .ceo-margins-cta:hover { background:linear-gradient(135deg, rgba(99,102,241,0.14) 0%, rgba(139,92,246,0.1) 100%); border-color:rgba(99,102,241,0.32); transform:translateY(-1px); box-shadow:0 6px 20px rgba(99,102,241,0.12); }
+        .ceo-margins-cta { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:16px 20px; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; cursor:pointer; transition:all 0.2s; text-decoration:none; }
+        .ceo-margins-cta:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,0.07); border-color:var(--primary); }
+        body.dark-mode .ceo-margins-cta:hover { box-shadow:0 6px 16px rgba(0,0,0,0.3); }
         .ceo-margins-cta-left { display:flex; align-items:center; gap:12px; }
-        .ceo-margins-cta-icon { width:40px; height:40px; border-radius:10px; background:rgba(99,102,241,0.12); display:flex; align-items:center; justify-content:center; font-size:1.3rem; color:#6366f1; flex-shrink:0; }
-        .ceo-margins-cta-title { font-weight:800; color:var(--text-primary); font-size:0.95rem; margin-bottom:2px; }
-        .ceo-margins-cta-sub { font-size:0.75rem; color:var(--text-muted); font-weight:600; }
-        .ceo-margins-cta-arrow { font-size:1.4rem; color:#6366f1; opacity:0.7; transition:transform 0.2s; }
+        .ceo-margins-cta-icon { width:40px; height:40px; border-radius:10px; background:rgba(209,0,0,0.08); display:flex; align-items:center; justify-content:center; font-size:1.3rem; color:var(--primary); flex-shrink:0; }
+        .ceo-margins-cta-title { font-weight:700; color:var(--text-primary); font-size:0.95rem; margin-bottom:2px; }
+        .ceo-margins-cta-sub { font-size:0.75rem; color:var(--text-muted); font-weight:500; }
+        .ceo-margins-cta-arrow { font-size:1.4rem; color:var(--primary); opacity:0.7; transition:transform 0.2s; }
         .ceo-margins-cta:hover .ceo-margins-cta-arrow { transform:translateX(4px); opacity:1; }
 
         @media (max-width: 640px) {
@@ -247,6 +250,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         /* Section dividers dark mode */
         body.dark-mode .section-divider-line { background:rgba(255,255,255,0.08) !important; }
+
+        /* Dark mode heading color overrides (points 4/5: quemados en light → legibles en dark) */
+        body.dark-mode .dash-alerts-heading { color:#fb923c !important; }
+        body.dark-mode .dash-proxpagos-heading { color:#f87171 !important; }
+        body.dark-mode .dash-facturas-heading { color:#fbbf24 !important; }
 
         /* ---- Accesos Rápidos (solo mobile) ---- */
         .mobile-only { display: none; }
@@ -315,10 +323,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </h1>
         </div>
         <div class="dash-header-btns">
-            <select id="dash-month-selector" class="btn bg-glass" style="border:1px solid rgba(0,0,0,0.1); font-weight:bold; cursor:pointer; color:var(--text-primary);">
+            <select id="dash-month-selector" class="btn" style="height:38px; padding:0 12px; border:1px solid var(--border); border-radius:12px; background:var(--bg-card); font-weight:600; cursor:pointer; color:var(--text-primary); font-size:0.88rem;">
                 <option value="">Cargando...</option>
             </select>
-            <button id="btn-export-excel" class="btn btn-premium" style="background:var(--grad-success); box-shadow: 0 2px 8px rgba(0,0,0,0.12);">
+            <button id="btn-export-excel" class="btn btn-premium" style="background:var(--grad-success); box-shadow:0 2px 8px rgba(0,0,0,0.10); border-radius:12px; height:38px; padding:0 14px;">
                 <i class="ph ph-file-xls"></i> <span class="hide-mobile">Excel</span>
             </button>
         </div>
@@ -374,8 +382,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         </div>
 
         <div style="display:flex; align-items:center; gap:10px; margin:20px 0 10px 0;">
-            <div style="width:4px; height:22px; border-radius:4px; background:#10b981;"></div>
-            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Resumen del Mes</h2>
+            <div style="width:4px; height:22px; border-radius:4px; background:var(--primary);"></div>
+            <h2 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--text-primary); letter-spacing:-0.3px;">Resumen del Mes</h2>
             <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
         </div>
         <!-- KPI Cards con Estética Premium -->
@@ -407,20 +415,20 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
 
             <!-- Margen Neto / Salud -->
-            <div class="premium-card card-anim delay-2" style="border-top:4px solid #84cc16; background: linear-gradient(180deg, rgba(132,204,22,0.05) 0%, var(--bg-card, white) 100%);">
+            <div class="premium-card card-anim delay-2" style="border-top:4px solid #10b981; background: linear-gradient(180deg, rgba(16,185,129,0.05) 0%, var(--bg-card, white) 100%);">
                 <div class="flex justify-between items-start mb-3">
-                    <div class="p-2 rounded-2xl" style="background:rgba(132,204,22,0.1); color:#84cc16;">
+                    <div class="p-2 rounded-2xl" style="background:rgba(16,185,129,0.1); color:#10b981;">
                         <i class="ph ph-heartbeat text-xl"></i>
                     </div>
-                    <div id="health-label" class="status-badge" style="background:rgba(132,204,22,0.1); color:#65a30d; font-weight:700;">Salud</div>
+                    <div id="health-label" class="status-badge" style="background:rgba(16,185,129,0.1); color:#059669; font-weight:700;">Salud</div>
                 </div>
                 <div class="stat-label-premium">Rentabilidad</div>
                 <div class="flex items-baseline gap-3">
-                    <div id="kpi-margen-neto" class="stat-value-mega mt-1" style="color:#65a30d;">...</div>
+                    <div id="kpi-margen-neto" class="stat-value-mega mt-1" style="color:#059669;">...</div>
                     <div id="health-ratio-pct" class="text-sm font-black text-muted">0%</div>
                 </div>
                 <div id="health-bar-wrap" class="w-full h-3 rounded-full overflow-hidden mt-3" style="background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.03);">
-                    <div id="health-bar" class="h-full" style="width:0%; background:linear-gradient(90deg, #84cc16, #22c55e); transition:width 1s ease;"></div>
+                    <div id="health-bar" class="h-full" style="width:0%; background:linear-gradient(90deg, #10b981, #059669); transition:width 1s ease;"></div>
                 </div>
                 <div id="health-detail" class="text-xs text-muted mt-2 font-medium italic">Calculando métricas de salud...</div>
             </div>
@@ -431,7 +439,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             <div class="premium-card" style="background: var(--ia-panel-bg); color: var(--ia-panel-text); border: none; padding: 14px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div>
-                        <div id="label-ia-title" style="font-size:0.65rem; color:var(--ia-accent); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
+                        <div id="label-ia-title" style="font-size:0.72rem; color:var(--ia-accent); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
                             <i class="ph ph-chart-line-up"></i> Proyección Mes
                         </div>
                         <div style="display:flex; align-items:baseline; gap:8px;">
@@ -440,18 +448,18 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                         </div>
                     </div>
                     <div style="text-align:right;">
-                        <div id="predict-confidence" class="predict-badge" style="font-size:0.6rem; padding:3px 8px;">...</div>
+                        <div id="predict-confidence" class="predict-badge" style="font-size:0.72rem; padding:3px 8px;">...</div>
                         <div id="predict-comparison" style="font-size:0.75rem; margin-top:4px;"></div>
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
                     <div style="flex:1; height:5px; background:var(--ia-glass); border-radius:99px; overflow:hidden;">
-                        <div id="predict-progress-bar" style="height:100%; width:0%; background:linear-gradient(90deg, #6366f1, #a855f7); border-radius:99px; transition:width 1s ease;"></div>
+                        <div id="predict-progress-bar" style="height:100%; width:0%; background:#64748b; border-radius:99px; transition:width 1s ease;"></div>
                     </div>
                     <span id="predict-percent" style="font-size:0.7rem; font-weight:800; color:var(--ia-accent);">0%</span>
                 </div>
                 <div id="predict-insight-box" style="margin-top:8px; display:flex; align-items:center; gap:6px;">
-                    <div id="predict-insight-dot" style="width:5px; height:5px; border-radius:50%; background:#6366f1;"></div>
+                    <div id="predict-insight-dot" style="width:5px; height:5px; border-radius:50%; background:#64748b;"></div>
                     <span id="predict-insight-text" style="font-size:0.75rem; font-weight:600; color:var(--ia-muted);">Calculando...</span>
                 </div>
                 <span id="label-ia-meta" style="display:none;">AVANCE MENSUAL</span>
@@ -477,8 +485,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
              ============================================================ -->
 
         <div style="display:flex; align-items:center; gap:10px; margin:20px 0 10px 0;">
-            <div style="width:4px; height:22px; border-radius:4px; background:#6366f1;"></div>
-            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Indicadores Clave</h2>
+            <div style="width:4px; height:22px; border-radius:4px; background:var(--primary);"></div>
+            <h2 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--text-primary); letter-spacing:-0.3px;">Indicadores Clave</h2>
             <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
         </div>
         <!-- FILA: Ticket promedio · Resumen caja · Forma de pago -->
@@ -510,9 +518,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         </div>
 
         <!-- ALERTAS INTELIGENTES -->
-        <div class="premium-card mb-4" id="ceo-alerts-card" style="background:linear-gradient(135deg, rgba(249,115,22,0.06), var(--bg-card, #fff)); border-left:4px solid #f97316;">
+        <div class="premium-card mb-4" id="ceo-alerts-card" style="border-left:3px solid #f97316;">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="font-bold flex items-center gap-2" style="color:#c2410c; font-size:1.05rem;">
+                <h3 class="font-bold flex items-center gap-2 dash-alerts-heading" style="color:#c2410c; font-size:1.05rem;">
                     <i class="ph ph-siren text-xl"></i> Alertas
                 </h3>
                 <span class="ceo-alerts-count" id="ceo-alerts-count">0</span>
@@ -523,13 +531,13 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         </div>
 
         <div style="display:flex; align-items:center; gap:10px; margin:20px 0 10px 0;">
-            <div style="width:4px; height:22px; border-radius:4px; background:#3b82f6;"></div>
-            <h2 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.3px;">Decisiones</h2>
+            <div style="width:4px; height:22px; border-radius:4px; background:var(--primary);"></div>
+            <h2 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--text-primary); letter-spacing:-0.3px;">Decisiones</h2>
             <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
         </div>
         <!-- PANEL DECISIONES -->
-        <div class="decision-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px;">
-            <div class="premium-card" style="padding:14px;" id="dec-buy">
+        <div class="decision-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:16px;">
+            <div class="premium-card" style="padding:16px;" id="dec-buy">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
                     <i class="ph ph-shopping-cart" style="color:#3b82f6; font-size:1.1rem;"></i>
                     <span style="font-weight:700; font-size:0.8rem;">Qué reponer</span>
@@ -538,7 +546,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     <span class="text-muted">Cargando...</span>
                 </div>
             </div>
-            <div class="premium-card" style="padding:14px;" id="dec-price">
+            <div class="premium-card" style="padding:16px;" id="dec-price">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
                     <i class="ph ph-arrow-fat-up" style="color:#f59e0b; font-size:1.1rem;"></i>
                     <span style="font-weight:700; font-size:0.8rem;">Subir precio</span>
@@ -547,7 +555,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     <span class="text-muted">Cargando...</span>
                 </div>
             </div>
-            <div class="premium-card" style="padding:14px;" id="dec-day">
+            <div class="premium-card" style="padding:16px;" id="dec-day">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
                     <i class="ph ph-calendar-x" style="color:#ef4444; font-size:1.1rem;"></i>
                     <span style="font-weight:700; font-size:0.8rem;">Día más flojo</span>
@@ -556,7 +564,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     <span class="text-muted">Cargando...</span>
                 </div>
             </div>
-            <div class="premium-card" style="padding:14px;" id="dec-cash">
+            <div class="premium-card" style="padding:16px;" id="dec-cash">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
                     <i class="ph ph-piggy-bank" style="color:#10b981; font-size:1.1rem;"></i>
                     <span style="font-weight:700; font-size:0.8rem;">Flujo próximo</span>
@@ -570,6 +578,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <!-- CTA → Márgenes -->
         <button class="ceo-margins-cta mb-4" id="ceo-margins-cta-btn" onclick="window._goToMargenes()" style="padding:12px 16px;">
             <div class="ceo-margins-cta-left">
+                <div class="ceo-margins-cta-icon"><i class="ph ph-chart-line-up"></i></div>
                 <div>
                     <div class="ceo-margins-cta-title" style="font-size:0.85rem;">Márgenes por Producto</div>
                 </div>
@@ -603,8 +612,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <!-- Widgets fila inferior -->
         <div class="bottom-widgets-grid">
             <!-- Próximos pagos empleados -->
-            <div class="card card-anim p-4" style="background:linear-gradient(135deg, rgba(239,68,68,0.05), var(--bg-card, #fff)); border-bottom:4px solid #ffcccc;">
-                <h3 class="mb-3 font-bold flex items-center gap-2" style="color:#b91c1c; font-size:1rem;">
+            <div class="card card-anim p-4" style="border-left:3px solid #dc2626;">
+                <h3 class="mb-3 font-bold flex items-center gap-2 dash-proxpagos-heading" style="color:#b91c1c; font-size:1rem;">
                     <i class="ph ph-money text-xl"></i> Próximos Pagos a Equipo
                 </h3>
                 <div id="upcoming-payments-list" class="text-secondary" style="font-size:0.85rem;">
@@ -612,9 +621,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 </div>
             </div>
             <!-- Facturas a crédito -->
-            <div class="card card-anim p-4" id="credit-widget" style="background:linear-gradient(135deg, rgba(245,158,11,0.05), var(--bg-card, #fff)); border-bottom:4px solid #fde68a; cursor:pointer;">
+            <div class="card card-anim p-4" id="credit-widget" style="border-left:3px solid #f59e0b; cursor:pointer;">
                 <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-bold flex items-center gap-2" style="color:#92400e; font-size:1rem;">
+                    <h3 class="font-bold flex items-center gap-2 dash-facturas-heading" style="color:#92400e; font-size:1rem;">
                         <i class="ph ph-clock-countdown text-xl"></i> Facturas por Pagar (Crédito)
                     </h3>
                     <i class="ph ph-arrow-right text-muted"></i>
@@ -970,7 +979,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 </div>`;
             };
 
-            const netColor = utilidadNetaMonto >= 0 ? '#16a34a' : '#dc2626';
+            const netColor = utilidadNetaMonto >= 0 ? '#10b981' : '#dc2626';
 
             // Agrupar gastos por categoría para el desglose
             const gastosPorCategoria = {};
@@ -998,7 +1007,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                         <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed rgba(0,0,0,0.06);">
                             <span style="font-size:0.82rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
                                 <i class="ph ph-credit-card"></i> Comisión Tarjeta (2%)
-                                <span style="font-size:0.65rem; opacity:0.6;">sobre ${window.Utils.formatCurrency(tarjetaMes)}</span>
+                                <span style="font-size:0.72rem; opacity:0.7;">sobre ${window.Utils.formatCurrency(tarjetaMes)}</span>
                             </span>
                             <span style="font-weight:700; font-size:0.9rem; color:#e11d48;">-${window.Utils.formatCurrency(comisionMPMes)}</span>
                         </div>` : ''}
@@ -1166,7 +1175,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             alerts.push({
                 sev: 'low',
                 icon: 'ph-snowflake',
-                color: '#6366f1',
+                color: 'var(--text-muted)',
                 html: `<b>${staleProducts.length}</b> sin venta en 30 días`,
                 meta: 'Ver detalle',
                 details: {
@@ -1343,13 +1352,13 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 decBuyEl.innerHTML = buyAnalysis.length ? buyAnalysis.map(p => {
                     let badge = '';
                     if (p.acceleration >= 200) {
-                        badge = `<span style="color:#ef4444; font-weight:700; font-size:0.65rem;">🔥 x${(p.dailyRate / Math.max(p.prevDailyRate, 0.1)).toFixed(1)}</span>`;
+                        badge = `<span style="color:#ef4444; font-weight:700; font-size:0.72rem;">🔥 x${(p.dailyRate / Math.max(p.prevDailyRate, 0.1)).toFixed(1)}</span>`;
                     } else if (p.acceleration > 30) {
-                        badge = `<span style="color:#ef4444; font-weight:700; font-size:0.65rem;">↑${Math.round(p.acceleration)}%</span>`;
+                        badge = `<span style="color:#ef4444; font-weight:700; font-size:0.72rem;">↑${Math.round(p.acceleration)}%</span>`;
                     } else if (p.acceleration > 0) {
-                        badge = `<span style="color:#f97316; font-weight:600; font-size:0.65rem;">↑${Math.round(p.acceleration)}%</span>`;
+                        badge = `<span style="color:#f97316; font-weight:600; font-size:0.72rem;">↑${Math.round(p.acceleration)}%</span>`;
                     } else {
-                        badge = `<span style="color:#6b7280; font-size:0.65rem;">${Math.round(p.dailyRate)}/día</span>`;
+                        badge = `<span style="color:#6b7280; font-size:0.72rem;">${Math.round(p.dailyRate)}/día</span>`;
                     }
                     return `<div style="display:flex; justify-content:space-between; align-items:center;" title="Vendido: ${p.qty} uds (${Math.round(p.dailyRate)}/día) · Mes ant: ${p.prevQty} uds · Faltan ~${p.projected} uds para el mes">
                         <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60%;">${window.Utils.escapeHTML(p.name)}</span>
@@ -1408,7 +1417,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                                     <div style="width:100%; height:30px; background:#f1f5f9; border-radius:3px; position:relative; overflow:hidden;">
                                         <div style="position:absolute; bottom:0; width:100%; height:${pct}%; background:${color}; border-radius:3px;"></div>
                                     </div>
-                                    <span style="font-size:0.6rem; color:var(--text-muted);">${dayNames[i][0]}</span>
+                                    <span style="font-size:0.72rem; color:var(--text-muted);">${dayNames[i][0]}</span>
                                 </div>`;
                             }).join('')}
                         </div>
@@ -1782,11 +1791,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         const creditEl = document.getElementById('credit-widget-content');
         if (creditPending.length === 0) {
-            creditEl.innerHTML = '<p style="color:#16a34a;font-weight:600;">✅ Sin deudas a crédito</p>';
+            creditEl.innerHTML = '<p style="color:#10b981;font-weight:600;">✅ Sin deudas a crédito</p>';
         } else {
             creditEl.innerHTML = `
-                <div style="font-size:1.2rem;font-weight:700;color:#92400e;">${fmt(totalCredit)}</div>
-                    <div style="font-size:0.82rem;color:#78350f;">${creditPending.length} factura${creditPending.length > 1 ? 's' : ''} pendiente${creditPending.length > 1 ? 's' : ''}</div>
+                <div style="font-size:1.2rem;font-weight:700;color:#d97706;">${fmt(totalCredit)}</div>
+                    <div style="font-size:0.82rem;color:var(--text-muted);">${creditPending.length} factura${creditPending.length > 1 ? 's' : ''} pendiente${creditPending.length > 1 ? 's' : ''}</div>
                 ${overdue.length ? `<div style="color:#dc2626;font-weight:700;font-size:0.82rem;margin-top:4px;">🚨 ${overdue.length} vencida${overdue.length > 1 ? 's' : ''}</div>` : ''}
                 ${dueSoon.length ? `<div style="color:#ea580c;font-size:0.8rem;margin-top:2px;">⏰ ${dueSoon.length} vence esta semana</div>` : ''}
             `;
