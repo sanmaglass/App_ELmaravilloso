@@ -513,8 +513,8 @@ window.Views.settings = async (container) => {
         if (companyRut) companyRut.value = localStorage.getItem('company_rut') || '';
         if (companyGiro) companyGiro.value = localStorage.getItem('company_giro') || '';
 
-        // Show sync connection status
-        if (window.Sync && window.Sync.client) {
+        // Show sync connection status (cliente ACTIVO = SyncV2, con fallback al legacy)
+        if ((window.SyncV2 && window.SyncV2.client) || (window.Sync && window.Sync.client)) {
             updateStatus('<i class="ph ph-wifi-high"></i> Conectado a la nube', 'success');
         } else {
             updateStatus('<i class="ph ph-warning"></i> Sin conexión a la nube', 'warning');
