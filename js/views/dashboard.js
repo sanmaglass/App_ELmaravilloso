@@ -535,7 +535,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }
         .ed-proj-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
         .ed-proj-value { font-family: var(--font-mono, monospace); font-size: 1.5rem; font-weight: 900; color: var(--text-primary); line-height: 1; }
-        .ed-proj-meta  { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; }
+        .ed-proj-meta  { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; white-space: nowrap; }
         .ed-proj-right { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 
         /* Health desglose inside existing health-detail */
@@ -657,7 +657,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             <div class="ed-projection">
                 <div>
                     <div class="ed-proj-label"><i class="ph ph-chart-line-up"></i> Proyección Mes</div>
-                    <div style="display:flex; align-items:baseline; gap:8px; margin-top:4px;">
+                    <div style="display:flex; align-items:baseline; gap:8px; margin-top:4px; flex-wrap:wrap;">
                         <span id="predict-total" class="ed-proj-value">…</span>
                         <span id="predict-month-label" class="ed-proj-meta"></span>
                     </div>

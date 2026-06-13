@@ -438,33 +438,17 @@ async function init() {
         // Bottom Nav Logic (Mobile)
         const bottomNav = document.getElementById('bottom-nav');
         if (bottomNav) {
-            const bottomItems = bottomNav.querySelectorAll('.bottom-nav-item[data-view]');
-            bottomItems.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const viewName = btn.dataset.view;
-                    if (!views[viewName]) return;
+            // NOTA: la navegación del bottom-nav la maneja el listener de `bottomTabs`
+            // (arriba). Antes había aquí un segundo listener duplicado que provocaba
+            // doble navegación en cada tap — eliminado.
 
-                    // Update bottom nav active state
-                    bottomNav.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-
-                    // Also sync sidebar active state
-                    navItems.forEach(b => b.classList.remove('active'));
-                    const sidebarMatch = document.querySelector(`.nav-item[data-view="${viewName}"]`);
-                    if (sidebarMatch) sidebarMatch.classList.add('active');
-
-                    // Update page title
-                    const titleMap = { dashboard: 'Resumen', daily_sales: 'Cierres Diarios', cash_register: 'Arqueo de Caja', credits: 'Créditos', barcode: 'Escáner' };
-                    document.getElementById('page-title').textContent = titleMap[viewName] || viewName;
-
-                    // Cleanup and navigate
-                    if (window._viewCleanup) {
-                        try { window._viewCleanup(); } catch (e) { /* ignore */ }
-                        window._viewCleanup = null;
-                    }
-                    views[viewName]();
-                });
-            });
+            // Quick-action: el botón grande "Escanear" abre la cámara directo.
+            // Listener en fase de CAPTURA → corre ANTES del navegador de pestañas,
+            // así la vista barcode ya encuentra el flag activo al renderizar.
+            const scanBtn = bottomNav.querySelector('.bottom-nav-scan');
+            if (scanBtn) {
+                scanBtn.addEventListener('click', () => { window._barcodeAutoScan = true; }, true);
+            }
 
             // "Más" button opens popup menu (not full sidebar)
             const btnMore = document.getElementById('btn-bottom-more');
