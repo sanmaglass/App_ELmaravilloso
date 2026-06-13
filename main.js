@@ -25,7 +25,7 @@ const views = {
     barcode: () => window.Views.barcode(document.getElementById('view-container'))
 };
 
-// ── Tema "hacker terminal" para Chart.js (aplica a TODOS los gráficos) ──
+// ── Tema neutro premium para Chart.js (gris-dominante, sin glow) ──
 (function themeCharts() {
     if (typeof window.Chart === 'undefined' || window.Chart._wmThemed) return;
     try {
@@ -34,33 +34,27 @@ const views = {
         const mono = "'JetBrains Mono','Cascadia Code','SF Mono','Consolas',monospace";
         C.defaults.font.family = mono;
         C.defaults.font.size = 11;
-        C.defaults.color = '#7fcf9f';
-        C.defaults.borderColor = 'rgba(0,255,102,0.10)';
+        C.defaults.color = '#9aa4b2';
+        C.defaults.borderColor = 'rgba(255,255,255,0.06)';
         const el = C.defaults.elements || {};
         if (el.line) { el.line.tension = 0.35; el.line.borderWidth = 2; }
-        if (el.point) { el.point.radius = 0; el.point.hoverRadius = 5; el.point.hoverBackgroundColor = '#00ff66'; el.point.hoverBorderColor = '#00ff66'; }
+        if (el.point) { el.point.radius = 0; el.point.hoverRadius = 4; el.point.hoverBackgroundColor = '#4c8dff'; el.point.hoverBorderColor = '#4c8dff'; }
         if (el.bar) { el.bar.borderRadius = 4; }
-        if (el.arc) { el.arc.borderColor = '#070b08'; el.arc.borderWidth = 2; }
+        if (el.arc) { el.arc.borderColor = '#0a0c0f'; el.arc.borderWidth = 2; }
         const P = C.defaults.plugins || {};
-        if (P.legend) { P.legend.labels = P.legend.labels || {}; P.legend.labels.color = '#7fcf9f'; P.legend.labels.boxWidth = 10; P.legend.labels.font = { family: mono, size: 10 }; }
+        if (P.legend) { P.legend.labels = P.legend.labels || {}; P.legend.labels.color = '#9aa4b2'; P.legend.labels.boxWidth = 10; P.legend.labels.font = { family: mono, size: 10 }; }
         if (P.tooltip) {
             Object.assign(P.tooltip, {
-                backgroundColor: 'rgba(7,11,8,0.96)', borderColor: 'rgba(0,255,102,0.45)', borderWidth: 1,
-                titleColor: '#00ff66', bodyColor: '#d8ffe6', padding: 10, cornerRadius: 6, displayColors: false,
+                backgroundColor: 'rgba(16,19,25,0.97)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
+                titleColor: '#eef1f5', bodyColor: '#9aa4b2', padding: 10, cornerRadius: 8, displayColors: false,
                 titleFont: { family: mono, weight: '700' }, bodyFont: { family: mono }
             });
         }
         if (C.defaults.scale && C.defaults.scale.grid) {
-            C.defaults.scale.grid.color = 'rgba(0,255,102,0.07)';
+            C.defaults.scale.grid.color = 'rgba(255,255,255,0.05)';
             C.defaults.scale.ticks = C.defaults.scale.ticks || {};
-            C.defaults.scale.ticks.color = '#7fcf9f';
+            C.defaults.scale.ticks.color = '#5f6b7a';
         }
-        // Glow neón verde en los datos (líneas/barras/arcos)
-        C.register({
-            id: 'wmGlow',
-            beforeDatasetsDraw(chart) { const x = chart.ctx; x.save(); x.shadowColor = 'rgba(0,255,102,0.45)'; x.shadowBlur = 7; },
-            afterDatasetsDraw(chart) { chart.ctx.restore(); }
-        });
     } catch (e) { console.warn('themeCharts:', e); }
 })();
 
@@ -78,35 +72,35 @@ function showEmailGate() {
             @keyframes wm-scan { from{background-position:0 0} to{background-position:0 200px} }
             #email-gate::before { content:''; position:absolute; inset:0; pointer-events:none; opacity:.55;
                 background:
-                    repeating-linear-gradient(0deg, rgba(0,255,102,0.05) 0 1px, transparent 1px 3px),
-                    radial-gradient(circle at 50% -10%, rgba(0,255,102,0.14), transparent 55%);
+                    repeating-linear-gradient(0deg, rgba(76,141,255,0.05) 0 1px, transparent 1px 3px),
+                    radial-gradient(circle at 50% -10%, rgba(76,141,255,0.14), transparent 55%);
                 animation: wm-scan 9s linear infinite; }
-            #email-gate input::placeholder { color:#4f7a63; letter-spacing:.05em; }
-            #email-gate input:focus { border-color:#00ff66 !important; box-shadow:0 0 0 1px rgba(0,255,102,.5), 0 0 18px rgba(0,255,102,.25) !important; }
-            #gate-btn:hover:not(:disabled) { box-shadow:0 0 26px rgba(0,255,102,.5) !important; filter:brightness(1.12); }
-            #gate-toggle-pass:hover, #gate-forgot:hover { color:#00ff66 !important; }
-            .wm-cursor { display:inline-block; width:9px; color:#00ff66; animation: wm-blink 1.1s step-end infinite; }
+            #email-gate input::placeholder { color:#5f6b7a; letter-spacing:.05em; }
+            #email-gate input:focus { border-color:#4c8dff !important; box-shadow:0 0 0 1px rgba(76,141,255,.5), 0 0 18px rgba(76,141,255,.25) !important; }
+            #gate-btn:hover:not(:disabled) { box-shadow:0 0 26px rgba(76,141,255,.5) !important; filter:brightness(1.12); }
+            #gate-toggle-pass:hover, #gate-forgot:hover { color:#4c8dff !important; }
+            .wm-cursor { display:inline-block; width:9px; color:#4c8dff; animation: wm-blink 1.1s step-end infinite; }
         </style>
         <div id="email-gate" style="position:fixed; inset:0; overflow:hidden; background:#070b08; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono','Cascadia Code','SF Mono','Consolas','Courier New',monospace; z-index:99999;">
             <div style="position:relative; z-index:1; width:90%; max-width:380px; text-align:center;">
-                <img src="assets/logo-dark.png" alt="Logo" style="width:80px; height:80px; border-radius:18px; margin-bottom:22px; filter:drop-shadow(0 0 18px rgba(0,255,102,0.45)); border:1px solid rgba(0,255,102,0.25);">
-                <h1 style="color:#d8ffe6; font-size:1.4rem; font-weight:700; margin:0 0 8px; letter-spacing:0.06em; text-shadow:0 0 12px rgba(0,255,102,0.5);">EL_MARAVILLOSO</h1>
-                <p id="gate-subtitle" style="color:#00ff66; font-size:0.72rem; margin:0 0 30px; letter-spacing:0.12em; text-transform:uppercase;">&gt; acceso_autorizado<span class="wm-cursor">_</span></p>
+                <img src="assets/logo-dark.png" alt="Logo" style="width:80px; height:80px; border-radius:18px; margin-bottom:22px; filter:drop-shadow(0 0 18px rgba(76,141,255,0.45)); border:1px solid rgba(76,141,255,0.25);">
+                <h1 style="color:#eef1f5; font-size:1.4rem; font-weight:700; margin:0 0 8px; letter-spacing:0.06em; text-shadow:0 0 12px rgba(76,141,255,0.5);">EL_MARAVILLOSO</h1>
+                <p id="gate-subtitle" style="color:#4c8dff; font-size:0.72rem; margin:0 0 30px; letter-spacing:0.12em; text-transform:uppercase;">&gt; acceso_autorizado<span class="wm-cursor">_</span></p>
                 <input id="gate-email" type="email" placeholder="correo" autocomplete="email" autofocus
-                    style="width:100%; padding:14px 18px; background:#0a0f0b; border:1px solid rgba(0,255,102,0.18); border-radius:11px; color:#d8ffe6; font-size:0.95rem; font-family:inherit; outline:none; caret-color:#00ff66; transition:all 0.2s; margin-bottom:12px; box-sizing:border-box;">
+                    style="width:100%; padding:14px 18px; background:#0a0f0b; border:1px solid rgba(76,141,255,0.18); border-radius:11px; color:#eef1f5; font-size:0.95rem; font-family:inherit; outline:none; caret-color:#4c8dff; transition:all 0.2s; margin-bottom:12px; box-sizing:border-box;">
                 <div style="position:relative;">
                     <input id="gate-pass" type="password" placeholder="contraseña" autocomplete="current-password"
-                        style="width:100%; padding:14px 18px; background:#0a0f0b; border:1px solid rgba(0,255,102,0.18); border-radius:11px; color:#d8ffe6; font-size:0.95rem; font-family:inherit; outline:none; caret-color:#00ff66; transition:all 0.2s; padding-right:48px; box-sizing:border-box;">
-                    <button id="gate-toggle-pass" type="button" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:#4f7a63; cursor:pointer; font-size:1.1rem; padding:4px; transition:color .2s;">
+                        style="width:100%; padding:14px 18px; background:#0a0f0b; border:1px solid rgba(76,141,255,0.18); border-radius:11px; color:#eef1f5; font-size:0.95rem; font-family:inherit; outline:none; caret-color:#4c8dff; transition:all 0.2s; padding-right:48px; box-sizing:border-box;">
+                    <button id="gate-toggle-pass" type="button" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:#5f6b7a; cursor:pointer; font-size:1.1rem; padding:4px; transition:color .2s;">
                         <i class="ph ph-eye"></i>
                     </button>
                 </div>
                 <div id="gate-error" style="color:#ff6b6b; font-size:0.8rem; margin-top:10px; min-height:1.2em;"></div>
-                <button id="gate-btn" style="width:100%; margin-top:16px; padding:14px; background:linear-gradient(135deg,#00ff66,#00a849); color:#062b13; border:none; border-radius:11px; font-size:0.95rem; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:0.08em; text-transform:uppercase; transition:all 0.2s; box-shadow:0 0 20px rgba(0,255,102,0.3);">
+                <button id="gate-btn" style="width:100%; margin-top:16px; padding:14px; background:linear-gradient(135deg,#4c8dff,#2f6fe0); color:#07121f; border:none; border-radius:11px; font-size:0.95rem; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:0.08em; text-transform:uppercase; transition:all 0.2s; box-shadow:0 0 20px rgba(76,141,255,0.3);">
                     Ingresar
                 </button>
                 <div style="margin-top:16px;">
-                    <button id="gate-forgot" type="button" style="background:none; border:none; color:#4f7a63; font-size:0.76rem; cursor:pointer; font-family:inherit; text-decoration:underline; transition:color .2s;">
+                    <button id="gate-forgot" type="button" style="background:none; border:none; color:#5f6b7a; font-size:0.76rem; cursor:pointer; font-family:inherit; text-decoration:underline; transition:color .2s;">
                         Olvidé mi contraseña
                     </button>
                 </div>
@@ -249,8 +243,8 @@ function showEmailGate() {
     btn.addEventListener('click', attemptLogin);
     emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passInput.focus(); });
     passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptLogin(); });
-    emailInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#ff6b6b'; emailInput.style.borderColor = 'rgba(0,255,102,0.18)'; });
-    passInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#ff6b6b'; passInput.style.borderColor = 'rgba(0,255,102,0.18)'; });
+    emailInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#ff6b6b'; emailInput.style.borderColor = 'rgba(76,141,255,0.18)'; });
+    passInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#ff6b6b'; passInput.style.borderColor = 'rgba(76,141,255,0.18)'; });
 }
 
 // Initialize App
