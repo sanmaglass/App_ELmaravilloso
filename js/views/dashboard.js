@@ -2240,11 +2240,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                                        !!document.getElementById('tab-resumen');
             if (!isDashboardVisible) return;
 
-            // Throttle: refrescar máximo cada 3s aunque sigan llegando datos en ráfaga.
-            // El debounce puro (clearTimeout + setTimeout) nunca ejecuta si los eventos
-            // llegan más rápido que el delay, dejando el dashboard congelado.
+            // Throttle: refrescar máximo cada 1.5s aunque sigan llegando datos en ráfaga.
+            // Es leading-edge: un cambio aislado refresca al instante; el límite solo
+            // aplica cuando llegan eventos seguidos, para no re-leer 7 tablas sin parar.
             const now = Date.now();
-            const MIN_INTERVAL = 3000;
+            const MIN_INTERVAL = 1500;
             if (!window._dashLastRefresh) window._dashLastRefresh = 0;
 
             if (now - window._dashLastRefresh >= MIN_INTERVAL) {

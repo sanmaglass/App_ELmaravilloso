@@ -243,8 +243,9 @@ window.SyncV2 = {
     }
   },
 
-  // Despacha el evento de refresh con debounce (200ms) para agrupar múltiples
-  // cambios del Realtime que llegan en ráfaga y evitar re-renders en cascada.
+  // Despacha el evento de refresh con debounce (80ms) para agrupar múltiples
+  // cambios del Realtime de la MISMA transacción (llegan en ~10-50ms) sin
+  // perder responsividad. El throttle del dashboard absorbe ráfagas mayores.
   _notifyUI(tables) {
     if (Array.isArray(tables)) {
       tables.forEach(t => this._pendingNotifyTables.add(t));
@@ -257,7 +258,7 @@ window.SyncV2 = {
       if (detail.tables.length === 0) return; // Nunca disparar si no hay cambios reales
       try { window.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) { console.warn('sync-data-updated (window) dispatch falló:', e); }
       try { document.dispatchEvent(new CustomEvent('sync-data-updated', { detail })); } catch (e) { console.warn('sync-data-updated (document) dispatch falló:', e); }
-    }, 200);
+    }, 80);
   },
 
   // Forzar resync completo: borra sync_state para que pullIncremental
