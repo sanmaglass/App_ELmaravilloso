@@ -192,29 +192,31 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         /* Franja header metrics */
         .ed-header-band {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-            gap: 1px;                       /* divisores hairline vía gap */
-            background: var(--border);      /* el gap muestra este color */
-            border: 1px solid var(--border);
-            border-radius: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
             margin-bottom: 28px;
-            overflow: hidden;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
         }
         .ed-metric {
-            padding: 18px 18px 16px;
+            padding: 16px 16px 18px;
             background: var(--bg-card);
             position: relative;
             min-width: 0;                   /* evita desborde del grid */
+            border: 1px solid var(--border);
+            border-radius: 18px;
             border-top: 3px solid transparent;
-            transition: background .2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: transform .15s ease, box-shadow .15s ease;
         }
-        .ed-metric:hover { background: var(--bg-elevated); }
+        .ed-metric:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.12); }
         .acc-ventas { border-top-color: var(--primary); }
         .acc-gastos { border-top-color: var(--danger); }
         .acc-utilidad { border-top-color: var(--color-success); }
         .acc-caja { border-top-color: #14b8a6; }
         .acc-salud { border-top-color: var(--color-warning); }
+        @media (max-width: 560px) {
+            .ed-header-band { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .acc-salud { grid-column: 1 / -1; }
+        }
         .ed-metric-label {
             font-size: 0.74rem;
             font-weight: 600;
@@ -224,12 +226,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             margin-bottom: 8px;
         }
         .ed-metric-value {
-            font-family: var(--font-mono, 'JetBrains Mono', monospace);
-            font-size: clamp(1.6rem, 4vw, 2.5rem);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: clamp(1.45rem, 5vw, 2.2rem);
             font-weight: 800;
             color: var(--text-primary);
-            line-height: 1.05;
-            letter-spacing: -0.5px;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
             overflow-wrap: anywhere;
         }
         .ed-metric-delta {
@@ -240,6 +242,16 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .ed-delta-up   { color: var(--color-success); }
         .ed-delta-down { color: var(--danger); }
         .ed-delta-flat { color: var(--text-muted); }
+        /* Chips de variación compactos (estilo iOS) */
+        .ed-delta-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 0.72rem; font-weight: 700;
+            margin-top: 8px; padding: 3px 9px; border-radius: 999px;
+            letter-spacing: 0;
+        }
+        .ed-delta-badge.good    { color: var(--color-success); background: rgba(34,197,94,0.14); }
+        .ed-delta-badge.bad     { color: var(--danger); background: rgba(240,85,106,0.14); }
+        .ed-delta-badge.neutral { color: var(--text-muted); background: rgba(156,164,178,0.12); }
 
         /* Section headings */
         .ed-section {
@@ -397,7 +409,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }
         .ed-caja-cell:last-child { border-right: none; }
         .ed-caja-label { font-size: 0.74rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 7px; }
-        .ed-caja-value { font-family: var(--font-mono, monospace); font-size: clamp(1.5rem, 3.5vw, 1.9rem); font-weight: 800; color: var(--text-primary); overflow-wrap: anywhere; }
+        .ed-caja-value { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: clamp(1.15rem, 4.4vw, 1.6rem); font-weight: 800; letter-spacing: -0.02em; color: var(--text-primary); overflow-wrap: anywhere; }
         .ed-caja-sub   { font-size: 0.78rem; color: var(--text-muted); margin-top: 5px; }
         @media (max-width: 640px) { .ed-caja-grid { grid-template-columns: repeat(2, 1fr); } .ed-caja-cell:nth-child(2) { border-right: none; } .ed-caja-cell:nth-child(n+3) { border-top: 1px solid var(--border); } }
 
@@ -621,7 +633,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
             <div class="ed-sales-grid">
                 <div>
-                    <div style="height:340px; width:100%;"><canvas id="plChart"></canvas></div>
+                    <div style="position:relative; height:280px; width:100%;"><canvas id="plChart"></canvas></div>
                     <div class="ed-narrative" id="ed-sales-narrative"></div>
                 </div>
                 <div>
@@ -1503,6 +1515,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // ============================================================
         // PANEL DE DECISIONES (4 widgets compactos)
         // ============================================================
+        // Declaradas fuera del try: la sección "Caja y Flujo" (más abajo) las usa.
+        let projectedIncome = 0, daysLeft = 0;
         try {
 
             // 1. QUÉ COMPRAR — basado en velocidad de venta actual vs mes anterior
@@ -1610,8 +1624,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             // 4. FLUJO PRÓXIMO — caja neta proyectada (ventas promedio - pagos pendientes)
             const activeDays = dayAvgs.filter(a => a > 0).length || 1;
             const avgDailySales = dayAvgs.reduce((a, b) => a + b, 0) / activeDays;
-            const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
-            const projectedIncome = Math.round(avgDailySales * daysLeft);
+            daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
+            projectedIncome = Math.round(avgDailySales * daysLeft);
             // Pagos pendientes: facturas crédito + sueldos estimados
             const pendingInvoices = invoices.filter(i => i.paymentMethod === 'Crédito' && i.paymentStatus === 'Pendiente');
             const pendingTotal = pendingInvoices.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
@@ -1619,25 +1633,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             const netFlow = projectedIncome - pendingTotal - monthlyPayroll;
             const decCashEl = document.getElementById('dec-cash-content');
             if (decCashEl) {
-                decCashEl.innerHTML = `
-                    <div style="display:flex; flex-direction:column; gap:4px;">
-                        <div style="display:flex; justify-content:space-between;">
-                            <span>Ingreso est. (${daysLeft}d)</span>
-                            <b style="color:#10b981;">${fmt(projectedIncome)}</b>
-                        </div>
-                        <div style="display:flex; justify-content:space-between;">
-                            <span>Facturas pend.</span>
-                            <b style="color:#ef4444;">-${fmt(pendingTotal)}</b>
-                        </div>
-                        <div style="display:flex; justify-content:space-between;">
-                            <span>Sueldos</span>
-                            <b style="color:#ef4444;">-${fmt(monthlyPayroll)}</b>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; border-top:1px solid rgba(0,0,0,0.1); padding-top:4px; margin-top:2px;">
-                            <span style="font-weight:700;">Neto est.</span>
-                            <b style="color:${netFlow >= 0 ? '#10b981' : '#ef4444'}; font-size:0.9rem;">${fmt(netFlow)}</b>
-                        </div>
-                    </div>`;
+                decCashEl.innerHTML = fmt(netFlow);
+                decCashEl.style.color = netFlow >= 0 ? 'var(--color-success)' : 'var(--danger)';
+                decCashEl.title = `Ingreso est. ${fmt(projectedIncome)} − facturas ${fmt(pendingTotal)} − sueldos ${fmt(monthlyPayroll)}`;
+                const _liqSub = document.getElementById('ed-liquidez-sub');
+                if (_liqSub) _liqSub.textContent = `neto proyectado ${daysLeft}d`;
             }
         } catch (e) { console.warn('Error panel decisiones:', e); }
 
@@ -2264,13 +2264,13 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 function renderBadge(id, current, prev, invertGood) {
     const el = document.getElementById(id);
     if (!el) return;
-    if (prev === 0) { el.className = 'status-badge status-paid'; el.innerHTML = 'Nuevos datos'; return; }
+    if (prev === 0) { el.className = 'ed-delta-badge neutral'; el.innerHTML = 'nuevo'; return; }
     const pct = ((current - prev) / prev * 100).toFixed(1);
     const isUp = current > prev;
     // invertGood=true means UP is BAD (gastos), false means UP is GOOD (ventas)
     const good = invertGood ? !isUp : isUp;
-    el.className = `status-badge ${good ? 'status-paid' : 'status-overdue'}`;
-    el.innerHTML = `<i class="ph ph-trend-${isUp ? 'up' : 'down'}"></i> ${isUp ? '+' : ''}${pct}% vs mes ant.`;
+    el.className = `ed-delta-badge ${good ? 'good' : 'bad'}`;
+    el.innerHTML = `${isUp ? '▲' : '▼'} ${isUp ? '+' : ''}${pct}%`;
 }
 
 
