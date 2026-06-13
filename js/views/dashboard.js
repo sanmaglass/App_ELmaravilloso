@@ -335,16 +335,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <div id="terminal-ticker" class="term-ticker-wrap"></div>
 
 
-        <!-- Vencimientos semanales (el widget de Contadora se movio a Alertas Inteligentes) -->
-        <div id="weekly-summary-container" class="hidden" style="margin-bottom:24px;">
-            <div class="premium-card" style="border-left:6px solid #ffc233; background:rgba(255,194,51,0.05);">
-                <h3 class="text-warning font-bold flex items-center gap-2 mb-4 text-base">
-                    <i class="ph ph-calendar-check text-xl"></i> Vencimientos Esta Semana
-                </h3>
-                <div id="weekly-summary-list" class="flex-col gap-3"></div>
-            </div>
-        </div>
-
         <div style="display:flex; align-items:center; gap:10px; margin:20px 0 10px 0;">
             <div style="width:4px; height:22px; border-radius:4px; background:var(--primary);"></div>
             <h2 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--text-primary); letter-spacing:-0.3px;">Resumen del Mes</h2>
@@ -1800,26 +1790,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         document.getElementById('credit-widget').addEventListener('click', () => {
             document.querySelector('[data-view="purchase_invoices"]')?.click();
         });
-
-        // ---- Weekly overdue summary ----
-        const end7 = new Date(today0); end7.setDate(end7.getDate() + 7);
-        const dueThisWeek = creditPending.filter(i => { const d = new Date(i.dueDate); return d >= today0 && d <= end7; })
-            .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-        if (dueThisWeek.length > 0) {
-            document.getElementById('weekly-summary-container').classList.remove('hidden');
-            document.getElementById('weekly-summary-list').innerHTML = dueThisWeek.map(i => {
-                const d = new Date(i.dueDate); d.setHours(0, 0, 0, 0);
-                const dl = Math.ceil((d - today0) / 86400000);
-                const col = dl === 0 ? '#dc2626' : dl <= 2 ? '#ea580c' : '#d97706';
-                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:rgba(255,255,255,0.6);border-radius:8px;border:1px solid rgba(217,119,6,0.2);">
-                    <span style="font-weight:700;color:var(--text-primary);font-size:0.88rem;">${supplierMap[i.supplierId] || '?'} <span style="color:var(--text-muted);font-weight:400;">#${i.invoiceNumber || ''}</span></span>
-                    <div style="display:flex;gap:10px;align-items:center;">
-                        <span style="font-weight:700;">${fmt(parseFloat(i.amount) || 0)}</span>
-                        <span style="background:${col};color:white;padding:2px 8px;border-radius:10px;font-size:0.78rem;font-weight:700;">${dl === 0 ? '¡HOY!' : dl + 'd'}</span>
-                    </div>
-                </div>`;
-            }).join('');
-        }
 
         // ---- Expiry Alerts ----
         const expiringSoon = products.filter(p => {
