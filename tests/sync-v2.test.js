@@ -381,9 +381,12 @@ describe('SyncV2 — Motor de sincronización', () => {
         expect(window.SyncV2.client).toBe(fakeAuthClient);
     });
 
-    test('syncAll() sale silenciosamente si ya hay sync en curso', async () => {
+    test('syncAll() retorna {success:false} si ya hay sync en curso', async () => {
         window.SyncV2.isSyncing = true;
-        await expect(window.SyncV2.syncAll()).resolves.toBeUndefined();
+        // Nuevo contrato: syncAll devuelve un objeto resultado (lo usa el botón
+        // "Sincronizar" de Ajustes para leer result.success).
+        const result = await window.SyncV2.syncAll();
+        expect(result).toEqual({ success: false, error: 'Sincronización en curso' });
         // isSyncing no fue tocado
         expect(window.SyncV2.isSyncing).toBe(true);
     });
