@@ -19,16 +19,6 @@ window.Sync = {
     // Cambios pendientes de notificar (dedup de tablas)
     _pendingChangeTables: new Set(),
 
-    /**
-     * Registra que una tabla cambió localmente.
-     * El evento 'sync-data-updated' se despacha una sola vez
-     * agrupando todos los cambios del mismo ciclo de evento.
-     */
-    markTableChanged(tableName) {
-        this._pendingChangeTables.add(tableName);
-        this._scheduleSyncEvent();
-    },
-
     // Dispara 'sync-data-updated' con debounce para evitar loops de refrescos
     _scheduleSyncEvent() {
         if (this._dispatchTimer) clearTimeout(this._dispatchTimer);
@@ -553,18 +543,6 @@ window.Sync = {
                 el.title = "Trabajando en modo local. Haz clic para intentar conectar.";
                 break;
         }
-    },
-
-    // Auto-Sync Pro: Ejecutar cada X segundos (FALLBACK when WebSocket disconnected)
-    startAutoSync: (intervalMs = 60000) => {
-        if (window.Sync.syncInterval) clearInterval(window.Sync.syncInterval);
-
-        if (window.Constants?.DEBUG) console.log(`Polling fallback activado (cada ${intervalMs / 1000}s)`);
-        window.Sync.syncInterval = setInterval(() => {
-            if (!window.Sync.isRealtimeActive) {
-                window.Sync.syncAll();
-            }
-        }, intervalMs);
     },
 
     initRealtimeSync: async function () {

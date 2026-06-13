@@ -1040,3 +1040,23 @@ window.formatCurrency = (amount, plain = false) => window.Utils.formatCurrency(a
 window.formatDate = (dateString, options = {}) => window.Utils.formatDate(dateString, options);
 window.generateId = () => window.Utils.generateId();
 window.escapeHTML = (str) => window.Utils.escapeHTML(str);
+
+// --- LAZY LOAD DE SCRIPTS EXTERNOS ---
+// Carga un script desde CDN solo la primera vez que se necesita.
+// Llamadas subsiguientes retornan la misma Promise (ya resuelta).
+window.lazyLoadScript = function(src) {
+    window._loadedScripts = window._loadedScripts || {};
+    if (window._loadedScripts[src]) return window._loadedScripts[src];
+    window._loadedScripts[src] = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = () => {
+            delete window._loadedScripts[src];
+            reject(new Error('No se pudo cargar ' + src));
+        };
+        document.head.appendChild(s);
+    });
+    return window._loadedScripts[src];
+};

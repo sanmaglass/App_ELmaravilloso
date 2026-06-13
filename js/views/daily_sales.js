@@ -587,6 +587,7 @@ function showDailySaleModal(saleToEdit = null) {
 // --- EXPORT TO EXCEL ---
 async function exportDailySalesToExcel() {
     try {
+        await window.lazyLoadScript('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js');
         const sales = await window.db.daily_sales.toArray();
         const activeSales = sales.filter(s => !s.deleted);
 

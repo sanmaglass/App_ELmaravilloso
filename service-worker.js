@@ -3,7 +3,7 @@
 // Estrategia: Network-first con fallback a cache para app shell
 // ──────────────────────────────────────────────────────────────
 
-const CACHE_NAME = 'wm-v1063';
+const CACHE_NAME = 'wm-v1065';
 const APP_SHELL = [
     '/',
     '/index.html',

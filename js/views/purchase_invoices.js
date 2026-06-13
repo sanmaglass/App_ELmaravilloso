@@ -141,16 +141,22 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     window.state.invoicesPage = 1;
     window.state.invoicesPerPage = 10;
 
+    // --- CARGA INICIAL: leer BD una sola vez y pasar a todas las sub-funciones ---
+    const [_initInvoices, _initSuppliers] = await Promise.all([
+        window.db.purchase_invoices.toArray(),
+        window.db.suppliers.toArray()
+    ]);
+
     // Initialize component
-    await initDateFilter();
-    await populateSupplierFilter();
+    await initDateFilter(_initInvoices);
+    await populateSupplierFilter(_initInvoices, _initSuppliers);
     // Sincronizar contador con el mes que el filtro eligió
     const filterVal = document.getElementById('filter-date')?.value;
-    await renderContadorDigital(filterVal && filterVal !== 'all' ? filterVal : null);
-    await renderProximosPagos();
-    await renderPendingDocuments();
-    await renderCreditAlerts();
-    renderInvoices();
+    await renderContadorDigital(filterVal && filterVal !== 'all' ? filterVal : null, _initInvoices);
+    await renderProximosPagos(_initInvoices, _initSuppliers);
+    await renderPendingDocuments(_initInvoices, _initSuppliers);
+    await renderCreditAlerts(_initInvoices, _initSuppliers);
+    renderInvoices(_initInvoices, _initSuppliers);
 
     // SII Sync Button
     document.getElementById('btn-sync-sii').addEventListener('click', () => syncFromSII());
@@ -572,7 +578,7 @@ async function autoSyncSII() {
 }
 
 // --- INIT FILTERS ---
-async function initDateFilter() {
+async function initDateFilter(cachedInvoices) {
     const filter = document.getElementById('filter-date');
     if (!filter) return;
 
@@ -582,7 +588,7 @@ async function initDateFilter() {
     }
 
     try {
-        const invoices = await window.db.purchase_invoices.toArray();
+        const invoices = cachedInvoices || await window.db.purchase_invoices.toArray();
         const active = invoices.filter(i => !i.deleted);
 
         // Extraer meses únicos de la BD por campo date (YYYY-MM)
@@ -792,12 +798,13 @@ function dispararAlertasTributarias(params) {
     document.head.appendChild(style);
 })();
 
-async function renderContadorDigital(periodoOverride = null) {
+async function renderContadorDigital(periodoOverride = null, cachedInvoices) {
     const panel = document.getElementById('sii-contador');
     if (!panel) return;
 
     try {
-        const invoices = (await window.db.purchase_invoices.toArray()).filter(i => !i.deleted && i.siiImportado);
+        const _raw = cachedInvoices || await window.db.purchase_invoices.toArray();
+        const invoices = _raw.filter(i => !i.deleted && i.siiImportado);
         const now = new Date();
         const currentPeriodo = periodoOverride || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
@@ -1096,13 +1103,13 @@ async function renderContadorDigital(periodoOverride = null) {
 }
 
 // --- PROXIMOS PAGOS (Calendario Consolidado) ---
-async function renderProximosPagos() {
+async function renderProximosPagos(cachedInvoices, cachedSuppliers) {
     const panel = document.getElementById('proximos-pagos-panel');
     if (!panel) return;
 
     try {
-        const invoices = await window.db.purchase_invoices.toArray();
-        const suppliers = await window.db.suppliers.toArray();
+        const invoices = cachedInvoices || await window.db.purchase_invoices.toArray();
+        const suppliers = cachedSuppliers || await window.db.suppliers.toArray();
         const supplierMap = {};
         suppliers.forEach(s => { if (!s.deleted) supplierMap[s.id] = s.name || s.rut || 'Proveedor'; });
 
@@ -1292,13 +1299,13 @@ async function renderProximosPagos() {
 }
 
 // --- PENDING DOCUMENTS ALERT PANEL ---
-async function renderPendingDocuments() {
+async function renderPendingDocuments(cachedInvoices, cachedSuppliers) {
     const panel = document.getElementById('pending-docs-alert');
     if (!panel) return;
 
     try {
-        const invoices = await window.db.purchase_invoices.toArray();
-        const suppliers = await window.db.suppliers.toArray();
+        const invoices = cachedInvoices || await window.db.purchase_invoices.toArray();
+        const suppliers = cachedSuppliers || await window.db.suppliers.toArray();
 
         const supplierMap = window.Utils.createSupplierMap(suppliers);
 
@@ -1382,7 +1389,7 @@ async function renderPendingDocuments() {
 }
 
 // --- 💳 CREDIT ALERTS PANEL ---
-async function renderCreditAlerts() {
+async function renderCreditAlerts(cachedInvoices, cachedSuppliers) {
     const panel = document.getElementById('credit-alerts-panel');
     if (!panel) return;
 
@@ -1394,8 +1401,8 @@ async function renderCreditAlerts() {
     }
 
     try {
-        const invoices = await window.db.purchase_invoices.toArray();
-        const suppliers = await window.db.suppliers.toArray();
+        const invoices = cachedInvoices || await window.db.purchase_invoices.toArray();
+        const suppliers = cachedSuppliers || await window.db.suppliers.toArray();
         const supplierMap = window.Utils.createSupplierMap(suppliers);
 
         // Filter: Active credit invoices that are still pending OR partially paid (Abonado)
@@ -1656,7 +1663,7 @@ async function renderCreditAlerts() {
 }
 
 // --- RENDER LOGIC ---
-async function renderInvoices() {
+async function renderInvoices(cachedInvoices, cachedSuppliers) {
     const list = document.getElementById('invoices-list');
     const pagination = document.getElementById('pagination-controls');
 
@@ -1673,10 +1680,12 @@ async function renderInvoices() {
     const scrollPos = vc?.scrollTop || 0;
 
     try {
-        const [invoices, suppliers] = await Promise.all([
-            window.db.purchase_invoices.toArray(),
-            window.db.suppliers.toArray()
-        ]);
+        const [invoices, suppliers] = cachedInvoices && cachedSuppliers
+            ? [cachedInvoices, cachedSuppliers]
+            : await Promise.all([
+                window.db.purchase_invoices.toArray(),
+                window.db.suppliers.toArray()
+            ]);
 
         // Map supplier names
         const supplierMap = suppliers ? window.Utils.createSupplierMap(suppliers) : {};
@@ -2619,14 +2628,16 @@ function renderSupplierHistory(supplierFilter, allInvoices, supplierMap) {
 }
 
 // --- POPULATE SUPPLIER FILTER SELECT ---
-async function populateSupplierFilter() {
+async function populateSupplierFilter(cachedInvoices, cachedSuppliers) {
     const select = document.getElementById('filter-supplier');
     if (!select) return;
 
-    const [invoices, suppliers] = await Promise.all([
-        window.db.purchase_invoices.toArray(),
-        window.db.suppliers.toArray()
-    ]);
+    const [invoices, suppliers] = cachedInvoices && cachedSuppliers
+        ? [cachedInvoices, cachedSuppliers]
+        : await Promise.all([
+            window.db.purchase_invoices.toArray(),
+            window.db.suppliers.toArray()
+        ]);
 
     const activeInvoices = invoices.filter(i => !i.deleted);
     const usedSupplierIds = [...new Set(activeInvoices.map(i => i.supplierId))];

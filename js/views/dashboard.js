@@ -1886,6 +1886,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             const btn = document.getElementById('btn-export-excel');
             btn.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Preparando...'; btn.disabled = true;
             try {
+                await window.lazyLoadScript('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js');
                 const [allEmps, lgs, prods] = await Promise.all([window.db.employees.toArray(), window.db.workLogs.toArray(), window.db.products.toArray()]);
                 const emps = allEmps.filter(e => !e.deleted);
                 const wb = XLSX.utils.book_new();
@@ -1993,10 +1994,5 @@ function renderBadge(id, current, prev, invertGood) {
     el.className = `status-badge ${good ? 'status-paid' : 'status-overdue'}`;
     el.innerHTML = `<i class="ph ph-trend-${isUp ? 'up' : 'down'}"></i> ${isUp ? '+' : ''}${pct}% vs mes ant.`;
 }
-
-// Alias to keep compatibility if any nav still references reports
-window.Views.reports = (container) => {
-    window.Views.dashboard(container);
-};
 
 

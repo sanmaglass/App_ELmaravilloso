@@ -37,8 +37,13 @@ describe('DataManager v2 — Retry Logic y Queue', () => {
 
     beforeEach(() => {
         // Reset mocks
+        mockSupabaseClient.from.mockReturnThis();
+        mockSupabaseClient.upsert.mockReturnThis();
         mockSupabaseClient.upsert.mockClear();
+        mockSupabaseClient.select.mockReset();
         mockSupabaseClient.select.mockResolvedValue({ data: [], error: null });
+        // Restaurar cliente mock por si un require de otro bloque pisó window.Sync
+        window.Sync = { client: mockSupabaseClient, showToast: jest.fn() };
 
         // DataManager stub para tests unitarios puros
         window.DataManager = {

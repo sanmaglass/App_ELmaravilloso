@@ -337,8 +337,11 @@ async function generateInvoicePDF(id) {
     const sale = await window.db.sales_invoices.get(id);
     if (!sale) return;
 
-    if (!window.jspdf) {
-        window.showToast('Cargando librería PDF, intenta en 5 segundos...', 'info');
+    try {
+        await window.lazyLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+        await window.lazyLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js');
+    } catch (e) {
+        window.showToast('No se pudo cargar la librería PDF. Revisa tu conexión.', 'error');
         return;
     }
 
@@ -385,6 +388,7 @@ async function generateInvoicePDF(id) {
 
 async function exportSalesToExcel() {
     try {
+        await window.lazyLoadScript('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js');
         const sales = await window.db.sales_invoices.toArray();
         const activeSales = sales.filter(s => !s.deleted);
 

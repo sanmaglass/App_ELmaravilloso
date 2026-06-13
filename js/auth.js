@@ -44,14 +44,6 @@ window.Auth = {
         return data;
     },
 
-    // Registro de nuevo usuario
-    async register(email, password) {
-        if (!this.client) throw new Error('Auth no inicializado');
-        const { data, error } = await this.client.auth.signUp({ email, password });
-        if (error) throw error;
-        return data;
-    },
-
     // Recuperar contraseña
     async resetPassword(email) {
         if (!this.client) throw new Error('Auth no inicializado');
@@ -104,11 +96,6 @@ window.Auth = {
     // Obtener tenant_id actual (para usar en queries)
     getTenantId() {
         return this.tenantId || localStorage.getItem('wm_tenant_id');
-    },
-
-    // Obtener el access token para pasarlo al cliente Supabase de SyncV2
-    getAccessToken() {
-        return this.session?.access_token || null;
     }
 };
 

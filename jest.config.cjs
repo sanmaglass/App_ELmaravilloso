@@ -6,7 +6,7 @@ module.exports = {
   testMatch: ['**/tests/**/*.test.js'],
 
   // Configuración de módulos (fake-indexeddb para Dexie)
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
 
   // Resolver módulos de Node (fs, path) para tests que leen archivos
   moduleFileExtensions: ['js'],

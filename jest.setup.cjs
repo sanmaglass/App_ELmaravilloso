@@ -1,9 +1,9 @@
-// jest.setup.js
+// jest.setup.cjs
 // Configuración de fake-indexeddb para que Dexie funcione en Jest (Node/jsdom)
 
 // Polyfill global de IndexedDB con fake-indexeddb
 const fakIndexedDB = require('fake-indexeddb');
-const FakeIDBKeyRange = require('fake-indexeddb/lib/FakeIDBKeyRange');
+const FakeIDBKeyRange = require('fake-indexeddb/lib/FDBKeyRange');
 
 // Asignar globales para que Dexie y los tests encuentren IndexedDB
 global.indexedDB = fakIndexedDB;

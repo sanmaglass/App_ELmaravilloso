@@ -501,8 +501,14 @@ window.Views.profit_monitor = async (container) => {
         renderProfits();
     });
 
-    document.getElementById('profit-export-btn')?.addEventListener('click', () => {
+    document.getElementById('profit-export-btn')?.addEventListener('click', async () => {
         if (!_catalog.length) return;
+        try {
+            await window.lazyLoadScript('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js');
+        } catch (e) {
+            window.Sync?.showToast?.('No se pudo cargar la librería Excel. Revisa tu conexión.', 'error') || window.showToast?.('No se pudo cargar la librería Excel. Revisa tu conexión.', 'error');
+            return;
+        }
         const rows = [..._catalog]
             .sort((a, b) => a.marginPct - b.marginPct)
             .map(p => ({
