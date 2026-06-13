@@ -7,6 +7,17 @@
 
     console.log('Cache Nuker: limpiando estado viejo para', NUKE_VERSION);
 
+    // Cerrar sesión al actualizar: borrar el token de Supabase Auth (clave sb-*-auth-token)
+    // y las claves de auth de la app. Tras la recarga, mostrará el login de nuevo.
+    try {
+        Object.keys(localStorage)
+            .filter(function (k) { return k.indexOf('sb-') === 0; })
+            .forEach(function (k) { localStorage.removeItem(k); });
+        ['wm_auth', 'wm_auth_token', 'wm_auth_email', 'wm_user',
+         'wm_session_version', 'wm_tenant_id', 'wm_user_role']
+            .forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) { /* ignore */ }
+
     var tasks = [];
 
     if ('serviceWorker' in navigator) {

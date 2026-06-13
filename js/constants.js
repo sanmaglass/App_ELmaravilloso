@@ -41,7 +41,9 @@ window.Constants = {
     },
 
     // Límites de inactividad
-    INACTIVITY_LIMIT_MS: 5 * 60 * 1000, // 5 minutos
+    // 0 = deshabilitado: la sesión queda guardada en el dispositivo y NO se cierra
+    // por inactividad. Solo se cierra al actualizar la app (Cache Nuker) o logout manual.
+    INACTIVITY_LIMIT_MS: 0,
 
     // Modo debug
     DEBUG: false,

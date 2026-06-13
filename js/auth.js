@@ -120,7 +120,13 @@ window.InactivityGuard = {
     _timer: null,
 
     start() {
-        const limit = (window.Constants && window.Constants.INACTIVITY_LIMIT_MS) || (5 * 60 * 1000);
+        const raw = window.Constants && window.Constants.INACTIVITY_LIMIT_MS;
+        const limit = (raw === undefined || raw === null) ? (5 * 60 * 1000) : raw;
+        // limit <= 0 → auto-logout deshabilitado (sesión persistente en el dispositivo)
+        if (!limit || limit <= 0) {
+            console.log('InactivityGuard: deshabilitado — sesión persistente');
+            return;
+        }
         const reset = () => {
             clearTimeout(this._timer);
             this._timer = setTimeout(() => this._handleTimeout(), limit);
