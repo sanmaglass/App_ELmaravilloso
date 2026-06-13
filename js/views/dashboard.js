@@ -25,6 +25,161 @@ function wmDelta(cur, prev) {
     return { arrow: up ? '▲' : '▼', pct: (up ? '+' : '') + d.toFixed(1).replace('.', ',') + '%', up };
 }
 
+// ── Umbrales de inteligencia (ajustables) ──
+const MARGEN_OBJETIVO = 0.25;
+const MARGEN_CRITICO  = 0.10;
+const DIAS_SIN_MOV    = 18;
+const STOCK_MIN       = 5;
+
+function computeHealthScore(ctx) {
+    // ctx: { ventasMes, ventasPrev, utilidadNetaMonto, gastoTotal, products, invoices, eleventaSales, currentMonthStr }
+    const { ventasMes, ventasPrev, utilidadNetaMonto, gastoTotal, products, invoices, eleventaSales, currentMonthStr } = ctx;
+    let score = 0;
+    const factors = [];
+
+    // 1. Ventas 0-25 (delta mes vs mes anterior)
+    const deltaVentas = ventasPrev > 0 ? (ventasMes - ventasPrev) / ventasPrev : 0;
+    const ptsVentas = Math.round(Math.min(25, Math.max(0, 12.5 + deltaVentas * 62.5)));
+    factors.push({ nombre: 'Ventas', estado: ptsVentas >= 17 ? 'ok' : 'warn', pts: ptsVentas, max: 25 });
+    score += ptsVentas;
+
+    // 2. Rentabilidad 0-25 (utilidad/ventas %)
+    const margenPct = ventasMes > 0 ? utilidadNetaMonto / ventasMes : 0;
+    const ptsRent = Math.round(Math.min(25, Math.max(0, margenPct * 125)));
+    factors.push({ nombre: 'Rentabilidad', estado: ptsRent >= 17 ? 'ok' : 'warn', pts: ptsRent, max: 25 });
+    score += ptsRent;
+
+    // 3. Caja 0-20 (caja cubre pagos pendientes)
+    const pendingInv = (invoices || []).filter(i => i.paymentMethod === 'Crédito' && i.paymentStatus === 'Pendiente');
+    const pendingTotal = pendingInv.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+    const ptsCaja = pendingTotal === 0 ? 20 : ventasMes > pendingTotal ? 15 : ventasMes > pendingTotal * 0.5 ? 8 : 0;
+    factors.push({ nombre: 'Caja', estado: ptsCaja >= 14 ? 'ok' : 'warn', pts: ptsCaja, max: 20 });
+    score += ptsCaja;
+
+    // 4. Inventario 0-15 (% productos con stock > STOCK_MIN)
+    const activeProds = (products || []).filter(p => !p.deleted);
+    const sanosCount = activeProds.filter(p => (p.stock || 0) >= STOCK_MIN).length;
+    const ptsInv = activeProds.length > 0 ? Math.round((sanosCount / activeProds.length) * 15) : 15;
+    factors.push({ nombre: 'Inventario', estado: ptsInv >= 10 ? 'ok' : 'warn', pts: ptsInv, max: 15 });
+    score += ptsInv;
+
+    // 5. Cobranza 0-15 (% crédito NO vencido)
+    const today0 = new Date(); today0.setHours(0,0,0,0);
+    const vencidas = pendingInv.filter(i => i.dueDate && new Date(i.dueDate) < today0).length;
+    const ptsCobranza = pendingInv.length === 0 ? 15 : Math.round(Math.max(0, (1 - vencidas / pendingInv.length)) * 15);
+    factors.push({ nombre: 'Cobranza', estado: ptsCobranza >= 10 ? 'ok' : 'warn', pts: ptsCobranza, max: 15 });
+    score += ptsCobranza;
+
+    return { score: Math.min(100, Math.max(0, score)), factors };
+}
+
+function computeRecommendations(products, eleventaSales, invoices) {
+    const recs = [];
+    const now = new Date();
+    const cutoff18 = new Date(now); cutoff18.setDate(cutoff18.getDate() - DIAS_SIN_MOV);
+    const cutoff18Str = cutoff18.toISOString().split('T')[0];
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+    // Build product sales stats for current month
+    const salesQty = {}, salesRev = {};
+    (eleventaSales || []).forEach(sale => {
+        if (!sale.date || !sale.date.startsWith(currentMonthStr)) return;
+        if (!sale.items || !Array.isArray(sale.items)) return;
+        sale.items.forEach(item => {
+            const name = (item.name || '').trim().toLowerCase();
+            if (!name) return;
+            salesQty[name] = (salesQty[name] || 0) + (parseFloat(item.qty) || 1);
+            salesRev[name] = (salesRev[name] || 0) + (parseFloat(item.price) || 0);
+        });
+    });
+
+    // Track last sale date per product
+    const lastSaleDate = {};
+    (eleventaSales || []).forEach(sale => {
+        if (!sale.items || !Array.isArray(sale.items)) return;
+        const dateStr = (sale.date_local || (sale.date || '').split('T')[0]);
+        sale.items.forEach(item => {
+            const name = (item.name || '').trim().toLowerCase();
+            if (!name) return;
+            if (!lastSaleDate[name] || dateStr > lastSaleDate[name]) lastSaleDate[name] = dateStr;
+        });
+    });
+
+    const daysElapsed = Math.max(now.getDate(), 1);
+
+    (products || []).filter(p => !p.deleted && p.name).forEach(p => {
+        const key = p.name.trim().toLowerCase();
+        const qty = salesQty[key] || 0;
+        const rev = salesRev[key] || 0;
+        const buyPrice = parseFloat(p.buyPrice || p.costUnit || p.cost || 0);
+        const salePrice = parseFloat(p.salePrice || 0);
+        const stock = parseFloat(p.stock || 0);
+        const margin = salePrice > 0 ? (salePrice - buyPrice) / salePrice : 0;
+
+        // REPONER: stock <= STOCK_MIN y tiene ventas este mes
+        if (stock <= STOCK_MIN && qty > 0) {
+            const dailyRate = qty / daysElapsed;
+            const impacto = Math.round(dailyRate * 7 * salePrice * (1 - margin));
+            recs.push({ tipo: 'REPONER', titulo: p.name, impacto, urgencia: stock <= 0 ? 'alta' : 'media', prioridad: impacto });
+        }
+
+        // SUBIR PRECIO: margen < objetivo Y volumen > 5 uds/mes
+        if (margin < MARGEN_OBJETIVO && qty >= 5 && salePrice > 0) {
+            const impacto = Math.round((MARGEN_OBJETIVO - margin) * salePrice * qty);
+            recs.push({ tipo: 'SUBIR PRECIO', titulo: p.name, impacto, urgencia: margin < 0.10 ? 'alta' : 'media', prioridad: impacto });
+        }
+
+        // SIN MOVIMIENTO: 0 ventas en DIAS_SIN_MOV días + stock > 0
+        const lastDate = lastSaleDate[key];
+        const noMovimiento = !lastDate || lastDate < cutoff18Str;
+        if (noMovimiento && stock > 0) {
+            const impacto = Math.round(stock * buyPrice);
+            recs.push({ tipo: 'SIN MOVIMIENTO', titulo: p.name, impacto, urgencia: 'baja', prioridad: impacto });
+        }
+    });
+
+    return recs.sort((a, b) => b.prioridad - a.prioridad).slice(0, 10);
+}
+
+function computeActionableAlerts(products, eleventaSales) {
+    const alerts = [];
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+    // Build qty & revenue per product this month
+    const salesQty = {}, salesRev = {};
+    (eleventaSales || []).forEach(sale => {
+        if (!sale.date || !sale.date.startsWith(currentMonthStr)) return;
+        if (!sale.items || !Array.isArray(sale.items)) return;
+        sale.items.forEach(item => {
+            const name = (item.name || '').trim().toLowerCase();
+            salesQty[name] = (salesQty[name] || 0) + (parseFloat(item.qty) || 1);
+            salesRev[name] = (salesRev[name] || 0) + (parseFloat(item.price) || 0);
+        });
+    });
+
+    (products || []).filter(p => !p.deleted && p.name).forEach(p => {
+        const key = p.name.trim().toLowerCase();
+        const qty = salesQty[key] || 0;
+        if (qty === 0) return;
+        const salePrice = parseFloat(p.salePrice || 0);
+        const buyPrice = parseFloat(p.buyPrice || p.costUnit || p.cost || 0);
+        if (salePrice <= 0) return;
+        const margin = (salePrice - buyPrice) / salePrice;
+        if (margin < MARGEN_CRITICO) {
+            const impacto = Math.round((MARGEN_CRITICO - margin) * salePrice * qty);
+            alerts.push({
+                nombre: p.name,
+                margenPct: (margin * 100).toFixed(1),
+                impacto,
+                msg: `${p.name}: margen ${(margin*100).toFixed(1)}% → impacto -${wmCompact(impacto)}/mes`
+            });
+        }
+    });
+
+    return alerts.sort((a, b) => b.impacto - a.impacto);
+}
+
 window.Views.dashboard = async (container, selectedMonth = null) => {
     // 🔍 SMART REFRESH CHECK: If basic shell already exists, skip innerHTML overwrite
     const isAlreadyRendered = document.getElementById('tab-resumen') !== null;
@@ -32,561 +187,635 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
     if (!isAlreadyRendered) {
         container.innerHTML = `
     <style>
-        /* ===== EXTRA HACKER FX (terminal) ===== */
-        @keyframes wm-flicker { 0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:.82} 94%{opacity:1} 97%{opacity:.9} 98%{opacity:1} }
-        .stat-value-mega { animation: wm-flicker 4.5s infinite; }
-        .kpi-card { border-top:1px solid rgba(0,255,102,0.30) !important; }
-        .kpi-card::after { content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit; background:repeating-linear-gradient(0deg, rgba(0,255,102,0.05) 0 1px, transparent 1px 3px); opacity:.5; }
-        .dash-tab { font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace; }
+        /* ── Editorial Dashboard — Sala de Control ── */
 
-        /* ===== TERMINAL TICKER (estilo Bloomberg/consola) ===== */
-        .term-ticker-wrap { margin: 2px 0 18px; }
-        .term-ticker { background:#050a07; border:1px solid rgba(0,255,102,0.22); border-radius:12px; overflow:hidden; font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace; box-shadow:0 0 24px rgba(0,255,102,0.06), inset 0 0 40px rgba(0,255,102,0.02); }
-        .term-ticker-head { display:flex; justify-content:space-between; align-items:center; padding:7px 12px; border-bottom:1px solid rgba(0,255,102,0.14); font-size:0.6rem; letter-spacing:0.18em; color:#00ff66; text-transform:uppercase; }
-        .term-ticker-head .blink { animation: wm-tblink 1.1s step-end infinite; }
-        @keyframes wm-tblink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
-        .term-row { display:grid; grid-template-columns: 92px 1fr auto 78px; align-items:center; gap:10px; padding:11px 12px; border-bottom:1px solid rgba(0,255,102,0.06); }
-        .term-row:last-child { border-bottom:none; }
-        .term-label { font-size:0.6rem; letter-spacing:0.12em; color:#5f9c79; text-transform:uppercase; }
-        .term-spark { font-size:1.05rem; line-height:1; color:#00ff66; letter-spacing:1px; text-shadow:0 0 8px rgba(0,255,102,0.45); white-space:nowrap; overflow:hidden; }
-        .term-val { font-size:1.15rem; font-weight:700; color:#d8ffe6; text-shadow:0 0 10px rgba(0,255,102,0.22); white-space:nowrap; }
-        .term-delta { font-size:0.78rem; font-weight:700; text-align:right; white-space:nowrap; }
-        .term-delta.up { color:#00ff66; }
-        .term-delta.down { color:#ff5a5a; }
-        .term-delta.warn { color:#ffc233; }
-        .term-delta.flat { color:#5f9c79; }
-        @media (max-width:520px) { .term-row { grid-template-columns: 76px 1fr 70px; } .term-spark { display:none; } }
-
-        /* ---- Sub-Tab System ---- */
-        .dash-tabs { display:flex; gap:6px; background:rgba(0,255,102,0.05); padding:6px; border-radius:16px; width:fit-content; }
-        .dash-tab { padding:9px 22px; border-radius:12px; border:none; background:transparent; font-weight:600; font-size:0.9rem; color:var(--text-muted); cursor:pointer; transition:all 0.25s ease; display:flex; align-items:center; gap:7px; }
-        .dash-tab.active { background:rgba(0,255,102,0.12); color:var(--primary); box-shadow:0 2px 12px rgba(0,255,102,0.15); border:1px solid rgba(0,255,102,0.25); }
-        body.dark-mode .dash-tab.active { background:rgba(0,255,102,0.10); color:#00ff66; }
-        body.dark-mode .dash-tabs { background:rgba(0,255,102,0.04); }
-
-        /* ---- Unified Card System ---- */
-        .card { backdrop-filter:none; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.10); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
-        .card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,255,102,0.12), 0 2px 8px rgba(0,0,0,0.15); }
-        body.dark-mode .card { background:var(--bg-card); border:1px solid rgba(0,255,102,0.16); }
-        body.dark-mode .card:hover { box-shadow:0 6px 20px rgba(0,255,102,0.18), 0 2px 8px rgba(0,0,0,0.35); }
-
-        .bg-glass { backdrop-filter:none; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; }
-        body.dark-mode .bg-glass { background:var(--bg-card); border-color:rgba(0,255,102,0.16); }
-
-        .premium-card { background:var(--bg-card); border-radius:16px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.10); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); border:1px solid var(--border); }
-        .premium-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,255,102,0.12), 0 2px 8px rgba(0,0,0,0.15); }
-        body.dark-mode .premium-card { border-color:rgba(0,255,102,0.16); }
-
-        /* KPI Card Animated */
-        .kpi-card { position:relative; overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .kpi-card:hover { transform:translateY(-2px) scale(1.01); box-shadow:0 12px 40px rgba(0,255,102,0.15); }
-
-        .stat-value-mega { font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1; font-weight: 800; letter-spacing: -1px; font-family: 'JetBrains Mono','Cascadia Code','Consolas',monospace; text-shadow: 0 0 8px rgba(0,255,102,0.25); }
-        .stat-label-premium { font-size: 0.75rem; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--text-muted); margin-bottom: 4px; }
-
-        /* Card animation */
-        @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-        .card-anim { animation: slideUp 0.5s ease backwards; }
-        .delay-1 { animation-delay: 0.1s; }
-        .delay-2 { animation-delay: 0.2s; }
-        .delay-3 { animation-delay: 0.3s; }
-
-        /* ---- Dash Header responsive ---- */
-        .dash-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem; }
-        .dash-header-btns { display:flex; gap:0.75rem; }
-
-        /* ---- PL Chart container ---- */
-        .pl-chart-grid {
+        /* Franja header metrics */
+        .ed-header-band {
             display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 12px;
-            margin-bottom: 16px;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            margin-bottom: 28px;
+            overflow: hidden;
+        }
+        .ed-metric {
+            padding: 20px 20px 18px;
+            border-right: 1px solid var(--border);
+            position: relative;
+        }
+        .ed-metric:last-child { border-right: none; }
+        .ed-metric-label {
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+        .ed-metric-value {
+            font-family: var(--font-mono, 'JetBrains Mono', monospace);
+            font-size: clamp(1.3rem, 2.5vw, 1.9rem);
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1;
+            letter-spacing: -1px;
+        }
+        .ed-metric-delta {
+            font-size: 0.72rem;
+            font-weight: 700;
+            margin-top: 5px;
+        }
+        .ed-delta-up   { color: var(--color-success); }
+        .ed-delta-down { color: var(--danger); }
+        .ed-delta-flat { color: var(--text-muted); }
+
+        @media (max-width: 900px) {
+            .ed-header-band { grid-template-columns: repeat(3, 1fr); }
+            .ed-metric:nth-child(3) { border-right: none; }
+            .ed-metric:nth-child(4) { border-top: 1px solid var(--border); }
+            .ed-metric:nth-child(5) { border-top: 1px solid var(--border); border-right: none; }
+        }
+        @media (max-width: 560px) {
+            .ed-header-band { grid-template-columns: repeat(2, 1fr); }
+            .ed-metric:nth-child(2n) { border-right: none; }
+            .ed-metric:nth-child(n+3) { border-top: 1px solid var(--border); }
         }
 
-        /* ---- Bottom 2-widget row ---- */
-        .bottom-widgets-grid {
+        /* Section headings */
+        .ed-section {
+            margin-bottom: 32px;
+        }
+        .ed-section-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .ed-section-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .ed-section-line {
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* Dash header */
+        .dash-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:0.75rem; }
+        .dash-header-btns { display:flex; gap:0.75rem; }
+
+        /* Health score block */
+        .ed-health-row {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            gap: 24px;
+            align-items: center;
+        }
+        .ed-score-circle {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 3px solid var(--border);
+            flex-shrink: 0;
+        }
+        .ed-score-num {
+            font-family: var(--font-mono, monospace);
+            font-size: 2rem;
+            font-weight: 900;
+            line-height: 1;
+            color: var(--text-primary);
+        }
+        .ed-score-label {
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .ed-health-factors {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .ed-factor-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
+        }
+        .ed-factor-icon { font-size: 0.85rem; flex-shrink: 0; }
+        .ed-factor-name { color: var(--text-secondary); flex: 1; }
+        .ed-factor-pts  { font-family: var(--font-mono, monospace); font-size: 0.75rem; color: var(--text-muted); }
+
+        @media (max-width: 480px) {
+            .ed-health-row { grid-template-columns: 1fr; }
+            .ed-score-circle { width: 80px; height: 80px; }
+        }
+
+        /* Recommendations */
+        .ed-rec-list { display: flex; flex-direction: column; gap: 8px; }
+        .ed-rec-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+        }
+        .ed-rec-chip {
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 3px 7px;
+            border-radius: 6px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .ed-chip-alta   { background: rgba(240,85,106,0.15); color: var(--danger); }
+        .ed-chip-media  { background: rgba(245,177,76,0.15); color: var(--color-warning); }
+        .ed-chip-baja   { background: rgba(156,164,178,0.12); color: var(--text-muted); }
+        .ed-rec-title   { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ed-rec-impact  { font-family: var(--font-mono, monospace); font-size: 0.78rem; font-weight: 700; color: var(--color-success); white-space: nowrap; flex-shrink: 0; }
+        .ed-rec-tipo    { font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+
+        /* Ventas y rentabilidad */
+        .ed-sales-grid {
+            display: grid;
+            grid-template-columns: 1fr 220px;
+            gap: 24px;
+            align-items: start;
+        }
+        @media (max-width: 768px) { .ed-sales-grid { grid-template-columns: 1fr; } }
+        .ed-narrative {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .ed-narrative-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+        .ed-narrative-row:last-child { border-bottom: none; }
+        .ed-nar-label { color: var(--text-secondary); }
+        .ed-nar-val   { font-family: var(--font-mono, monospace); font-weight: 700; color: var(--text-primary); }
+
+        /* Caja y flujo */
+        .ed-caja-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .ed-caja-cell {
+            padding: 18px 16px;
+            border-right: 1px solid var(--border);
+        }
+        .ed-caja-cell:last-child { border-right: none; }
+        .ed-caja-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 6px; }
+        .ed-caja-value { font-family: var(--font-mono, monospace); font-size: 1.3rem; font-weight: 800; color: var(--text-primary); }
+        .ed-caja-sub   { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; }
+        @media (max-width: 640px) { .ed-caja-grid { grid-template-columns: repeat(2, 1fr); } .ed-caja-cell:nth-child(2) { border-right: none; } .ed-caja-cell:nth-child(n+3) { border-top: 1px solid var(--border); } }
+
+        /* Operación */
+        .ed-ops-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 12px;
-            margin-bottom: 16px;
         }
-
-        /* ---- MOBILE OVERRIDES ---- */
-        @media (max-width: 768px) {
-            .decision-grid { grid-template-columns: 1fr !important; }
-            .pl-chart-grid { grid-template-columns: 1fr; }
-            .bottom-widgets-grid { grid-template-columns: 1fr; }
-            .dash-header { margin-bottom: 1rem; }
-            .premium-card, .card { padding: 14px !important; }
-            .text-3xl { font-size: 1.3rem !important; }
-            
-            /* AI Panel Mobile Adjustments */
-            .predict-header { flex-direction: column; align-items: flex-start !important; gap: 16px; }
-            .predict-title { font-size: 1.8rem !important; }
-            .predict-badge-container { text-align: left !important; width: 100%; display: flex; justify-content: space-between; align-items: center; }
+        @media (max-width: 560px) { .ed-ops-grid { grid-template-columns: 1fr; } }
+        .ed-ops-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
         }
-
-        /* AI Panel Theme Variables */
-        :root {
-            --ia-panel-bg: linear-gradient(135deg, #0a1a0d 0%, #071009 100%);
-            --ia-panel-text: #d8ffe6;
-            --ia-accent: #00e0ff;
-            --ia-muted: #7ecfa0;
-            --ia-glass: rgba(0, 255, 102, 0.07);
-        }
-
-        body:not(.dark-mode) {
-            --ia-panel-bg: linear-gradient(135deg, #0d1f10 0%, #071209 100%);
-            --ia-panel-text: #d8ffe6;
-            --ia-accent: #00e0ff;
-            --ia-muted: #7ecfa0;
-            --ia-glass: rgba(0, 255, 102, 0.07);
-        }
-
-        .predict-header { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; }
-        .predict-title { margin: 0; font-size: 2.5rem; font-weight: 800; letter-spacing: -1.5px; display: flex; align-items: baseline; gap: 10px; }
-        .predict-badge { background: var(--ia-glass); padding: 5px 14px; border-radius: 99px; font-size: 0.72rem; font-weight: 600; color: var(--ia-muted); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px); }
-        body:not(.dark-mode) .predict-badge { border-color: rgba(0,0,0,0.05); color: var(--ia-accent); }
-
-        /* Responsive Dashboard List Items */
-        .dash-list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--border); transition: background 0.2s; }
-        .dash-list-item:hover { background: rgba(0,0,0,0.02); }
-        body.dark-mode .dash-list-item:hover { background: rgba(255,255,255,0.03); }
-        
-        .product-name-wrap { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-        .product-rank { font-weight: 600; color: var(--text-muted); width: 22px; flex-shrink: 0; font-size: 0.75rem; }
-        .product-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-        .product-name { font-weight: 600; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); }
-        .product-meta { font-size: 0.75rem; font-weight: 500; color: var(--text-muted); }
-        .product-stat { font-weight: 700; flex-shrink: 0; padding-left: 12px; font-size: 0.9rem; }
-        .badge-pct { padding: 4px 8px; border-radius: 8px; font-weight: 600; font-size: 0.72rem; flex-shrink: 0; margin-left: 10px; white-space: nowrap; }
-
-        @media (max-width: 480px) {
-            .product-name { font-size: 0.82rem; }
-            .product-stat { font-size: 0.82rem; }
-            .badge-pct { padding: 3px 6px; font-size: 0.72rem; margin-left: 6px; }
-            .dash-list-item { padding: 8px 0; }
-        }
-
-        /* Live Sales Feed — Lista compacta responsive */
-        .live-sales-scroller {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-            max-width: 100%;
-        }
-
-        .live-ticket-row {
+        .ed-ops-head {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 8px 12px;
-            border-bottom: 1px solid rgba(0,255,102,0.07);
-            font-size: 0.8rem;
+            gap: 7px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 12px;
         }
-        .live-ticket-row:last-child { border-bottom: none; }
-        .live-ticket-row.new { background: rgba(0,255,102,0.05); }
+        .ed-ops-list { display: flex; flex-direction: column; gap: 5px; }
+        .ed-ops-row  { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; padding: 5px 0; border-bottom: 1px solid var(--border); }
+        .ed-ops-row:last-child { border-bottom: none; }
+        .ed-ops-name { color: var(--text-primary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+        .ed-ops-stat { font-family: var(--font-mono, monospace); font-size: 0.78rem; font-weight: 700; color: var(--text-muted); flex-shrink: 0; }
 
-        .live-ticket-left { display:flex; align-items:center; gap:8px; min-width:0; }
-        .live-ticket-id { font-weight:700; color:var(--text-primary); white-space:nowrap; }
-        .live-ticket-time { color:var(--text-muted); font-size:0.72rem; }
-        .live-ticket-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
-        .live-ticket-total { font-weight:700; color:#00ff66; text-shadow:0 0 6px rgba(0,255,102,0.3); font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace; }
-        .live-ticket-profit { font-size:0.72rem; color:var(--text-muted); }
-
-        /* Horizontal Product Cards (Hooks & Zero Margin) */
-        .h-scroll-container {
+        /* Alertas */
+        .ed-alert-item {
             display: flex;
+            align-items: center;
             gap: 12px;
-            overflow-x: auto;
-            overflow-y: hidden;
-            padding-bottom: 10px;
-            scrollbar-width: thin;
-            -webkit-overflow-scrolling: touch;
-            touch-action: pan-x;
-            cursor: grab;
-            max-width: 100%;
-            box-sizing: border-box;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-elevated);
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+            cursor: pointer;
         }
-        .h-scroll-container.dragging { cursor: grabbing; user-select: none; }
-        .h-product-card { min-width: 200px; max-width: 200px; flex-shrink: 0; background: var(--bg-card); padding: 14px; border-radius: 16px; border: 1px solid rgba(0,255,102,0.16); box-shadow: 0 2px 8px rgba(0,0,0,0.12); transition: transform 0.2s, box-shadow 0.2s; }
-        .h-product-card:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,255,102,0.13); }
-        body.dark-mode .h-product-card { background: rgba(0,255,102,0.04); }
-        
-        .h-product-name { font-weight: 700; font-size: 0.85rem; margin-bottom: 6px; height: 40px; overflow: hidden; color: var(--text-primary); text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; }
-        .h-product-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
-        .h-product-badge { margin-top: 10px; display: inline-block; padding: 4px 8px; border-radius: 8px; font-weight: 600; font-size: 0.72rem; }
+        .ed-alert-item.sev-high { border-color: rgba(240,85,106,0.35); background: rgba(240,85,106,0.06); box-shadow: 0 0 12px rgba(240,85,106,0.12); }
+        .ed-alert-item.sev-med  { border-color: rgba(245,177,76,0.35); background: rgba(245,177,76,0.05); }
+        .ed-alert-item.sev-low  { border-color: var(--border); }
+        .ed-alert-icon  { font-size: 1.1rem; flex-shrink: 0; }
+        .ed-alert-text  { flex: 1; color: var(--text-primary); line-height: 1.4; }
+        .ed-alert-meta  { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+        .ed-alert-caret { color: var(--text-muted); font-size: 0.9rem; flex-shrink: 0; transition: transform 0.2s; }
+        .ed-alert-item.open .ed-alert-caret { transform: rotate(180deg); }
+        .ed-alert-details { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .ed-alert-details.open { max-height: 500px; overflow-y: auto; }
+        .ed-alert-detail-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 14px; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+        .ed-alert-detail-row:last-child { border-bottom: none; }
+        .cd-name { font-weight: 600; color: var(--text-primary); }
+        .cd-sub  { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+        .cd-right { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
 
-        /* Ajustes Mobile */
-        @media (max-width: 768px) {
-            .live-ticket-row { padding: 6px 8px; }
-            .h-scroll-container { cursor: default; }
+        /* Proveedores */
+        .ed-supplier-row { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .ed-supplier-row:last-child { border-bottom: none; }
+        .ed-supplier-top { display: flex; justify-content: space-between; align-items: center; }
+        .ed-supplier-name { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); }
+        .ed-supplier-amt  { font-family: var(--font-mono, monospace); font-size: 0.82rem; font-weight: 700; }
+        .supplier-bar-bg  { height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: 4px; }
+        .supplier-bar-fill { height: 100%; width: 0%; border-radius: 99px; transition: width 0.8s ease; }
+
+        /* Today / live feed */
+        .ed-today-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
         }
-
-        /* ============== CEO COCKPIT ============== */
-        .ceo-row-3 { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
-        @media (max-width: 900px) { .ceo-row-3 { grid-template-columns: 1fr; } }
-
-        .ceo-mini { padding:16px; display:flex; flex-direction:column; gap:3px; }
-        .ceo-mini-label { font-size:0.72rem; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; color:var(--text-muted); display:flex; align-items:center; gap:6px; }
-        .ceo-mini-value { font-size:1.5rem; font-weight:800; color:var(--text-primary); line-height:1.1; margin-top:4px; letter-spacing:-0.5px; font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace; text-shadow:0 0 8px rgba(0,255,102,0.22); }
-        .ceo-mini-sub { font-size:0.78rem; color:var(--text-muted); font-weight:500; }
-        .ceo-mini-foot { font-size:0.78rem; font-weight:600; margin-top:8px; }
-        .ceo-cash-breakdown { margin-top:10px; display:flex; flex-direction:column; gap:4px; font-size:0.78rem; }
-        .ceo-cash-breakdown .row { display:flex; justify-content:space-between; }
-        .ceo-cash-breakdown .row b { font-weight:700; }
-
-        .ceo-payment-wrap { display:flex; align-items:center; gap:14px; margin-top:6px; }
-        .ceo-payment-wrap canvas { flex-shrink:0; }
-        .ceo-payment-legend { display:flex; flex-direction:column; gap:5px; font-size:0.75rem; flex:1; min-width:0; }
-        .ceo-payment-legend .leg-row { display:flex; align-items:center; gap:6px; justify-content:space-between; }
-        .ceo-payment-legend .leg-dot { width:9px; height:9px; border-radius:50%; display:inline-block; flex-shrink:0; }
-        .ceo-payment-legend .leg-label { display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .ceo-payment-legend .leg-pct { font-weight:700; color:var(--text-primary); }
-
-        .ceo-alerts-list { display:flex; flex-direction:column; gap:8px; }
-        .ceo-alert-item { display:flex; align-items:center; gap:12px; padding:10px 12px; background:rgba(0,255,102,0.03); border-radius:10px; border-left:3px solid transparent; font-size:0.85rem; }
-        body.dark-mode .ceo-alert-item { background:rgba(0,255,102,0.03); }
-        .ceo-alert-item.sev-high { border-left-color:#ff5a5a; background:rgba(255,90,90,0.07); }
-        .ceo-alert-item.sev-med  { border-left-color:#ffc233; background:rgba(255,194,51,0.06); }
-        .ceo-alert-item.sev-low  { border-left-color:rgba(0,255,102,0.25); background:rgba(0,255,102,0.03); }
-        body.dark-mode .ceo-alert-item.sev-low { background:rgba(0,255,102,0.04); }
-        .ceo-alert-item i.main { font-size:1.3rem; flex-shrink:0; }
-        .ceo-alert-text { flex:1; line-height:1.35; color:var(--text-primary); }
-        .ceo-alert-text b { color:var(--text-primary); }
-        .ceo-alert-meta { font-size:0.72rem; color:var(--text-muted); font-weight:600; }
-        .ceo-alerts-count { background:#ffc233; color:#0a0f0b; border-radius:99px; min-width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:0.8rem; padding:0 9px; }
-        .ceo-alerts-count.zero { background:#00ff66; color:#070b08; }
-
-        .ceo-alert-wrap { display:flex; flex-direction:column; }
-        .ceo-alert-item.expandable { cursor:pointer; user-select:none; position:relative; }
-        .ceo-alert-item.expandable:hover { filter:brightness(0.98); }
-        body.dark-mode .ceo-alert-item.expandable:hover { filter:brightness(1.1); }
-        .ceo-alert-caret { color:var(--text-muted); font-size:1rem; transition:transform 0.2s; flex-shrink:0; margin-left:4px; }
-        .ceo-alert-item.expandable.open .ceo-alert-caret { transform:rotate(180deg); }
-        .ceo-alert-details { max-height:0; overflow:hidden; transition:max-height 0.3s ease; background:rgba(0,0,0,0.02); border-radius:0 0 10px 10px; margin-top:-2px; }
-        body.dark-mode .ceo-alert-details { background:rgba(255,255,255,0.02); }
-        .ceo-alert-details.open { max-height:500px; overflow-y:auto; padding:6px 0; border:1px solid var(--border); border-top:none; }
-        .ceo-alert-detail-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 14px; border-bottom:1px solid var(--border); font-size:0.82rem; }
-        .ceo-alert-detail-row:last-child { border-bottom:none; }
-        .ceo-alert-detail-row .cd-main { flex:1; min-width:0; }
-        .ceo-alert-detail-row .cd-name { font-weight:600; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .ceo-alert-detail-row .cd-sub { font-size:0.72rem; color:var(--text-muted); margin-top:2px; }
-        .ceo-alert-detail-row .cd-right { font-weight:700; font-variant-numeric:tabular-nums; color:var(--text-primary); font-size:0.82rem; white-space:nowrap; flex-shrink:0; }
-        .ceo-alert-more { padding:8px 14px; text-align:center; }
-
-        /* CTA Margen banner */
-        .ceo-margins-cta { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:16px 20px; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; cursor:pointer; transition:all 0.2s; text-decoration:none; }
-        .ceo-margins-cta:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,0.07); border-color:var(--primary); }
-        body.dark-mode .ceo-margins-cta:hover { box-shadow:0 6px 16px rgba(0,0,0,0.3); }
-        .ceo-margins-cta-left { display:flex; align-items:center; gap:12px; }
-        .ceo-margins-cta-icon { width:40px; height:40px; border-radius:10px; background:rgba(0,255,102,0.10); display:flex; align-items:center; justify-content:center; font-size:1.3rem; color:var(--primary); flex-shrink:0; }
-        .ceo-margins-cta-title { font-weight:700; color:var(--text-primary); font-size:0.95rem; margin-bottom:2px; }
-        .ceo-margins-cta-sub { font-size:0.75rem; color:var(--text-muted); font-weight:500; }
-        .ceo-margins-cta-arrow { font-size:1.4rem; color:var(--primary); opacity:0.7; transition:transform 0.2s; }
-        .ceo-margins-cta:hover .ceo-margins-cta-arrow { transform:translateX(4px); opacity:1; }
-
-        @media (max-width: 640px) {
-            .ceo-hide-mobile { display:none; }
-            .ceo-product-table td.name { max-width:150px; }
-            .ceo-product-table td, .ceo-product-table th { padding:8px 8px; font-size:0.8rem; }
-            .ceo-mini-value { font-size:1.3rem; }
-            .ceo-payment-wrap canvas { width:90px !important; height:90px !important; }
+        .ed-today-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
         }
+        .ed-live-dot { width: 7px; height: 7px; background: var(--color-success); border-radius: 50%; box-shadow: 0 0 6px var(--color-success); flex-shrink: 0; }
+        .ed-today-totals { display: flex; align-items: center; gap: 12px; font-size: 0.82rem; }
 
-        /* Section dividers dark mode */
-        body.dark-mode .section-divider-line { background:rgba(255,255,255,0.08) !important; }
+        .live-ticket-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+        .live-ticket-row:last-child { border-bottom: none; }
+        .live-ticket-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .live-ticket-id { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+        .live-ticket-time { color: var(--text-muted); font-size: 0.72rem; }
+        .live-ticket-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .live-ticket-total { font-weight: 700; color: var(--color-success); font-family: var(--font-mono, monospace); }
+        .live-ticket-profit { font-size: 0.72rem; color: var(--text-muted); }
 
-        /* Dark mode heading color overrides (semánticos — no cambiar a verde monocromo) */
-        body.dark-mode .dash-alerts-heading { color:#ffc233 !important; }
-        body.dark-mode .dash-proxpagos-heading { color:#ff5a5a !important; }
-        body.dark-mode .dash-facturas-heading { color:#ffc233 !important; }
+        /* Payment donut area */
+        .ed-payment-wrap { display: flex; align-items: center; gap: 16px; }
+        .ed-payment-legend { display: flex; flex-direction: column; gap: 5px; font-size: 0.78rem; flex: 1; }
+        .leg-row { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+        .leg-dot  { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+        .leg-label { display: flex; align-items: center; gap: 5px; font-weight: 600; color: var(--text-primary); }
+        .leg-pct  { font-weight: 700; color: var(--text-muted); }
 
-        /* ---- Accesos Rápidos (solo mobile) ---- */
+        /* Sparklines */
+        .spark-container { height: 36px; }
+
+        /* Projection (kept compact) */
+        .ed-projection {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 20px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 28px;
+        }
+        .ed-proj-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+        .ed-proj-value { font-family: var(--font-mono, monospace); font-size: 1.5rem; font-weight: 900; color: var(--text-primary); line-height: 1; }
+        .ed-proj-meta  { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; }
+        .ed-proj-right { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+
+        /* Health desglose inside existing health-detail */
+        .ed-desglose { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 10px; }
+
+        /* Dash sub-button */
+        .dash-tab { font-family: var(--font-mono, 'JetBrains Mono', monospace); }
+        .ceo-delta { font-size: 0.75rem; font-weight: 700; }
+        .ceo-delta.up   { color: var(--color-success); }
+        .ceo-delta.down { color: var(--danger); }
+        .ceo-delta.flat { color: var(--text-muted); }
+
+        /* Acciones rápidas mobile */
         .mobile-only { display: none; }
         @media (max-width: 768px) { .mobile-only { display: grid; } }
 
+        /* Alertas count badge */
+        .ceo-alerts-count { background: var(--color-warning); color: #0a0c0f; border-radius: 99px; min-width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.78rem; padding: 0 7px; }
+        .ceo-alerts-count.zero { background: var(--color-success); }
 
+        /* Dark mode divider */
+        body.dark-mode .ed-section-line { background: rgba(255,255,255,0.08); }
+
+        /* Terminal ticker (kept hidden but functional) */
+        .term-ticker-wrap { margin: 2px 0 18px; }
+        .term-ticker { background:#050a07; border:1px solid rgba(0,255,102,0.22); border-radius:12px; overflow:hidden; font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace; }
+        .term-ticker-head { display:flex; justify-content:space-between; align-items:center; padding:7px 12px; border-bottom:1px solid rgba(0,255,102,0.14); font-size:0.6rem; letter-spacing:0.18em; color:#00ff66; text-transform:uppercase; }
+        @keyframes wm-tblink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+        .term-ticker-head .blink { animation: wm-tblink 1.1s step-end infinite; }
+        .term-row { display:grid; grid-template-columns: 92px 1fr auto 78px; align-items:center; gap:10px; padding:11px 12px; border-bottom:1px solid rgba(0,255,102,0.06); }
+        .term-row:last-child { border-bottom:none; }
+        .term-label { font-size:0.6rem; letter-spacing:0.12em; color:#5f9c79; text-transform:uppercase; }
+        .term-spark { font-size:1.05rem; line-height:1; color:#00ff66; letter-spacing:1px; white-space:nowrap; overflow:hidden; }
+        .term-val { font-size:1.15rem; font-weight:700; color:#d8ffe6; white-space:nowrap; }
+        .term-delta { font-size:0.78rem; font-weight:700; text-align:right; white-space:nowrap; }
+        .term-delta.up { color:#00ff66; } .term-delta.down { color:#ff5a5a; } .term-delta.warn { color:#ffc233; } .term-delta.flat { color:#5f9c79; }
     </style>
 
     <!-- Header -->
     <div class="dash-header">
         <div>
-            <h1 class="text-primary font-bold flex items-center gap-2 text-xl">
+            <h1 style="font-size:1.1rem; font-weight:700; color:var(--text-primary); margin:0; display:flex; align-items:center; gap:8px;">
                 <i class="ph ph-squares-four"></i> Resumen
             </h1>
         </div>
         <div class="dash-header-btns">
-            <select id="dash-month-selector" class="btn" style="height:38px; padding:0 12px; border:1px solid var(--border); border-radius:12px; background:var(--bg-card); font-weight:600; cursor:pointer; color:var(--text-primary); font-size:0.88rem;">
+            <select id="dash-month-selector" class="btn" style="height:38px; padding:0 12px; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); font-weight:600; cursor:pointer; color:var(--text-primary); font-size:0.85rem;">
                 <option value="">Cargando...</option>
             </select>
-            <button id="btn-export-excel" class="btn btn-premium" style="background:var(--grad-success); box-shadow:0 2px 8px rgba(0,0,0,0.10); border-radius:12px; height:38px; padding:0 14px;">
+            <button id="btn-export-excel" class="btn btn-premium" style="border-radius:10px; height:38px; padding:0 14px;">
                 <i class="ph ph-file-xls"></i> <span class="hide-mobile">Excel</span>
             </button>
         </div>
     </div>
 
-
-
     <!-- ===================== TAB 1: RESUMEN ===================== -->
-    <div id="tab-resumen" class="dash-tab-content active">
+    <div id="tab-resumen">
 
-        <!-- Terminal ticker — presentación ejecutiva estilo consola -->
-        <div id="terminal-ticker" class="term-ticker-wrap"></div>
-
-
-        <div style="display:flex; align-items:center; gap:10px; margin:20px 0 10px 0;">
-            <div style="width:4px; height:22px; border-radius:4px; background:var(--primary);"></div>
-            <h2 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--text-primary); letter-spacing:-0.3px;">Resumen del Mes</h2>
-            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
-        </div>
-        <!-- KPI Cards con Estética Premium -->
-        <div class="grid grid-cols-auto gap-4 mb-4">
-            <!-- Ventas mes -->
-            <div class="premium-card card-anim" style="border-top:4px solid #00ff66; background: linear-gradient(180deg, rgba(0,255,102,0.06) 0%, var(--bg-card) 100%);">
-                <div class="flex justify-between items-start mb-3">
-                    <div class="p-2 rounded-2xl" style="background:rgba(0,255,102,0.10); color:#00ff66;">
-                        <i class="ph ph-chart-line-up text-xl"></i>
-                    </div>
-                    <div id="kpi-ventas-mes-badge" class="status-badge" style="background:rgba(0,255,102,0.10); color:#00a849; border:1px solid rgba(0,255,102,0.22);">Calculando...</div>
-                </div>
-                <div class="stat-label-premium">Ventas del Mes</div>
-                <div id="kpi-ventas-mes" class="stat-value-mega text-primary mt-1">...</div>
-                <div class="spark-container mt-2" style="height:40px;"><canvas id="spark-ventas"></canvas></div>
+        <!-- ① FRANJA HEADER: 5 métricas clave -->
+        <div class="ed-header-band">
+            <div class="ed-metric">
+                <div class="ed-metric-label">Ventas</div>
+                <div class="ed-metric-value" id="kpi-ventas-mes">…</div>
+                <div class="ed-metric-delta" id="kpi-ventas-mes-badge"></div>
+                <div class="spark-container" style="margin-top:8px;"><canvas id="spark-ventas"></canvas></div>
             </div>
-
-            <!-- Gasto mes -->
-            <div class="premium-card card-anim delay-1" style="border-top:4px solid #ff5a5a; background: linear-gradient(180deg, rgba(255,90,90,0.04) 0%, var(--bg-card) 100%);">
-                <div class="flex justify-between items-start mb-3">
-                    <div class="p-2 rounded-2xl" style="background:rgba(255,90,90,0.10); color:#ff5a5a;" title="Suma de todos los gastos registrados este mes. No incluye mercadería.">
-                        <i class="ph ph-hand-coins text-xl"></i>
-                    </div>
-                    <div id="kpi-gasto-mes-badge" class="status-badge status-overdue">Este Mes</div>
-                </div>
-                <div class="stat-label-premium text-primary">Gastos del Mes <i class="ph ph-info" title="Sueldos, servicios, contabilidad y otros gastos registrados."></i></div>
-                <div id="kpi-gasto-mes" class="stat-value-mega text-primary mt-1">...</div>
-                <div class="spark-container mt-2" style="height:40px;"><canvas id="spark-gastos"></canvas></div>
+            <div class="ed-metric">
+                <div class="ed-metric-label">Gastos</div>
+                <div class="ed-metric-value" id="kpi-gasto-mes">…</div>
+                <div class="ed-metric-delta" id="kpi-gasto-mes-badge"></div>
+                <div class="spark-container" style="margin-top:8px;"><canvas id="spark-gastos"></canvas></div>
             </div>
-
-            <!-- Margen Neto / Salud -->
-            <div class="premium-card card-anim delay-2" style="border-top:4px solid #00ff66; background: linear-gradient(180deg, rgba(0,255,102,0.06) 0%, var(--bg-card) 100%);">
-                <div class="flex justify-between items-start mb-3">
-                    <div class="p-2 rounded-2xl" style="background:rgba(0,255,102,0.10); color:#00ff66;">
-                        <i class="ph ph-heartbeat text-xl"></i>
-                    </div>
-                    <div id="health-label" class="status-badge" style="background:rgba(0,255,102,0.10); color:#00a849; font-weight:700;">Salud</div>
-                </div>
-                <div class="stat-label-premium">Rentabilidad</div>
-                <div class="flex items-baseline gap-3">
-                    <div id="kpi-margen-neto" class="stat-value-mega mt-1" style="color:#00a849;">...</div>
-                    <div id="health-ratio-pct" class="text-sm font-black text-muted">0%</div>
-                </div>
-                <div id="health-bar-wrap" class="w-full h-3 rounded-full overflow-hidden mt-3" style="background:rgba(0,255,102,0.07); border:1px solid rgba(0,255,102,0.12);">
-                    <div id="health-bar" class="h-full" style="width:0%; background:linear-gradient(90deg, #00ff66, #00a849); transition:width 1s ease;"></div>
-                </div>
-                <div id="health-detail" class="text-xs text-muted mt-2 font-medium italic">Calculando métricas de salud...</div>
+            <div class="ed-metric">
+                <div class="ed-metric-label">Utilidad</div>
+                <div class="ed-metric-value" id="kpi-margen-neto">…</div>
+                <div class="ed-metric-delta" id="health-ratio-pct" style="color:var(--text-muted); font-size:0.72rem; margin-top:4px;"></div>
+            </div>
+            <div class="ed-metric">
+                <div class="ed-metric-label">Caja Real</div>
+                <div class="ed-metric-value" id="ceo-cash-net">…</div>
+                <div class="ed-metric-delta" id="ceo-cash-sub" style="color:var(--text-muted); font-size:0.68rem; margin-top:4px;"></div>
+            </div>
+            <div class="ed-metric">
+                <div class="ed-metric-label">Salud</div>
+                <div class="ed-metric-value" id="ed-health-score-header">—</div>
+                <div id="health-label" style="font-size:0.72rem; color:var(--text-muted); margin-top:4px; font-weight:600;"></div>
             </div>
         </div>
 
-        <!-- Proyección Mes -->
-        <div id="prediction-container" class="hidden" style="margin-bottom:10px;">
-            <div class="premium-card" style="background: var(--ia-panel-bg); color: var(--ia-panel-text); border: none; padding: 14px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div id="label-ia-title" style="font-size:0.72rem; color:var(--ia-accent); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
-                            <i class="ph ph-chart-line-up"></i> Proyección Mes
-                        </div>
-                        <div style="display:flex; align-items:baseline; gap:8px;">
-                            <span id="predict-total" style="font-size:1.6rem; font-weight:900; color:var(--ia-panel-text);">...</span>
-                            <span id="predict-month-label" style="font-size:0.75rem; color:var(--ia-muted);">est.</span>
-                        </div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div id="predict-confidence" class="predict-badge" style="font-size:0.72rem; padding:3px 8px;">...</div>
-                        <div id="predict-comparison" style="font-size:0.75rem; margin-top:4px;"></div>
-                    </div>
-                </div>
-                <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
-                    <div style="flex:1; height:5px; background:var(--ia-glass); border-radius:99px; overflow:hidden;">
-                        <div id="predict-progress-bar" style="height:100%; width:0%; background:#64748b; border-radius:99px; transition:width 1s ease;"></div>
-                    </div>
-                    <span id="predict-percent" style="font-size:0.7rem; font-weight:800; color:var(--ia-accent);">0%</span>
-                </div>
-                <div id="predict-insight-box" style="margin-top:8px; display:flex; align-items:center; gap:6px;">
-                    <div id="predict-insight-dot" style="width:5px; height:5px; border-radius:50%; background:#64748b;"></div>
-                    <span id="predict-insight-text" style="font-size:0.75rem; font-weight:600; color:var(--ia-muted);">Calculando...</span>
-                </div>
-                <span id="label-ia-meta" style="display:none;">AVANCE MENSUAL</span>
-            </div>
-        </div>
-
-        <div class="premium-card mb-4" style="padding:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <h3 style="font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:6px; margin:0;">
-                    <div style="width:7px;height:7px;background:#00ff66;border-radius:50%;box-shadow:0 0 8px rgba(0,255,102,0.7);"></div>
-                    Hoy
-                </h3>
-                <div style="display:flex; align-items:center; gap:12px; font-size:0.8rem;">
-                    <span class="text-muted"><b id="live-sales-count">0</b> tickets</span>
-                    <b id="live-sales-total" style="color:#00ff66; font-size:0.95rem; font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace; text-shadow:0 0 6px rgba(0,255,102,0.35);">$0</b>
-                </div>
-            </div>
-            <div id="live-sales-feed" class="live-sales-scroller"></div>
-        </div>
-
-        <!-- ============================================================
-             CEO COCKPIT — Widgets inteligentes (mes en curso)
-             ============================================================ -->
-
-        <div style="display:flex; align-items:center; gap:10px; margin:20px 0 10px 0;">
-            <div style="width:4px; height:22px; border-radius:4px; background:var(--primary);"></div>
-            <h2 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--text-primary); letter-spacing:-0.3px;">Indicadores Clave</h2>
-            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
-        </div>
-        <!-- FILA: Ticket promedio · Resumen caja · Forma de pago -->
-        <div class="ceo-row-3 mb-4">
-            <!-- Ticket promedio + Tendencia -->
-            <div class="premium-card ceo-mini">
-                <div class="ceo-mini-label"><i class="ph ph-receipt"></i> Ticket Promedio</div>
-                <div class="ceo-mini-value" id="ceo-avg-ticket">—</div>
-                <div class="ceo-mini-sub" id="ceo-avg-ticket-sub">Calculando…</div>
-                <div class="ceo-mini-foot" id="ceo-avg-ticket-foot"></div>
-            </div>
-
-            <!-- Resumen caja real -->
-            <div class="premium-card ceo-mini" style="border-left:4px solid #00ff66;">
-                <div class="ceo-mini-label"><i class="ph ph-vault"></i> Caja Real del Mes</div>
-                <div class="ceo-mini-value" id="ceo-cash-net">—</div>
-                <div class="ceo-mini-sub" id="ceo-cash-sub">Ingresos − Egresos</div>
-                <div class="ceo-cash-breakdown" id="ceo-cash-breakdown"></div>
-            </div>
-
-            <!-- Forma de pago breakdown -->
-            <div class="premium-card ceo-mini">
-                <div class="ceo-mini-label"><i class="ph ph-wallet"></i> Formas de Pago</div>
-                <div class="ceo-payment-wrap">
-                    <canvas id="paymentDonut" width="110" height="110"></canvas>
-                    <div class="ceo-payment-legend" id="ceo-payment-legend"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ALERTAS INTELIGENTES -->
-        <div class="premium-card mb-4" id="ceo-alerts-card" style="border-left:3px solid #ffc233;">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="font-bold flex items-center gap-2 dash-alerts-heading" style="color:#ffc233; font-size:1.05rem;">
-                    <i class="ph ph-siren text-xl"></i> Alertas
-                </h3>
-                <span class="ceo-alerts-count" id="ceo-alerts-count">0</span>
-            </div>
-            <div id="ceo-alerts-list" class="ceo-alerts-list">
-                <div class="spinner m-auto"></div>
-            </div>
-        </div>
-
-        <div style="display:flex; align-items:center; gap:10px; margin:20px 0 10px 0;">
-            <div style="width:4px; height:22px; border-radius:4px; background:var(--primary);"></div>
-            <h2 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--text-primary); letter-spacing:-0.3px;">Decisiones</h2>
-            <div class="section-divider-line" style="flex:1; height:1px; background:rgba(0,0,0,0.06);"></div>
-        </div>
-        <!-- PANEL DECISIONES -->
-        <div class="decision-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:16px;">
-            <div class="premium-card" style="padding:16px;" id="dec-buy">
-                <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
-                    <i class="ph ph-shopping-cart" style="color:#00e0ff; font-size:1.1rem;"></i>
-                    <span style="font-weight:700; font-size:0.8rem;">Qué reponer</span>
-                </div>
-                <div id="dec-buy-list" style="font-size:0.75rem; display:flex; flex-direction:column; gap:4px;">
-                    <span class="text-muted">Cargando...</span>
-                </div>
-            </div>
-            <div class="premium-card" style="padding:16px;" id="dec-price">
-                <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
-                    <i class="ph ph-arrow-fat-up" style="color:#ffc233; font-size:1.1rem;"></i>
-                    <span style="font-weight:700; font-size:0.8rem;">Subir precio</span>
-                </div>
-                <div id="dec-price-list" style="font-size:0.75rem; display:flex; flex-direction:column; gap:4px;">
-                    <span class="text-muted">Cargando...</span>
-                </div>
-            </div>
-            <div class="premium-card" style="padding:16px;" id="dec-day">
-                <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
-                    <i class="ph ph-calendar-x" style="color:#ff5a5a; font-size:1.1rem;"></i>
-                    <span style="font-weight:700; font-size:0.8rem;">Día más flojo</span>
-                </div>
-                <div id="dec-day-content" style="font-size:0.75rem;">
-                    <span class="text-muted">Cargando...</span>
-                </div>
-            </div>
-            <div class="premium-card" style="padding:16px;" id="dec-cash">
-                <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
-                    <i class="ph ph-piggy-bank" style="color:#00ff66; font-size:1.1rem;"></i>
-                    <span style="font-weight:700; font-size:0.8rem;">Flujo próximo</span>
-                </div>
-                <div id="dec-cash-content" style="font-size:0.75rem;">
-                    <span class="text-muted">Cargando...</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- CTA → Márgenes -->
-        <button class="ceo-margins-cta mb-4" id="ceo-margins-cta-btn" onclick="window._goToMargenes()" style="padding:12px 16px;">
-            <div class="ceo-margins-cta-left">
-                <div class="ceo-margins-cta-icon"><i class="ph ph-chart-line-up"></i></div>
+        <!-- Proyección (mantiene todos los IDs originales, presentación compacta) -->
+        <div id="prediction-container" class="hidden">
+            <div class="ed-projection">
                 <div>
-                    <div class="ceo-margins-cta-title" style="font-size:0.85rem;">Márgenes por Producto</div>
+                    <div class="ed-proj-label"><i class="ph ph-chart-line-up"></i> Proyección Mes</div>
+                    <div style="display:flex; align-items:baseline; gap:8px; margin-top:4px;">
+                        <span id="predict-total" class="ed-proj-value">…</span>
+                        <span id="predict-month-label" class="ed-proj-meta"></span>
+                    </div>
                 </div>
+                <div class="ed-proj-right">
+                    <span id="predict-confidence" style="font-size:0.72rem; color:var(--text-muted); font-weight:600;"></span>
+                    <div id="predict-comparison" style="font-size:0.75rem;"></div>
+                </div>
+                <div id="predict-insight-box" style="display:none;"></div>
             </div>
-            <i class="ph ph-arrow-right ceo-margins-cta-arrow"></i>
-        </button>
+            <div style="height:4px; background:var(--bg-elevated); border-radius:99px; overflow:hidden; margin:-20px 0 28px; position:relative; z-index:1;">
+                <div id="predict-progress-bar" style="height:100%; width:0%; background:var(--primary); border-radius:99px; transition:width 1s ease;"></div>
+            </div>
+            <span id="predict-percent" style="display:none;"></span>
+            <span id="predict-insight-text" style="display:none;"></span>
+            <span id="predict-insight-dot" style="display:none;"></span>
+            <span id="predict-record-value" style="display:none;"></span>
+        </div>
 
-        <!-- Gráfico P&L + Top Proveedores -->
-        <div class="pl-chart-grid">
-            <!-- Gráfico P&L 6 meses -->
-            <div class="card card-anim p-4">
-                <div class="card-header">
-                    <h3 class="font-bold flex items-center gap-2" style="font-size:0.95rem;">
-                        <i class="ph ph-trend-up text-success"></i> Ventas vs Gastos
-                    </h3>
-                    <div class="text-muted" style="font-size:0.75rem;">Últimos 6 meses</div>
+        <!-- ② HOY (live feed) -->
+        <div class="ed-section">
+            <div class="ed-section-head">
+                <span class="ed-today-label"><span class="ed-live-dot"></span> Hoy</span>
+                <div class="ed-today-totals">
+                    <span style="color:var(--text-muted);"><b id="live-sales-count">0</b> tickets</span>
+                    <b id="live-sales-total" style="color:var(--color-success); font-family:var(--font-mono,monospace);">$0</b>
                 </div>
-                <div style="height:200px; width:100%;"><canvas id="plChart"></canvas></div>
+                <div class="ed-section-line"></div>
             </div>
-            <!-- Top 3 proveedores -->
-            <div class="card card-anim p-4">
-                <h3 class="font-bold mb-4 flex items-center gap-2" style="font-size:0.95rem;">
-                    <i class="ph ph-buildings" style="color:#00e0ff;"></i> Top Proveedores
-                </h3>
-                <div id="top-suppliers" class="flex-col gap-4">
-                    <div class="spinner m-auto"></div>
+            <div id="live-sales-feed"></div>
+        </div>
+
+        <!-- ③ SALUD DEL NEGOCIO -->
+        <div class="ed-section">
+            <div class="ed-section-head">
+                <span class="ed-section-title">Salud del Negocio</span>
+                <div class="ed-section-line"></div>
+            </div>
+            <div class="ed-health-row">
+                <div class="ed-score-circle" id="ed-health-circle">
+                    <div class="ed-score-num" id="ed-health-score-num">—</div>
+                    <div class="ed-score-label">/ 100</div>
+                </div>
+                <div>
+                    <div class="ed-health-factors" id="ed-health-factors">
+                        <div style="color:var(--text-muted); font-size:0.82rem;">Calculando…</div>
+                    </div>
+                    <!-- Rentabilidad desglose (mantiene health-detail, health-bar-wrap, health-bar) -->
+                    <div id="health-bar-wrap" style="height:3px; border-radius:99px; overflow:hidden; margin-top:12px; background:var(--bg-elevated);">
+                        <div id="health-bar" style="width:0%; height:100%; transition:width 1s ease;"></div>
+                    </div>
+                    <div id="health-detail"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Widgets fila inferior -->
-        <div class="bottom-widgets-grid">
-            <!-- Próximos pagos empleados -->
-            <div class="card card-anim p-4" style="border-left:3px solid #ff5a5a;">
-                <h3 class="mb-3 font-bold flex items-center gap-2 dash-proxpagos-heading" style="color:#ff5a5a; font-size:1rem;">
-                    <i class="ph ph-money text-xl"></i> Próximos Pagos a Equipo
-                </h3>
-                <div id="upcoming-payments-list" class="text-secondary" style="font-size:0.85rem;">
-                    <div class="spinner m-auto"></div>
-                </div>
+        <!-- ④ ACCIONES RECOMENDADAS -->
+        <div class="ed-section">
+            <div class="ed-section-head">
+                <span class="ed-section-title">Acciones Recomendadas</span>
+                <div class="ed-section-line"></div>
             </div>
-            <!-- Facturas a crédito -->
-            <div class="card card-anim p-4" id="credit-widget" style="border-left:3px solid #ffc233; cursor:pointer;">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-bold flex items-center gap-2 dash-facturas-heading" style="color:#ffc233; font-size:1rem;">
-                        <i class="ph ph-clock-countdown text-xl"></i> Facturas por Pagar (Crédito)
-                    </h3>
-                    <i class="ph ph-arrow-right text-muted"></i>
+            <div class="ed-rec-list" id="ed-rec-list">
+                <div style="color:var(--text-muted); font-size:0.82rem; padding:8px 0;">Calculando…</div>
+            </div>
+        </div>
+
+        <!-- ⑤ VENTAS Y RENTABILIDAD -->
+        <div class="ed-section">
+            <div class="ed-section-head">
+                <span class="ed-section-title">Ventas y Rentabilidad</span>
+                <div class="ed-section-line"></div>
+            </div>
+            <div class="ed-sales-grid">
+                <div>
+                    <div style="height:200px; width:100%;"><canvas id="plChart"></canvas></div>
+                    <div class="ed-narrative" id="ed-sales-narrative"></div>
                 </div>
-                <div id="credit-widget-content" class="text-secondary" style="font-size:0.85rem;">
-                    <div class="spinner m-auto"></div>
+                <div>
+                    <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:10px;">Forma de Pago</div>
+                    <div class="ed-payment-wrap">
+                        <canvas id="paymentDonut" width="100" height="100"></canvas>
+                        <div class="ed-payment-legend" id="ceo-payment-legend"></div>
+                    </div>
+                    <div style="margin-top:16px;">
+                        <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:8px;">Ticket Promedio</div>
+                        <div style="font-family:var(--font-mono,monospace); font-size:1.4rem; font-weight:800; color:var(--text-primary);" id="ceo-avg-ticket">—</div>
+                        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;" id="ceo-avg-ticket-sub"></div>
+                        <div id="ceo-avg-ticket-foot" style="margin-top:4px;"></div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- ⑥ CAJA Y FLUJO -->
+        <div class="ed-section">
+            <div class="ed-section-head">
+                <span class="ed-section-title">Caja y Flujo</span>
+                <div class="ed-section-line"></div>
+            </div>
+            <div class="ed-caja-grid">
+                <div class="ed-caja-cell">
+                    <div class="ed-caja-label">Caja disponible</div>
+                    <div class="ed-caja-value" id="ed-caja-disp">—</div>
+                    <div class="ed-caja-sub" id="ceo-cash-breakdown2"></div>
+                </div>
+                <div class="ed-caja-cell">
+                    <div class="ed-caja-label">Ingresos esperados</div>
+                    <div class="ed-caja-value" id="ed-ingresos-esp">—</div>
+                    <div class="ed-caja-sub" id="ed-ingresos-sub"></div>
+                </div>
+                <div class="ed-caja-cell">
+                    <div class="ed-caja-label">Pagos pendientes</div>
+                    <div class="ed-caja-value" id="ed-pagos-pend">—</div>
+                    <div class="ed-caja-sub" id="ed-pagos-sub"></div>
+                </div>
+                <div class="ed-caja-cell">
+                    <div class="ed-caja-label">Liquidez 30d</div>
+                    <div class="ed-caja-value" id="dec-cash-content">—</div>
+                    <div class="ed-caja-sub" id="ed-liquidez-sub"></div>
+                </div>
+            </div>
+            <!-- hidden breakdown for legacy population -->
+            <div id="ceo-cash-breakdown" style="display:none;"></div>
+        </div>
+
+        <!-- ⑦ OPERACIÓN -->
+        <div class="ed-section">
+            <div class="ed-section-head">
+                <span class="ed-section-title">Operación</span>
+                <div class="ed-section-line"></div>
+            </div>
+            <div class="ed-ops-grid">
+                <div class="ed-ops-card">
+                    <div class="ed-ops-head"><i class="ph ph-shopping-cart" style="color:var(--primary);"></i> Qué reponer</div>
+                    <div class="ed-ops-list" id="dec-buy-list"><span style="color:var(--text-muted); font-size:0.8rem;">Cargando…</span></div>
+                </div>
+                <div class="ed-ops-card">
+                    <div class="ed-ops-head"><i class="ph ph-arrow-fat-up" style="color:var(--color-warning);"></i> Subir precio</div>
+                    <div class="ed-ops-list" id="dec-price-list"><span style="color:var(--text-muted); font-size:0.8rem;">Cargando…</span></div>
+                </div>
+                <div class="ed-ops-card">
+                    <div class="ed-ops-head"><i class="ph ph-calendar-x" style="color:var(--danger);"></i> Día más flojo</div>
+                    <div id="dec-day-content" style="font-size:0.82rem;"><span style="color:var(--text-muted);">Cargando…</span></div>
+                </div>
+                <div class="ed-ops-card">
+                    <div class="ed-ops-head"><i class="ph ph-money" style="color:var(--danger);"></i> Próximos pagos</div>
+                    <div id="upcoming-payments-list" style="font-size:0.82rem; color:var(--text-secondary);"><div class="spinner m-auto"></div></div>
+                </div>
+            </div>
+            <!-- CTA Márgenes -->
+            <button id="ceo-margins-cta-btn" onclick="window._goToMargenes()" style="margin-top:12px; display:flex; align-items:center; justify-content:space-between; width:100%; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:12px 16px; cursor:pointer; transition:border-color 0.2s; text-align:left;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+                <span style="display:flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:600; color:var(--text-secondary);"><i class="ph ph-chart-line-up" style="color:var(--primary);"></i> Ver análisis completo de márgenes</span>
+                <i class="ph ph-arrow-right" style="color:var(--text-muted);"></i>
+            </button>
+        </div>
+
+        <!-- ⑧ ALERTAS -->
+        <div class="ed-section" id="ceo-alerts-card">
+            <div class="ed-section-head">
+                <span class="ed-section-title">Alertas</span>
+                <span class="ceo-alerts-count" id="ceo-alerts-count" style="margin-left:4px;">0</span>
+                <div class="ed-section-line"></div>
+            </div>
+            <div id="ceo-alerts-list">
+                <div style="color:var(--text-muted); font-size:0.82rem; padding:8px 0;">Calculando…</div>
+            </div>
+            <!-- Alertas accionables con $ (computeActionableAlerts) -->
+            <div id="ed-actionable-alerts" style="margin-top:8px;"></div>
+            <!-- Vencimiento productos -->
+            <div id="expiry-alerts-container" class="hidden" style="margin-top:8px;">
+                <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:8px;">Vencimientos</div>
+                <div id="expiry-alerts-list"></div>
+            </div>
+        </div>
+
+        <!-- ⑨ PROVEEDORES -->
+        <div class="ed-section">
+            <div class="ed-section-head">
+                <span class="ed-section-title">Proveedores</span>
+                <div class="ed-section-line"></div>
+            </div>
+            <div id="top-suppliers"><div class="spinner m-auto"></div></div>
+            <!-- Facturas crédito -->
+            <div id="credit-widget" style="margin-top:14px; padding:14px 16px; background:var(--bg-card); border:1px solid rgba(245,177,76,0.3); border-radius:10px; cursor:pointer;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <span style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--color-warning);">Facturas a crédito</span>
+                    <i class="ph ph-arrow-right" style="color:var(--text-muted);"></i>
+                </div>
+                <div id="credit-widget-content" style="font-size:0.85rem; color:var(--text-secondary);"><div class="spinner m-auto"></div></div>
+            </div>
+        </div>
+
+        <!-- Terminal ticker (hidden, mantiene IDs para el renderTerminalTicker) -->
+        <div id="terminal-ticker" style="display:none;"></div>
+
+        <!-- Legacy hidden IDs for remaining population code -->
+        <div id="dec-buy" style="display:none;"></div>
+        <div id="dec-price" style="display:none;"></div>
+        <div id="dec-day" style="display:none;"></div>
+        <div id="dec-cash" style="display:none;"></div>
+
     </div>
     `;
     } // End if(!isAlreadyRendered)
@@ -1218,16 +1447,16 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         if (alertsList) {
             if (alerts.length === 0) {
                 alertsList.innerHTML = `
-                    <div class="ceo-alert-item sev-low" style="border-left-color:#10b981; background:rgba(16,185,129,0.06);">
-                        <i class="ph ph-check-circle main" style="color:#10b981;"></i>
-                        <div class="ceo-alert-text">Sin alertas</div>
+                    <div class="ed-alert-item sev-low" style="border-color:rgba(34,197,94,0.3); background:rgba(34,197,94,0.05);">
+                        <span class="ed-alert-icon" style="color:var(--color-success);">✔</span>
+                        <div class="ed-alert-text">Sin alertas activas</div>
                     </div>`;
                 if (alertsCount) { alertsCount.textContent = '0'; alertsCount.classList.add('zero'); }
             } else {
                 alertsList.innerHTML = alerts.map((a, idx) => {
                     const hasDetails = a.details && a.details.items && a.details.items.length > 0;
                     const detailRows = hasDetails ? a.details.items.map(it => `
-                        <div class="ceo-alert-detail-row">
+                        <div class="ed-alert-detail-row">
                             <div class="cd-main">
                                 <div class="cd-name">${window.Utils.escapeHTML(it.name)}</div>
                                 ${it.sub ? `<div class="cd-sub">${window.Utils.escapeHTML(it.sub)}</div>` : ''}
@@ -1235,24 +1464,23 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                             ${it.right ? `<div class="cd-right">${it.right}</div>` : ''}
                         </div>`).join('') : '';
                     return `
-                    <div class="ceo-alert-wrap">
-                        <div class="ceo-alert-item sev-${a.sev} ${hasDetails ? 'expandable' : ''}" data-alert-idx="${idx}">
-                            <i class="ph ${a.icon} main" style="color:${a.color};"></i>
-                            <div class="ceo-alert-text">${a.html}</div>
-                            <div class="ceo-alert-meta">${a.meta}</div>
-                            ${hasDetails ? '<i class="ph ph-caret-down ceo-alert-caret"></i>' : ''}
+                    <div>
+                        <div class="ed-alert-item sev-${a.sev} ${hasDetails ? 'expandable' : ''}" data-alert-idx="${idx}">
+                            <i class="ph ${a.icon} ed-alert-icon" style="color:${a.color};"></i>
+                            <div class="ed-alert-text">${a.html}</div>
+                            <div class="ed-alert-meta">${a.meta}</div>
+                            ${hasDetails ? '<i class="ph ph-caret-down ed-alert-caret"></i>' : ''}
                         </div>
                         ${hasDetails ? `
-                            <div class="ceo-alert-details" data-alert-details="${idx}">
+                            <div class="ed-alert-details" data-alert-details="${idx}">
                                 ${detailRows}
-                                ${a.details.items.length < (a.details.total || a.details.items.length) ? `<div class="ceo-alert-more text-muted text-xs">Mostrando primeros ${a.details.items.length}.</div>` : ''}
                             </div>` : ''}
                     </div>`;
                 }).join('');
                 if (alertsCount) { alertsCount.textContent = alerts.length; alertsCount.classList.remove('zero'); }
 
                 // Toggle expandible
-                alertsList.querySelectorAll('.ceo-alert-item.expandable').forEach(item => {
+                alertsList.querySelectorAll('.ed-alert-item.expandable').forEach(item => {
                     item.addEventListener('click', (e) => {
                         if (e.target.closest('a')) return; // No romper links internos
                         const idx = item.dataset.alertIdx;
@@ -1264,15 +1492,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     });
                 });
             }
-            // CTA Márgenes al pie del panel de alertas
-            const alertsCard = document.getElementById('ceo-alerts-card');
-            if (alertsCard && !alertsCard.querySelector('.ceo-alerts-cta-link')) {
-                const ctaDiv = document.createElement('div');
-                ctaDiv.className = 'ceo-alerts-cta-link';
-                ctaDiv.style.cssText = 'margin-top:14px; padding-top:12px; border-top:1px solid rgba(0,0,0,0.07); display:flex; justify-content:flex-end;';
-                ctaDiv.innerHTML = `<button onclick="window._goToMargenes()" style="display:flex; align-items:center; gap:6px; background:none; border:none; font-size:0.8rem; font-weight:700; color:#6366f1; cursor:pointer; padding:4px 0; opacity:0.85; transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'"><i class="ph ph-chart-line-up"></i> Ver análisis completo en Márgenes <i class="ph ph-arrow-right"></i></button>`;
-                alertsCard.appendChild(ctaDiv);
-            }
+            // CTA Márgenes al pie del panel de alertas — removed (now integrated in Operación section)
         }
 
         // ============================================================
@@ -1833,6 +2053,104 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 });
             }
         };
+
+        // ── NUEVAS SECCIONES EDITORIALES ──
+
+        // ① Health Score (franja header + círculo)
+        const healthCtx = {
+            ventasMes, ventasPrev, utilidadNetaMonto, gastoTotal,
+            products, invoices,
+            eleventaSales, currentMonthStr
+        };
+        const healthResult = computeHealthScore(healthCtx);
+        const hsNum = document.getElementById('ed-health-score-num');
+        const hsHeader = document.getElementById('ed-health-score-header');
+        const hsCircle = document.getElementById('ed-health-circle');
+        const hsFactors = document.getElementById('ed-health-factors');
+        if (hsNum) hsNum.textContent = healthResult.score;
+        if (hsHeader) hsHeader.textContent = healthResult.score + '/100';
+        const scoreColor = healthResult.score >= 75 ? 'var(--color-success)' : healthResult.score >= 50 ? 'var(--color-warning)' : 'var(--danger)';
+        if (hsCircle) hsCircle.style.borderColor = scoreColor;
+        if (hsNum) hsNum.style.color = scoreColor;
+        if (hsFactors) {
+            hsFactors.innerHTML = healthResult.factors.map(f => `
+                <div class="ed-factor-row">
+                    <span class="ed-factor-icon" style="color:${f.estado === 'ok' ? 'var(--color-success)' : 'var(--color-warning)'};">
+                        ${f.estado === 'ok' ? '✔' : '⚠'}
+                    </span>
+                    <span class="ed-factor-name">${f.nombre}</span>
+                    <span class="ed-factor-pts">${f.pts}/${f.max}</span>
+                </div>`).join('');
+        }
+
+        // ④ Acciones recomendadas
+        const recs = computeRecommendations(products, eleventaSales, invoices);
+        const recList = document.getElementById('ed-rec-list');
+        if (recList) {
+            if (recs.length === 0) {
+                recList.innerHTML = '<div style="color:var(--text-muted); font-size:0.82rem; padding:8px 0;">Sin acciones críticas detectadas.</div>';
+            } else {
+                recList.innerHTML = recs.map(r => `
+                    <div class="ed-rec-item">
+                        <span class="ed-rec-chip ed-chip-${r.urgencia}">${r.urgencia}</span>
+                        <span class="ed-rec-title">${window.Utils.escapeHTML(r.titulo)}</span>
+                        <span class="ed-rec-tipo">${r.tipo}</span>
+                        <span class="ed-rec-impact">+${wmCompact(r.impacto)}</span>
+                    </div>`).join('');
+            }
+        }
+
+        // ⑤ Narrativa ventas inline (debajo del gráfico)
+        const salesNarrative = document.getElementById('ed-sales-narrative');
+        if (salesNarrative) {
+            const deltaV = wmDelta(ventasMes, ventasPrev);
+            const deltaG = wmDelta(gastoTotal, gastoPrev);
+            const margenColor = margenNetoPct >= 15 ? 'var(--color-success)' : margenNetoPct >= 5 ? 'var(--color-warning)' : 'var(--danger)';
+            salesNarrative.innerHTML = `
+                <div class="ed-narrative-row">
+                    <span class="ed-nar-label">Ventas del mes</span>
+                    <span class="ed-nar-val">${fmt(ventasMes)} <span style="font-size:0.72rem; color:${deltaV.up ? 'var(--color-success)' : 'var(--danger)'};">${deltaV.arrow} ${deltaV.pct}</span></span>
+                </div>
+                <div class="ed-narrative-row">
+                    <span class="ed-nar-label">Gastos</span>
+                    <span class="ed-nar-val">${fmt(gastoTotal)} <span style="font-size:0.72rem; color:${deltaG.up ? 'var(--danger)' : 'var(--color-success)'};">${deltaG.arrow} ${deltaG.pct}</span></span>
+                </div>
+                <div class="ed-narrative-row">
+                    <span class="ed-nar-label">Utilidad neta</span>
+                    <span class="ed-nar-val" style="color:${margenColor};">${fmt(utilidadNetaMonto)} <span style="font-size:0.72rem;">(${margenNetoPct.toFixed(1)}%)</span></span>
+                </div>`;
+        }
+
+        // ⑥ Caja y Flujo — llenar celdas editoriales
+        const edCajaDisp = document.getElementById('ed-caja-disp');
+        if (edCajaDisp) {
+            edCajaDisp.textContent = fmt(cajaNeta);
+            edCajaDisp.style.color = cajaNeta >= 0 ? 'var(--color-success)' : 'var(--danger)';
+        }
+        const edIngresosEsp = document.getElementById('ed-ingresos-esp');
+        const edIngEspSub   = document.getElementById('ed-ingresos-sub');
+        if (edIngresosEsp) edIngresosEsp.textContent = fmt(projectedIncome);
+        if (edIngEspSub) edIngEspSub.textContent = `${daysLeft} días restantes`;
+
+        const pendInvoicesEd = invoices.filter(i => i.paymentMethod === 'Crédito' && i.paymentStatus === 'Pendiente');
+        const pendTotalEd    = pendInvoicesEd.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+        const payrollEd      = employees.reduce((s, e) => s + (parseFloat(e.baseSalary) || 0), 0);
+        const edPagosPend    = document.getElementById('ed-pagos-pend');
+        const edPagosSub     = document.getElementById('ed-pagos-sub');
+        if (edPagosPend) { edPagosPend.textContent = fmt(pendTotalEd + payrollEd); edPagosPend.style.color = 'var(--danger)'; }
+        if (edPagosSub) edPagosSub.textContent = `${pendInvoicesEd.length} facturas + sueldos`;
+
+        // ⑧ Alertas accionables con $
+        const actionableAlerts = computeActionableAlerts(products, eleventaSales);
+        const edActAlerts = document.getElementById('ed-actionable-alerts');
+        if (edActAlerts && actionableAlerts.length > 0) {
+            edActAlerts.innerHTML = actionableAlerts.slice(0, 5).map(a => `
+                <div class="ed-alert-item sev-high">
+                    <span class="ed-alert-icon" style="color:var(--danger);">⚠</span>
+                    <span class="ed-alert-text">${window.Utils.escapeHTML(a.msg)}</span>
+                    <span class="ed-alert-meta">${wmCompact(a.impacto)}/mes</span>
+                </div>`).join('');
+        }
 
         // ---- (Actividad Reciente removed) ----
 
