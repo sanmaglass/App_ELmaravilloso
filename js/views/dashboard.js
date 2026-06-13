@@ -199,13 +199,22 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             border-radius: 16px;
             margin-bottom: 28px;
             overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
         }
         .ed-metric {
             padding: 18px 18px 16px;
             background: var(--bg-card);
             position: relative;
             min-width: 0;                   /* evita desborde del grid */
+            border-top: 3px solid transparent;
+            transition: background .2s;
         }
+        .ed-metric:hover { background: var(--bg-elevated); }
+        .acc-ventas { border-top-color: var(--primary); }
+        .acc-gastos { border-top-color: var(--danger); }
+        .acc-utilidad { border-top-color: var(--color-success); }
+        .acc-caja { border-top-color: #14b8a6; }
+        .acc-salud { border-top-color: var(--color-warning); }
         .ed-metric-label {
             font-size: 0.74rem;
             font-weight: 600;
@@ -343,9 +352,14 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         /* Ventas y rentabilidad */
         .ed-sales-grid {
             display: grid;
-            grid-template-columns: 1fr 220px;
+            grid-template-columns: 1fr 280px;
             gap: 24px;
             align-items: start;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
         }
         @media (max-width: 768px) { .ed-sales-grid { grid-template-columns: 1fr; } }
         .ed-narrative {
@@ -375,6 +389,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             border: 1px solid var(--border);
             border-radius: 12px;
             overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
         }
         .ed-caja-cell {
             padding: 18px 16px;
@@ -398,6 +413,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
         }
         .ed-ops-head {
             display: flex;
@@ -568,32 +584,59 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         <!-- ① FRANJA HEADER: 5 métricas clave -->
         <div class="ed-header-band">
-            <div class="ed-metric">
+            <div class="ed-metric acc-ventas">
                 <div class="ed-metric-label">Ventas</div>
                 <div class="ed-metric-value" id="kpi-ventas-mes">…</div>
                 <div class="ed-metric-delta" id="kpi-ventas-mes-badge"></div>
                 <div class="spark-container" style="margin-top:8px;"><canvas id="spark-ventas"></canvas></div>
             </div>
-            <div class="ed-metric">
+            <div class="ed-metric acc-gastos">
                 <div class="ed-metric-label">Gastos</div>
                 <div class="ed-metric-value" id="kpi-gasto-mes">…</div>
                 <div class="ed-metric-delta" id="kpi-gasto-mes-badge"></div>
                 <div class="spark-container" style="margin-top:8px;"><canvas id="spark-gastos"></canvas></div>
             </div>
-            <div class="ed-metric">
+            <div class="ed-metric acc-utilidad">
                 <div class="ed-metric-label">Utilidad</div>
                 <div class="ed-metric-value" id="kpi-margen-neto">…</div>
                 <div class="ed-metric-delta" id="health-ratio-pct" style="color:var(--text-muted); font-size:0.72rem; margin-top:4px;"></div>
             </div>
-            <div class="ed-metric">
+            <div class="ed-metric acc-caja">
                 <div class="ed-metric-label">Caja Real</div>
                 <div class="ed-metric-value" id="ceo-cash-net">…</div>
                 <div class="ed-metric-delta" id="ceo-cash-sub" style="color:var(--text-muted); font-size:0.68rem; margin-top:4px;"></div>
             </div>
-            <div class="ed-metric">
+            <div class="ed-metric acc-salud">
                 <div class="ed-metric-label">Salud</div>
                 <div class="ed-metric-value" id="ed-health-score-header">—</div>
                 <div id="health-label" style="font-size:0.72rem; color:var(--text-muted); margin-top:4px; font-weight:600;"></div>
+            </div>
+        </div>
+
+        <!-- ⑤ VENTAS Y RENTABILIDAD -->
+        <div class="ed-section">
+            <div class="ed-section-head">
+                <span class="ed-section-title">Ventas y Rentabilidad</span>
+                <div class="ed-section-line"></div>
+            </div>
+            <div class="ed-sales-grid">
+                <div>
+                    <div style="height:340px; width:100%;"><canvas id="plChart"></canvas></div>
+                    <div class="ed-narrative" id="ed-sales-narrative"></div>
+                </div>
+                <div>
+                    <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:10px;">Forma de Pago</div>
+                    <div class="ed-payment-wrap">
+                        <canvas id="paymentDonut" width="100" height="100"></canvas>
+                        <div class="ed-payment-legend" id="ceo-payment-legend"></div>
+                    </div>
+                    <div style="margin-top:16px;">
+                        <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:8px;">Ticket Promedio</div>
+                        <div style="font-family:var(--font-mono,monospace); font-size:1.4rem; font-weight:800; color:var(--text-primary);" id="ceo-avg-ticket">—</div>
+                        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;" id="ceo-avg-ticket-sub"></div>
+                        <div id="ceo-avg-ticket-foot" style="margin-top:4px;"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -667,33 +710,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
             <div class="ed-rec-list" id="ed-rec-list">
                 <div style="color:var(--text-muted); font-size:0.82rem; padding:8px 0;">Calculando…</div>
-            </div>
-        </div>
-
-        <!-- ⑤ VENTAS Y RENTABILIDAD -->
-        <div class="ed-section">
-            <div class="ed-section-head">
-                <span class="ed-section-title">Ventas y Rentabilidad</span>
-                <div class="ed-section-line"></div>
-            </div>
-            <div class="ed-sales-grid">
-                <div>
-                    <div style="height:200px; width:100%;"><canvas id="plChart"></canvas></div>
-                    <div class="ed-narrative" id="ed-sales-narrative"></div>
-                </div>
-                <div>
-                    <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:10px;">Forma de Pago</div>
-                    <div class="ed-payment-wrap">
-                        <canvas id="paymentDonut" width="100" height="100"></canvas>
-                        <div class="ed-payment-legend" id="ceo-payment-legend"></div>
-                    </div>
-                    <div style="margin-top:16px;">
-                        <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:8px;">Ticket Promedio</div>
-                        <div style="font-family:var(--font-mono,monospace); font-size:1.4rem; font-weight:800; color:var(--text-primary);" id="ceo-avg-ticket">—</div>
-                        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;" id="ceo-avg-ticket-sub"></div>
-                        <div id="ceo-avg-ticket-foot" style="margin-top:4px;"></div>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -1853,12 +1869,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         const plCtx = document.getElementById('plChart').getContext('2d');
         const plGradientV = plCtx.createLinearGradient(0, 0, 0, 250);
-        plGradientV.addColorStop(0, 'rgba(0, 255, 102, 0.35)');
-        plGradientV.addColorStop(1, 'rgba(0, 255, 102, 0)');
+        plGradientV.addColorStop(0, 'rgba(76,141,255,0.30)');
+        plGradientV.addColorStop(1, 'rgba(76,141,255,0)');
 
         const plGradientG = plCtx.createLinearGradient(0, 0, 0, 250);
-        plGradientG.addColorStop(0, 'rgba(0, 224, 255, 0.25)');
-        plGradientG.addColorStop(1, 'rgba(0, 224, 255, 0)');
+        plGradientG.addColorStop(0, 'rgba(148,163,184,0.18)');
+        plGradientG.addColorStop(1, 'rgba(148,163,184,0)');
 
         const existPL = Chart.getChart('plChart');
         if (existPL) existPL.destroy();
@@ -1871,20 +1887,20 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     {
                         label: 'Ventas',
                         data: months6Sales,
-                        borderColor: '#00ff66',
+                        borderColor: '#4c8dff',
                         backgroundColor: plGradientV,
                         fill: true, tension: 0.4, pointRadius: 4,
-                        borderWidth: 3, pointBackgroundColor: '#0e1611',
-                        pointBorderWidth: 2, pointBorderColor: '#00ff66'
+                        borderWidth: 3, pointBackgroundColor: '#0e1117',
+                        pointBorderWidth: 2, pointBorderColor: '#4c8dff'
                     },
                     {
                         label: 'Compras',
                         data: months6Costs,
-                        borderColor: '#00e0ff',
+                        borderColor: '#94a3b8',
                         backgroundColor: plGradientG,
                         fill: true, tension: 0.4, pointRadius: 4,
-                        borderWidth: 3, pointBackgroundColor: '#0e1611',
-                        pointBorderWidth: 2, pointBorderColor: '#00e0ff'
+                        borderWidth: 2, pointBackgroundColor: '#0e1117',
+                        pointBorderWidth: 2, pointBorderColor: '#94a3b8'
                     }
                 ]
             },
@@ -1949,7 +1965,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             return allExpenses.filter(e => !e.deleted && e.date && e.date.startsWith(m))
                 .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
         });
-        createSpark('spark-ventas', sparkVentas, '#10b981');
+        createSpark('spark-ventas', sparkVentas, '#4c8dff');
         createSpark('spark-gastos', sparkGastos, '#ef4444');
 
         // ── Terminal ticker (estilo Bloomberg): nº + delta ▲▼ + sparkline ──
