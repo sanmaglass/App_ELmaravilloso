@@ -25,6 +25,45 @@ const views = {
     barcode: () => window.Views.barcode(document.getElementById('view-container'))
 };
 
+// ── Tema "hacker terminal" para Chart.js (aplica a TODOS los gráficos) ──
+(function themeCharts() {
+    if (typeof window.Chart === 'undefined' || window.Chart._wmThemed) return;
+    try {
+        const C = window.Chart;
+        C._wmThemed = true;
+        const mono = "'JetBrains Mono','Cascadia Code','SF Mono','Consolas',monospace";
+        C.defaults.font.family = mono;
+        C.defaults.font.size = 11;
+        C.defaults.color = '#7fcf9f';
+        C.defaults.borderColor = 'rgba(0,255,102,0.10)';
+        const el = C.defaults.elements || {};
+        if (el.line) { el.line.tension = 0.35; el.line.borderWidth = 2; }
+        if (el.point) { el.point.radius = 0; el.point.hoverRadius = 5; el.point.hoverBackgroundColor = '#00ff66'; el.point.hoverBorderColor = '#00ff66'; }
+        if (el.bar) { el.bar.borderRadius = 4; }
+        if (el.arc) { el.arc.borderColor = '#070b08'; el.arc.borderWidth = 2; }
+        const P = C.defaults.plugins || {};
+        if (P.legend) { P.legend.labels = P.legend.labels || {}; P.legend.labels.color = '#7fcf9f'; P.legend.labels.boxWidth = 10; P.legend.labels.font = { family: mono, size: 10 }; }
+        if (P.tooltip) {
+            Object.assign(P.tooltip, {
+                backgroundColor: 'rgba(7,11,8,0.96)', borderColor: 'rgba(0,255,102,0.45)', borderWidth: 1,
+                titleColor: '#00ff66', bodyColor: '#d8ffe6', padding: 10, cornerRadius: 6, displayColors: false,
+                titleFont: { family: mono, weight: '700' }, bodyFont: { family: mono }
+            });
+        }
+        if (C.defaults.scale && C.defaults.scale.grid) {
+            C.defaults.scale.grid.color = 'rgba(0,255,102,0.07)';
+            C.defaults.scale.ticks = C.defaults.scale.ticks || {};
+            C.defaults.scale.ticks.color = '#7fcf9f';
+        }
+        // Glow neón verde en los datos (líneas/barras/arcos)
+        C.register({
+            id: 'wmGlow',
+            beforeDatasetsDraw(chart) { const x = chart.ctx; x.save(); x.shadowColor = 'rgba(0,255,102,0.45)'; x.shadowBlur = 7; },
+            afterDatasetsDraw(chart) { chart.ctx.restore(); }
+        });
+    } catch (e) { console.warn('themeCharts:', e); }
+})();
+
 // --- AUTH GATE: Supabase Auth ---
 // Versión de sesión — v3 = Supabase Auth (v2 era hash local)
 const SESSION_VERSION = '3';

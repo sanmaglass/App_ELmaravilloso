@@ -267,59 +267,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .mobile-only { display: none; }
         @media (max-width: 768px) { .mobile-only { display: grid; } }
 
-        .quick-access-grid {
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            padding: 8px 16px;
-            margin-bottom: 16px;
-        }
 
-        @media (max-width: 400px) {
-            .quick-access-grid { grid-template-columns: repeat(3, 1fr); }
-        }
-
-        .quick-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-            padding: 12px 6px;
-            background: var(--bg-card, #fff);
-            border: 1px solid var(--border, rgba(0,0,0,0.1));
-            border-radius: 12px;
-            color: var(--text-secondary);
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: none;
-            letter-spacing: 0;
-            cursor: pointer;
-            transition: background 0.12s ease, transform 0.12s ease;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .quick-btn i {
-            font-size: 20px;
-            color: var(--text-secondary);
-        }
-
-        .quick-btn:active {
-            background: var(--bg-input, rgba(0,0,0,0.05));
-            transform: scale(0.95);
-        }
-
-        /* Dark mode */
-        body.dark-mode .quick-btn {
-            background: var(--bg-card);
-            border-color: rgba(255,255,255,0.14);
-            color: var(--text-secondary);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        }
-        body.dark-mode .quick-btn i {
-            color: var(--text-secondary);
-        }
-        body.dark-mode .quick-btn:active {
-            background: var(--bg-input);
-        }
     </style>
 
     <!-- Header -->
@@ -339,41 +287,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         </div>
     </div>
 
-    <!-- Accesos Rápidos — solo mobile -->
-    <div class="quick-access-grid mobile-only">
-        <button class="quick-btn" onclick="document.querySelector('[data-view=cash_register]').click()">
-            <i class="ph ph-vault"></i>
-            <span>Arqueo</span>
-        </button>
-        <button class="quick-btn" onclick="document.querySelector('[data-view=profit_monitor]').click()">
-            <i class="ph ph-chart-line-up"></i>
-            <span>Márgenes</span>
-        </button>
-        <button class="quick-btn" onclick="document.querySelector('[data-view=purchase_invoices]').click()">
-            <i class="ph ph-receipt"></i>
-            <span>Facturas</span>
-        </button>
-        <button class="quick-btn" onclick="document.querySelector('[data-view=employees]').click()">
-            <i class="ph ph-users"></i>
-            <span>Personal</span>
-        </button>
-        <button class="quick-btn" onclick="document.querySelector('[data-view=credits]').click()">
-            <i class="ph ph-hand-holding-dollar"></i>
-            <span>Créditos</span>
-        </button>
-        <button class="quick-btn" onclick="document.querySelector('[data-view=suppliers]').click()">
-            <i class="ph ph-buildings"></i>
-            <span>Proveedores</span>
-        </button>
-        <button class="quick-btn" onclick="document.querySelector('[data-view=loans]').click()">
-            <i class="ph ph-hand-coins"></i>
-            <span>Préstamos</span>
-        </button>
-        <button class="quick-btn" onclick="document.querySelector('[data-view=settings]').click()">
-            <i class="ph ph-gear"></i>
-            <span>Ajustes</span>
-        </button>
-    </div>
+
 
     <!-- ===================== TAB 1: RESUMEN ===================== -->
     <div id="tab-resumen" class="dash-tab-content active">
