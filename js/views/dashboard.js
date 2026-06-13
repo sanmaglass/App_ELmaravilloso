@@ -4,6 +4,27 @@
 // ==========================================
 window.Views = window.Views || {};
 
+// ── Helpers terminal: sparkline Unicode + delta ▲▼ + formato compacto ──
+function wmSpark(arr) {
+    const b = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+    const n = (arr || []).map(v => +v || 0);
+    if (!n.length) return '';
+    const max = Math.max(...n), min = Math.min(...n), r = (max - min) || 1;
+    return n.map(v => b[Math.max(0, Math.min(7, Math.floor((v - min) / r * 7.999)))]).join('');
+}
+function wmCompact(n) {
+    n = +n || 0; const a = Math.abs(n);
+    if (a >= 1e6) return '$' + (n / 1e6).toFixed(2).replace('.', ',') + 'M';
+    if (a >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
+    return '$' + Math.round(n);
+}
+function wmDelta(cur, prev) {
+    cur = +cur || 0; prev = +prev || 0;
+    if (!prev) return { arrow: '·', pct: 's/d', up: null };
+    const d = (cur - prev) / Math.abs(prev) * 100, up = d >= 0;
+    return { arrow: up ? '▲' : '▼', pct: (up ? '+' : '') + d.toFixed(1).replace('.', ',') + '%', up };
+}
+
 window.Views.dashboard = async (container, selectedMonth = null) => {
     // 🔍 SMART REFRESH CHECK: If basic shell already exists, skip innerHTML overwrite
     const isAlreadyRendered = document.getElementById('tab-resumen') !== null;
@@ -17,6 +38,24 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .kpi-card { border-top:1px solid rgba(0,255,102,0.30) !important; }
         .kpi-card::after { content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit; background:repeating-linear-gradient(0deg, rgba(0,255,102,0.05) 0 1px, transparent 1px 3px); opacity:.5; }
         .dash-tab { font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace; }
+
+        /* ===== TERMINAL TICKER (estilo Bloomberg/consola) ===== */
+        .term-ticker-wrap { margin: 2px 0 18px; }
+        .term-ticker { background:#050a07; border:1px solid rgba(0,255,102,0.22); border-radius:12px; overflow:hidden; font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace; box-shadow:0 0 24px rgba(0,255,102,0.06), inset 0 0 40px rgba(0,255,102,0.02); }
+        .term-ticker-head { display:flex; justify-content:space-between; align-items:center; padding:7px 12px; border-bottom:1px solid rgba(0,255,102,0.14); font-size:0.6rem; letter-spacing:0.18em; color:#00ff66; text-transform:uppercase; }
+        .term-ticker-head .blink { animation: wm-tblink 1.1s step-end infinite; }
+        @keyframes wm-tblink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+        .term-row { display:grid; grid-template-columns: 92px 1fr auto 78px; align-items:center; gap:10px; padding:11px 12px; border-bottom:1px solid rgba(0,255,102,0.06); }
+        .term-row:last-child { border-bottom:none; }
+        .term-label { font-size:0.6rem; letter-spacing:0.12em; color:#5f9c79; text-transform:uppercase; }
+        .term-spark { font-size:1.05rem; line-height:1; color:#00ff66; letter-spacing:1px; text-shadow:0 0 8px rgba(0,255,102,0.45); white-space:nowrap; overflow:hidden; }
+        .term-val { font-size:1.15rem; font-weight:700; color:#d8ffe6; text-shadow:0 0 10px rgba(0,255,102,0.22); white-space:nowrap; }
+        .term-delta { font-size:0.78rem; font-weight:700; text-align:right; white-space:nowrap; }
+        .term-delta.up { color:#00ff66; }
+        .term-delta.down { color:#ff5a5a; }
+        .term-delta.warn { color:#ffc233; }
+        .term-delta.flat { color:#5f9c79; }
+        @media (max-width:520px) { .term-row { grid-template-columns: 76px 1fr 70px; } .term-spark { display:none; } }
 
         /* ---- Sub-Tab System ---- */
         .dash-tabs { display:flex; gap:6px; background:rgba(0,255,102,0.05); padding:6px; border-radius:16px; width:fit-content; }
@@ -291,6 +330,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
     <!-- ===================== TAB 1: RESUMEN ===================== -->
     <div id="tab-resumen" class="dash-tab-content active">
+
+        <!-- Terminal ticker — presentación ejecutiva estilo consola -->
+        <div id="terminal-ticker" class="term-ticker-wrap"></div>
+
 
         <!-- Vencimientos semanales (el widget de Contadora se movio a Alertas Inteligentes) -->
         <div id="weekly-summary-container" class="hidden" style="margin-bottom:24px;">
@@ -1709,6 +1752,27 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         });
         createSpark('spark-ventas', sparkVentas, '#10b981');
         createSpark('spark-gastos', sparkGastos, '#ef4444');
+
+        // ── Terminal ticker (estilo Bloomberg): nº + delta ▲▼ + sparkline ──
+        (function renderTerminalTicker() {
+            const elT = document.getElementById('terminal-ticker');
+            if (!elT) return;
+            const resultado = sparkVentas.map((v, i) => v - (sparkGastos[i] || 0));
+            const rows = [
+                { k: 'VENTAS', s: sparkVentas, invert: false },
+                { k: 'GASTOS', s: sparkGastos, invert: true },
+                { k: 'RESULTADO', s: resultado, invert: false }
+            ];
+            let html = '<div class="term-ticker"><div class="term-ticker-head"><span>&#9679; MES EN CURSO &middot; 6M</span><span class="blink">_</span></div>';
+            rows.forEach(r => {
+                const cur = r.s[r.s.length - 1] || 0, prev = r.s[r.s.length - 2] || 0;
+                const d = wmDelta(cur, prev);
+                const cls = d.up === null ? 'flat' : (r.invert ? (d.up ? 'warn' : 'up') : (d.up ? 'up' : 'down'));
+                html += `<div class="term-row"><span class="term-label">${r.k}</span><span class="term-spark">${wmSpark(r.s)}</span><span class="term-val">${wmCompact(cur)}</span><span class="term-delta ${cls}">${d.arrow} ${d.pct}</span></div>`;
+            });
+            html += '</div>';
+            elT.innerHTML = html;
+        })();
 
         // ---- Payments widget ----
         try {
