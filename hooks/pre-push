@@ -1,0 +1,23 @@
+#!/bin/sh
+# pre-push — red de seguridad: ningún código roto llega a producción.
+# Verifica sintaxis de todo el JS y corre los tests críticos antes de subir.
+echo "[pre-push] Verificando sintaxis JS..."
+fail=0
+for f in $(git ls-files '*.js' | grep -v node_modules); do
+  if ! node --check "$f" 2>/dev/null; then
+    echo "  ✗ SINTAXIS: $f"
+    node --check "$f" 2>&1 | head -3
+    fail=1
+  fi
+done
+if [ "$fail" -ne 0 ]; then
+  echo "[pre-push] ABORTADO — corrige los errores de sintaxis antes de subir."
+  exit 1
+fi
+echo "[pre-push] Sintaxis OK. Corriendo tests..."
+if ! npx jest --silent >/dev/null 2>&1; then
+  echo "[pre-push] ABORTADO — los tests fallan. Corre 'npx jest' para ver el detalle."
+  exit 1
+fi
+echo "[pre-push] ✓ Todo OK — subiendo."
+exit 0
