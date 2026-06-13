@@ -11,31 +11,38 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
     if (!isAlreadyRendered) {
         container.innerHTML = `
     <style>
+        /* ===== EXTRA HACKER FX (terminal) ===== */
+        @keyframes wm-flicker { 0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:.82} 94%{opacity:1} 97%{opacity:.9} 98%{opacity:1} }
+        .stat-value-mega { animation: wm-flicker 4.5s infinite; }
+        .kpi-card { border-top:1px solid rgba(0,255,102,0.30) !important; }
+        .kpi-card::after { content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit; background:repeating-linear-gradient(0deg, rgba(0,255,102,0.05) 0 1px, transparent 1px 3px); opacity:.5; }
+        .dash-tab { font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace; }
+
         /* ---- Sub-Tab System ---- */
-        .dash-tabs { display:flex; gap:6px; background:rgba(0,0,0,0.04); padding:6px; border-radius:16px; width:fit-content; }
+        .dash-tabs { display:flex; gap:6px; background:rgba(0,255,102,0.05); padding:6px; border-radius:16px; width:fit-content; }
         .dash-tab { padding:9px 22px; border-radius:12px; border:none; background:transparent; font-weight:600; font-size:0.9rem; color:var(--text-muted); cursor:pointer; transition:all 0.25s ease; display:flex; align-items:center; gap:7px; }
-        .dash-tab.active { background:white; color:var(--primary); box-shadow:0 2px 12px rgba(0,0,0,0.10); }
-        body.dark-mode .dash-tab.active { background:#21262d; color:#e6edf3; }
-        body.dark-mode .dash-tabs { background:rgba(255,255,255,0.05); }
+        .dash-tab.active { background:rgba(0,255,102,0.12); color:var(--primary); box-shadow:0 2px 12px rgba(0,255,102,0.15); border:1px solid rgba(0,255,102,0.25); }
+        body.dark-mode .dash-tab.active { background:rgba(0,255,102,0.10); color:#00ff66; }
+        body.dark-mode .dash-tabs { background:rgba(0,255,102,0.04); }
 
         /* ---- Unified Card System ---- */
-        .card { backdrop-filter:none; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.04); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
-        .card:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.07); }
-        body.dark-mode .card { background:var(--bg-card); border:1px solid rgba(255,255,255,0.08); }
-        body.dark-mode .card:hover { box-shadow:0 6px 16px rgba(0,0,0,0.25); }
+        .card { backdrop-filter:none; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,0.10); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        .card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,255,102,0.12), 0 2px 8px rgba(0,0,0,0.15); }
+        body.dark-mode .card { background:var(--bg-card); border:1px solid rgba(0,255,102,0.16); }
+        body.dark-mode .card:hover { box-shadow:0 6px 20px rgba(0,255,102,0.18), 0 2px 8px rgba(0,0,0,0.35); }
 
         .bg-glass { backdrop-filter:none; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; }
-        body.dark-mode .bg-glass { background:var(--bg-card); border-color:rgba(255,255,255,0.08); }
+        body.dark-mode .bg-glass { background:var(--bg-card); border-color:rgba(0,255,102,0.16); }
 
-        .premium-card { background:var(--bg-card); border-radius:16px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.04); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); border:1px solid var(--border); }
-        .premium-card:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.07); }
-        body.dark-mode .premium-card { border-color:rgba(255,255,255,0.08); }
+        .premium-card { background:var(--bg-card); border-radius:16px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.10); transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); border:1px solid var(--border); }
+        .premium-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,255,102,0.12), 0 2px 8px rgba(0,0,0,0.15); }
+        body.dark-mode .premium-card { border-color:rgba(0,255,102,0.16); }
 
         /* KPI Card Animated */
         .kpi-card { position:relative; overflow:hidden; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .kpi-card:hover { transform:translateY(-2px) scale(1.01); box-shadow:0 12px 40px rgba(0,0,0,0.1); }
-        
-        .stat-value-mega { font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1; font-weight: 800; letter-spacing: -1px; }
+        .kpi-card:hover { transform:translateY(-2px) scale(1.01); box-shadow:0 12px 40px rgba(0,255,102,0.15); }
+
+        .stat-value-mega { font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1; font-weight: 800; letter-spacing: -1px; font-family: 'JetBrains Mono','Cascadia Code','Consolas',monospace; text-shadow: 0 0 8px rgba(0,255,102,0.25); }
         .stat-label-premium { font-size: 0.75rem; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--text-muted); margin-bottom: 4px; }
 
         /* Card animation */
@@ -82,19 +89,19 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         /* AI Panel Theme Variables */
         :root {
-            --ia-panel-bg: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            --ia-panel-text: #ffffff;
-            --ia-accent: #94a3b8;
-            --ia-muted: #94a3b8;
-            --ia-glass: rgba(255, 255, 255, 0.05);
+            --ia-panel-bg: linear-gradient(135deg, #0a1a0d 0%, #071009 100%);
+            --ia-panel-text: #d8ffe6;
+            --ia-accent: #00e0ff;
+            --ia-muted: #7ecfa0;
+            --ia-glass: rgba(0, 255, 102, 0.07);
         }
 
         body:not(.dark-mode) {
-            --ia-panel-bg: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            --ia-panel-text: #1e293b;
-            --ia-accent: #64748b;
-            --ia-muted: #64748b;
-            --ia-glass: rgba(0, 0, 0, 0.04);
+            --ia-panel-bg: linear-gradient(135deg, #0d1f10 0%, #071209 100%);
+            --ia-panel-text: #d8ffe6;
+            --ia-accent: #00e0ff;
+            --ia-muted: #7ecfa0;
+            --ia-glass: rgba(0, 255, 102, 0.07);
         }
 
         .predict-header { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; }
@@ -135,17 +142,17 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             align-items: center;
             justify-content: space-between;
             padding: 8px 12px;
-            border-bottom: 1px solid rgba(0,0,0,0.04);
+            border-bottom: 1px solid rgba(0,255,102,0.07);
             font-size: 0.8rem;
         }
         .live-ticket-row:last-child { border-bottom: none; }
-        .live-ticket-row.new { background: rgba(16,185,129,0.04); }
+        .live-ticket-row.new { background: rgba(0,255,102,0.05); }
 
         .live-ticket-left { display:flex; align-items:center; gap:8px; min-width:0; }
         .live-ticket-id { font-weight:700; color:var(--text-primary); white-space:nowrap; }
         .live-ticket-time { color:var(--text-muted); font-size:0.72rem; }
         .live-ticket-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
-        .live-ticket-total { font-weight:700; color:#10b981; }
+        .live-ticket-total { font-weight:700; color:#00ff66; text-shadow:0 0 6px rgba(0,255,102,0.3); font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace; }
         .live-ticket-profit { font-size:0.72rem; color:var(--text-muted); }
 
         /* Horizontal Product Cards (Hooks & Zero Margin) */
@@ -163,9 +170,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             box-sizing: border-box;
         }
         .h-scroll-container.dragging { cursor: grabbing; user-select: none; }
-        .h-product-card { min-width: 200px; max-width: 200px; flex-shrink: 0; background: white; padding: 14px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.03); transition: transform 0.2s; }
-        .h-product-card:hover { transform: translateY(-3px); }
-        body.dark-mode .h-product-card { background: rgba(255,255,255,0.05); }
+        .h-product-card { min-width: 200px; max-width: 200px; flex-shrink: 0; background: var(--bg-card); padding: 14px; border-radius: 16px; border: 1px solid rgba(0,255,102,0.16); box-shadow: 0 2px 8px rgba(0,0,0,0.12); transition: transform 0.2s, box-shadow 0.2s; }
+        .h-product-card:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,255,102,0.13); }
+        body.dark-mode .h-product-card { background: rgba(0,255,102,0.04); }
         
         .h-product-name { font-weight: 700; font-size: 0.85rem; margin-bottom: 6px; height: 40px; overflow: hidden; color: var(--text-primary); text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; }
         .h-product-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
@@ -183,7 +190,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         .ceo-mini { padding:16px; display:flex; flex-direction:column; gap:3px; }
         .ceo-mini-label { font-size:0.72rem; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; color:var(--text-muted); display:flex; align-items:center; gap:6px; }
-        .ceo-mini-value { font-size:1.5rem; font-weight:800; color:var(--text-primary); line-height:1.1; margin-top:4px; letter-spacing:-0.5px; }
+        .ceo-mini-value { font-size:1.5rem; font-weight:800; color:var(--text-primary); line-height:1.1; margin-top:4px; letter-spacing:-0.5px; font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace; text-shadow:0 0 8px rgba(0,255,102,0.22); }
         .ceo-mini-sub { font-size:0.78rem; color:var(--text-muted); font-weight:500; }
         .ceo-mini-foot { font-size:0.78rem; font-weight:600; margin-top:8px; }
         .ceo-cash-breakdown { margin-top:10px; display:flex; flex-direction:column; gap:4px; font-size:0.78rem; }
@@ -199,18 +206,18 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .ceo-payment-legend .leg-pct { font-weight:700; color:var(--text-primary); }
 
         .ceo-alerts-list { display:flex; flex-direction:column; gap:8px; }
-        .ceo-alert-item { display:flex; align-items:center; gap:12px; padding:10px 12px; background:rgba(255,255,255,0.6); border-radius:10px; border-left:3px solid transparent; font-size:0.85rem; }
-        body.dark-mode .ceo-alert-item { background:rgba(255,255,255,0.04); }
-        .ceo-alert-item.sev-high { border-left-color:#dc2626; background:rgba(220,38,38,0.06); }
-        .ceo-alert-item.sev-med  { border-left-color:#f59e0b; background:rgba(245,158,11,0.06); }
-        .ceo-alert-item.sev-low  { border-left-color:var(--border); background:rgba(0,0,0,0.02); }
-        body.dark-mode .ceo-alert-item.sev-low { background:rgba(255,255,255,0.02); }
+        .ceo-alert-item { display:flex; align-items:center; gap:12px; padding:10px 12px; background:rgba(0,255,102,0.03); border-radius:10px; border-left:3px solid transparent; font-size:0.85rem; }
+        body.dark-mode .ceo-alert-item { background:rgba(0,255,102,0.03); }
+        .ceo-alert-item.sev-high { border-left-color:#ff5a5a; background:rgba(255,90,90,0.07); }
+        .ceo-alert-item.sev-med  { border-left-color:#ffc233; background:rgba(255,194,51,0.06); }
+        .ceo-alert-item.sev-low  { border-left-color:rgba(0,255,102,0.25); background:rgba(0,255,102,0.03); }
+        body.dark-mode .ceo-alert-item.sev-low { background:rgba(0,255,102,0.04); }
         .ceo-alert-item i.main { font-size:1.3rem; flex-shrink:0; }
         .ceo-alert-text { flex:1; line-height:1.35; color:var(--text-primary); }
         .ceo-alert-text b { color:var(--text-primary); }
         .ceo-alert-meta { font-size:0.72rem; color:var(--text-muted); font-weight:600; }
-        .ceo-alerts-count { background:#f97316; color:white; border-radius:99px; min-width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:0.8rem; padding:0 9px; }
-        .ceo-alerts-count.zero { background:#10b981; }
+        .ceo-alerts-count { background:#ffc233; color:#0a0f0b; border-radius:99px; min-width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:0.8rem; padding:0 9px; }
+        .ceo-alerts-count.zero { background:#00ff66; color:#070b08; }
 
         .ceo-alert-wrap { display:flex; flex-direction:column; }
         .ceo-alert-item.expandable { cursor:pointer; user-select:none; position:relative; }
@@ -234,7 +241,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .ceo-margins-cta:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,0.07); border-color:var(--primary); }
         body.dark-mode .ceo-margins-cta:hover { box-shadow:0 6px 16px rgba(0,0,0,0.3); }
         .ceo-margins-cta-left { display:flex; align-items:center; gap:12px; }
-        .ceo-margins-cta-icon { width:40px; height:40px; border-radius:10px; background:rgba(209,0,0,0.08); display:flex; align-items:center; justify-content:center; font-size:1.3rem; color:var(--primary); flex-shrink:0; }
+        .ceo-margins-cta-icon { width:40px; height:40px; border-radius:10px; background:rgba(0,255,102,0.10); display:flex; align-items:center; justify-content:center; font-size:1.3rem; color:var(--primary); flex-shrink:0; }
         .ceo-margins-cta-title { font-weight:700; color:var(--text-primary); font-size:0.95rem; margin-bottom:2px; }
         .ceo-margins-cta-sub { font-size:0.75rem; color:var(--text-muted); font-weight:500; }
         .ceo-margins-cta-arrow { font-size:1.4rem; color:var(--primary); opacity:0.7; transition:transform 0.2s; }
@@ -251,10 +258,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         /* Section dividers dark mode */
         body.dark-mode .section-divider-line { background:rgba(255,255,255,0.08) !important; }
 
-        /* Dark mode heading color overrides (points 4/5: quemados en light → legibles en dark) */
-        body.dark-mode .dash-alerts-heading { color:#fb923c !important; }
-        body.dark-mode .dash-proxpagos-heading { color:#f87171 !important; }
-        body.dark-mode .dash-facturas-heading { color:#fbbf24 !important; }
+        /* Dark mode heading color overrides (semánticos — no cambiar a verde monocromo) */
+        body.dark-mode .dash-alerts-heading { color:#ffc233 !important; }
+        body.dark-mode .dash-proxpagos-heading { color:#ff5a5a !important; }
+        body.dark-mode .dash-facturas-heading { color:#ffc233 !important; }
 
         /* ---- Accesos Rápidos (solo mobile) ---- */
         .mobile-only { display: none; }
@@ -373,7 +380,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         <!-- Vencimientos semanales (el widget de Contadora se movio a Alertas Inteligentes) -->
         <div id="weekly-summary-container" class="hidden" style="margin-bottom:24px;">
-            <div class="premium-card" style="border-left:6px solid #f59e0b; background:rgba(245,158,11,0.05);">
+            <div class="premium-card" style="border-left:6px solid #ffc233; background:rgba(255,194,51,0.05);">
                 <h3 class="text-warning font-bold flex items-center gap-2 mb-4 text-base">
                     <i class="ph ph-calendar-check text-xl"></i> Vencimientos Esta Semana
                 </h3>
@@ -389,12 +396,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <!-- KPI Cards con Estética Premium -->
         <div class="grid grid-cols-auto gap-4 mb-4">
             <!-- Ventas mes -->
-            <div class="premium-card card-anim" style="border-top:4px solid #10b981; background: linear-gradient(180deg, rgba(16,185,129,0.05) 0%, var(--bg-card, white) 100%);">
+            <div class="premium-card card-anim" style="border-top:4px solid #00ff66; background: linear-gradient(180deg, rgba(0,255,102,0.06) 0%, var(--bg-card) 100%);">
                 <div class="flex justify-between items-start mb-3">
-                    <div class="p-2 rounded-2xl" style="background:rgba(16,185,129,0.1); color:#10b981;">
+                    <div class="p-2 rounded-2xl" style="background:rgba(0,255,102,0.10); color:#00ff66;">
                         <i class="ph ph-chart-line-up text-xl"></i>
                     </div>
-                    <div id="kpi-ventas-mes-badge" class="status-badge" style="background:rgba(16,185,129,0.1); color:#059669; border:1px solid rgba(16,185,129,0.2);">Calculando...</div>
+                    <div id="kpi-ventas-mes-badge" class="status-badge" style="background:rgba(0,255,102,0.10); color:#00a849; border:1px solid rgba(0,255,102,0.22);">Calculando...</div>
                 </div>
                 <div class="stat-label-premium">Ventas del Mes</div>
                 <div id="kpi-ventas-mes" class="stat-value-mega text-primary mt-1">...</div>
@@ -402,9 +409,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
 
             <!-- Gasto mes -->
-            <div class="premium-card card-anim delay-1" style="border-top:4px solid var(--primary); background: linear-gradient(180deg, rgba(230,0,0,0.03) 0%, var(--bg-card, white) 100%);">
+            <div class="premium-card card-anim delay-1" style="border-top:4px solid #ff5a5a; background: linear-gradient(180deg, rgba(255,90,90,0.04) 0%, var(--bg-card) 100%);">
                 <div class="flex justify-between items-start mb-3">
-                    <div class="p-2 rounded-2xl" style="background:rgba(230,0,0,0.1); color:var(--primary);" title="Suma de todos los gastos registrados este mes. No incluye mercadería.">
+                    <div class="p-2 rounded-2xl" style="background:rgba(255,90,90,0.10); color:#ff5a5a;" title="Suma de todos los gastos registrados este mes. No incluye mercadería.">
                         <i class="ph ph-hand-coins text-xl"></i>
                     </div>
                     <div id="kpi-gasto-mes-badge" class="status-badge status-overdue">Este Mes</div>
@@ -415,20 +422,20 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
 
             <!-- Margen Neto / Salud -->
-            <div class="premium-card card-anim delay-2" style="border-top:4px solid #10b981; background: linear-gradient(180deg, rgba(16,185,129,0.05) 0%, var(--bg-card, white) 100%);">
+            <div class="premium-card card-anim delay-2" style="border-top:4px solid #00ff66; background: linear-gradient(180deg, rgba(0,255,102,0.06) 0%, var(--bg-card) 100%);">
                 <div class="flex justify-between items-start mb-3">
-                    <div class="p-2 rounded-2xl" style="background:rgba(16,185,129,0.1); color:#10b981;">
+                    <div class="p-2 rounded-2xl" style="background:rgba(0,255,102,0.10); color:#00ff66;">
                         <i class="ph ph-heartbeat text-xl"></i>
                     </div>
-                    <div id="health-label" class="status-badge" style="background:rgba(16,185,129,0.1); color:#059669; font-weight:700;">Salud</div>
+                    <div id="health-label" class="status-badge" style="background:rgba(0,255,102,0.10); color:#00a849; font-weight:700;">Salud</div>
                 </div>
                 <div class="stat-label-premium">Rentabilidad</div>
                 <div class="flex items-baseline gap-3">
-                    <div id="kpi-margen-neto" class="stat-value-mega mt-1" style="color:#059669;">...</div>
+                    <div id="kpi-margen-neto" class="stat-value-mega mt-1" style="color:#00a849;">...</div>
                     <div id="health-ratio-pct" class="text-sm font-black text-muted">0%</div>
                 </div>
-                <div id="health-bar-wrap" class="w-full h-3 rounded-full overflow-hidden mt-3" style="background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.03);">
-                    <div id="health-bar" class="h-full" style="width:0%; background:linear-gradient(90deg, #10b981, #059669); transition:width 1s ease;"></div>
+                <div id="health-bar-wrap" class="w-full h-3 rounded-full overflow-hidden mt-3" style="background:rgba(0,255,102,0.07); border:1px solid rgba(0,255,102,0.12);">
+                    <div id="health-bar" class="h-full" style="width:0%; background:linear-gradient(90deg, #00ff66, #00a849); transition:width 1s ease;"></div>
                 </div>
                 <div id="health-detail" class="text-xs text-muted mt-2 font-medium italic">Calculando métricas de salud...</div>
             </div>
@@ -469,12 +476,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <div class="premium-card mb-4" style="padding:12px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <h3 style="font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:6px; margin:0;">
-                    <div style="width:7px;height:7px;background:#ef4444;border-radius:50%;box-shadow:0 0 6px #ef4444;"></div>
+                    <div style="width:7px;height:7px;background:#00ff66;border-radius:50%;box-shadow:0 0 8px rgba(0,255,102,0.7);"></div>
                     Hoy
                 </h3>
                 <div style="display:flex; align-items:center; gap:12px; font-size:0.8rem;">
                     <span class="text-muted"><b id="live-sales-count">0</b> tickets</span>
-                    <b id="live-sales-total" style="color:#10b981; font-size:0.95rem;">$0</b>
+                    <b id="live-sales-total" style="color:#00ff66; font-size:0.95rem; font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace; text-shadow:0 0 6px rgba(0,255,102,0.35);">$0</b>
                 </div>
             </div>
             <div id="live-sales-feed" class="live-sales-scroller"></div>
@@ -500,7 +507,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
 
             <!-- Resumen caja real -->
-            <div class="premium-card ceo-mini" style="border-left:4px solid #10b981;">
+            <div class="premium-card ceo-mini" style="border-left:4px solid #00ff66;">
                 <div class="ceo-mini-label"><i class="ph ph-vault"></i> Caja Real del Mes</div>
                 <div class="ceo-mini-value" id="ceo-cash-net">—</div>
                 <div class="ceo-mini-sub" id="ceo-cash-sub">Ingresos − Egresos</div>
@@ -518,9 +525,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         </div>
 
         <!-- ALERTAS INTELIGENTES -->
-        <div class="premium-card mb-4" id="ceo-alerts-card" style="border-left:3px solid #f97316;">
+        <div class="premium-card mb-4" id="ceo-alerts-card" style="border-left:3px solid #ffc233;">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="font-bold flex items-center gap-2 dash-alerts-heading" style="color:#c2410c; font-size:1.05rem;">
+                <h3 class="font-bold flex items-center gap-2 dash-alerts-heading" style="color:#ffc233; font-size:1.05rem;">
                     <i class="ph ph-siren text-xl"></i> Alertas
                 </h3>
                 <span class="ceo-alerts-count" id="ceo-alerts-count">0</span>
@@ -539,7 +546,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <div class="decision-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:16px;">
             <div class="premium-card" style="padding:16px;" id="dec-buy">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
-                    <i class="ph ph-shopping-cart" style="color:#3b82f6; font-size:1.1rem;"></i>
+                    <i class="ph ph-shopping-cart" style="color:#00e0ff; font-size:1.1rem;"></i>
                     <span style="font-weight:700; font-size:0.8rem;">Qué reponer</span>
                 </div>
                 <div id="dec-buy-list" style="font-size:0.75rem; display:flex; flex-direction:column; gap:4px;">
@@ -548,7 +555,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
             <div class="premium-card" style="padding:16px;" id="dec-price">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
-                    <i class="ph ph-arrow-fat-up" style="color:#f59e0b; font-size:1.1rem;"></i>
+                    <i class="ph ph-arrow-fat-up" style="color:#ffc233; font-size:1.1rem;"></i>
                     <span style="font-weight:700; font-size:0.8rem;">Subir precio</span>
                 </div>
                 <div id="dec-price-list" style="font-size:0.75rem; display:flex; flex-direction:column; gap:4px;">
@@ -557,7 +564,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
             <div class="premium-card" style="padding:16px;" id="dec-day">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
-                    <i class="ph ph-calendar-x" style="color:#ef4444; font-size:1.1rem;"></i>
+                    <i class="ph ph-calendar-x" style="color:#ff5a5a; font-size:1.1rem;"></i>
                     <span style="font-weight:700; font-size:0.8rem;">Día más flojo</span>
                 </div>
                 <div id="dec-day-content" style="font-size:0.75rem;">
@@ -566,7 +573,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             </div>
             <div class="premium-card" style="padding:16px;" id="dec-cash">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
-                    <i class="ph ph-piggy-bank" style="color:#10b981; font-size:1.1rem;"></i>
+                    <i class="ph ph-piggy-bank" style="color:#00ff66; font-size:1.1rem;"></i>
                     <span style="font-weight:700; font-size:0.8rem;">Flujo próximo</span>
                 </div>
                 <div id="dec-cash-content" style="font-size:0.75rem;">
@@ -601,7 +608,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             <!-- Top 3 proveedores -->
             <div class="card card-anim p-4">
                 <h3 class="font-bold mb-4 flex items-center gap-2" style="font-size:0.95rem;">
-                    <i class="ph ph-buildings" style="color:#f97316;"></i> Top Proveedores
+                    <i class="ph ph-buildings" style="color:#00e0ff;"></i> Top Proveedores
                 </h3>
                 <div id="top-suppliers" class="flex-col gap-4">
                     <div class="spinner m-auto"></div>
@@ -612,8 +619,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         <!-- Widgets fila inferior -->
         <div class="bottom-widgets-grid">
             <!-- Próximos pagos empleados -->
-            <div class="card card-anim p-4" style="border-left:3px solid #dc2626;">
-                <h3 class="mb-3 font-bold flex items-center gap-2 dash-proxpagos-heading" style="color:#b91c1c; font-size:1rem;">
+            <div class="card card-anim p-4" style="border-left:3px solid #ff5a5a;">
+                <h3 class="mb-3 font-bold flex items-center gap-2 dash-proxpagos-heading" style="color:#ff5a5a; font-size:1rem;">
                     <i class="ph ph-money text-xl"></i> Próximos Pagos a Equipo
                 </h3>
                 <div id="upcoming-payments-list" class="text-secondary" style="font-size:0.85rem;">
@@ -621,9 +628,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 </div>
             </div>
             <!-- Facturas a crédito -->
-            <div class="card card-anim p-4" id="credit-widget" style="border-left:3px solid #f59e0b; cursor:pointer;">
+            <div class="card card-anim p-4" id="credit-widget" style="border-left:3px solid #ffc233; cursor:pointer;">
                 <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-bold flex items-center gap-2 dash-facturas-heading" style="color:#92400e; font-size:1rem;">
+                    <h3 class="font-bold flex items-center gap-2 dash-facturas-heading" style="color:#ffc233; font-size:1rem;">
                         <i class="ph ph-clock-countdown text-xl"></i> Facturas por Pagar (Crédito)
                     </h3>
                     <i class="ph ph-arrow-right text-muted"></i>
@@ -783,7 +790,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                         <span>$${META_DIARIA_FORMATTED}</span>
                     </div>
                     <div style="height:6px; background:rgba(0,0,0,0.06); border-radius:99px; overflow:hidden;">
-                        <div id="meta-progress-bar" style="height:100%; width:0%; background:linear-gradient(90deg, #10b981, #059669); border-radius:99px; transition:width 1s ease;"></div>
+                        <div id="meta-progress-bar" style="height:100%; width:0%; background:linear-gradient(90deg, #00ff66, #00a849); border-radius:99px; transition:width 1s ease;"></div>
                     </div>
                 </div>`;
             // Insertar barra antes del feed (debajo del header del widget Hoy)
@@ -796,7 +803,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             if (metaBar) {
                 const metaPct = Math.min(100, (eleventaTotal / META_DIARIA) * 100);
                 setTimeout(() => { metaBar.style.width = metaPct + '%'; }, 300);
-                if (metaPct >= 100) metaBar.style.background = 'linear-gradient(90deg, #f59e0b, #eab308)';
+                if (metaPct >= 100) metaBar.style.background = 'linear-gradient(90deg, #ffc233, #f59e0b)';
             }
 
             // Notificación de meta superada (una sola vez por día)
@@ -1041,16 +1048,16 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
             if (burdenPct < 50) {
                 healthEl.innerHTML = '🟢 Muy Saludable';
-                elHealthBar.style.background = '#10b981';
+                elHealthBar.style.background = 'linear-gradient(90deg, #00ff66, #00a849)';
             } else if (burdenPct < 75) {
                 healthEl.innerHTML = '🟡 Aceptable';
-                elHealthBar.style.background = '#f59e0b';
+                elHealthBar.style.background = 'linear-gradient(90deg, #ffc233, #f59e0b)';
             } else if (burdenPct < 100) {
                 healthEl.innerHTML = '🟠 En riesgo';
-                elHealthBar.style.background = '#f97316';
+                elHealthBar.style.background = 'linear-gradient(90deg, #ffc233, #f97316)';
             } else {
                 healthEl.innerHTML = '🔴 Pérdida Neta';
-                elHealthBar.style.background = '#ef4444';
+                elHealthBar.style.background = 'linear-gradient(90deg, #ff5a5a, #dc2626)';
             }
         }
 
@@ -1690,12 +1697,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         const plCtx = document.getElementById('plChart').getContext('2d');
         const plGradientV = plCtx.createLinearGradient(0, 0, 0, 250);
-        plGradientV.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
-        plGradientV.addColorStop(1, 'rgba(16, 185, 129, 0)');
+        plGradientV.addColorStop(0, 'rgba(0, 255, 102, 0.35)');
+        plGradientV.addColorStop(1, 'rgba(0, 255, 102, 0)');
 
         const plGradientG = plCtx.createLinearGradient(0, 0, 0, 250);
-        plGradientG.addColorStop(0, 'rgba(239, 68, 68, 0.3)');
-        plGradientG.addColorStop(1, 'rgba(239, 68, 68, 0)');
+        plGradientG.addColorStop(0, 'rgba(0, 224, 255, 0.25)');
+        plGradientG.addColorStop(1, 'rgba(0, 224, 255, 0)');
 
         const existPL = Chart.getChart('plChart');
         if (existPL) existPL.destroy();
@@ -1708,20 +1715,20 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     {
                         label: 'Ventas',
                         data: months6Sales,
-                        borderColor: '#10b981',
+                        borderColor: '#00ff66',
                         backgroundColor: plGradientV,
                         fill: true, tension: 0.4, pointRadius: 4,
-                        borderWidth: 3, pointBackgroundColor: '#fff',
-                        pointBorderWidth: 2, pointBorderColor: '#10b981'
+                        borderWidth: 3, pointBackgroundColor: '#0e1611',
+                        pointBorderWidth: 2, pointBorderColor: '#00ff66'
                     },
                     {
                         label: 'Compras',
                         data: months6Costs,
-                        borderColor: '#ef4444',
+                        borderColor: '#00e0ff',
                         backgroundColor: plGradientG,
                         fill: true, tension: 0.4, pointRadius: 4,
-                        borderWidth: 3, pointBackgroundColor: '#fff',
-                        pointBorderWidth: 2, pointBorderColor: '#ef4444'
+                        borderWidth: 3, pointBackgroundColor: '#0e1611',
+                        pointBorderWidth: 2, pointBorderColor: '#00e0ff'
                     }
                 ]
             },

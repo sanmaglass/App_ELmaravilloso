@@ -34,30 +34,44 @@ function showEmailGate() {
     if (splash) splash.style.display = 'none';
 
     document.body.innerHTML = `
-        <div id="email-gate" style="position:fixed; inset:0; background:#080a0c; display:flex; align-items:center; justify-content:center; font-family:'Outfit',sans-serif; z-index:99999;">
-            <div style="width:90%; max-width:380px; text-align:center;">
-                <img src="assets/logo-dark.png" alt="Logo" style="width:80px; height:80px; border-radius:20px; margin-bottom:24px; box-shadow:0 12px 40px rgba(220,38,38,0.3);">
-                <h1 style="color:#fff; font-size:1.4rem; font-weight:700; margin:0 0 6px;">El Maravilloso</h1>
-                <p id="gate-subtitle" style="color:rgba(255,255,255,0.4); font-size:0.75rem; margin:0 0 32px; letter-spacing:0.1em; text-transform:uppercase;">Acceso Autorizado</p>
-                <input id="gate-email" type="email" placeholder="Correo" autocomplete="email" autofocus
-                    style="width:100%; padding:14px 18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:#fff; font-size:1rem; font-family:inherit; outline:none; transition:border-color 0.2s; margin-bottom:12px; box-sizing:border-box;">
+        <style>
+            @keyframes wm-blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+            @keyframes wm-scan { from{background-position:0 0} to{background-position:0 200px} }
+            #email-gate::before { content:''; position:absolute; inset:0; pointer-events:none; opacity:.55;
+                background:
+                    repeating-linear-gradient(0deg, rgba(0,255,102,0.05) 0 1px, transparent 1px 3px),
+                    radial-gradient(circle at 50% -10%, rgba(0,255,102,0.14), transparent 55%);
+                animation: wm-scan 9s linear infinite; }
+            #email-gate input::placeholder { color:#4f7a63; letter-spacing:.05em; }
+            #email-gate input:focus { border-color:#00ff66 !important; box-shadow:0 0 0 1px rgba(0,255,102,.5), 0 0 18px rgba(0,255,102,.25) !important; }
+            #gate-btn:hover:not(:disabled) { box-shadow:0 0 26px rgba(0,255,102,.5) !important; filter:brightness(1.12); }
+            #gate-toggle-pass:hover, #gate-forgot:hover { color:#00ff66 !important; }
+            .wm-cursor { display:inline-block; width:9px; color:#00ff66; animation: wm-blink 1.1s step-end infinite; }
+        </style>
+        <div id="email-gate" style="position:fixed; inset:0; overflow:hidden; background:#070b08; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono','Cascadia Code','SF Mono','Consolas','Courier New',monospace; z-index:99999;">
+            <div style="position:relative; z-index:1; width:90%; max-width:380px; text-align:center;">
+                <img src="assets/logo-dark.png" alt="Logo" style="width:80px; height:80px; border-radius:18px; margin-bottom:22px; filter:drop-shadow(0 0 18px rgba(0,255,102,0.45)); border:1px solid rgba(0,255,102,0.25);">
+                <h1 style="color:#d8ffe6; font-size:1.4rem; font-weight:700; margin:0 0 8px; letter-spacing:0.06em; text-shadow:0 0 12px rgba(0,255,102,0.5);">EL_MARAVILLOSO</h1>
+                <p id="gate-subtitle" style="color:#00ff66; font-size:0.72rem; margin:0 0 30px; letter-spacing:0.12em; text-transform:uppercase;">&gt; acceso_autorizado<span class="wm-cursor">_</span></p>
+                <input id="gate-email" type="email" placeholder="correo" autocomplete="email" autofocus
+                    style="width:100%; padding:14px 18px; background:#0a0f0b; border:1px solid rgba(0,255,102,0.18); border-radius:11px; color:#d8ffe6; font-size:0.95rem; font-family:inherit; outline:none; caret-color:#00ff66; transition:all 0.2s; margin-bottom:12px; box-sizing:border-box;">
                 <div style="position:relative;">
-                    <input id="gate-pass" type="password" placeholder="Contrase\u00f1a" autocomplete="current-password"
-                        style="width:100%; padding:14px 18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:#fff; font-size:1rem; font-family:inherit; outline:none; transition:border-color 0.2s; padding-right:48px; box-sizing:border-box;">
-                    <button id="gate-toggle-pass" type="button" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:rgba(255,255,255,0.4); cursor:pointer; font-size:1.1rem; padding:4px;">
+                    <input id="gate-pass" type="password" placeholder="contraseña" autocomplete="current-password"
+                        style="width:100%; padding:14px 18px; background:#0a0f0b; border:1px solid rgba(0,255,102,0.18); border-radius:11px; color:#d8ffe6; font-size:0.95rem; font-family:inherit; outline:none; caret-color:#00ff66; transition:all 0.2s; padding-right:48px; box-sizing:border-box;">
+                    <button id="gate-toggle-pass" type="button" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:#4f7a63; cursor:pointer; font-size:1.1rem; padding:4px; transition:color .2s;">
                         <i class="ph ph-eye"></i>
                     </button>
                 </div>
-                <div id="gate-error" style="color:#ff6b6b; font-size:0.82rem; margin-top:10px; min-height:1.2em;"></div>
-                <button id="gate-btn" style="width:100%; margin-top:16px; padding:14px; background:linear-gradient(135deg,#e60000,#990000); color:#fff; border:none; border-radius:12px; font-size:0.95rem; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.2s; box-shadow:0 6px 20px rgba(230,0,0,0.3);">
+                <div id="gate-error" style="color:#ff6b6b; font-size:0.8rem; margin-top:10px; min-height:1.2em;"></div>
+                <button id="gate-btn" style="width:100%; margin-top:16px; padding:14px; background:linear-gradient(135deg,#00ff66,#00a849); color:#062b13; border:none; border-radius:11px; font-size:0.95rem; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:0.08em; text-transform:uppercase; transition:all 0.2s; box-shadow:0 0 20px rgba(0,255,102,0.3);">
                     Ingresar
                 </button>
                 <div style="margin-top:16px;">
-                    <button id="gate-forgot" type="button" style="background:none; border:none; color:rgba(255,255,255,0.35); font-size:0.78rem; cursor:pointer; font-family:inherit; text-decoration:underline;">
+                    <button id="gate-forgot" type="button" style="background:none; border:none; color:#4f7a63; font-size:0.76rem; cursor:pointer; font-family:inherit; text-decoration:underline; transition:color .2s;">
                         Olvidé mi contraseña
                     </button>
                 </div>
-                <p style="color:rgba(255,255,255,0.2); font-size:0.65rem; margin-top:24px;">Sistema de Gestión Comercial</p>
+                <p style="color:#3a5c48; font-size:0.62rem; margin-top:24px; letter-spacing:0.1em;">// SISTEMA DE GESTIÓN COMERCIAL</p>
             </div>
         </div>
     `;
@@ -196,8 +210,8 @@ function showEmailGate() {
     btn.addEventListener('click', attemptLogin);
     emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passInput.focus(); });
     passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptLogin(); });
-    emailInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#ff6b6b'; emailInput.style.borderColor = 'rgba(255,255,255,0.1)'; });
-    passInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#ff6b6b'; passInput.style.borderColor = 'rgba(255,255,255,0.1)'; });
+    emailInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#ff6b6b'; emailInput.style.borderColor = 'rgba(0,255,102,0.18)'; });
+    passInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#ff6b6b'; passInput.style.borderColor = 'rgba(0,255,102,0.18)'; });
 }
 
 // Initialize App
