@@ -192,22 +192,22 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         /* Franja header metrics */
         .ed-header-band {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 0;
-            background: var(--bg-card);
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1px;                       /* divisores hairline vía gap */
+            background: var(--border);      /* el gap muestra este color */
             border: 1px solid var(--border);
             border-radius: 16px;
             margin-bottom: 28px;
             overflow: hidden;
         }
         .ed-metric {
-            padding: 20px 20px 18px;
-            border-right: 1px solid var(--border);
+            padding: 18px 18px 16px;
+            background: var(--bg-card);
             position: relative;
+            min-width: 0;                   /* evita desborde del grid */
         }
-        .ed-metric:last-child { border-right: none; }
         .ed-metric-label {
-            font-size: 0.68rem;
+            font-size: 0.66rem;
             font-weight: 600;
             letter-spacing: 0.1em;
             text-transform: uppercase;
@@ -216,11 +216,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         }
         .ed-metric-value {
             font-family: var(--font-mono, 'JetBrains Mono', monospace);
-            font-size: clamp(1.3rem, 2.5vw, 1.9rem);
+            font-size: clamp(1.15rem, 2.2vw, 1.8rem);
             font-weight: 800;
             color: var(--text-primary);
-            line-height: 1;
-            letter-spacing: -1px;
+            line-height: 1.05;
+            letter-spacing: -0.5px;
+            overflow-wrap: anywhere;
         }
         .ed-metric-delta {
             font-size: 0.72rem;
@@ -230,18 +231,6 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .ed-delta-up   { color: var(--color-success); }
         .ed-delta-down { color: var(--danger); }
         .ed-delta-flat { color: var(--text-muted); }
-
-        @media (max-width: 900px) {
-            .ed-header-band { grid-template-columns: repeat(3, 1fr); }
-            .ed-metric:nth-child(3) { border-right: none; }
-            .ed-metric:nth-child(4) { border-top: 1px solid var(--border); }
-            .ed-metric:nth-child(5) { border-top: 1px solid var(--border); border-right: none; }
-        }
-        @media (max-width: 560px) {
-            .ed-header-band { grid-template-columns: repeat(2, 1fr); }
-            .ed-metric:nth-child(2n) { border-right: none; }
-            .ed-metric:nth-child(n+3) { border-top: 1px solid var(--border); }
-        }
 
         /* Section headings */
         .ed-section {
