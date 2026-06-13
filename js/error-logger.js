@@ -109,11 +109,10 @@ window.ErrorLogger = {
     getRecentErrors: async function (limit = 50, context = null) {
         try {
             if (!window.db || !window.db.error_logs) return [];
-            let query = window.db.error_logs;
             if (context) {
-                query = query.where('context').equals(context);
+                return await window.db.error_logs.where('context').equals(context).reverse().limit(limit).toArray();
             }
-            return await query.reverse().limit(limit).toArray();
+            return await window.db.error_logs.orderBy('timestamp').reverse().limit(limit).toArray();
         } catch (e) {
             console.warn('[ErrorLogger] Could not fetch errors:', e.message);
             return [];
@@ -205,6 +204,7 @@ window.ErrorLogger = {
 };
 
 // Limpiar errores antiguos cada 24 horas
+if (window.ErrorLogger._cleanupInterval) clearInterval(window.ErrorLogger._cleanupInterval);
 window.ErrorLogger._cleanupInterval = setInterval(() => {
     window.ErrorLogger?.cleanOldErrors();
 }, 24 * 60 * 60 * 1000);

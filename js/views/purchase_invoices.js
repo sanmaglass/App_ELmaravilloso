@@ -235,6 +235,9 @@ window.Views.purchase_invoices = async (container, _tab = 'compras') => {
     window.addEventListener('sync-data-updated', window._invoicesSyncHandler);
 };
 
+// --- HELPERS ---
+function getFilterPeriod() { const v = document.getElementById('filter-date')?.value; return v && v !== 'all' ? v : null; }
+
 // --- SII SYNC FUNCTIONS ---
 async function syncFromSII(silent = false) {
     const banner = document.getElementById('sii-sync-banner');
@@ -354,7 +357,7 @@ async function syncFromSII(silent = false) {
         if (totalImported > 0 || totalNewSuppliers > 0) {
             await initDateFilter();
             await populateSupplierFilter();
-            await renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
+            await renderContadorDigital(getFilterPeriod());
             await renderPendingDocuments();
             await renderCreditAlerts();
             renderInvoices();
@@ -453,7 +456,7 @@ async function autoSyncSII() {
                 // Refrescar toda la vista
                 await initDateFilter();
                 await populateSupplierFilter();
-                await renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
+                await renderContadorDigital(getFilterPeriod());
                 await renderPendingDocuments();
                 await renderCreditAlerts();
                 renderInvoices();
@@ -550,7 +553,7 @@ async function autoSyncSII() {
             // Refrescar datos en la vista
             await initDateFilter();
             await populateSupplierFilter();
-            await renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
+            await renderContadorDigital(getFilterPeriod());
             renderInvoices();
         }
     } catch (err) {
@@ -1383,6 +1386,13 @@ async function renderCreditAlerts() {
     const panel = document.getElementById('credit-alerts-panel');
     if (!panel) return;
 
+    if (!document.getElementById('credit-alerts-styles')) {
+        const s = document.createElement('style');
+        s.id = 'credit-alerts-styles';
+        s.textContent = '@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.7;} }';
+        document.head.appendChild(s);
+    }
+
     try {
         const invoices = await window.db.purchase_invoices.toArray();
         const suppliers = await window.db.suppliers.toArray();
@@ -1510,13 +1520,7 @@ async function renderCreditAlerts() {
         if (dueSoon.length > 0) html += dueSoon.map(inv => renderCard(inv, '#ca8a04', '🟡')).join('');
         if (dueLater.length > 0) html += dueLater.map(inv => renderCard(inv, '#6b7280', '⚪')).join('');
 
-        html += `</div></div>
-        <style>
-            @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.7; }
-            }
-        </style>`;
+        html += `</div></div>`;
 
         panel.innerHTML = html;
 
@@ -1535,7 +1539,7 @@ async function renderCreditAlerts() {
                             paidAmount: existing.amount // Mark as fully paid
                         });
                         await renderCreditAlerts();
-                        await renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
+                        await renderContadorDigital(getFilterPeriod());
                         renderInvoices();
                     } catch (err) { window.showToast('Error: ' + err.message, 'error'); }
                 }
@@ -1636,7 +1640,7 @@ async function renderCreditAlerts() {
 
                         overlay.remove();
                         await renderCreditAlerts();
-                        await renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
+                        await renderContadorDigital(getFilterPeriod());
                         renderInvoices();
                     } catch (err) {
                         overlay.remove();
@@ -1945,7 +1949,7 @@ async function handleDeleteInvoice(id) {
     if (await window.showConfirmDialog('Eliminar Factura', '¿Eliminar esta factura?')) {
         try {
             await window.DataManager.deleteAndSync('purchase_invoices', id);
-            renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
+            renderContadorDigital(getFilterPeriod());
             renderPendingDocuments();
             renderInvoices();
         } catch (e) { window.showToast('Error: ' + e.message, 'error'); }
@@ -2481,7 +2485,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
             // Siempre refrescar el filtro de fechas (tanto en nueva como en edición)
             await initDateFilter();
             window.state.invoicesPage = 1;
-            renderContadorDigital(document.getElementById('filter-date')?.value !== 'all' ? document.getElementById('filter-date')?.value : null);
+            renderContadorDigital(getFilterPeriod());
             renderPendingDocuments();
             renderInvoices();
             await renderCreditAlerts();

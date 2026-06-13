@@ -88,7 +88,6 @@ async function initDailyMonthFilter() {
     try {
         const sales = await window.db.daily_sales.toArray();
         const active = sales.filter(s => !s.deleted);
-        return sales;
 
         const monthsFromDB = new Set();
         active.forEach(s => { if (s.date && s.date.length >= 7) monthsFromDB.add(s.date.substring(0, 7)); });
@@ -112,6 +111,8 @@ async function initDailyMonthFilter() {
 
         const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         filter.value = curMonth;
+
+        return sales;
 
     } catch (e) { console.error('Error init daily month filter', e); }
     return null;

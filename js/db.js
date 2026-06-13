@@ -224,8 +224,8 @@ window.DataManager = {
 
     // ── Retry / Queue config ──────────────────────────────────
     syncQueue: new Map(),   // { queueKey: { tableName, data, retries, timestamp } }
-    MAX_RETRIES: 5,
-    RETRY_BASE_MS: 1000,    // 1 s base → backoff × 2^attempt
+    MAX_RETRIES: 3,
+    RETRY_BASE_MS: 500,     // 0.5 s base → backoff × 2^attempt (máx ~3.5s; Outbox maneja retry permanente)
     _queueProcessorTimer: null,
     _isProcessingQueue: false,
 
@@ -437,6 +437,8 @@ window.DataManager = {
      * Debe llamarse una vez al inicializar la app.
      */
     initQueueProcessor() {
+        if (this._queueListenersRegistered) return;
+        this._queueListenersRegistered = true;
         window.addEventListener('online', () => {
             this.processPendingQueue();
         });

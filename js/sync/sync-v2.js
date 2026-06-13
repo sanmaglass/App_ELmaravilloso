@@ -75,10 +75,9 @@ window.SyncV2 = {
 
   async pullIncremental() {
     const tables = window.Constants.REMOTE_TABLE_MAP;
-    const changedLocalTables = [];
 
-    for (const [local, remote] of Object.entries(tables)) {
-      if (this.syncLocks.has(remote)) continue;
+    const results = await Promise.all(Object.entries(tables).map(async ([local, remote]) => {
+      if (this.syncLocks.has(remote)) return null;
       this.syncLocks.add(remote);
 
       try {
@@ -155,15 +154,18 @@ window.SyncV2 = {
         await window.db.sync_state.put({ table_name: remote, last_seen_hlc: lastHlc, last_seen_id: lastId, device_id: DeviceId.get(), updated_at: new Date() });
         if (totalFetched > 0) {
           _syncDebug(`✅ ${remote}: ${totalFetched} registros sincronizados (HLC=${lastHlc})`);
-          changedLocalTables.push(local);
+          return local;
         }
+        return null;
       } catch (e) {
         console.error(`❌ Pull error en ${remote}:`, e);
+        return null;
       } finally {
         this.syncLocks.delete(remote);
       }
-    }
+    }));
 
+    const changedLocalTables = results.filter(Boolean);
     return changedLocalTables;
   },
 
@@ -201,10 +203,6 @@ window.SyncV2 = {
 
       this.realtimeChannels.push(channel);
     }
-  },
-
-  async heartbeatRealtime() {
-    // Implementado en main.js con setInterval
   },
 
   async handleRealtimeChange(table, payload) {

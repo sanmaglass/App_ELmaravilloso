@@ -303,16 +303,18 @@ window.Views.profit_monitor = async (container) => {
             const allSales = await window.db.eleventa_sales.toArray();
             const sales = allSales.filter(s => !s.deleted);
 
-            // Último precio/costo conocido por producto
+            // Último precio/costo conocido por producto (O(n) sin sort)
             const latestInfo = new Map();
-            const sortedByDate = [...sales].sort((a, b) => new Date(b.date) - new Date(a.date));
-            sortedByDate.forEach(s => {
+            sales.forEach(s => {
                 if (!s.items) return;
+                const d = new Date(s.date);
                 s.items.forEach(item => {
-                    if (!item.name || latestInfo.has(item.name)) return;
+                    if (!item.name) return;
+                    const ex = latestInfo.get(item.name);
+                    if (ex && d <= ex.latestDate) return;
                     const price = parseFloat(item.price) || 0;
                     const profit = parseFloat(item.profit) || 0;
-                    latestInfo.set(item.name, { price, cost: price - profit, profit, latestDate: new Date(s.date) });
+                    latestInfo.set(item.name, { price, cost: price - profit, profit, latestDate: d });
                 });
             });
 

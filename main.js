@@ -252,15 +252,17 @@ async function init() {
                     await window.SyncV2.initRealtimeSync();
 
                     // Polling cada 90s como red de seguridad aunque la pestaña esté oculta.
-                    setInterval(() => {
+                    if (window._syncPollingInterval) clearInterval(window._syncPollingInterval);
+                    window._syncPollingInterval = setInterval(() => {
                         if (!window.SyncV2.isSyncing) {
                             window.SyncV2.syncAll();
                         }
                     }, 90 * 1000);
 
                     // Heartbeat Realtime: cada 30s revisa si todos los canales siguen "joined".
+                    if (window._heartbeatInterval) clearInterval(window._heartbeatInterval);
                     let _heartbeatRunning = false;
-                    setInterval(async () => {
+                    window._heartbeatInterval = setInterval(async () => {
                         if (_heartbeatRunning) return;
                         _heartbeatRunning = true;
                         try {

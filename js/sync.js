@@ -153,7 +153,7 @@ window.Sync = {
         window.Sync.updateIndicator('syncing');
 
         try {
-            console.log("Iniciando sincronización...");
+            if (window.Constants?.DEBUG) console.log("Iniciando sincronización...");
 
             // Tablas a sincronizar (Mapeo Local -> Remoto)
             const tableMap = [
@@ -170,8 +170,8 @@ window.Sync = {
                 { local: 'reminders', remote: 'reminders', orderBy: 'id' },
                 { local: 'eleventa_sales', remote: 'eleventa_sales', orderBy: 'date', descending: true },
                 { local: 'loans', remote: 'loans', orderBy: 'date', descending: true },
-                { local: 'advances', remote: 'advances', orderBy: 'date', 
-              { local: 'eleventa_abonos', remote: 'eleventa_abonos', orderBy: 'date_local', descending: true, skipPush: true }descending: true }
+                { local: 'advances', remote: 'advances', orderBy: 'date', descending: true },
+                { local: 'eleventa_abonos', remote: 'eleventa_abonos', orderBy: 'date_local', descending: true, skipPush: true }
             ];
 
             let dataChanged = false;
@@ -189,11 +189,11 @@ window.Sync = {
                         const rollingDate = new Date();
                         rollingDate.setDate(rollingDate.getDate() - 90);
                         const filterDate = rollingDate.toISOString();
-                        console.log(`[Sync DEBUG] eleventa_sales filter date: ${filterDate}`);
+                        if (window.Constants?.DEBUG) console.log(`[Sync DEBUG] eleventa_sales filter date: ${filterDate}`);
                         query = query.gte('date', filterDate).limit(10000);
                     }
                     const { data, error } = await query;
-                    if (map.remote === 'eleventa_sales') {
+                    if (window.Constants?.DEBUG && map.remote === 'eleventa_sales') {
                         console.log(`[Sync DEBUG] eleventa_sales result: ${data?.length || 0} registros, error: ${error?.message || 'ninguno'}`);
                         if (data && data.length > 0) {
                             console.log(`[Sync DEBUG] Primer registro eleventa:`, data[0]);
@@ -215,7 +215,7 @@ window.Sync = {
                     if (error) throw error;
 
                     if (cloudData) {
-                        console.log(`[Sync] ${remoteName}: Recibidos ${cloudData.length} registros de la nube.`);
+                        if (window.Constants?.DEBUG) console.log(`[Sync] ${remoteName}: Recibidos ${cloudData.length} registros de la nube.`);
                         if (cloudData.length > 500) {
                             window.Sync.updateIndicator('syncing', `${remoteName}: ${cloudData.length} recs...`);
                         }
@@ -333,7 +333,7 @@ window.Sync = {
                             if (cloudHasNew || countDiffers) {
                                 try {
                                     await window.db[localName].bulkPut(normalizedCloudData);
-                                    console.log(`[Sync DEBUG] ${localName}: bulkPut exitoso`);
+                                    if (window.Constants?.DEBUG) console.log(`[Sync DEBUG] ${localName}: bulkPut exitoso`);
                                     window.Sync._syncSummary.updates += normalizedCloudData.length;
                                     dataChanged = true;
                                 } catch (putErr) {
@@ -344,7 +344,7 @@ window.Sync = {
                                 // Mismo conteo e IDs — igual hacemos bulkPut silencioso para actualizar campos
                                 try {
                                     await window.db[localName].bulkPut(normalizedCloudData);
-                                    console.log(`[Sync DEBUG] ${localName}: bulkPut silencioso exitoso`);
+                                    if (window.Constants?.DEBUG) console.log(`[Sync DEBUG] ${localName}: bulkPut silencioso exitoso`);
                                 } catch (putErr) {
                                     console.error(`[Sync ERROR] ${localName} bulkPut silencioso falló:`, putErr.message);
                                 }
@@ -559,7 +559,7 @@ window.Sync = {
     startAutoSync: (intervalMs = 60000) => {
         if (window.Sync.syncInterval) clearInterval(window.Sync.syncInterval);
 
-        console.log(`Polling fallback activado (cada ${intervalMs / 1000}s)`);
+        if (window.Constants?.DEBUG) console.log(`Polling fallback activado (cada ${intervalMs / 1000}s)`);
         window.Sync.syncInterval = setInterval(() => {
             if (!window.Sync.isRealtimeActive) {
                 window.Sync.syncAll();
@@ -592,7 +592,7 @@ window.Sync = {
                     )
                     .subscribe((status) => {
                         if (status === 'SUBSCRIBED') {
-                            console.log(`📡 Realtime activo para ${remoteTable}`);
+                            if (window.Constants?.DEBUG) console.log(`📡 Realtime activo para ${remoteTable}`);
                             window.Sync.isRealtimeActive = true;
                             window.Sync.updateIndicator('realtime');
                         } else if (status === 'CLOSED') {
@@ -625,15 +625,17 @@ window.Sync = {
             record.id = id;
 
             // Logging detallado para eleventa_sales
-            if (localTableName === 'eleventa_sales') {
-                console.log(`📡🎟️ Realtime ${payload.eventType} on ${localTableName}:`, {
-                    id,
-                    date: record.date,
-                    total: record.total,
-                    items_count: record.items_count
-                });
-            } else {
-                console.log(`📡 Realtime ${payload.eventType} on ${localTableName}:`, id);
+            if (window.Constants?.DEBUG) {
+                if (localTableName === 'eleventa_sales') {
+                    console.log(`📡🎟️ Realtime ${payload.eventType} on ${localTableName}:`, {
+                        id,
+                        date: record.date,
+                        total: record.total,
+                        items_count: record.items_count
+                    });
+                } else {
+                    console.log(`📡 Realtime ${payload.eventType} on ${localTableName}:`, id);
+                }
             }
 
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {

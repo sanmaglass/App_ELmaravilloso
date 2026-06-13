@@ -720,9 +720,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             });
             ms.value = currentMonthStr; // Fijar mes actual
 
-            ms.addEventListener('change', (e) => {
-                window.Views.dashboard(container, e.target.value);
-            });
+            if (!ms.dataset.listenerAdded) {
+                ms.dataset.listenerAdded = '1';
+                ms.addEventListener('change', (e) => {
+                    window.Views.dashboard(container, e.target.value);
+                });
+            }
         }
 
         // ---- Módulo Ventas en Directo (Eleventa) ----
@@ -1056,6 +1059,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // ============================================================
         // CEO COCKPIT — Cálculos unificados del mes en curso y mes previo
         // ============================================================
+        const productByName = new Map(
+            allProducts.filter(p => p.name).map(p => [p.name.toLowerCase().trim(), p])
+        );
         const buildProductStats = (salesArr) => {
             const stats = {};
             salesArr.forEach(sale => {
@@ -1068,9 +1074,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     let priceUnitValue = parseFloat(item.price_unit) || 0;
                     let costUnitValue = parseFloat(item.cost_unit) || 0;
                     if (profitLine === 0 && priceUnitValue > 0) {
-                        const localProduct = allProducts.find(p =>
-                            p.name && p.name.toLowerCase().trim() === name.toLowerCase()
-                        );
+                        const localProduct = productByName.get(name.toLowerCase());
                         if (localProduct) {
                             costUnitValue = localProduct.costUnit || 0;
                             priceUnitValue = parseFloat(item.price_unit) || (parseFloat(item.price) / q);
@@ -1663,6 +1667,14 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             elevByMonth.set(ms, (elevByMonth.get(ms) || 0) + (parseFloat(s.total) || 0));
         });
 
+        // Pre-agrupar facturas por mes (una sola pasada, en vez de 6 filter+reduce)
+        const invByMonth = new Map();
+        invoices.forEach(inv => {
+            if (!inv.date) return;
+            const k = inv.date.substring(0, 7);
+            invByMonth.set(k, (invByMonth.get(k) || 0) + (parseFloat(inv.amount) || 0));
+        });
+
         const months6Labels = [];
         const months6Sales = [];
         const months6Costs = [];
@@ -1672,7 +1684,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             months6Labels.push(d.toLocaleDateString('es-ES', { month: 'short' }));
             // Eleventa primero; fallback a daily_sales para meses históricos previos a Eleventa
             months6Sales.push(elevByMonth.get(mStr) || dailySales.filter(s => s.date && s.date.startsWith(mStr)).reduce((s, d) => s + (parseFloat(d.total) || 0), 0));
-            months6Costs.push(invoices.filter(inv => inv.date && inv.date.startsWith(mStr)).reduce((s, inv) => s + (parseFloat(inv.amount) || 0), 0));
+            months6Costs.push(invByMonth.get(mStr) || 0);
         }
 
 
