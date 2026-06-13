@@ -341,35 +341,35 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
     <!-- Accesos Rápidos — solo mobile -->
     <div class="quick-access-grid mobile-only">
-        <button class="quick-btn" onclick="window.navigateToView('cash_register', 'Arqueo')">
+        <button class="quick-btn" onclick="document.querySelector('[data-view=cash_register]').click()">
             <i class="ph ph-vault"></i>
             <span>Arqueo</span>
         </button>
-        <button class="quick-btn" onclick="window.navigateToView('profit_monitor', 'Márgenes')">
+        <button class="quick-btn" onclick="document.querySelector('[data-view=profit_monitor]').click()">
             <i class="ph ph-chart-line-up"></i>
             <span>Márgenes</span>
         </button>
-        <button class="quick-btn" onclick="window.navigateToView('purchase_invoices', 'Facturas')">
+        <button class="quick-btn" onclick="document.querySelector('[data-view=purchase_invoices]').click()">
             <i class="ph ph-receipt"></i>
             <span>Facturas</span>
         </button>
-        <button class="quick-btn" onclick="window.navigateToView('employees', 'Personal')">
+        <button class="quick-btn" onclick="document.querySelector('[data-view=employees]').click()">
             <i class="ph ph-users"></i>
             <span>Personal</span>
         </button>
-        <button class="quick-btn" onclick="window.navigateToView('credits', 'Créditos')">
+        <button class="quick-btn" onclick="document.querySelector('[data-view=credits]').click()">
             <i class="ph ph-hand-holding-dollar"></i>
             <span>Créditos</span>
         </button>
-        <button class="quick-btn" onclick="window.navigateToView('suppliers', 'Proveedores')">
+        <button class="quick-btn" onclick="document.querySelector('[data-view=suppliers]').click()">
             <i class="ph ph-buildings"></i>
             <span>Proveedores</span>
         </button>
-        <button class="quick-btn" onclick="window.navigateToView('loans', 'Préstamos')">
+        <button class="quick-btn" onclick="document.querySelector('[data-view=loans]').click()">
             <i class="ph ph-hand-coins"></i>
             <span>Préstamos</span>
         </button>
-        <button class="quick-btn" onclick="window.navigateToView('settings', 'Ajustes')">
+        <button class="quick-btn" onclick="document.querySelector('[data-view=settings]').click()">
             <i class="ph ph-gear"></i>
             <span>Ajustes</span>
         </button>
