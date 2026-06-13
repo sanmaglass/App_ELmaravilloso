@@ -1016,7 +1016,16 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // 1. Sales (Total Revenue) — directo desde Eleventa (fuente real)
         //    daily_sales se sigue cargando para la gráfica histórica (antes de Eleventa)
         const thisMonthSales = eleventaSales.filter(s => s.date && s.date.startsWith(currentMonthStr));
-        const prevMonthSales = eleventaSales.filter(s => s.date && s.date.startsWith(prevMonthStr));
+        const prevMonthSalesFull = eleventaSales.filter(s => s.date && s.date.startsWith(prevMonthStr));
+
+        // Comparación JUSTA (MTD): si vemos el mes en curso, comparamos contra el
+        // MISMO rango de días del mes anterior. Comparar medio mes vs mes completo
+        // inflaba la caída a ~-50% sin sentido real.
+        const isCurrentMonthView = (now.getFullYear() === realToday.getFullYear() && now.getMonth() === realToday.getMonth());
+        const _cutoffDay = isCurrentMonthView ? realToday.getDate() : 31;
+        const _dayOfMonth = s => parseInt(String(s.date_local || s.date).substring(8, 10), 10) || 99;
+        const prevMonthSales = prevMonthSalesFull.filter(s => _dayOfMonth(s) <= _cutoffDay);
+
         const ventasMes  = thisMonthSales.reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
         const ventasPrev = prevMonthSales.reduce((s, d) => s + (parseFloat(d.total) || 0), 0);
 
@@ -1044,7 +1053,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
         // 3. Gastos del mes (suma directa de todo lo registrado)
         const thisMonthExpenses = allExpenses.filter(e => !e.deleted && e.date && e.date.startsWith(currentMonthStr));
-        const prevMonthExpenses = allExpenses.filter(e => !e.deleted && e.date && e.date.startsWith(prevMonthStr));
+        const prevMonthExpenses = allExpenses.filter(e => !e.deleted && e.date && e.date.startsWith(prevMonthStr) && (parseInt(String(e.date).substring(8, 10), 10) || 99) <= _cutoffDay);
 
         const gastosDelMes = thisMonthExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
         const gastoTotal = gastosDelMes + comisionMPMes;
@@ -1241,7 +1250,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
 
             if (burdenPct < 50) {
                 healthEl.innerHTML = '🟢 Muy Saludable';
-                elHealthBar.style.background = 'linear-gradient(90deg, #00ff66, #00a849)';
+                elHealthBar.style.background = 'linear-gradient(90deg, var(--color-success), #16a34a)';
             } else if (burdenPct < 75) {
                 healthEl.innerHTML = '🟡 Aceptable';
                 elHealthBar.style.background = 'linear-gradient(90deg, #ffc233, #f59e0b)';
@@ -1579,16 +1588,22 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 ).join('') : '<span class="text-muted">Todos sobre 15%</span>';
             }
 
-            // 3. DÍA MÁS FLOJO — promedio por día de la semana
+            // 3. DÍA MÁS FLOJO — promedio del TOTAL DIARIO por día de la semana.
+            //    BUG corregido: antes dividía por nº de tickets (daba el ticket
+            //    promedio ~$5K), no por nº de días. Ahora agrupa por fecha calendario.
             const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-            const dayTotals = [0,0,0,0,0,0,0], dayCounts = [0,0,0,0,0,0,0];
+            const _totalByDate = new Map();
             eleventaSales.forEach(s => {
                 if (!s.date) return;
-                const d = window.Utils.parseLocalDate(s.date);
-                if (d) {
-                    const total = parseFloat(s.total) || 0;
-                    if (total > 0) { dayTotals[d.getDay()] += total; dayCounts[d.getDay()]++; }
-                }
+                const total = parseFloat(s.total) || 0;
+                if (total <= 0) return;
+                const dStr = s.date_local || String(s.date).split('T')[0];
+                _totalByDate.set(dStr, (_totalByDate.get(dStr) || 0) + total);
+            });
+            const dayTotals = [0,0,0,0,0,0,0], dayCounts = [0,0,0,0,0,0,0];
+            _totalByDate.forEach((total, dStr) => {
+                const d = window.Utils.parseLocalDate(dStr);
+                if (d) { dayTotals[d.getDay()] += total; dayCounts[d.getDay()]++; }
             });
             const dayAvgs = dayTotals.map((t, i) => dayCounts[i] > 0 ? t / dayCounts[i] : 0);
             const bestDay = dayAvgs.indexOf(Math.max(...dayAvgs));
@@ -1621,9 +1636,14 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     </div>`;
             }
 
-            // 4. FLUJO PRÓXIMO — caja neta proyectada (ventas promedio - pagos pendientes)
-            const activeDays = dayAvgs.filter(a => a > 0).length || 1;
-            const avgDailySales = dayAvgs.reduce((a, b) => a + b, 0) / activeDays;
+            // 4. FLUJO PRÓXIMO — ingreso esperado para los días que faltan del mes.
+            //    Usa el promedio diario REAL del mes en curso (no el ticket promedio).
+            const _cmTotals = (typeof currentMonthDaily !== 'undefined' ? currentMonthDaily : [])
+                .map(d => parseFloat(d.total) || 0).filter(t => t > 0);
+            const _activeWeekdays = dayAvgs.filter(a => a > 0);
+            const avgDailySales = _cmTotals.length
+                ? _cmTotals.reduce((a, b) => a + b, 0) / _cmTotals.length
+                : (_activeWeekdays.length ? _activeWeekdays.reduce((a, b) => a + b, 0) / _activeWeekdays.length : 0);
             daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
             projectedIncome = Math.round(avgDailySales * daysLeft);
             // Pagos pendientes: facturas crédito + sueldos estimados
@@ -1917,7 +1937,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                     }
                 },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)' }, ticks: { font: { size: 10 } } },
+                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)' }, ticks: { font: { size: 10 }, callback: (v) => wmCompact(v) } },
                     x: { grid: { display: false }, ticks: { font: { size: 10 } } }
                 }
             }
@@ -2077,6 +2097,17 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const scoreColor = healthResult.score >= 75 ? 'var(--color-success)' : healthResult.score >= 50 ? 'var(--color-warning)' : 'var(--danger)';
         if (hsCircle) hsCircle.style.borderColor = scoreColor;
         if (hsNum) hsNum.style.color = scoreColor;
+        // Etiqueta de Salud DERIVADA DEL SCORE (antes mostraba "Muy Saludable" en
+        // verde aunque el score fuera 62 → contradicción). Una sola fuente de verdad.
+        const hsLabelEl = document.getElementById('health-label');
+        if (hsLabelEl) {
+            const _band = healthResult.score >= 75 ? { t: 'Saludable', c: 'var(--color-success)' }
+                        : healthResult.score >= 50 ? { t: 'Aceptable', c: 'var(--color-warning)' }
+                        : healthResult.score >= 25 ? { t: 'En riesgo', c: '#f97316' }
+                        : { t: 'Crítico', c: 'var(--danger)' };
+            hsLabelEl.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${_band.c};margin-right:5px;vertical-align:middle;"></span>${_band.t}`;
+            hsLabelEl.style.color = _band.c;
+        }
         if (hsFactors) {
             hsFactors.innerHTML = healthResult.factors.map(f => `
                 <div class="ed-factor-row">
