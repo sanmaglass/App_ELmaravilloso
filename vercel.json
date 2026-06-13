@@ -6,7 +6,10 @@
       "source": "/api/sii/:path*",
       "destination": "https://api.baseapi.cl/api/v1/sii/:path*"
     },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/notify?job=all", "schedule": "0 12 * * *" }
   ],
   "headers": [
     {

@@ -4,8 +4,8 @@
 // ──────────────────────────────────────────────────────────────
 
 window.PushSubscribe = {
-    // VAPID public key (generada 2026-05-14)
-    VAPID_PUBLIC_KEY: 'BMbsRGjcT_5ZY4MS1efA8SPoxqvbMeuVM6GfaKNCzi3vfZ8YzPZ8HxG0wHxGlP-nzwA9bTlBuP7tAXPawFSEvuQ',
+    // VAPID public key (par regenerado 2026-06-13 — la privada va en Vercel env)
+    VAPID_PUBLIC_KEY: 'BLj9_0H0xtF9osi0NadAWF7WWfSwyvQq250oqPqMeJU1YRYuTOQYz-M0nOMKoImRKRdNv6yciNpJXg5O9c6_LJU',
 
     _registration: null,
     _subscription: null,

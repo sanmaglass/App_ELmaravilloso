@@ -11,6 +11,10 @@
   "keywords": ["pwa", "distribuidora", "pos"],
   "author": "Sanma",
   "license": "MIT",
+  "dependencies": {
+    "web-push": "^3.6.7",
+    "@supabase/supabase-js": "^2.45.0"
+  },
   "devDependencies": {
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
