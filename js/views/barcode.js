@@ -617,8 +617,10 @@ window.Views.barcode = async (container) => {
     //    abrir la cámara directo (sin pantalla intermedia).
     //    La vista corre sincrónica dentro del gesto del tap, así que el click
     //    programático conserva la activación de usuario para la cámara.
-    if (window._barcodeAutoScan) {
+    if (window._barcodeAutoScan && (Date.now() - window._barcodeAutoScan) < 2000) {
         window._barcodeAutoScan = false;
         if (cameraBtn) cameraBtn.click();
+    } else {
+        window._barcodeAutoScan = false; // limpiar flag viejo/colgado
     }
 };

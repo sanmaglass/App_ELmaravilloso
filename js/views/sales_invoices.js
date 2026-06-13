@@ -139,12 +139,10 @@ async function renderSales() {
 async function handleDeleteSale(id) {
     if (await window.showConfirmDialog('Eliminar Venta', '¿Eliminar esta venta?')) {
         try {
-            await window.db.sales_invoices.update(id, { deleted: true });
+            // Local-first vía DataManager: soft-delete con HLC + outbox (offline-safe).
+            // Antes escribía directo con Sync.client (legacy) sin outbox ni HLC.
+            await window.DataManager.deleteAndSync('sales_invoices', id);
             renderSales();
-            // Cloud Sync
-            if (window.Sync?.client) {
-                await window.Sync.client.from('sales_invoices').update({ deleted: true }).eq('id', id);
-            }
         } catch (e) { window.showToast('Error: ' + e.message, 'error'); }
     }
 }
@@ -311,15 +309,12 @@ async function showSaleModal() {
                 deleted: false
             };
 
-            await window.db.sales_invoices.add(saleData);
+            // Local-first vía DataManager: guarda local + sync con HLC + outbox
+            // (offline-safe). Antes usaba db.add + Sync.client.insert (legacy) sin outbox.
+            await window.DataManager.saveAndSync('sales_invoices', saleData);
 
             // Deduct stock (Advanced: Implementing later/simplified now)
             // For now just recording sale
-
-            // Cloud Sync
-            if (window.Sync?.client) {
-                await window.Sync.client.from('sales_invoices').insert([saleData]);
-            }
 
             modal.classList.add('hidden');
             renderSales();

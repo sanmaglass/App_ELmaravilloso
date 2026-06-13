@@ -385,8 +385,11 @@ async function init() {
             });
         });
 
-        // Bottom Nav — tabs mobile
-        const bottomTabs = document.querySelectorAll('#bottom-nav .bottom-nav-item');
+        // Bottom Nav — tabs mobile. Solo los que tienen data-view: el botón "Más"
+        // (id=btn-bottom-more, sin data-view) NO debe entrar acá, porque dispararía
+        // navigateToView(undefined) y mataría el _viewCleanup de la vista actual
+        // (ej: apagaba la cámara del escáner al tocar "Más").
+        const bottomTabs = document.querySelectorAll('#bottom-nav .bottom-nav-item[data-view]');
 
         function syncBottomNav(viewName) {
             bottomTabs.forEach(t => t.classList.remove('active'));
@@ -447,7 +450,11 @@ async function init() {
             // así la vista barcode ya encuentra el flag activo al renderizar.
             const scanBtn = bottomNav.querySelector('.bottom-nav-scan');
             if (scanBtn) {
-                scanBtn.addEventListener('click', () => { window._barcodeAutoScan = true; }, true);
+                // Guardamos un TIMESTAMP (no un booleano): la vista barcode solo abre
+                // la cámara si el flag es reciente (<2s). Así, si el flag queda colgado
+                // por un error de carga, expira solo y NO abre la cámara sola la próxima
+                // vez que entres al escáner desde el menú.
+                scanBtn.addEventListener('click', () => { window._barcodeAutoScan = Date.now(); }, true);
             }
 
             // "Más" button opens popup menu (not full sidebar)
@@ -492,16 +499,8 @@ async function init() {
                 });
             }
 
-            // Sync bottom nav when sidebar nav is used
-            navItems.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const viewName = btn.dataset.view;
-                    if (!viewName || viewName === 'logout') return;
-                    bottomNav.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
-                    const bottomMatch = bottomNav.querySelector(`[data-view="${viewName}"]`);
-                    if (bottomMatch) bottomMatch.classList.add('active');
-                });
-            });
+            // (Listener duplicado eliminado: el handler de los .nav-item del sidebar
+            //  ya llama a syncBottomNav(viewName) para sincronizar el estado activo.)
         }
 
         // Ocultar splash y mostrar app

@@ -229,12 +229,11 @@ window.Views.calculator = async (container) => {
 
         try {
             newProduct.id = Date.now() + Math.floor(Math.random() * 1000);
-            await window.db.products.add(newProduct);
+            // Local-first vía DataManager: guarda local + sync con HLC + outbox.
+            // Antes hacía db.products.add + Sync.syncAll (legacy, push completo).
+            await window.DataManager.saveAndSync('products', newProduct);
             // Reset crucial fields
             inputs.name.value = '';
-
-            // Sync Inmediato
-            window.Sync.syncAll();
 
             // Toast or visual feedback?
             window.showToast(`¡"${name}" guardado!`, 'success');

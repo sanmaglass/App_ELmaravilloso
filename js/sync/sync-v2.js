@@ -52,7 +52,7 @@ window.SyncV2 = {
   async syncAll() {
     if (this.isSyncing) {
       console.warn('⚠️ Sincronización en curso...');
-      return;
+      return { success: false, error: 'Sincronización en curso' };
     }
 
     this.isSyncing = true;
@@ -65,9 +65,11 @@ window.SyncV2 = {
       if (changed && changed.length > 0) {
         this._notifyUI(changed);
       }
+      return { success: true };
     } catch (e) {
       console.error('❌ SyncV2.syncAll() error:', e);
       await window.ErrorLogger?.log('sync.v2.syncAll', e, {}, false);
+      return { success: false, error: e.message };
     } finally {
       this.isSyncing = false;
     }
@@ -175,6 +177,13 @@ window.SyncV2 = {
 
   async initRealtimeSync() {
     if (!this.client) return;
+
+    // Idempotente: cerrar cualquier canal previo antes de re-suscribir. Sin esto,
+    // cada reconexión del heartbeat acumulaba N canales nuevos sin liberar los
+    // viejos → doble (o triple) handleRealtimeChange por cada cambio.
+    if (this.realtimeChannels && this.realtimeChannels.length) {
+      await this.closeRealtime();
+    }
 
     const tables = Object.values(window.Constants.REMOTE_TABLE_MAP);
     this._subscribedCount = 0;

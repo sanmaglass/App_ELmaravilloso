@@ -1000,7 +1000,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             }
 
             // Notificación de meta superada (una sola vez por día)
-            const metaKey = `wm_meta_notified_${now.toISOString().slice(0, 10)}`;
+            const metaKey = `wm_meta_notified_${todayStr}`; // fecha real de hoy, no el mes seleccionado
             if (eleventaTotal >= META_DIARIA && !localStorage.getItem(metaKey)) {
                 localStorage.setItem(metaKey, '1');
                 if (window.Sync && window.Sync.showToast) {
@@ -1242,7 +1242,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             elHealthBar.style.width = '0%';
             if (healthRatioPct) healthRatioPct.textContent = '0%';
         } else {
-            const burdenPct = Math.min(100, Math.max(0, (gastoTotal / ventasMes) * 100));
+            const burdenPct = ventasMes > 0 ? Math.min(100, Math.max(0, (gastoTotal / ventasMes) * 100)) : 0;
             const margin = margenNetoPct.toFixed(1);
 
             setTimeout(() => { elHealthBar.style.width = burdenPct + '%'; }, 100);
@@ -1376,7 +1376,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const cutoff30 = now30.toISOString().split('T')[0];
         const soldRecently = new Set();
         eleventaSales.forEach(s => {
-            if (s.date >= cutoff30 && s.items && Array.isArray(s.items)) {
+            const _sDate = s.date_local || String(s.date).split('T')[0];
+            if (_sDate >= cutoff30 && s.items && Array.isArray(s.items)) {
                 s.items.forEach(it => { if (it.name) soldRecently.add(it.name.toLowerCase().trim()); });
             }
         });
@@ -1841,7 +1842,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             : topSuppliers.map(([id, amount], idx) => `
                     <div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-                        <span style="font-size:0.83rem;font-weight:600;color:var(--text-primary);">${Utils.escapeHTML(supplierMap[id] || 'Desconocido')}</span>
+                        <span style="font-size:0.83rem;font-weight:600;color:var(--text-primary);">${window.Utils.escapeHTML(supplierMap[id] || 'Desconocido')}</span>
                         <span style="font-size:0.8rem;font-weight:700;color:${colors[idx]};">${fmt(amount)}</span>
                     </div>
                     <div class="supplier-bar-bg">
@@ -2032,9 +2033,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 ${dueSoon.length ? `<div style="color:#ea580c;font-size:0.8rem;margin-top:2px;">⏰ ${dueSoon.length} vence esta semana</div>` : ''}
             `;
         }
-        document.getElementById('credit-widget').addEventListener('click', () => {
+        // onclick (no addEventListener): el dashboard se re-renderiza en cada sync y
+        // el elemento persiste (isAlreadyRendered), así no se acumulan handlers.
+        document.getElementById('credit-widget').onclick = () => {
             document.querySelector('[data-view="purchase_invoices"]')?.click();
-        });
+        };
 
         // ---- Expiry Alerts ----
         const expiringSoon = products.filter(p => {
@@ -2191,7 +2194,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // ---- (Actividad Reciente removed) ----
 
         // ---- Export Excel ----
-        document.getElementById('btn-export-excel').addEventListener('click', async () => {
+        document.getElementById('btn-export-excel').onclick = async () => {
             const btn = document.getElementById('btn-export-excel');
             btn.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Preparando...'; btn.disabled = true;
             try {
@@ -2205,7 +2208,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                 XLSX.writeFile(wb, `Reporte_ElMaravilloso_${todayStr}.xlsx`);
             } catch (err) { window.showToast('Error: ' + err.message, 'error'); }
             finally { btn.innerHTML = '<i class="ph ph-file-xls" style="font-size:1.1rem;"></i> <span class="hide-mobile">Exportar Excel</span>'; btn.disabled = false; }
-        });
+        };
 
         // ── LISTENER: Actualizar Dashboard en tiempo real cuando hay cambios en Supabase ──
         // Usa debounce de 500ms para no re-renderizar si llegan varios eventos seguidos

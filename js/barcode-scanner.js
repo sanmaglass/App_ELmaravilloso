@@ -418,5 +418,16 @@ window.BarcodeScanner = {
                 Quagga.stop();
             } catch (e) { /* ignore */ }
         }
+        // Liberar explícitamente el MediaStream: en iOS/Safari (y algunos Android)
+        // Quagga.stop() no siempre detiene los tracks de video → el LED de la cámara
+        // queda encendido al salir del escáner. Forzamos el stop de cada track.
+        try {
+            document.querySelectorAll('#bc-camera-box video, video').forEach(v => {
+                if (v.srcObject && typeof v.srcObject.getTracks === 'function') {
+                    v.srcObject.getTracks().forEach(t => { try { t.stop(); } catch (e) { /* ignore */ } });
+                    v.srcObject = null;
+                }
+            });
+        } catch (e) { /* ignore */ }
     }
 };

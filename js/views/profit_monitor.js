@@ -495,7 +495,7 @@ window.Views.profit_monitor = async (container) => {
         if (!btn) return;
         btn.disabled = true;
         btn.innerHTML = '<i class="ph ph-arrows-clockwise ph-spin"></i> Sincronizando...';
-        await window.Sync.syncAll();
+        await window.SyncV2.syncAll();
         btn.disabled = false;
         btn.innerHTML = '<i class="ph ph-arrows-clockwise"></i> Sincronizar';
         renderProfits();

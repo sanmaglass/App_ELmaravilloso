@@ -321,7 +321,7 @@ window.Views.settings = async (container) => {
                 btnSync.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> Sincronizando...';
 
                 try {
-                    const result = await window.Sync.syncAll();
+                    const result = await window.SyncV2.syncAll();
                     if (result.success) {
                         updateStatus('<i class="ph ph-check-circle"></i> Sincronización completada.', 'success');
                         window.showToast('¡Datos sincronizados! La app se refrescará.', 'success');
