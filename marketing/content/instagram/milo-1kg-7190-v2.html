@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,700;0,800;1,800&display=swap" rel="stylesheet">
+<style>
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ width:1080px; height:1350px; overflow:hidden; font-family:'Archivo',sans-serif; }
+
+  .canvas{
+    width:1080px; height:1350px; position:relative; overflow:hidden;
+    background:radial-gradient(130% 100% at 50% 0%, #ff4040 0%, #ed1c24 46%, #bd0c12 100%);
+  }
+  /* concentric circle pattern */
+  .canvas::before{
+    content:""; position:absolute; inset:-300px;
+    background:repeating-radial-gradient(circle at 50% 34%,
+      rgba(255,255,255,.07) 0 3px, rgba(255,255,255,0) 3px 78px);
+    pointer-events:none;
+  }
+
+  /* gold coins */
+  .coin{
+    position:absolute; width:96px; height:96px; border-radius:50%;
+    background:radial-gradient(circle at 34% 28%, #ffe879 0%, #ffc926 48%, #d99500 100%);
+    box-shadow:0 8px 16px rgba(0,0,0,.28), inset 0 -5px 7px rgba(150,90,0,.55), inset 0 4px 5px rgba(255,255,255,.65);
+    display:flex; align-items:center; justify-content:center;
+    color:#c07e00; font-family:'Anton',sans-serif; font-size:52px; line-height:1;
+  }
+  .coin::after{ content:"$"; }
+  .c1{ top:60px;  left:40px;  transform:rotate(-14deg); }
+  .c2{ top:250px; right:36px; transform:rotate(12deg); }
+  .c3{ bottom:300px; left:24px; transform:rotate(8deg); width:120px;height:120px;font-size:64px; }
+  .c4{ bottom:150px; right:40px; transform:rotate(-10deg); }
+  .c5{ top:170px; left:55%; transform:rotate(18deg) scale(.7); filter:blur(1.5px); opacity:.85; }
+  .c6{ bottom:430px; right:160px; transform:rotate(-8deg) scale(.65); filter:blur(2px); opacity:.8; }
+
+  /* brand pill */
+  .brand{ position:absolute; top:46px; left:50%; transform:translateX(-50%); z-index:3; }
+  .brand img{ height:118px; filter:drop-shadow(0 6px 14px rgba(0,0,0,.4)); border-radius:14px; }
+
+  /* headline */
+  .headline{
+    position:absolute; top:208px; left:0; right:0; text-align:center; z-index:3;
+    font-family:'Anton',sans-serif; font-style:normal; color:#ffd400;
+    font-size:124px; line-height:.86; letter-spacing:1px;
+    transform:skewX(-9deg);
+    text-shadow:5px 5px 0 #8f0a0f, 0 14px 30px rgba(0,0,0,.4);
+    -webkit-text-stroke:2px rgba(255,255,255,.18);
+  }
+
+  /* product */
+  .product{
+    position:absolute; top:415px; left:50%; transform:translateX(-50%) rotate(-4deg);
+    height:610px; z-index:2;
+    filter:drop-shadow(0 26px 30px rgba(0,0,0,.5));
+  }
+
+  /* price banner */
+  .price{
+    position:absolute; bottom:54px; left:50%; transform:translateX(-50%) skewX(-7deg);
+    background:linear-gradient(180deg,#1577c4,#005ba6); border:7px solid #ffffff;
+    border-radius:30px; padding:24px 70px 30px; z-index:4;
+    box-shadow:0 20px 44px rgba(0,0,0,.4);
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .price .big{
+    transform:skewX(7deg); font-family:'Anton',sans-serif; color:#fff;
+    font-size:168px; line-height:.9; letter-spacing:1px;
+    text-shadow:4px 4px 0 rgba(0,0,0,.25);
+  }
+  .price .big b{ color:#ffd400; }
+  .price .label{
+    transform:skewX(7deg); margin-top:8px; color:#fff; font-weight:800;
+    font-size:34px; letter-spacing:2px; text-transform:uppercase;
+  }
+</style>
+</head>
+<body>
+  <div class="canvas">
+    <span class="coin c1"></span>
+    <span class="coin c2"></span>
+    <span class="coin c3"></span>
+    <span class="coin c4"></span>
+    <span class="coin c5"></span>
+    <span class="coin c6"></span>
+
+    <div class="brand"><img src="../../assets/logo.png" alt="El Maravilloso"></div>
+
+    <div class="headline">¡OFERTA<br>IMPERDIBLE!</div>
+
+    <img class="product" src="../../assets/milo-1kg-cut.png" alt="Milo 1 kg">
+
+    <div class="price">
+      <div class="big"><b>$</b>7.190</div>
+      <div class="label">Milo Bolsa 1 kg</div>
+    </div>
+  </div>
+</body>
+</html>

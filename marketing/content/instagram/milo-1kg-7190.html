@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1080px; height:1080px; overflow:hidden; font-family:'Archivo',sans-serif; }
+
+  .canvas {
+    width:1080px; height:1080px; position:relative;
+    background:
+      radial-gradient(120% 90% at 50% 0%, #ff3b3b 0%, #ed1c24 42%, #c10d14 100%);
+    overflow:hidden;
+  }
+  /* glossy sheen */
+  .canvas::before{
+    content:""; position:absolute; inset:0;
+    background:radial-gradient(70% 45% at 50% 12%, rgba(255,255,255,.22), rgba(255,255,255,0) 60%);
+    pointer-events:none;
+  }
+
+  /* top brand bar */
+  .brand { position:absolute; top:48px; left:0; right:0; display:flex; justify-content:center; }
+  .brand img { height:120px; filter:drop-shadow(0 6px 14px rgba(0,0,0,.35)); }
+
+  /* oferta ribbon */
+  .oferta{
+    position:absolute; top:206px; left:50%; transform:translateX(-50%);
+    background:#ffd400; color:#c10d14; font-family:'Archivo Black',sans-serif;
+    font-size:46px; letter-spacing:4px; padding:14px 54px; border-radius:999px;
+    box-shadow:0 10px 24px rgba(0,0,0,.28), inset 0 -4px 0 rgba(0,0,0,.12);
+    text-transform:uppercase;
+  }
+
+  /* product photo slot */
+  .photo{
+    position:absolute; top:278px; left:50%; transform:translateX(-50%);
+    width:392px; height:392px; border-radius:50%;
+    background:radial-gradient(circle at 50% 38%, #ffffff, #eef1f4 70%, #dde3e8 100%);
+    box-shadow:0 24px 50px rgba(0,0,0,.32), inset 0 0 0 10px rgba(255,255,255,.6);
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .photo img{ width:88%; height:88%; object-fit:contain; filter:drop-shadow(0 14px 22px rgba(0,0,0,.25)); }
+
+  /* product name */
+  .name{
+    position:absolute; top:686px; left:0; right:0; text-align:center;
+    color:#fff; font-family:'Archivo Black',sans-serif; font-size:80px; line-height:.95;
+    letter-spacing:1px; text-shadow:0 5px 0 rgba(0,0,0,.18), 0 14px 28px rgba(0,0,0,.35);
+    text-transform:uppercase;
+  }
+  .name small{ display:block; font-size:36px; letter-spacing:6px; color:#ffd400; margin-top:8px; }
+
+  /* price tag */
+  .price{
+    position:absolute; bottom:64px; left:50%; transform:translateX(-50%);
+    background:#0066b3; color:#fff; border-radius:26px; padding:18px 56px 22px;
+    box-shadow:0 16px 36px rgba(0,0,0,.34), inset 0 -6px 0 rgba(0,0,0,.18);
+    display:flex; align-items:baseline; gap:6px; border:5px solid rgba(255,255,255,.85);
+  }
+  .price .cur{ font-size:54px; font-weight:800; transform:translateY(-22px); }
+  .price .num{ font-family:'Archivo Black',sans-serif; font-size:138px; line-height:1; }
+
+  /* corner sparkles */
+  .dot{ position:absolute; border-radius:50%; background:rgba(255,255,255,.18); }
+  .d1{ width:220px; height:220px; top:-60px; left:-60px; }
+  .d2{ width:150px; height:150px; bottom:200px; right:-40px; }
+</style>
+</head>
+<body>
+  <div class="canvas">
+    <span class="dot d1"></span>
+    <span class="dot d2"></span>
+
+    <div class="brand"><img src="../../assets/logo.png" alt="El Maravilloso"></div>
+
+    <div class="oferta">★ Oferta ★</div>
+
+    <div class="photo">
+      <img src="../../assets/milo-1kg.jpg" alt="Milo 1 kg">
+    </div>
+
+    <div class="name">Milo<small>Bolsa 1 KG</small></div>
+
+    <div class="price">
+      <span class="cur">$</span><span class="num">7.190</span>
+    </div>
+  </div>
+</body>
+</html>
