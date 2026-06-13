@@ -192,7 +192,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         /* Franja header metrics */
         .ed-header-band {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
             gap: 1px;                       /* divisores hairline vía gap */
             background: var(--border);      /* el gap muestra este color */
             border: 1px solid var(--border);
@@ -207,16 +207,16 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             min-width: 0;                   /* evita desborde del grid */
         }
         .ed-metric-label {
-            font-size: 0.66rem;
+            font-size: 0.74rem;
             font-weight: 600;
             letter-spacing: 0.1em;
             text-transform: uppercase;
             color: var(--text-muted);
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
         .ed-metric-value {
             font-family: var(--font-mono, 'JetBrains Mono', monospace);
-            font-size: clamp(1.15rem, 2.2vw, 1.8rem);
+            font-size: clamp(1.6rem, 4vw, 2.5rem);
             font-weight: 800;
             color: var(--text-primary);
             line-height: 1.05;
@@ -224,9 +224,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             overflow-wrap: anywhere;
         }
         .ed-metric-delta {
-            font-size: 0.72rem;
+            font-size: 0.85rem;
             font-weight: 700;
-            margin-top: 5px;
+            margin-top: 7px;
         }
         .ed-delta-up   { color: var(--color-success); }
         .ed-delta-down { color: var(--danger); }
@@ -272,15 +272,15 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            width: 100px;
-            height: 100px;
+            width: 116px;
+            height: 116px;
             border-radius: 50%;
             border: 3px solid var(--border);
             flex-shrink: 0;
         }
         .ed-score-num {
             font-family: var(--font-mono, monospace);
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-weight: 900;
             line-height: 1;
             color: var(--text-primary);
@@ -301,11 +301,11 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 0.82rem;
+            font-size: 0.98rem;
         }
-        .ed-factor-icon { font-size: 0.85rem; flex-shrink: 0; }
+        .ed-factor-icon { font-size: 1rem; flex-shrink: 0; }
         .ed-factor-name { color: var(--text-secondary); flex: 1; }
-        .ed-factor-pts  { font-family: var(--font-mono, monospace); font-size: 0.75rem; color: var(--text-muted); }
+        .ed-factor-pts  { font-family: var(--font-mono, monospace); font-size: 0.92rem; color: var(--text-muted); }
 
         @media (max-width: 480px) {
             .ed-health-row { grid-template-columns: 1fr; }
@@ -336,9 +336,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         .ed-chip-alta   { background: rgba(240,85,106,0.15); color: var(--danger); }
         .ed-chip-media  { background: rgba(245,177,76,0.15); color: var(--color-warning); }
         .ed-chip-baja   { background: rgba(156,164,178,0.12); color: var(--text-muted); }
-        .ed-rec-title   { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .ed-rec-impact  { font-family: var(--font-mono, monospace); font-size: 0.78rem; font-weight: 700; color: var(--color-success); white-space: nowrap; flex-shrink: 0; }
-        .ed-rec-tipo    { font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+        .ed-rec-title   { font-size: 0.98rem; font-weight: 600; color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ed-rec-impact  { font-family: var(--font-mono, monospace); font-size: 0.95rem; font-weight: 700; color: var(--color-success); white-space: nowrap; flex-shrink: 0; }
+        .ed-rec-tipo    { font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
 
         /* Ventas y rentabilidad */
         .ed-sales-grid {
@@ -363,8 +363,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             font-size: 0.85rem;
         }
         .ed-narrative-row:last-child { border-bottom: none; }
-        .ed-nar-label { color: var(--text-secondary); }
-        .ed-nar-val   { font-family: var(--font-mono, monospace); font-weight: 700; color: var(--text-primary); }
+        .ed-nar-label { color: var(--text-secondary); font-size: 0.98rem; }
+        .ed-nar-val   { font-family: var(--font-mono, monospace); font-weight: 700; color: var(--text-primary); font-size: 1.15rem; }
 
         /* Caja y flujo */
         .ed-caja-grid {
@@ -381,9 +381,9 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             border-right: 1px solid var(--border);
         }
         .ed-caja-cell:last-child { border-right: none; }
-        .ed-caja-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 6px; }
-        .ed-caja-value { font-family: var(--font-mono, monospace); font-size: 1.3rem; font-weight: 800; color: var(--text-primary); }
-        .ed-caja-sub   { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; }
+        .ed-caja-label { font-size: 0.74rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 7px; }
+        .ed-caja-value { font-family: var(--font-mono, monospace); font-size: clamp(1.5rem, 3.5vw, 1.9rem); font-weight: 800; color: var(--text-primary); overflow-wrap: anywhere; }
+        .ed-caja-sub   { font-size: 0.78rem; color: var(--text-muted); margin-top: 5px; }
         @media (max-width: 640px) { .ed-caja-grid { grid-template-columns: repeat(2, 1fr); } .ed-caja-cell:nth-child(2) { border-right: none; } .ed-caja-cell:nth-child(n+3) { border-top: 1px solid var(--border); } }
 
         /* Operación */
@@ -411,10 +411,10 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             margin-bottom: 12px;
         }
         .ed-ops-list { display: flex; flex-direction: column; gap: 5px; }
-        .ed-ops-row  { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; padding: 5px 0; border-bottom: 1px solid var(--border); }
+        .ed-ops-row  { display: flex; justify-content: space-between; align-items: center; font-size: 0.92rem; padding: 6px 0; border-bottom: 1px solid var(--border); }
         .ed-ops-row:last-child { border-bottom: none; }
         .ed-ops-name { color: var(--text-primary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
-        .ed-ops-stat { font-family: var(--font-mono, monospace); font-size: 0.78rem; font-weight: 700; color: var(--text-muted); flex-shrink: 0; }
+        .ed-ops-stat { font-family: var(--font-mono, monospace); font-size: 0.9rem; font-weight: 700; color: var(--text-muted); flex-shrink: 0; }
 
         /* Alertas */
         .ed-alert-item {
@@ -472,7 +472,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             color: var(--text-muted);
         }
         .ed-live-dot { width: 7px; height: 7px; background: var(--color-success); border-radius: 50%; box-shadow: 0 0 6px var(--color-success); flex-shrink: 0; }
-        .ed-today-totals { display: flex; align-items: center; gap: 12px; font-size: 0.82rem; }
+        .ed-today-totals { display: flex; align-items: center; gap: 12px; font-size: 1rem; }
 
         .live-ticket-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
         .live-ticket-row:last-child { border-bottom: none; }
@@ -2113,12 +2113,12 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         // ⑥ Caja y Flujo — llenar celdas editoriales
         const edCajaDisp = document.getElementById('ed-caja-disp');
         if (edCajaDisp) {
-            edCajaDisp.textContent = fmt(cajaNeta);
+            edCajaDisp.innerHTML = fmt(cajaNeta);
             edCajaDisp.style.color = cajaNeta >= 0 ? 'var(--color-success)' : 'var(--danger)';
         }
         const edIngresosEsp = document.getElementById('ed-ingresos-esp');
         const edIngEspSub   = document.getElementById('ed-ingresos-sub');
-        if (edIngresosEsp) edIngresosEsp.textContent = fmt(projectedIncome);
+        if (edIngresosEsp) edIngresosEsp.innerHTML = fmt(projectedIncome);
         if (edIngEspSub) edIngEspSub.textContent = `${daysLeft} días restantes`;
 
         const pendInvoicesEd = invoices.filter(i => i.paymentMethod === 'Crédito' && i.paymentStatus === 'Pendiente');
@@ -2126,7 +2126,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const payrollEd      = employees.reduce((s, e) => s + (parseFloat(e.baseSalary) || 0), 0);
         const edPagosPend    = document.getElementById('ed-pagos-pend');
         const edPagosSub     = document.getElementById('ed-pagos-sub');
-        if (edPagosPend) { edPagosPend.textContent = fmt(pendTotalEd + payrollEd); edPagosPend.style.color = 'var(--danger)'; }
+        if (edPagosPend) { edPagosPend.innerHTML = fmt(pendTotalEd + payrollEd); edPagosPend.style.color = 'var(--danger)'; }
         if (edPagosSub) edPagosSub.textContent = `${pendInvoicesEd.length} facturas + sueldos`;
 
         // ⑧ Alertas accionables con $
