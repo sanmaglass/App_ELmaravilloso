@@ -9,3 +9,7 @@ build/
 .vercel
 settings.json
 marketing/tools/__pycache__/
+marketing/studio/studio_data.json
+marketing/assets/_cuts/
+marketing/assets/entrada/*.png
+marketing/assets/entrada/*.jpg
