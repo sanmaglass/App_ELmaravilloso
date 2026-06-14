@@ -239,7 +239,10 @@ function renderPosts(posts){
           <div><label>Fecha</label><input type="date" value="${p.date||''}" data-d></div>
           <div><label>Hora</label><input type="time" value="${p.time||'13:00'}" data-t></div>
         </div>
-        <button class="btn btn-ghost btn-sm" data-sch style="margin-top:10px">📅 Programar</button>
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-ghost btn-sm" data-sch>📅 Programar</button>
+          <button class="btn btn-red btn-sm" data-pub style="margin-top:0">📤 Publicar en IG</button>
+        </div>
         <div class="links">
           <a href="/files/${p.image}" download>⬇ Imagen</a>
           <a href="/files/${p.video}" download>⬇ Video</a>
@@ -261,6 +264,15 @@ function renderPosts(posts){
       await api('/api/schedule',{slug:p.slug,date:el.querySelector('[data-d]').value,
         time:el.querySelector('[data-t]').value,status:'programado'});
       toast('Programado ✓');load();
+    };
+    el.querySelector('[data-pub]').onclick=async(ev)=>{
+      const btn=ev.currentTarget;btn.disabled=true;btn.innerHTML='<span class="spin"></span> Publicando…';
+      const r=await api('/api/publish',{slug:p.slug,kind:'reel'});
+      if(r.error==='no_token'){toast('Falta IG_TOKEN / IG_USER_ID en el .env');}
+      else if(r.error==='no_hosting'){toast('Falta PUBLIC_BASE_URL (hosting de las piezas)');}
+      else if(r.error){toast('IG: '+r.error);}
+      else{toast('¡Publicado en Instagram! 🎉');}
+      btn.disabled=false;btn.innerHTML='📤 Publicar en IG';load();
     };
     g.appendChild(el);
   });

@@ -318,6 +318,90 @@ def export_csv():
     return Response(out, media_type="text/csv",
                     headers={"Content-Disposition": "attachment; filename=calendario-maravilloso.csv"})
 
+# ---------- Publicación en Instagram (Graph API) ----------
+import urllib.request, urllib.parse, urllib.error, time
+GRAPH = "https://graph.facebook.com/v21.0"
+
+def _ig_api(method, path, params):
+    url = f"{GRAPH}/{path}"
+    if method == "GET":
+        url += "?" + urllib.parse.urlencode(params)
+        req = urllib.request.Request(url, method="GET")
+    else:
+        req = urllib.request.Request(url, data=urllib.parse.urlencode(params).encode(), method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=90) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        try:
+            msg = json.loads(e.read().decode("utf-8", "ignore")).get("error", {}).get("message", "")
+        except Exception:
+            msg = "error de Graph API"
+        raise RuntimeError(msg or f"HTTP {e.code}")
+
+def public_url(local_rel):
+    """URL pública de una pieza, para que Instagram la pueda bajar."""
+    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+    return f"{base}/{local_rel}" if base else None
+
+@app.post("/api/publish")
+async def publish(req: Request):
+    b = await req.json()
+    token = os.environ.get("IG_TOKEN")
+    ig_id = os.environ.get("IG_USER_ID")
+    if not token or not ig_id:
+        return JSONResponse({"error": "no_token"}, status_code=400)
+    d = load_data()
+    post = next((p for p in d["posts"] if p["slug"] == b.get("slug")), None)
+    if not post:
+        return JSONResponse({"error": "post no encontrado"}, status_code=404)
+    cap = post.get("caption") or {}
+    caption = (cap.get("ig_caption", "") + "\n\n" + cap.get("hashtags", "")).strip() or post["name"]
+    kind = b.get("kind", "reel")  # 'reel' (video) o 'photo' (imagen)
+    media = public_url(post["video"] if kind == "reel" else post["image"])
+    if not media:
+        return JSONResponse({"error": "no_hosting"}, status_code=400)
+    try:
+        if kind == "reel":
+            cont = _ig_api("POST", f"{ig_id}/media",
+                           {"media_type": "REELS", "video_url": media, "caption": caption, "access_token": token})
+        else:
+            cont = _ig_api("POST", f"{ig_id}/media",
+                           {"image_url": media, "caption": caption, "access_token": token})
+        cid = cont["id"]
+        # Reels: esperar a que Instagram procese el video antes de publicar
+        for _ in range(40):
+            st = _ig_api("GET", cid, {"fields": "status_code", "access_token": token})
+            code = st.get("status_code")
+            if code == "FINISHED":
+                break
+            if code == "ERROR":
+                return JSONResponse({"error": "Instagram no pudo procesar el video"}, status_code=500)
+            time.sleep(3)
+        pub = _ig_api("POST", f"{ig_id}/media_publish", {"creation_id": cid, "access_token": token})
+        post["status"] = "publicado"
+        save_data(d)
+        return {"ok": True, "id": pub.get("id")}
+    except Exception as e:
+        return JSONResponse({"error": str(e)[:180]}, status_code=500)
+
+@app.get("/api/ig-id")
+def ig_id_helper():
+    """Saca tu Instagram Business Account ID a partir del token (con la página vinculada)."""
+    token = os.environ.get("IG_TOKEN")
+    if not token:
+        return JSONResponse({"error": "no_token"}, status_code=400)
+    try:
+        pages = _ig_api("GET", "me/accounts", {"fields": "name,instagram_business_account", "access_token": token})
+        out = []
+        for pg in pages.get("data", []):
+            iba = pg.get("instagram_business_account", {})
+            if iba:
+                out.append({"pagina": pg.get("name"), "ig_user_id": iba.get("id")})
+        return {"cuentas": out}
+    except Exception as e:
+        return JSONResponse({"error": str(e)[:180]}, status_code=500)
+
 @app.post("/api/delete")
 async def delete(req: Request):
     b = await req.json()
