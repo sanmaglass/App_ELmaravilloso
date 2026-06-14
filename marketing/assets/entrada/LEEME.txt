@@ -1,0 +1,15 @@
+📥 CARPETA DE ENTRADA DEL ESTUDIO
+
+Tira aquí las fotos de productos que quieras convertir en posts.
+
+Cómo nombrarlas (para que Claude encuentre el producto en la base de datos):
+  - milo.jpg
+  - aceite-chef.jpg
+  - coca-cola-15.jpg
+
+No te preocupes del fondo ni del precio: eso lo pone Claude.
+El precio sale de tu sistema y tú lo confirmas antes de generar.
+
+Luego abre Claude y di: "genera".
+
+(Manual completo: ../../ESTUDIO.md)
