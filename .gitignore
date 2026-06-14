@@ -8,3 +8,4 @@ build/
 
 .vercel
 settings.json
+marketing/tools/__pycache__/
