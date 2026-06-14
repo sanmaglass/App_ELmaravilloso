@@ -129,7 +129,12 @@
   </h2>
   <div class="grid" id="pend-grid"></div>
 
-  <h2><span class="dot"></span>Listo para publicar <small>imagen · video · descripción</small></h2>
+  <h2><span class="dot"></span>Listo para publicar <small>imagen · video · descripción</small>
+    <span class="act" style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" id="autosch" style="width:auto">🗓️ Auto-agendar</button>
+      <button class="btn btn-ghost btn-sm" id="export" style="width:auto">⬇ Exportar CSV</button>
+    </span>
+  </h2>
   <div class="grid" id="post-grid"></div>
 </div>
 <div class="toast" id="toast"></div>
@@ -168,6 +173,8 @@ function renderPending(files){
             <option value="premium">Premium</option><option value="clasica">Clásica</option>
           </select></div>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;font-size:.86rem;color:var(--ink)">
+          <input type="checkbox" data-k="bg" style="width:auto"> ✂️ Quitar fondo a la foto</label>
         <button class="btn btn-red" data-gen>✨ Generar pieza</button>
       </div>`;
     el.querySelector('[data-gen]').onclick=()=>genOne(el);
@@ -179,10 +186,11 @@ async function genOne(el){
   const get=k=>el.querySelector(`[data-k="${k}"]`).value;
   const f=el.dataset.file, price=get('price');
   if(!price){toast('Pon el precio primero');el.querySelector('[data-k="price"]').focus();return false;}
+  const bg=el.querySelector('[data-k="bg"]').checked;
   const btn=el.querySelector('[data-gen]');btn.disabled=true;
-  btn.innerHTML='<span class="spin"></span> Generando…';
+  btn.innerHTML='<span class="spin"></span> '+(bg?'Quitando fondo…':'Generando…');
   try{
-    const post=await api('/api/generate',{filename:f,name:get('name'),price,style:get('style')});
+    const post=await api('/api/generate',{filename:f,name:get('name'),price,style:get('style'),remove_bg:bg});
     // genera descripción IA en seguida (si hay key)
     await api('/api/caption',{slug:post.slug,name:post.name,price:post.price}).catch(()=>{});
     return true;
@@ -257,6 +265,12 @@ function renderPosts(posts){
     g.appendChild(el);
   });
 }
+
+$('#autosch').onclick=async()=>{
+  const r=await api('/api/autoschedule',{});
+  toast(r.assigned?`${r.assigned} piezas agendadas 🗓️`:'No hay piezas sin fecha');load();
+};
+$('#export').onclick=()=>{ window.location='/api/export.csv'; toast('Descargando CSV ⬇'); };
 
 const drop=$('#drop'),file=$('#file');
 ['dragover','dragenter'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over')}));

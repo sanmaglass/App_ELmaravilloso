@@ -7,8 +7,8 @@ ver grid, agendar en el calendario. Todo local (localhost).
 
 Levantar:  python server.py   (o doble clic en INICIAR_ESTUDIO.bat)
 """
-import os, sys, json, re, shutil, argparse, threading, webbrowser
-from datetime import datetime
+import os, sys, json, re, shutil, argparse, threading, webbrowser, csv, io
+from datetime import datetime, timedelta
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MKT  = os.path.abspath(os.path.join(HERE, ".."))          # carpeta marketing/
@@ -273,6 +273,50 @@ async def schedule(req: Request):
             p["status"] = b.get("status", p["status"])
     save_data(d)
     return {"ok": True}
+
+# Ritmo semanal (weekday 0=lunes): hora del slot
+WEEKLY_SLOTS = {0: "13:00", 1: "19:30", 2: "10:00", 3: "13:00", 4: "19:00", 5: "11:00"}
+
+@app.post("/api/autoschedule")
+async def autoschedule(req: Request):
+    d = load_data()
+    taken = {(p.get("date"), p.get("time")) for p in d["posts"] if p.get("date")}
+    pending = [p for p in d["posts"] if not p.get("date")]
+    day = datetime.now().date()
+    assigned = 0
+    # busca slots libres hacia adelante (máx 60 días) para cada pieza sin fecha
+    for p in pending:
+        for _ in range(60):
+            slot = WEEKLY_SLOTS.get(day.weekday())
+            ds = day.strftime("%Y-%m-%d")
+            if slot and (ds, slot) not in taken:
+                p["date"], p["time"], p["status"] = ds, slot, "programado"
+                taken.add((ds, slot))
+                assigned += 1
+                day += timedelta(days=1)
+                break
+            day += timedelta(days=1)
+    save_data(d)
+    return {"assigned": assigned}
+
+@app.get("/api/export.csv")
+def export_csv():
+    d = load_data()
+    rows = [p for p in d["posts"] if p.get("date")]
+    rows.sort(key=lambda p: (p.get("date", ""), p.get("time", "")))
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Fecha", "Hora", "Plataforma", "Texto", "Archivo"])
+    for p in rows:
+        cap = p.get("caption") or {}
+        ig = (cap.get("ig_caption", "") + "\n\n" + cap.get("hashtags", "")).strip() or p["name"]
+        tk = (cap.get("tiktok_text", "") + " " + cap.get("hashtags", "")).strip() or p["name"]
+        w.writerow([p["date"], p["time"], "Instagram", ig, os.path.basename(p["image"])])
+        w.writerow([p["date"], p["time"], "TikTok",    tk, os.path.basename(p["video"])])
+    out = buf.getvalue()
+    from fastapi.responses import Response
+    return Response(out, media_type="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=calendario-maravilloso.csv"})
 
 @app.post("/api/delete")
 async def delete(req: Request):
