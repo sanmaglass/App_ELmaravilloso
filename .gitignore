@@ -13,3 +13,5 @@ marketing/studio/studio_data.json
 marketing/assets/_cuts/
 marketing/assets/entrada/*.png
 marketing/assets/entrada/*.jpg
+marketing/studio/.env
+marketing/.env

@@ -17,6 +17,20 @@ sys.path.insert(0, TOOLS)
 import templates as T          # plantillas de diseño
 import make_video as MV        # motor de video
 
+# Carga ANTHROPIC_API_KEY desde .env (server-side, nunca al cliente)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(HERE, ".env"))
+    load_dotenv(os.path.join(MKT, ".env"))
+except Exception:
+    pass
+
+BRAND_MD = ""
+try:
+    BRAND_MD = open(os.path.join(MKT, "brand", "brand.md"), encoding="utf-8").read()
+except Exception:
+    pass
+
 ENTRADA = os.path.join(MKT, "assets", "entrada")
 CUTS    = os.path.join(MKT, "assets", "_cuts")
 IMG_OUT = os.path.join(MKT, "content", "instagram")
@@ -127,6 +141,64 @@ async def generate(req: Request):
     d["posts"].insert(0, post)
     save_data(d)
     return post
+
+CAPTION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "ig_caption":  {"type": "string"},
+        "tiktok_text": {"type": "string"},
+        "hashtags":    {"type": "string"},
+    },
+    "required": ["ig_caption", "tiktok_text", "hashtags"],
+    "additionalProperties": False,
+}
+
+def generate_caption(name, price):
+    """Genera caption IG + texto TikTok en la voz de marca con Claude."""
+    import anthropic
+    client = anthropic.Anthropic()  # lee ANTHROPIC_API_KEY del entorno
+    precio = "$" + format(int(price), ",d").replace(",", ".") if price else ""
+    system = (
+        "Eres el community manager de Distribuidora El Maravilloso (Hualpén, Chile). "
+        "Escribes copy para Instagram y TikTok en español chileno informal, cercano y en tono de oferta. "
+        "Reglas: nunca menciones fiado ni crédito; usa emojis con moderación; cierra invitando a pasar o escribir por DM. "
+        "Usa esta ficha de marca como fuente de verdad de voz, público y hashtags:\n\n" + BRAND_MD
+    )
+    user = (
+        f"Genera el contenido para este producto en oferta:\n"
+        f"Producto: {name}\nPrecio: {precio}\n\n"
+        f"Devuelve: ig_caption (3-5 líneas con gancho, beneficio y llamado a la acción), "
+        f"tiktok_text (1-2 líneas estilo POV/viral, más corto), "
+        f"y hashtags (6-9 relevantes, mezcla locales y de producto, separados por espacio)."
+    )
+    msg = client.messages.create(
+        model="claude-opus-4-8",
+        max_tokens=1200,
+        system=system,
+        messages=[{"role": "user", "content": user}],
+        output_config={"format": {"type": "json_schema", "schema": CAPTION_SCHEMA}},
+    )
+    text = next(b.text for b in msg.content if b.type == "text")
+    return json.loads(text)
+
+@app.post("/api/caption")
+async def caption(req: Request):
+    b = await req.json()
+    try:
+        cap = generate_caption(b.get("name", ""), int(b.get("price", 0) or 0))
+    except Exception as e:
+        m = str(e).lower()
+        if "api_key" in m or "authentication" in m or "x-api-key" in m:
+            return JSONResponse({"error": "no_key"}, status_code=400)
+        return JSONResponse({"error": "fallo al generar"}, status_code=500)
+    # guarda en el post si existe
+    if b.get("slug"):
+        d = load_data()
+        for p in d["posts"]:
+            if p["slug"] == b["slug"]:
+                p["caption"] = cap
+        save_data(d)
+    return cap
 
 @app.post("/api/schedule")
 async def schedule(req: Request):

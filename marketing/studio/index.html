@@ -6,93 +6,105 @@
 <title>Estudio · El Maravilloso</title>
 <style>
   :root{
-    --red:#ED1C24; --red-dark:#B01018; --blue:#0066B3;
-    --cream:#F5F2EC; --ink:#1c1c1e; --muted:#7a7a80;
-    --card:#ffffff; --line:#e9e4da; --ok:#1f9d57; --shadow:0 6px 24px rgba(30,20,20,.08);
-    --r:18px;
+    --red:#ED1C24; --red-2:#ff3b42; --red-dark:#B01018; --blue:#0066B3;
+    --cream:#F6F3EC; --paper:#FFFFFF; --ink:#1b1b1f; --muted:#85838c; --line:#ece6db;
+    --ok:#1f9d57; --amber:#c47f1a; --shadow:0 10px 30px rgba(40,25,25,.08);
+    --shadow-sm:0 3px 12px rgba(40,25,25,.06); --r:20px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:"Bahnschrift","Segoe UI",system-ui,sans-serif;background:var(--cream);color:var(--ink);
-       -webkit-font-smoothing:antialiased}
-  .wrap{max-width:1180px;margin:0 auto;padding:28px 22px 80px}
-  header{display:flex;align-items:center;gap:16px;margin-bottom:8px}
-  header img{height:54px;width:auto;border-radius:10px}
-  header .t h1{font-size:1.7rem;letter-spacing:.3px}
-  header .t p{color:var(--muted);font-size:.92rem;margin-top:2px}
-  .badge{margin-left:auto;background:var(--red);color:#fff;padding:8px 16px;border-radius:999px;
-         font-weight:600;font-size:.85rem;box-shadow:0 4px 14px rgba(237,28,36,.3)}
+  body{font-family:"Bahnschrift","Segoe UI",system-ui,sans-serif;color:var(--ink);
+       background:radial-gradient(1200px 600px at 80% -10%,#fbeceb 0%,transparent 60%),var(--cream);
+       -webkit-font-smoothing:antialiased;min-height:100vh}
+  .wrap{max-width:1200px;margin:0 auto;padding:30px 22px 90px}
 
-  .stats{display:flex;gap:14px;margin:22px 0 8px;flex-wrap:wrap}
-  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 20px;flex:1;min-width:150px;
-        box-shadow:var(--shadow)}
-  .stat .n{font-size:1.7rem;font-weight:700;color:var(--red)}
-  .stat .l{color:var(--muted);font-size:.82rem;text-transform:uppercase;letter-spacing:.6px}
+  header{display:flex;align-items:center;gap:16px;margin-bottom:6px}
+  header img{height:56px;border-radius:12px;box-shadow:var(--shadow-sm)}
+  header h1{font-size:1.8rem;letter-spacing:.2px;line-height:1.1}
+  header p{color:var(--muted);font-size:.92rem;margin-top:3px}
+  .badge{margin-left:auto;background:linear-gradient(135deg,var(--red),var(--red-2));color:#fff;
+         padding:9px 17px;border-radius:999px;font-weight:600;font-size:.85rem;
+         box-shadow:0 6px 18px rgba(237,28,36,.35)}
 
-  h2{font-size:1.05rem;margin:34px 0 14px;display:flex;align-items:center;gap:10px}
-  h2 .dot{width:9px;height:9px;border-radius:50%;background:var(--red)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:24px 0 6px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px 20px;
+        box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+  .stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--red)}
+  .stat .n{font-size:1.9rem;font-weight:700;color:var(--red);line-height:1}
+  .stat .l{color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.7px;margin-top:6px}
+
+  h2{font-size:1.08rem;margin:36px 0 14px;display:flex;align-items:center;gap:10px}
+  h2 .dot{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px rgba(237,28,36,.13)}
   h2 small{color:var(--muted);font-weight:400;font-size:.82rem}
+  h2 .act{margin-left:auto}
 
-  /* dropzone */
-  .drop{border:2.5px dashed #d7cdbb;border-radius:var(--r);background:#fbf9f4;padding:38px;text-align:center;
-        cursor:pointer;transition:.18s;position:relative}
-  .drop:hover,.drop.over{border-color:var(--red);background:#fff;transform:translateY(-1px)}
-  .drop .ic{font-size:2.6rem}
-  .drop b{display:block;margin-top:8px;font-size:1.05rem}
+  .drop{border:2.5px dashed #dbd0bd;border-radius:var(--r);background:linear-gradient(180deg,#fffdf8,#fbf8f1);
+        padding:40px;text-align:center;cursor:pointer;transition:.2s;position:relative}
+  .drop:hover,.drop.over{border-color:var(--red);background:#fff;transform:translateY(-2px);box-shadow:var(--shadow)}
+  .drop .ic{font-size:2.8rem}
+  .drop b{display:block;margin-top:8px;font-size:1.08rem}
   .drop span{color:var(--muted);font-size:.86rem}
   .drop input{display:none}
 
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
-        box-shadow:var(--shadow);animation:rise .4s ease both}
-  @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-  .thumb{aspect-ratio:1/1;background:#f0ebe1 center/cover no-repeat;position:relative}
-  .card .body{padding:14px}
-  .card label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin:8px 0 4px}
-  .card input,.card select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font:inherit;
-        font-size:.92rem;background:#fff;transition:.15s}
-  .card input:focus,.card select:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(237,28,36,.1)}
-  .row{display:flex;gap:8px}
-  .row>*{flex:1}
-  .btn{border:none;border-radius:11px;padding:11px 14px;font:inherit;font-weight:600;cursor:pointer;
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:20px}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+        box-shadow:var(--shadow-sm);animation:rise .45s cubic-bezier(.2,.7,.3,1) both;transition:.2s}
+  .card:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .thumb{aspect-ratio:1/1;background:#f0ebe1 center/cover no-repeat}
+  .card .body{padding:15px}
+  .card label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin:10px 0 4px}
+  .card input,.card select,.card textarea{width:100%;padding:10px 12px;border:1px solid var(--line);
+        border-radius:11px;font:inherit;font-size:.92rem;background:#fff;transition:.15s;color:var(--ink)}
+  .card textarea{resize:vertical;min-height:64px;line-height:1.45}
+  .card input:focus,.card select:focus,.card textarea:focus{outline:none;border-color:var(--red);
+        box-shadow:0 0 0 3px rgba(237,28,36,.12)}
+  .row{display:flex;gap:8px}.row>*{flex:1}
+  .btn{border:none;border-radius:12px;padding:11px 15px;font:inherit;font-weight:600;cursor:pointer;
        transition:.16s;display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%}
-  .btn-red{background:var(--red);color:#fff;box-shadow:0 4px 14px rgba(237,28,36,.28);margin-top:12px}
-  .btn-red:hover{background:var(--red-dark);transform:translateY(-1px)}
-  .btn-red:disabled{opacity:.6;cursor:wait;transform:none}
-  .btn-ghost{background:#f3efe7;color:var(--ink)}
-  .btn-ghost:hover{background:#ece6db}
+  .btn-red{background:linear-gradient(135deg,var(--red),var(--red-2));color:#fff;
+           box-shadow:0 5px 16px rgba(237,28,36,.3);margin-top:13px}
+  .btn-red:hover{filter:brightness(1.05);transform:translateY(-1px)}
+  .btn-red:disabled{opacity:.6;cursor:wait;transform:none;filter:none}
+  .btn-ghost{background:#f3efe7;color:var(--ink)}.btn-ghost:hover{background:#ece6db}
+  .btn-sm{padding:8px 12px;font-size:.85rem;border-radius:10px}
 
-  /* posts listos */
-  .post .media{position:relative;aspect-ratio:9/16;background:#000;max-height:360px;overflow:hidden}
+  .post .media{position:relative;aspect-ratio:9/16;background:#000;max-height:340px;overflow:hidden}
   .post video{width:100%;height:100%;object-fit:cover;display:block}
   .post .tag{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.55);color:#fff;font-size:.72rem;
         padding:4px 9px;border-radius:8px;backdrop-filter:blur(4px)}
-  .pill{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;font-weight:600;padding:4px 10px;border-radius:999px}
-  .pill.listo{background:#e7f6ec;color:var(--ok)}
-  .pill.prog{background:#fff2e0;color:#c47f1a}
+  .post .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+        font-size:2.4rem;color:rgba(255,255,255,.85);pointer-events:none;transition:.2s;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+  .post .media:hover .play{opacity:0}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;font-weight:600;padding:4px 11px;border-radius:999px}
+  .pill.listo{background:#e7f6ec;color:var(--ok)}.pill.prog{background:#fff2e0;color:var(--amber)}
   .pill.pub{background:#e8eefc;color:var(--blue)}
-  .meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-  .meta .price{font-weight:700;color:var(--red);font-size:1.15rem}
-  .mini{font-size:.78rem;color:var(--muted)}
-  .empty{grid-column:1/-1;text-align:center;padding:46px;color:var(--muted);border:2px dashed var(--line);border-radius:var(--r)}
-
-  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);
-        color:#fff;padding:13px 22px;border-radius:12px;font-weight:600;opacity:0;transition:.3s;z-index:50;box-shadow:0 8px 30px rgba(0,0,0,.25)}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-  .spin{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
-  @keyframes sp{to{transform:rotate(360deg)}}
+  .meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .meta .price{font-weight:700;color:var(--red);font-size:1.2rem}
+  .cap{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
+  .cap .lab{display:flex;align-items:center;justify-content:space-between}
+  .cap .copy{background:none;border:none;color:var(--muted);cursor:pointer;font:inherit;font-size:.74rem;padding:2px 6px;border-radius:7px}
+  .cap .copy:hover{background:#f3efe7;color:var(--ink)}
+  .empty{grid-column:1/-1;text-align:center;padding:48px;color:var(--muted);border:2px dashed var(--line);border-radius:var(--r)}
   .links{display:flex;gap:8px;margin-top:10px}
   .links a{flex:1;text-align:center;font-size:.8rem;text-decoration:none;color:var(--ink);background:#f3efe7;
-        padding:8px;border-radius:9px;transition:.15s}
-  .links a:hover{background:#ece6db}
+        padding:8px;border-radius:10px;transition:.15s}.links a:hover{background:#ece6db}
+
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);
+        background:var(--ink);color:#fff;padding:13px 22px;border-radius:13px;font-weight:600;opacity:0;
+        transition:.3s;z-index:50;box-shadow:0 10px 34px rgba(0,0,0,.28)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .spin{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+  .spin.dark{border-color:rgba(0,0,0,.2);border-top-color:var(--red)}
+  @keyframes sp{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <img src="/files/assets/logo.png" alt="El Maravilloso">
-    <div class="t">
+    <div>
       <h1>Estudio de Contenido</h1>
-      <p>Sube fotos → genera imagen + video → agenda y publica</p>
+      <p>Sube fotos → genera imagen + video + descripción IA → agenda y publica</p>
     </div>
     <div class="badge">El Maravilloso</div>
   </header>
@@ -112,39 +124,40 @@
     <input type="file" id="file" multiple accept="image/*">
   </label>
 
-  <h2><span class="dot"></span>Por procesar <small id="pend-c"></small></h2>
+  <h2><span class="dot"></span>Por procesar <small id="pend-c"></small>
+    <button class="btn btn-ghost btn-sm act" id="gen-all" style="width:auto;display:none">⚡ Generar todas</button>
+  </h2>
   <div class="grid" id="pend-grid"></div>
 
-  <h2><span class="dot"></span>Listo para publicar <small>imagen para feed · video para TikTok/Reels</small></h2>
+  <h2><span class="dot"></span>Listo para publicar <small>imagen · video · descripción</small></h2>
   <div class="grid" id="post-grid"></div>
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
-const $=s=>document.querySelector(s), api=(u,d)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
-function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+const $=s=>document.querySelector(s);
+const api=(u,d)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+function copy(txt){navigator.clipboard.writeText(txt);toast('Copiado ✓');}
 
 async function load(){
   const s=await fetch('/api/state').then(r=>r.json());
-  renderPending(s.entrada, s.posts);
+  renderPending(s.entrada);
   renderPosts(s.posts);
-  const listo=s.posts.filter(p=>p.status==='listo'||p.status==='programado'||p.status==='publicado').length;
-  const prog=s.posts.filter(p=>p.status==='programado').length;
-  $('#s-listo').textContent=listo;
-  $('#s-dias').textContent=listo; // 1 pieza ≈ 1 día
-  $('#s-prog').textContent=prog;
-  $('#s-pend').textContent=s.entrada.length;
+  const listo=s.posts.length, prog=s.posts.filter(p=>p.status==='programado').length;
+  $('#s-listo').textContent=listo; $('#s-dias').textContent=listo;
+  $('#s-prog').textContent=prog; $('#s-pend').textContent=s.entrada.length;
   $('#pend-c').textContent=s.entrada.length?`(${s.entrada.length})`:'';
+  $('#gen-all').style.display=s.entrada.length>1?'inline-flex':'none';
 }
-
 function guessName(f){return f.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase());}
 
-function renderPending(files, posts){
+function renderPending(files){
   const g=$('#pend-grid');
   if(!files.length){g.innerHTML='<div class="empty">No hay fotos pendientes. Sube algunas arriba 👆</div>';return;}
   g.innerHTML='';
   files.forEach((f,i)=>{
-    const el=document.createElement('div');el.className='card';el.style.animationDelay=(i*40)+'ms';
+    const el=document.createElement('div');el.className='card';el.style.animationDelay=(i*40)+'ms';el.dataset.file=f;
     el.innerHTML=`
       <div class="thumb" style="background-image:url('/files/assets/entrada/${encodeURIComponent(f)}')"></div>
       <div class="body">
@@ -155,24 +168,46 @@ function renderPending(files, posts){
             <option value="premium">Premium</option><option value="clasica">Clásica</option>
           </select></div>
         </div>
-        <button class="btn btn-red" data-gen>✨ Generar imagen + video</button>
+        <button class="btn btn-red" data-gen>✨ Generar pieza</button>
       </div>`;
-    el.querySelector('[data-gen]').onclick=()=>genOne(el,f);
+    el.querySelector('[data-gen]').onclick=()=>genOne(el);
     g.appendChild(el);
   });
 }
 
-async function genOne(el,f){
+async function genOne(el){
   const get=k=>el.querySelector(`[data-k="${k}"]`).value;
-  const price=get('price');
-  if(!price){toast('Pon el precio primero');el.querySelector('[data-k="price"]').focus();return;}
+  const f=el.dataset.file, price=get('price');
+  if(!price){toast('Pon el precio primero');el.querySelector('[data-k="price"]').focus();return false;}
   const btn=el.querySelector('[data-gen]');btn.disabled=true;
-  btn.innerHTML='<span class="spin"></span> Generando video…';
+  btn.innerHTML='<span class="spin"></span> Generando…';
   try{
-    await api('/api/generate',{filename:f,name:get('name'),price,style:get('style')});
-    toast('¡Pieza lista! 🎬');
-    load();
-  }catch(e){toast('Error al generar');btn.disabled=false;btn.textContent='✨ Generar imagen + video';}
+    const post=await api('/api/generate',{filename:f,name:get('name'),price,style:get('style')});
+    // genera descripción IA en seguida (si hay key)
+    await api('/api/caption',{slug:post.slug,name:post.name,price:post.price}).catch(()=>{});
+    return true;
+  }catch(e){toast('Error al generar');btn.disabled=false;btn.innerHTML='✨ Generar pieza';return false;}
+}
+
+$('#gen-all').onclick=async()=>{
+  const cards=[...document.querySelectorAll('#pend-grid .card')];
+  const btn=$('#gen-all');btn.disabled=true;btn.innerHTML='<span class="spin dark"></span> Procesando…';
+  let n=0;
+  for(const el of cards){ if(await genOne(el)) n++; }
+  toast(`${n} piezas generadas 🎬`); btn.disabled=false; btn.innerHTML='⚡ Generar todas'; load();
+};
+
+function capBlock(p){
+  const c=p.caption;
+  if(!c) return `<button class="btn btn-ghost btn-sm" data-cap style="margin-top:10px">✍️ Generar descripción con IA</button>`;
+  const ig=(c.ig_caption||'')+'\n\n'+(c.hashtags||'');
+  return `<div class="cap">
+      <div class="lab"><label style="margin:0">Instagram</label><button class="copy" data-copy>📋 copiar</button></div>
+      <textarea data-ig>${ig}</textarea>
+      <div class="lab"><label>TikTok</label><button class="copy" data-copytk>📋 copiar</button></div>
+      <textarea data-tk>${c.tiktok_text||''}</textarea>
+      <button class="btn btn-ghost btn-sm" data-cap style="margin-top:8px">🔁 Regenerar texto</button>
+    </div>`;
 }
 
 function renderPosts(posts){
@@ -185,25 +220,36 @@ function renderPosts(posts){
     el.innerHTML=`
       <div class="media">
         <video src="/files/${p.video}" muted loop playsinline></video>
-        <span class="tag">🎬 ${p.style}</span>
+        <span class="tag">🎬 ${p.style}</span><span class="play">▶</span>
       </div>
       <div class="body">
         <div class="meta"><span class="price">$${Number(p.price).toLocaleString('es-CL')}</span>
           <span class="pill ${cls}">${p.status}</span></div>
         <div style="font-weight:600;margin-bottom:4px">${p.name}</div>
-        <div class="row">
+        ${capBlock(p)}
+        <div class="row" style="margin-top:10px">
           <div><label>Fecha</label><input type="date" value="${p.date||''}" data-d></div>
           <div><label>Hora</label><input type="time" value="${p.time||'13:00'}" data-t></div>
         </div>
-        <button class="btn btn-ghost" data-sch style="margin-top:10px">📅 Programar</button>
+        <button class="btn btn-ghost btn-sm" data-sch style="margin-top:10px">📅 Programar</button>
         <div class="links">
           <a href="/files/${p.image}" download>⬇ Imagen</a>
           <a href="/files/${p.video}" download>⬇ Video</a>
         </div>
       </div>`;
-    const v=el.querySelector('video');
-    el.querySelector('.media').onmouseenter=()=>v.play();
-    el.querySelector('.media').onmouseleave=()=>{v.pause();v.currentTime=0;};
+    const v=el.querySelector('video'), media=el.querySelector('.media');
+    media.onmouseenter=()=>v.play(); media.onmouseleave=()=>{v.pause();v.currentTime=0;};
+    const capBtn=el.querySelector('[data-cap]');
+    if(capBtn) capBtn.onclick=async()=>{
+      capBtn.disabled=true;capBtn.innerHTML='<span class="spin dark"></span> Escribiendo…';
+      const r=await api('/api/caption',{slug:p.slug,name:p.name,price:p.price});
+      if(r.error==='no_key'){toast('Falta tu API key (ver ARCHIVO .env)');capBtn.disabled=false;capBtn.innerHTML='✍️ Generar descripción con IA';return;}
+      if(r.error){toast('No se pudo generar');capBtn.disabled=false;return;}
+      load();
+    };
+    const ig=el.querySelector('[data-ig]'), tk=el.querySelector('[data-tk]');
+    const cp=el.querySelector('[data-copy]'); if(cp) cp.onclick=()=>copy(ig.value);
+    const cpt=el.querySelector('[data-copytk]'); if(cpt) cpt.onclick=()=>copy(tk.value);
     el.querySelector('[data-sch]').onclick=async()=>{
       await api('/api/schedule',{slug:p.slug,date:el.querySelector('[data-d]').value,
         time:el.querySelector('[data-t]').value,status:'programado'});
@@ -213,7 +259,6 @@ function renderPosts(posts){
   });
 }
 
-// drag & drop + upload
 const drop=$('#drop'),file=$('#file');
 ['dragover','dragenter'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over')}));
 ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('over')}));
@@ -222,9 +267,7 @@ file.addEventListener('change',()=>upload(file.files));
 async function upload(files){
   if(!files.length)return;
   const fd=new FormData();[...files].forEach(f=>fd.append('files',f));
-  toast('Subiendo…');
-  await fetch('/api/upload',{method:'POST',body:fd});
-  toast('Fotos subidas ✓');load();
+  toast('Subiendo…'); await fetch('/api/upload',{method:'POST',body:fd}); toast('Fotos subidas ✓'); load();
 }
 load();
 </script>
