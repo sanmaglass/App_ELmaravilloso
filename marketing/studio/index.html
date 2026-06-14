@@ -199,7 +199,7 @@ $('#gen-all').onclick=async()=>{
 
 function capBlock(p){
   const c=p.caption;
-  if(!c) return `<button class="btn btn-ghost btn-sm" data-cap style="margin-top:10px">✍️ Generar descripción con IA</button>`;
+  if(!c) return `<button class="btn btn-ghost btn-sm" data-cap style="margin-top:10px">✍️ Generar descripción</button>`;
   const ig=(c.ig_caption||'')+'\n\n'+(c.hashtags||'');
   return `<div class="cap">
       <div class="lab"><label style="margin:0">Instagram</label><button class="copy" data-copy>📋 copiar</button></div>
@@ -242,9 +242,8 @@ function renderPosts(posts){
     const capBtn=el.querySelector('[data-cap]');
     if(capBtn) capBtn.onclick=async()=>{
       capBtn.disabled=true;capBtn.innerHTML='<span class="spin dark"></span> Escribiendo…';
-      const r=await api('/api/caption',{slug:p.slug,name:p.name,price:p.price});
-      if(r.error==='no_key'){toast('Falta tu API key (ver ARCHIVO .env)');capBtn.disabled=false;capBtn.innerHTML='✍️ Generar descripción con IA';return;}
-      if(r.error){toast('No se pudo generar');capBtn.disabled=false;return;}
+      const r=await api('/api/caption',{slug:p.slug,name:p.name,price:p.price,variant:Date.now()%100000});
+      if(r.error){toast('No se pudo generar');capBtn.disabled=false;capBtn.innerHTML='✍️ Generar descripción';return;}
       load();
     };
     const ig=el.querySelector('[data-ig]'), tk=el.querySelector('[data-tk]');

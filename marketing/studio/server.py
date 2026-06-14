@@ -153,6 +153,63 @@ CAPTION_SCHEMA = {
     "additionalProperties": False,
 }
 
+def _money(price):
+    return "$" + format(int(price), ",d").replace(",", ".") if price else ""
+
+# --- Motor de captions GRATIS (plantillas, sin IA, voz de marca El Maravilloso) ---
+HOOKS = [
+    "🔥 ¡OFERTA DE LA SEMANA! 🔥",
+    "💥 ¡LLEGÓ LA OFERTA QUE ESPERABAS! 💥",
+    "👀 ¡OJO CON ESTE PRECIO!",
+    "⚡ ¡OFERTA RELÁMPAGO! ⚡",
+    "😍 ¡APROVECHA ESTE PRECIAZO!",
+    "🛒 ¡PRECIO QUE NO SE REPITE!",
+]
+BODIES = [
+    "{name} a solo {price} 💪",
+    "Llévate {name} por {price} 🙌",
+    "{name} 👉 {price}, ni lo pienses 😎",
+    "Tenemos {name} a {price} 🤑",
+]
+BENEFITS = [
+    "Perfecto pa' la casa o pa' surtir tu negocio 😋",
+    "Ideal para tu once, tu cocina o tu local 🏠",
+    "Pa' tu hogar o tu comercio, siempre al mejor precio 🛍️",
+    "Calidad y precio conveniente, como te gusta 👌",
+]
+TRUST = [
+    "En El Maravilloso encuentras de todo, al mejor precio y con despacho 🚚",
+    "Surtido amplio, precios de mayorista y despacho a domicilio 📦",
+    "Variedad, buen precio y despacho — todo en un solo lugar ✅",
+]
+CTAS = [
+    "📍 Hualpén — pásate o escríbenos por DM 📩",
+    "📍 Te esperamos en Hualpén. Escríbenos por DM 📲",
+    "🛒 Atendemos público y comercializadoras. ¡Pasa por nosotros! 📍 Hualpén",
+]
+TIKTOKS = [
+    "POV: encontraste {name} a {price} 😎🔥 En El Maravilloso, Hualpén 🛒",
+    "Corre que {name} está a {price} en El Maravilloso, Hualpén 🏃💨",
+    "Esto sí es precio 👀 {name} a {price} · El Maravilloso, Hualpén",
+    "Pa' la casa o pa' tu negocio: {name} {price} 🛒 Hualpén",
+]
+BASE_TAGS = "#ElMaravilloso #Hualpén #Concepción #Ofertas #Distribuidora #PrecioMayorista #Abarrotes"
+
+def templated_caption(name, price, variant=0):
+    p = _money(price)
+    v = abs(hash(name)) + int(variant or 0)
+    pick = lambda lst, off: lst[(v + off) % len(lst)]
+    ig = "\n\n".join([
+        pick(HOOKS, 0),
+        pick(BODIES, 1).format(name=name, price=p) + "\n" + pick(BENEFITS, 2),
+        pick(TRUST, 3),
+        pick(CTAS, 4),
+    ])
+    tk = pick(TIKTOKS, 5).format(name=name, price=p) + " #fyp #parati"
+    kw = re.sub(r"[^a-zA-Z0-9áéíóúñ]", "", name.split()[0]) if name.split() else ""
+    tags = BASE_TAGS + (f" #{kw.capitalize()}" if kw else "")
+    return {"ig_caption": ig, "tiktok_text": tk, "hashtags": tags}
+
 def generate_caption(name, price):
     """Genera caption IG + texto TikTok en la voz de marca con Claude."""
     import anthropic
@@ -184,13 +241,18 @@ def generate_caption(name, price):
 @app.post("/api/caption")
 async def caption(req: Request):
     b = await req.json()
-    try:
-        cap = generate_caption(b.get("name", ""), int(b.get("price", 0) or 0))
-    except Exception as e:
-        m = str(e).lower()
-        if "api_key" in m or "authentication" in m or "x-api-key" in m:
-            return JSONResponse({"error": "no_key"}, status_code=400)
-        return JSONResponse({"error": "fallo al generar"}, status_code=500)
+    name = b.get("name", "")
+    price = int(b.get("price", 0) or 0)
+    if b.get("ai"):  # IA de pago (opcional, requiere ANTHROPIC_API_KEY)
+        try:
+            cap = generate_caption(name, price)
+        except Exception as e:
+            m = str(e).lower()
+            if "api_key" in m or "authentication" in m or "x-api-key" in m:
+                return JSONResponse({"error": "no_key"}, status_code=400)
+            return JSONResponse({"error": "fallo al generar"}, status_code=500)
+    else:            # GRATIS por defecto (plantillas, sin llave)
+        cap = templated_caption(name, price, b.get("variant", 0))
     # guarda en el post si existe
     if b.get("slug"):
         d = load_data()
