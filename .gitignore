@@ -16,3 +16,4 @@ marketing/assets/entrada/*.jpg
 marketing/studio/.env
 marketing/.env
 marketing/studio/ig_auth.json
+__pycache__/
