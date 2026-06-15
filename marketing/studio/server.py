@@ -168,56 +168,53 @@ CAPTION_SCHEMA = {
 def _money(price):
     return "$" + format(int(price), ",d").replace(",", ".") if price else ""
 
-# --- Motor de captions GRATIS (plantillas, sin IA, voz de marca El Maravilloso) ---
+# --- Motor de captions GRATIS (plantillas) — texto limpio y ordenado, casa+negocio, sin gritar ni emoji-spam ---
 HOOKS = [
-    "🔥 ¡OFERTA DE LA SEMANA! 🔥",
-    "💥 ¡LLEGÓ LA OFERTA QUE ESPERABAS! 💥",
-    "👀 ¡OJO CON ESTE PRECIO!",
-    "⚡ ¡OFERTA RELÁMPAGO! ⚡",
-    "😍 ¡APROVECHA ESTE PRECIAZO!",
-    "🛒 ¡PRECIO QUE NO SE REPITE!",
+    "Te dejamos el dato 👇",
+    "Precio del día:",
+    "Llegó stock y lo dejamos a buen precio:",
+    "Ojo con este precio:",
+    "Para anotar y stockear:",
+    "Lo dejamos a precio conveniente:",
+    "Buena oportunidad:",
 ]
 BODIES = [
-    "{name} a solo {price} 💪",
-    "Llévate {name} por {price} 🙌",
-    "{name} 👉 {price}, ni lo pienses 😎",
-    "Tenemos {name} a {price} 🤑",
+    "{name}: {price}.",
+    "{name} a {price}.",
+    "{name} — {price} la unidad.",
+    "{name}, {price}.",
 ]
-BENEFITS = [
-    "Perfecto pa' la casa o pa' surtir tu negocio 😋",
-    "Ideal para tu once, tu cocina o tu local 🏠",
-    "Pa' tu hogar o tu comercio, siempre al mejor precio 🛍️",
-    "Calidad y precio conveniente, como te gusta 👌",
+# Por qué conviene (habla a casa Y negocio, sin clichés)
+WHY = [
+    "Conviene igual para la casa o para surtir el negocio.",
+    "Buen precio para consumo o para revender.",
+    "Rinde en el hogar y sale a cuenta para el comercio.",
+    "Sirve para tu casa o para tu local.",
+    "A ese precio conviene, lo lleves para la casa o para el negocio.",
 ]
-TRUST = [
-    "En El Maravilloso encuentras de todo, al mejor precio y con despacho 🚚",
-    "Surtido amplio, precios de mayorista y despacho a domicilio 📦",
-    "Variedad, buen precio y despacho — todo en un solo lugar ✅",
-]
-CTAS = [
-    "📍 Hualpén — pásate o escríbenos por DM 📩",
-    "📍 Te esperamos en Hualpén. Escríbenos por DM 📲",
-    "🛒 Atendemos público y comercializadoras. ¡Pasa por nosotros! 📍 Hualpén",
+# Dónde y cómo
+WHERE = [
+    "Estamos en Hualpén. Despacho disponible.",
+    "Pasa por Hualpén o escríbenos por DM.",
+    "En Hualpén — atendemos público y comercializadoras.",
+    "Hualpén · escríbenos por DM para pedidos y despacho.",
 ]
 TIKTOKS = [
-    "POV: encontraste {name} a {price} 😎🔥 En El Maravilloso, Hualpén 🛒",
-    "Corre que {name} está a {price} en El Maravilloso, Hualpén 🏃💨",
-    "Esto sí es precio 👀 {name} a {price} · El Maravilloso, Hualpén",
-    "Pa' la casa o pa' tu negocio: {name} {price} 🛒 Hualpén",
+    "{name} a {price}. Para la casa o el negocio — El Maravilloso, Hualpén.",
+    "Precio del día: {name} {price}. El Maravilloso, Hualpén.",
+    "{name} {price}. Pasa por El Maravilloso, Hualpén — público y negocios.",
+    "Anota: {name} {price}. Hualpén, con despacho.",
 ]
-BASE_TAGS = "#ElMaravilloso #Hualpén #Concepción #Ofertas #Distribuidora #PrecioMayorista #Abarrotes"
+BASE_TAGS = "#ElMaravilloso #Hualpén #Concepción #Ofertas #Distribuidora #Abarrotes"
 
 def templated_caption(name, price, variant=0):
     p = _money(price)
     v = abs(hash(name)) + int(variant or 0)
     pick = lambda lst, off: lst[(v + off) % len(lst)]
-    ig = "\n\n".join([
-        pick(HOOKS, 0),
-        pick(BODIES, 1).format(name=name, price=p) + "\n" + pick(BENEFITS, 2),
-        pick(TRUST, 3),
-        pick(CTAS, 4),
-    ])
-    tk = pick(TIKTOKS, 5).format(name=name, price=p) + " #fyp #parati"
+    ig = (pick(HOOKS, 0) + "\n\n"
+          + pick(BODIES, 1).format(name=name, price=p) + " " + pick(WHY, 2) + "\n\n"
+          + pick(WHERE, 3))
+    tk = pick(TIKTOKS, 4).format(name=name, price=p) + " #fyp #parati"
     kw = re.sub(r"[^a-zA-Z0-9áéíóúñ]", "", name.split()[0]) if name.split() else ""
     tags = BASE_TAGS + (f" #{kw.capitalize()}" if kw else "")
     return {"ig_caption": ig, "tiktok_text": tk, "hashtags": tags}
