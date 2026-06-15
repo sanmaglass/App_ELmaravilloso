@@ -40,7 +40,7 @@ for d in (ENTRADA, CUTS, IMG_OUT, VID_OUT):
     os.makedirs(d, exist_ok=True)
 
 from fastapi import FastAPI, UploadFile, File, Request
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Estudio El Maravilloso")
@@ -344,11 +344,81 @@ def public_url(local_rel):
     base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
     return f"{base}/{local_rel}" if base else None
 
+# ---------- OAuth con Facebook: conectar Instagram con 1 clic ----------
+FB_REDIRECT = os.environ.get("FB_REDIRECT_URI", "http://localhost:8000/api/fb-callback")
+FB_SCOPES = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,business_management"
+IG_AUTH_FILE = os.path.join(HERE, "ig_auth.json")
+
+def load_ig_auth():
+    if os.path.exists(IG_AUTH_FILE):
+        try: return json.load(open(IG_AUTH_FILE, encoding="utf-8"))
+        except Exception: pass
+    return {}
+
+def get_ig_auth():
+    """Token + IG user id: primero del OAuth guardado, si no del .env."""
+    a = load_ig_auth()
+    token = a.get("access_token") or os.environ.get("IG_TOKEN")
+    ig_id = a.get("ig_user_id") or os.environ.get("IG_USER_ID")
+    return token, ig_id
+
+@app.get("/api/fb-connect")
+def fb_connect():
+    app_id = os.environ.get("FB_APP_ID")
+    if not app_id:
+        return JSONResponse({"error": "Falta FB_APP_ID en el .env"}, status_code=400)
+    url = ("https://www.facebook.com/v21.0/dialog/oauth?"
+           + urllib.parse.urlencode({"client_id": app_id, "redirect_uri": FB_REDIRECT,
+                                     "scope": FB_SCOPES, "response_type": "code"}))
+    return RedirectResponse(url)
+
+def _get_json(url):
+    with urllib.request.urlopen(url, timeout=60) as r:
+        return json.loads(r.read())
+
+@app.get("/api/fb-callback")
+def fb_callback(code: str = "", error: str = "", error_description: str = ""):
+    if error or not code:
+        return HTMLResponse(f"<h2 style='font-family:sans-serif'>Conexión cancelada</h2><p>{error_description or 'Intenta de nuevo desde el Estudio.'}</p>")
+    app_id = os.environ.get("FB_APP_ID"); secret = os.environ.get("FB_APP_SECRET")
+    if not app_id or not secret:
+        return HTMLResponse("<h2 style='font-family:sans-serif'>Falta FB_APP_ID o FB_APP_SECRET en el .env</h2>")
+    try:
+        # 1) code -> token corto
+        short = _get_json(f"{GRAPH}/oauth/access_token?" + urllib.parse.urlencode(
+            {"client_id": app_id, "redirect_uri": FB_REDIRECT, "client_secret": secret, "code": code}))["access_token"]
+        # 2) token corto -> largo (60 días)
+        lon = _get_json(f"{GRAPH}/oauth/access_token?" + urllib.parse.urlencode(
+            {"grant_type": "fb_exchange_token", "client_id": app_id, "client_secret": secret, "fb_exchange_token": short}))
+        token = lon["access_token"]
+        # 3) IG user id desde la página vinculada
+        pages = _get_json(f"{GRAPH}/me/accounts?" + urllib.parse.urlencode(
+            {"fields": "name,instagram_business_account", "access_token": token}))
+        ig_id = None
+        for pg in pages.get("data", []):
+            if pg.get("instagram_business_account"):
+                ig_id = pg["instagram_business_account"]["id"]
+        json.dump({"access_token": token, "ig_user_id": ig_id, "expires_in": lon.get("expires_in"),
+                   "connected_at": datetime.now().strftime("%Y-%m-%d %H:%M")},
+                  open(IG_AUTH_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+        ok = "✅ Instagram conectado" if ig_id else "⚠️ Conectado, pero no se encontró cuenta de Instagram en la página"
+        return HTMLResponse(f"<div style='font-family:sans-serif;text-align:center;padding:60px'><h1>{ok}</h1>"
+                            f"<p>IG ID: {ig_id or '—'}<br>Token de 60 días guardado.</p>"
+                            f"<p>Cierra esta pestaña y vuelve al Estudio. El botón <b>Publicar en IG</b> ya funciona. 🎉</p></div>")
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", "ignore")
+        return HTMLResponse(f"<div style='font-family:sans-serif;padding:40px'><h2>Error al conectar</h2><pre>{body[:600]}</pre></div>")
+
+@app.get("/api/ig-status")
+def ig_status():
+    token, ig_id = get_ig_auth()
+    a = load_ig_auth()
+    return {"connected": bool(token and ig_id), "ig_user_id": ig_id, "connected_at": a.get("connected_at")}
+
 @app.post("/api/publish")
 async def publish(req: Request):
     b = await req.json()
-    token = os.environ.get("IG_TOKEN")
-    ig_id = os.environ.get("IG_USER_ID")
+    token, ig_id = get_ig_auth()
     if not token or not ig_id:
         return JSONResponse({"error": "no_token"}, status_code=400)
     d = load_data()

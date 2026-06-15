@@ -106,7 +106,10 @@
       <h1>Estudio de Contenido</h1>
       <p>Sube fotos → genera imagen + video + descripción IA → agenda y publica</p>
     </div>
-    <div class="badge">El Maravilloso</div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+      <button id="igchip" class="btn btn-sm" style="width:auto;display:none"></button>
+      <div class="badge">El Maravilloso</div>
+    </div>
   </header>
 
   <div class="stats">
@@ -145,7 +148,19 @@ const api=(u,d)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/jso
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 function copy(txt){navigator.clipboard.writeText(txt);toast('Copiado ✓');}
 
+async function igStatus(){
+  const chip=$('#igchip'); chip.style.display='inline-flex';
+  try{
+    const s=await fetch('/api/ig-status').then(r=>r.json());
+    if(s.connected){ chip.className='btn btn-sm'; chip.style.background='#e7f6ec'; chip.style.color='#1f9d57';
+      chip.innerHTML='✅ Instagram conectado'; chip.onclick=null; chip.style.cursor='default'; }
+    else{ chip.className='btn btn-red btn-sm'; chip.innerHTML='🔗 Conectar Instagram';
+      chip.onclick=()=>{ window.location='/api/fb-connect'; }; }
+  }catch(e){ chip.style.display='none'; }
+}
+
 async function load(){
+  igStatus();
   const s=await fetch('/api/state').then(r=>r.json());
   renderPending(s.entrada);
   renderPosts(s.posts);
