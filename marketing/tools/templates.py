@@ -17,22 +17,51 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 RED=(237,28,36); RED_DARK=(176,16,24); RED_HI=(242,70,78)
 BLUE=(0,102,179); WHITE=(255,255,255); YELLOW=(255,214,10)
 INK=(28,28,30); CREAM=(245,242,236); GREY=(120,120,124)
+# acentos "agencia"
+RED_DEEP=(138,12,20); RED_INK=(92,8,14)
+CREAM_HI=(250,248,243); CREAM_LO=(236,231,222); CREAM_EDGE=(228,222,211)
+INK_SOFT=(90,84,78); GREY_STRIKE=(154,154,154)
+GOLD=(198,160,92); GOLD_HI=(226,196,138); CREAM_RING=(250,247,240)
 W,H=1080,1920
 FONTS="C:/Windows/Fonts/"
 ASSETS=os.path.join(os.path.dirname(__file__),"..","assets")
+FONTS_DIR=os.path.join(ASSETS,"fonts")
+
+# tamaños de salida (formatos)
+SIZES={"story":(1080,1920),"feed":(1080,1080),"feed45":(1080,1350)}
+def dims(fmt="story"): return SIZES.get(fmt,SIZES["story"])
 
 def font(names,size):
+    """Busca primero en assets/fonts/, luego en Windows; NUNCA crashea."""
     if isinstance(names,str): names=[names]
-    for n in names+["arialbd.ttf","arial.ttf"]:
+    for n in names:
+        # ruta directa (assets/fonts) o nombre de archivo
+        for base in (FONTS_DIR,FONTS):
+            p=n if os.path.isabs(n) else os.path.join(base,n)
+            if os.path.exists(p):
+                try: return ImageFont.truetype(p,size)
+                except Exception: pass
+    for n in ["arialbd.ttf","arial.ttf"]:
         p=os.path.join(FONTS,n)
-        if os.path.exists(p): return ImageFont.truetype(p,size)
+        if os.path.exists(p):
+            try: return ImageFont.truetype(p,size)
+            except Exception: pass
     return ImageFont.load_default()
-def f_impact(s): return font("impact.ttf",s)
-def f_black(s):  return font(["ariblk.ttf","arialbd.ttf"],s)         # Arial Black
-def f_cond(s):   return font(["bahnschrift.ttf","ariblk.ttf"],s)    # condensada moderna
-def f_bold(s):   return font("arialbd.ttf",s)
+
+# --- roles tipográficos (con fallback en cadena) ---
+def f_price(s):   return font(["Anton-Regular.ttf","impact.ttf"],s)                 # PRECIO héroe
+def f_display(s): return font(["BebasNeue-Regular.ttf","Anton-Regular.ttf","impact.ttf"],s)  # titulares
+def f_name(s):    return font(["Montserrat-ExtraBold.ttf","ariblk.ttf","arialbd.ttf"],s)     # nombre fuerte
+def f_ui(s):      return font(["Montserrat-SemiBold.ttf","arialbd.ttf"],s)          # footer/pills
+def f_strike(s):  return font(["Montserrat-Bold.ttf","arialbd.ttf"],s)             # tachado/fino
+# --- alias compatibles (estilos existentes heredan el upgrade) ---
+def f_impact(s): return f_price(s)
+def f_black(s):  return f_name(s)
+def f_cond(s):   return f_display(s)
+def f_bold(s):   return f_ui(s)
 
 def fmt(p): return "$"+format(int(p),",d").replace(",",".")
+def fmt_money(p): return fmt(p)   # alias seguro (param 'fmt' no lo tapa)
 
 def load_product(path,maxw,maxh):
     im=Image.open(path).convert("RGBA")
@@ -122,24 +151,224 @@ def style_descuento(name,price,product,price_old=None,tag="¡OFERTÓN!"):
     lg=logo(300); paste_c(im,lg,cx,H-120)
     return im
 
-# ---------------- ESTILO C: PREMIUM ----------------
-def style_premium(name,price,product,tag="OFERTA"):
-    im=Image.new("RGBA",(W,H),CREAM+(255,)); d=ImageDraw.Draw(im); cx=W/2
-    d.rectangle([0,0,W,150],fill=RED)               # barra superior
-    d.rectangle([0,H-150,W,H],fill=RED)             # barra inferior
-    lg=logo(330); paste_c(im,lg,cx,76)
-    # tag minimal
-    pill(d,cx,300,300,72,RED); txt(d,(cx,300),tag.upper(),f_cond(46),WHITE)
-    prod=load_product(product,int(W*0.72),int(H*0.40))
-    paste_c(im,shadow_of(prod,blur=30,op=0.30),cx+8,H*0.45+prod.height*0.46+14)
-    paste_c(im,prod,cx,H*0.45)
-    txt(d,(cx,H*0.70),name.upper(),f_cond(70),INK)
-    d.line([(cx-150,H*0.735),(cx+150,H*0.735)],fill=RED,width=6)
-    txt(d,(cx,H*0.80),fmt(price),f_impact(220),RED)
-    txt(d,(cx,H-76),"HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO",f_bold(34),WHITE)
+# ================= HELPERS PREMIUM (nivel agencia) =================
+def bg_cream(w,h):
+    """Fondo crema: gradiente vertical CREAM_HI->CREAM_LO + viñeta a CREAM_EDGE."""
+    yy,xx=np.mgrid[0:h,0:w].astype(np.float32)
+    vy=yy/max(1,h-1)
+    a=np.zeros((h,w,3),np.float32)
+    for i,(hi,lo) in enumerate(zip(CREAM_HI,CREAM_LO)): a[...,i]=hi*(1-vy)+lo*vy
+    cx,cy=w/2,h*0.46; dd=np.sqrt((xx-cx)**2+(yy-cy)**2)/(w*0.78)
+    dd=np.clip(dd,0,1)[...,None]
+    edge=np.array(CREAM_EDGE,np.float32)
+    a=a*(1-0.5*dd)+edge*(0.5*dd)
+    return Image.fromarray(np.clip(a,0,255).astype(np.uint8),"RGB").convert("RGBA")
+
+def bar_red(im,y0,y1,filete="bottom"):
+    """Barra roja con gradiente + sombra proyectada + filete dorado 2px."""
+    w=im.width; h=y1-y0
+    grad=np.zeros((h,w,3),np.float32); vy=(np.arange(h)/max(1,h-1))[:,None]
+    for i,(hi,lo) in enumerate(zip(RED,RED_DEEP)): grad[...,i]=hi*(1-vy)+lo*vy
+    bar=Image.fromarray(grad.astype(np.uint8),"RGB").convert("RGBA")
+    # sombra proyectada hacia el interior
+    sh=Image.new("RGBA",(w,40),(0,0,0,0)); sd=ImageDraw.Draw(sh)
+    for k in range(40): sd.line([(0,k),(w,k)],fill=(0,0,0,int(50*(1-k/40))))
+    im.alpha_composite(bar,(0,int(y0)))
+    if filete=="bottom":
+        im.alpha_composite(sh,(0,int(y1)))
+        ImageDraw.Draw(im).rectangle([0,y1-2,w,y1],fill=GOLD)
+    else:
+        im.alpha_composite(sh.transpose(Image.FLIP_TOP_BOTTOM),(0,int(y0-40)))
+        ImageDraw.Draw(im).rectangle([0,y0,w,y0+2],fill=GOLD)
+
+def contact_shadow(im,cx,cy,w,op=0.22):
+    """Sombra de contacto elíptica tenue justo bajo el producto."""
+    sw,sh=int(w*0.78),int(w*0.13)
+    pad=24
+    el=Image.new("RGBA",(sw+pad*2,sh+pad*2),(0,0,0,0))
+    ImageDraw.Draw(el).ellipse([pad,pad,pad+sw-1,pad+sh-1],fill=(40,30,28,int(255*op)))
+    el=el.filter(ImageFilter.GaussianBlur(16))
+    im.alpha_composite(el,(int(cx-el.width/2),int(cy-el.height/2)))
+
+def price_block(im,cx,cy,price,price_old=None,unit="c/u",color=RED,scale=1.0):
+    """Bloque de precio canónico: $ superíndice + número Anton, tachado y pill unidad."""
+    d=ImageDraw.Draw(im)
+    num=fmt(price)[1:]  # sin el $
+    fp=f_price(int(300*scale)); fd=f_price(int(120*scale))
+    bb=d.textbbox((0,0),num,font=fp); nw=bb[2]-bb[0]; nh=bb[3]-bb[1]
+    bd=d.textbbox((0,0),"$",font=fd); dw=bd[2]-bd[0]
+    total=dw+18+nw
+    x0=cx-total/2
+    # $ superíndice
+    d.text((x0,cy-nh*0.46),"$",font=fd,fill=color,anchor="lm")
+    d.text((x0+dw+18,cy),num,font=fp,fill=color,anchor="lm")
+    # tachado "Normal $X"
+    if price_old:
+        fo=f_strike(int(44*scale))
+        old="Normal "+fmt(price_old)
+        oy=cy-nh*0.62
+        d.text((cx,oy),old,font=fo,fill=GREY_STRIKE,anchor="mm")
+        ob=d.textbbox((0,0),old,font=fo); ow=ob[2]-ob[0]
+        d.line([(cx-ow/2-6,oy),(cx+ow/2+6,oy)],fill=RED,width=5)
+    # pill de unidad
+    fu=f_ui(int(34*scale)); ub=d.textbbox((0,0),unit,font=fu); uw=ub[2]-ub[0]
+    uy=cy+nh*0.62
+    pill(d,cx,uy,uw+44,52*scale,GOLD)
+    d.text((cx,uy),unit,font=fu,fill=RED_INK,anchor="mm")
+
+def badge_pct(im,cx,cy,pct):
+    """Estrella de descuento con anillo dorado + anillo crema (-10°)."""
+    size=300
+    star=starburst(size,RED,spikes=18,inner=0.78).rotate(-10,expand=True,resample=Image.BICUBIC)
+    # anillos
+    ring=Image.new("RGBA",(size,size),(0,0,0,0)); rd=ImageDraw.Draw(ring)
+    rd.ellipse([26,26,size-26,size-26],outline=GOLD,width=6)
+    rd.ellipse([40,40,size-40,size-40],outline=CREAM_RING,width=4)
+    paste_c(im,star,cx,cy)
+    paste_c(im,ring.rotate(-10,expand=True,resample=Image.BICUBIC),cx,cy)
+    d=ImageDraw.Draw(im)
+    txt(d,(cx,cy-26),f"-{pct}%",f_price(96),WHITE)
+    txt(d,(cx,cy+44),"DCTO",f_name(36),WHITE)
+
+def ribbon_oferta(im,text,corner="tl"):
+    """Cinta diagonal 'OFERTA' en una esquina."""
+    d=ImageDraw.Draw(im)
+    if corner=="tl":
+        d.polygon([(0,0),(360,0),(0,360)],fill=RED)
+        rib=Image.new("RGBA",(440,90),(0,0,0,0))
+        ImageDraw.Draw(rib).rectangle([0,0,439,89],fill=GOLD)
+        ImageDraw.Draw(rib).text((220,45),text.upper(),font=f_display(58),fill=RED_INK,anchor="mm")
+        rib=rib.rotate(45,expand=True,resample=Image.BICUBIC)
+        paste_c(im,rib,150,150)
+
+def disc_badge(im,cx,cy,price,price_old):
+    """Sello compacto de % (para variantes)."""
+    if not price_old: return
+    pct=round((1-price/price_old)*100)
+    badge_pct(im,cx,cy,pct)
+
+def soft_panel(im,box,fill=CREAM_HI,radius=40,shadow=True):
+    """Panel redondeado con sombra suave (para variantes)."""
+    x0,y0,x1,y1=box
+    if shadow:
+        sh=Image.new("RGBA",(int(x1-x0)+60,int(y1-y0)+60),(0,0,0,0))
+        ImageDraw.Draw(sh).rounded_rectangle([30,34,sh.width-30,sh.height-26],radius=radius,fill=(30,22,20,70))
+        sh=sh.filter(ImageFilter.GaussianBlur(20))
+        im.alpha_composite(sh,(int(x0-30),int(y0-30)))
+    ImageDraw.Draw(im).rounded_rectangle(box,radius=radius,fill=fill+(255,) if len(fill)==3 else fill)
+
+# ---------------- ESTILO C: PREMIUM (nivel agencia) ----------------
+def style_premium(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt="story"):
+    Wf,Hf=dims(fmt)
+    im=bg_cream(Wf,Hf); cx=Wf/2
+    bar=int(Hf*0.078)
+    bar_red(im,0,bar,"bottom")
+    bar_red(im,Hf-bar,Hf,"top")
+    d=ImageDraw.Draw(im)
+    # logo sobre barra roja (Opción B)
+    lg=logo(int(Wf*0.28)); paste_c(im,lg,cx,bar*0.5)
+    # gancho: badge % si hay precio anterior, si no cinta OFERTA
+    if price_old:
+        pct=round((1-price/price_old)*100)
+        badge_pct(im,Wf-185,int(Hf*0.245),pct)
+    else:
+        ribbon_oferta(im,tag,"tl")
+    # producto con sombra de contacto elíptica bajo el producto
+    feed=(Hf<=Wf*1.05)
+    prod=load_product(product,int(Wf*0.72),int(Hf*(0.34 if feed else 0.40)))
+    py=Hf*(0.32 if feed else 0.42)
+    contact_shadow(im,cx,py+prod.height*0.52,prod.width*0.82,op=0.22)
+    paste_c(im,prod,cx,py)
+    # nombre + línea roja + filete oro + guiño azul
+    ny=Hf*(0.60 if feed else 0.665)
+    txt(d,(cx,ny),name.upper(),f_display(72),INK)
+    lw=180
+    d.line([(cx-lw,ny+58),(cx+lw,ny+58)],fill=RED,width=6)
+    d.line([(cx-lw,ny+66),(cx+lw,ny+66)],fill=GOLD,width=3)
+    d.line([(cx-70,ny+74),(cx+70,ny+74)],fill=BLUE,width=3)
+    # precio
+    sc=(Wf/1080.0)*(0.72 if feed else 1.0)
+    price_block(im,cx,int(Hf*(0.80 if feed else 0.815)),price,price_old,unit,color=RED,scale=sc)
+    # footer
+    txt(d,(cx,Hf-bar*0.5),"HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO",f_ui(int(28 if feed else 34)),CREAM_HI)
     return im
 
-STYLES={"clasica":style_clasica,"descuento":style_descuento,"premium":style_premium}
+# ---------------- VARIANTES PREMIUM ----------------
+def premium_dark(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt="story"):
+    Wf,Hf=dims(fmt); cx=Wf/2
+    im=Image.new("RGBA",(Wf,Hf),(20,17,15,255))
+    # halo radial cálido
+    yy,xx=np.mgrid[0:Hf,0:Wf].astype(np.float32)
+    dd=np.clip(np.sqrt((xx-cx)**2+(yy-Hf*0.42)**2)/(Wf*0.7),0,1)
+    halo=Image.new("RGBA",(Wf,Hf),(60,30,28,0))
+    L=Image.fromarray(((1-dd)*120).astype(np.uint8),"L"); halo.putalpha(L)
+    im.alpha_composite(halo)
+    d=ImageDraw.Draw(im)
+    bar=int(Hf*0.078); d.rectangle([0,0,Wf,bar],fill=RED_DEEP); d.rectangle([0,Hf-bar,Wf,Hf],fill=RED_DEEP)
+    d.rectangle([0,bar-2,Wf,bar],fill=GOLD); d.rectangle([0,Hf-bar,Wf,Hf-bar+2],fill=GOLD)
+    paste_c(im,logo(int(Wf*0.28)),cx,bar*0.5)
+    if price_old: badge_pct(im,Wf-185,int(Hf*0.245),round((1-price/price_old)*100))
+    else: ribbon_oferta(im,tag,"tl")
+    prod=load_product(product,int(Wf*0.72),int(Hf*0.40)); py=Hf*0.44
+    contact_shadow(im,cx,py+prod.height*0.50,prod.width*0.82,op=0.35)
+    paste_c(im,prod,cx,py)
+    ny=Hf*0.665
+    txt(d,(cx,ny),name.upper(),f_display(72),CREAM_HI)
+    d.line([(cx-180,ny+58),(cx+180,ny+58)],fill=GOLD,width=5)
+    sc=Wf/1080.0
+    price_block(im,cx,int(Hf*0.815),price,price_old,unit,color=(255,90,96),scale=sc)
+    txt(d,(cx,Hf-bar*0.5),"HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO",f_ui(int(34*sc)),CREAM_HI)
+    return im
+
+def premium_giant(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt="story"):
+    Wf,Hf=dims(fmt); cx=Wf/2
+    im=bg_cream(Wf,Hf); d=ImageDraw.Draw(im)
+    bar=int(Hf*0.078); bar_red(im,0,bar,"bottom"); bar_red(im,Hf-bar,Hf,"top")
+    paste_c(im,logo(int(Wf*0.26)),cx,bar*0.5)
+    prod=load_product(product,int(Wf*0.56),int(Hf*0.30)); py=Hf*0.30
+    contact_shadow(im,cx,py+prod.height*0.50,prod.width*0.8,op=0.22)
+    paste_c(im,prod,cx,py)
+    ny=Hf*0.475
+    txt(d,(cx,ny),name.upper(),f_display(64),INK)
+    if price_old:
+        old="Normal "+fmt_money(price_old)
+        oy=ny+58; txt(d,(cx,oy),old,f_strike(44),GREY_STRIKE)
+        ob=d.textbbox((0,0),old,font=f_strike(44)); ow=ob[2]-ob[0]
+        d.line([(cx-ow/2-6,oy),(cx+ow/2+6,oy)],fill=RED,width=5)
+    # precio gigante ocupa el tercio inferior
+    sc=Wf/1080.0
+    txt(d,(cx,int(Hf*0.72)),fmt_money(price),f_price(int(360*sc)),RED)
+    pill(d,cx,int(Hf*0.83),260*sc,56*sc,GOLD); txt(d,(cx,int(Hf*0.83)),unit.upper(),f_ui(int(34*sc)),RED_INK)
+    txt(d,(cx,Hf-bar*0.5),"HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO",f_ui(int(34*sc)),CREAM_HI)
+    return im
+
+def premium_split(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt="story"):
+    Wf,Hf=dims(fmt); cx=Wf/2
+    im=bg_cream(Wf,Hf); d=ImageDraw.Draw(im)
+    # banda roja diagonal inferior
+    d.polygon([(0,Hf*0.62),(Wf,Hf*0.52),(Wf,Hf),(0,Hf)],fill=RED)
+    d.line([(0,Hf*0.62),(Wf,Hf*0.52)],fill=GOLD,width=4)
+    paste_c(im,logo(int(Wf*0.26)),Wf*0.26,Hf*0.07)
+    if price_old: badge_pct(im,Wf-180,int(Hf*0.16),round((1-price/price_old)*100))
+    else: ribbon_oferta(im,tag,"tl")
+    prod=load_product(product,int(Wf*0.66),int(Hf*0.36)); py=Hf*0.40
+    contact_shadow(im,cx,py+prod.height*0.50,prod.width*0.8,op=0.20)
+    paste_c(im,prod,cx,py)
+    sc=Wf/1080.0
+    ny=Hf*0.685
+    txt(d,(cx,ny),name.upper(),f_display(66),CREAM_HI)
+    # precio sobre rojo en crema/amarillo, tachado a mano
+    if price_old:
+        old="Normal "+fmt_money(price_old); oy=ny+56
+        txt(d,(cx,oy),old,f_strike(42),CREAM_HI)
+        ob=d.textbbox((0,0),old,font=f_strike(42)); ow=ob[2]-ob[0]
+        d.line([(cx-ow/2-6,oy),(cx+ow/2+6,oy)],fill=YELLOW,width=5)
+    txt(d,(cx,int(Hf*0.84)),fmt_money(price),f_price(int(260*sc)),CREAM_HI)
+    txt(d,(cx,int(Hf*0.93)),unit.upper()+"  ·  HUALPEN  ·  DESPACHO",f_ui(int(30*sc)),YELLOW)
+    return im
+
+STYLES={"clasica":style_clasica,"descuento":style_descuento,"premium":style_premium,
+        "premium_dark":premium_dark,"premium_giant":premium_giant,"premium_split":premium_split}
 
 if __name__=="__main__":
     import sys
@@ -149,4 +378,11 @@ if __name__=="__main__":
     style_clasica("Milo Bolsa 1 KG",7190,prod).convert("RGB").save(out+"/A_clasica.png",quality=90)
     style_descuento("Milo Bolsa 1 KG",7190,prod,price_old=9290).convert("RGB").save(out+"/B_descuento.png",quality=90)
     style_premium("Milo Bolsa 1 KG",7190,prod).convert("RGB").save(out+"/C_premium.png",quality=90)
+    # premium con precio anterior (badge) + feed 1:1
+    style_premium("Milo Bolsa 1 KG",7190,prod,price_old=9290,unit="EL KILO").convert("RGB").save(out+"/C_premium_oferta.png",quality=90)
+    style_premium("Milo Bolsa 1 KG",7190,prod,price_old=9290,unit="EL KILO",fmt="feed").convert("RGB").save(out+"/C_premium_feed.png",quality=90)
+    # variantes
+    premium_dark ("Milo Bolsa 1 KG",7190,prod,price_old=9290,unit="EL KILO").convert("RGB").save(out+"/D_premium_dark.png",quality=90)
+    premium_giant("Milo Bolsa 1 KG", 990,prod,unit="c/u").convert("RGB").save(out+"/E_premium_giant.png",quality=90)
+    premium_split("Milo Bolsa 1 KG",7190,prod,price_old=9290,unit="EL KILO").convert("RGB").save(out+"/F_premium_split.png",quality=90)
     print("previews OK ->",out)

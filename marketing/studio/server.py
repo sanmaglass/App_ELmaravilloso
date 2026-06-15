@@ -120,10 +120,22 @@ async def generate(req: Request):
     product = maybe_cut(src, rem_bg)
     slug = slugify(name) + (f"-{price}" if price else "")
 
-    # imagen estática (feed)
-    img_path = os.path.join(IMG_OUT, slug + ".png")
     drawer = T.STYLES.get(style, T.style_premium)
-    drawer(name, price, product, tag=tag).convert("RGB").save(img_path, quality=92)
+    # imagen feed 1:1 (lo que pide Instagram para foto) -> clave 'image'
+    img_path = os.path.join(IMG_OUT, slug + ".png")
+    try:
+        drawer(name, price, product, tag=tag, fmt="feed").convert("RGB").save(
+            img_path, quality=92, optimize=True)
+    except TypeError:
+        # estilo no soporta fmt -> render estándar (no rompe)
+        drawer(name, price, product, tag=tag).convert("RGB").save(img_path, quality=92)
+    # cover story 9:16 (mismo encuadre del video)
+    cover_path = os.path.join(IMG_OUT, slug + "-story.png")
+    try:
+        drawer(name, price, product, tag=tag, fmt="story").convert("RGB").save(
+            cover_path, quality=92, optimize=True)
+    except TypeError:
+        cover_path = img_path
 
     # video (reel / tiktok)
     vid_path = os.path.join(VID_OUT, slug + ".mp4")
@@ -135,7 +147,7 @@ async def generate(req: Request):
     d["posts"] = [p for p in d["posts"] if p.get("slug") != slug]
     post = {"slug": slug, "filename": fname, "name": name, "price": price,
             "style": style, "tag": tag,
-            "image": rel(img_path), "video": rel(vid_path),
+            "image": rel(img_path), "cover": rel(cover_path), "video": rel(vid_path),
             "status": "listo", "date": "", "time": "",
             "created": datetime.now().strftime("%Y-%m-%d %H:%M")}
     d["posts"].insert(0, post)
