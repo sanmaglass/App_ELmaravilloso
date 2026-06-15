@@ -83,12 +83,22 @@ def seg(t, t0, t1):
     return clamp01((t - t0) / (t1 - t0))
 
 # ---- profundidad / luz ----
-def drop_shadow_ellipse(w, op=0.22):
-    sw, sh = int(w * 0.78), int(w * 0.13); pad = 24
-    el = Image.new("RGBA", (sw + pad * 2, sh + pad * 2), (0, 0, 0, 0))
-    ImageDraw.Draw(el).ellipse([pad, pad, pad + sw - 1, pad + sh - 1],
-                               fill=(40, 30, 28, int(255 * op)))
-    return el.filter(ImageFilter.GaussianBlur(16))
+def drop_shadow_ellipse(w, op=0.30):
+    """Sombra de contacto premium: halo difuso + núcleo oscuro concentrado bajo la base."""
+    sw, sh = int(w * 0.62), int(w * 0.10); pad = 60
+    cw, ch = sw + pad * 2, sh + pad * 2
+    halo = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+    ImageDraw.Draw(halo).ellipse([pad - 14, pad - 6, pad + sw - 1 + 14, pad + sh - 1 + 6],
+                                 fill=(38, 28, 26, int(255 * op * 0.55)))
+    halo = halo.filter(ImageFilter.GaussianBlur(26))
+    core = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+    ImageDraw.Draw(core).ellipse([pad + int(sw * 0.16), pad + int(sh * 0.10),
+                                  pad + int(sw * 0.84), pad + sh - 1 - int(sh * 0.10)],
+                                 fill=(28, 20, 18, int(255 * op)))
+    core = core.filter(ImageFilter.GaussianBlur(11))
+    el = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+    el.alpha_composite(halo); el.alpha_composite(core)
+    return el
 
 def shine_sweep(size, pos):
     """Banda de brillo diagonal; pos 0..1 la recorre de izq a der."""
@@ -282,31 +292,39 @@ def build_premium(args):
 
     # --- base estática (crema con gradiente + barras con filete oro) ---
     base = T.bg_cream(W, H)
-    bar = int(H * 0.078)
+    bar = int(H * 0.068)   # barra slim como el estático
     T.bar_red(base, 0, bar, "bottom")
     T.bar_red(base, H - bar, H, "top")
     vign = radial_vignette(0.16)
 
-    lg = T.logo(int(W * 0.28))
+    lg = T.logo(int(W * 0.30))
     glow = brand_glow(cx, H * 0.44, W * 0.55, BLUE, 0.16)
 
+    # producto: defringe (quita halo del recorte) + escala
     prod = Image.open(args.product).convert("RGBA")
+    prod = T.defringe(prod)
     scp = min((W * 0.72) / prod.width, (H * 0.40) / prod.height)
     prod = prod.resize((int(prod.width * scp), int(prod.height * scp)), Image.LANCZOS)
-    floor = drop_shadow_ellipse(prod.width * 0.82, op=0.22)
+    floor = drop_shadow_ellipse(prod.width, op=0.30)
 
     name_im = text_img(args.name.upper(), f_display(72), INK)
-    price_im = text_img(fmt_price(args.price), f_price(300), RED)
-    dollar_im = text_img("$", f_price(120), RED)
-    foot_im = text_img("HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO", f_ui(34), CREAM if False else (250, 248, 243))
-    unit_im = text_img(unit.upper(), f_ui(34), RED_INK)
+    # bloque de precio pre-renderizado (mismo tratamiento que el estático)
+    num_str = fmt_price(args.price)[1:]
+    price_im = text_img(num_str, f_price(310), RED)
+    price_sh = text_img(num_str, f_price(310), (30, 12, 14, 150)).filter(ImageFilter.GaussianBlur(6))
+    dollar_im = text_img("$", f_price(118), RED)
+    foot_im = text_img("HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO", f_ui(34), (250, 248, 243))
+    unit_im = text_img(" ".join(unit.upper()), f_ui(30), (90, 84, 78))  # INK_SOFT, tracking
+    # sello OFERTA tipo ticket (persistente)
+    tag_im = _make_tag_pill(args.tag)
     old_im = None
     badge = None
     if price_old:
-        old_im = text_img("Normal " + fmt_price(price_old), f_strike(44), GREY_STRIKE)
+        old_im = text_img("Normal " + fmt_price(price_old), f_strike(42), GREY_STRIKE)
         pct = round((1 - args.price / price_old) * 100)
         badge = _make_badge(pct)
-    cta_im = text_img("APROVECHA HOY  ·  " + unit.upper(), f_ui(40), WHITE)
+    # CTA de cierre como ticket inferior (NO cruza el producto)
+    cta_im = text_img("APROVECHA HOY  ·  PIDE POR WHATSAPP", f_ui(36), WHITE)
 
     dur = args.seconds
     nframes = int(dur * FPS)
@@ -321,13 +339,19 @@ def build_premium(args):
         la = ease_out(clamp01(t / 0.6))
         paste_center(frame, lg, cx, bar * 0.5 + (1 - la) * -30, 1.0, la)
 
+        # sello OFERTA persistente (entra con back, queda fijo) — solo si no hay badge %
+        if badge is None:
+            ta = ease_out_back_soft(clamp01((t - 0.15) / 0.5))
+            if ta > 0.02:
+                paste_center(frame, tag_im, W * 0.155, bar + H * 0.052, ta, clamp01(ta * 1.3))
+
         # producto: entra con back suave + Ken Burns + float + sway
         apr = ease_out_back_soft(clamp01((t - 0.3) / 0.7))
         zoom = (1.0 + 0.08 * ease_out(clamp01(t / dur))) * (0.92 + 0.08 * clamp01((t - 0.3) / 0.5))
         floaty = math.sin(t * 1.5) * 12
         sway = math.sin(t * 0.9) * 5
         pcy = H * 0.44 + floaty
-        paste_center(frame, floor, cx, pcy + prod.height * 0.52 * zoom, zoom, 0.9)
+        paste_center(frame, floor, cx, pcy + prod.height * 0.50 * zoom, zoom, 0.9)
         prod_f = prod
         # shine del producto 1.0-1.8
         sp = seg(t, 1.0, 1.8)
@@ -335,75 +359,98 @@ def build_premium(args):
             prod_f = apply_shine(prod, sp, 0.9)
         paste_center(frame, prod_f, cx + sway, pcy, zoom, clamp01(apr))
 
-        # badge % (entra con spin 0.5-1.1)
+        # badge % (entra con spin 0.4-1.0, antes para comunicar oferta cuanto antes)
         if badge is not None:
-            ba = ease_out_back_soft(clamp01((t - 0.5) / 0.6))
+            ba = ease_out_back_soft(clamp01((t - 0.4) / 0.6))
             if ba > 0.02:
                 bsp = badge.rotate(-10 + (1 - ba) * 60, expand=True, resample=Image.BICUBIC)
-                paste_center(frame, bsp, W - 175, H * 0.245, ba, clamp01(ba * 1.3))
+                paste_center(frame, bsp, W - 175, H * 0.235, ba, clamp01(ba * 1.3))
 
-        # nombre + filetes
-        an = ease_out(clamp01((t - 1.0) / 0.6))
+        # nombre + filetes (entra antes: 0.7s)
+        an = ease_out(clamp01((t - 0.7) / 0.5))
         ny = H * 0.665
         paste_center(frame, name_im, cx, ny + (1 - an) * 28, 1.0, an)
-        lw = int(180 * ease_out(clamp01((t - 1.3) / 0.5)))
+        lw = int(180 * ease_out(clamp01((t - 1.0) / 0.5)))
         if lw > 4:
             dd = ImageDraw.Draw(frame)
             dd.line([(cx - lw, ny + 58), (cx + lw, ny + 58)], fill=RED, width=6)
             dd.line([(cx - lw, ny + 66), (cx + lw, ny + 66)], fill=GOLD, width=3)
             dd.line([(cx - min(lw, 70), ny + 74), (cx + min(lw, 70), ny + 74)], fill=BLUE, width=3)
 
-        # PRECIO POP en t=1.8 con resorte
+        # PRECIO POP en t=1.4 con resorte (antes) — clímax sync con SFX (beat price)
         py = int(H * 0.815)
-        if t >= 1.8:
-            pr = clamp01((t - 1.8) / 0.55)
+        if t >= 1.4:
+            pr = clamp01((t - 1.4) / 0.55)
             psc = lerp(0.55, 1.0, ease_spring(pr))
-            if t > 2.35:
-                psc *= 1 + 0.025 * math.sin((t - 2.35) * 7.0) * math.exp(-(t - 2.35) * 2.0)
+            # flash/scale-bounce sincronizado al SFX (beat price = 1.5s)
+            if t > 1.55:
+                psc *= 1 + 0.045 * math.sin((t - 1.55) * 7.0) * math.exp(-(t - 1.55) * 2.2)
             pa = clamp01(pr * 1.4)
-            # tachado + badge ya animados; $ superíndice + número
             num = price_im
-            sp2 = seg(t, 1.9, 2.5)
+            sp2 = seg(t, 1.55, 2.1)
             if 0 < sp2 < 1:
                 num = apply_shine(price_im, sp2, 1.0)
-            total = dollar_im.width + 14 + num.width
+            gap = 8
+            total = dollar_im.width + gap + num.width
             x_left = cx - (total * psc) / 2
+            ntop = py - num.height / 2 * psc
+            # sombra del número (lo despega del crema)
+            paste_center(frame, price_sh, cx + 4, py + 7, psc, pa * 0.6)
+            # '$' volado snug al tope del número
             paste_center(frame, dollar_im, x_left + dollar_im.width / 2 * psc,
-                         py - num.height * 0.30 * psc, psc, pa)
-            paste_center(frame, num, x_left + (dollar_im.width + 14 + num.width / 2) * psc,
+                         ntop + dollar_im.height / 2 * psc, psc, pa)
+            # número hero
+            paste_center(frame, num, x_left + (dollar_im.width + gap + num.width / 2) * psc,
                          py, psc, pa)
-            # tachado
+            num_bottom = py + num.height / 2 * psc
+            # tachado "Normal $X" (fino, arriba)
             if old_im is not None:
-                oa = clamp01((t - 1.6) / 0.4)
-                oy = py - num.height * 0.62 * psc
+                oa = clamp01((t - 1.2) / 0.4)
+                oy = ntop - 30
                 paste_center(frame, old_im, cx, oy, 1.0, oa)
                 if oa > 0.5:
                     ow = old_im.width
                     ImageDraw.Draw(frame).line([(cx - ow / 2, oy), (cx + ow / 2, oy)], fill=RED, width=5)
-            # pill unidad
-            ua = clamp01((t - 2.0) / 0.4)
+            # unidad discreta (texto fino gris, NO pill)
+            ua = clamp01((t - 1.7) / 0.4)
             if ua > 0.02:
-                uy = py + num.height * 0.60 * psc
-                dd = ImageDraw.Draw(frame)
-                pw = unit_im.width + 44
-                dd.rounded_rectangle([cx - pw / 2, uy - 28, cx + pw / 2, uy + 28], radius=28, fill=GOLD)
-                paste_center(frame, unit_im, cx, uy, 1.0, ua)
+                paste_center(frame, unit_im, cx, num_bottom + 22, 1.0, ua)
 
-        # CTA de cierre (banda roja translúcida) dur-1.7
-        if t >= dur - 1.7:
-            ca = ease_out(clamp01((t - (dur - 1.7)) / 0.5))
-            band = Image.new("RGBA", (W, 96), (237, 28, 36, int(210 * ca)))
-            frame.alpha_composite(band, (0, int(H * 0.50)))
-            paste_center(frame, cta_im, cx, H * 0.50 + 48, 1.0, ca)
+        # CTA de cierre: ticket inferior justo arriba del footer (NO cruza el producto)
+        if t >= dur - 1.6:
+            ca = ease_out(clamp01((t - (dur - 1.6)) / 0.5))
+            cy_band = H - bar - 70
+            band = Image.new("RGBA", (W, 88), (237, 28, 36, int(235 * ca)))
+            frame.alpha_composite(band, (0, int(cy_band - 44)))
+            ImageDraw.Draw(frame).rectangle([0, int(cy_band - 44), W, int(cy_band - 41)], fill=GOLD)
+            paste_center(frame, cta_im, cx, cy_band, 1.0, ca)
 
         # footer + viñeta
         paste_center(frame, foot_im, cx, H - bar * 0.5, 1.0, 1.0)
         frame.alpha_composite(vign)
         ff.append_data(np.asarray(frame.convert("RGB")))
     ff.close()
-    beats = {"whoosh_tag": 0.30, "whoosh_prod": 0.45, "price": 1.80, "footer": dur - 0.5}
+    beats = {"whoosh_tag": 0.20, "whoosh_prod": 0.45, "price": 1.50, "footer": dur - 1.4}
     _finalize(args, silent, beats)
     print("OK ->", args.out, f"(premium, {nframes} frames, {dur}s)")
+
+def _make_tag_pill(text):
+    """Sello OFERTA tipo ticket (rojo + filete oro), como imagen para animar."""
+    s = text.upper()
+    fnt = f_display(54)
+    tmp = ImageDraw.Draw(Image.new("RGBA", (10, 10)))
+    bb = tmp.textbbox((0, 0), s, font=fnt); tw = bb[2] - bb[0]
+    w, h = tw + 72, 82
+    im = Image.new("RGBA", (w + 40, h + 40), (0, 0, 0, 0))
+    sh = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    ImageDraw.Draw(sh).rounded_rectangle([20, 24, im.width - 20, im.height - 16],
+                                         radius=h // 2, fill=(30, 10, 12, 90))
+    im.alpha_composite(sh.filter(ImageFilter.GaussianBlur(12)))
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle([20, 20, 20 + w, 20 + h], radius=h // 2, fill=RED)
+    d.rounded_rectangle([20, 20, 20 + w, 20 + h], radius=h // 2, outline=GOLD, width=3)
+    d.text((20 + w / 2, 20 + h / 2), s, font=fnt, fill=(250, 248, 243), anchor="mm")
+    return im
 
 def _make_badge(pct):
     size = 300

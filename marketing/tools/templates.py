@@ -63,8 +63,25 @@ def f_bold(s):   return f_ui(s)
 def fmt(p): return "$"+format(int(p),",d").replace(",",".")
 def fmt_money(p): return fmt(p)   # alias seguro (param 'fmt' no lo tapa)
 
-def load_product(path,maxw,maxh):
+def defringe(im,erode=1):
+    """Quita el halo claro del recorte: contrae el alpha y oscurece el borde residual.
+    Evita el 'fringe' blanco del matte sobre fondo crema. NUNCA crashea."""
+    try:
+        r,g,b,a=im.split()
+        # contraer alpha (MinFilter erosiona el borde claro)
+        if erode>0:
+            a2=a.filter(ImageFilter.MinFilter(3))
+        else:
+            a2=a
+        # suavizar 1px para que no quede aliasing duro
+        a2=a2.filter(ImageFilter.GaussianBlur(0.6))
+        return Image.merge("RGBA",(r,g,b,a2))
+    except Exception:
+        return im
+
+def load_product(path,maxw,maxh,clean=True):
     im=Image.open(path).convert("RGBA")
+    if clean: im=defringe(im)
     sc=min(maxw/im.width,maxh/im.height)
     return im.resize((int(im.width*sc),int(im.height*sc)),Image.LANCZOS)
 
@@ -181,40 +198,63 @@ def bar_red(im,y0,y1,filete="bottom"):
         im.alpha_composite(sh.transpose(Image.FLIP_TOP_BOTTOM),(0,int(y0-40)))
         ImageDraw.Draw(im).rectangle([0,y0,w,y0+2],fill=GOLD)
 
-def contact_shadow(im,cx,cy,w,op=0.22):
-    """Sombra de contacto elíptica tenue justo bajo el producto."""
-    sw,sh=int(w*0.78),int(w*0.13)
-    pad=24
-    el=Image.new("RGBA",(sw+pad*2,sh+pad*2),(0,0,0,0))
-    ImageDraw.Draw(el).ellipse([pad,pad,pad+sw-1,pad+sh-1],fill=(40,30,28,int(255*op)))
-    el=el.filter(ImageFilter.GaussianBlur(16))
+def contact_shadow(im,cx,cy,w,op=0.30):
+    """Sombra de contacto elíptica premium: núcleo oscuro concentrado + halo difuso.
+    Más chica que el producto, con falloff radial (no parche plano)."""
+    sw,sh=int(w*0.62),int(w*0.10)   # más chica/concentrada que antes
+    pad=60
+    cw,ch=sw+pad*2,sh+pad*2
+    # halo amplio y muy suave
+    halo=Image.new("RGBA",(cw,ch),(0,0,0,0))
+    ImageDraw.Draw(halo).ellipse([pad-14,pad-6,pad+sw-1+14,pad+sh-1+6],
+                                 fill=(38,28,26,int(255*op*0.55)))
+    halo=halo.filter(ImageFilter.GaussianBlur(26))
+    # núcleo oscuro y chico justo bajo la base
+    core=Image.new("RGBA",(cw,ch),(0,0,0,0))
+    ImageDraw.Draw(core).ellipse([pad+int(sw*0.16),pad+int(sh*0.10),
+                                  pad+int(sw*0.84),pad+sh-1-int(sh*0.10)],
+                                 fill=(28,20,18,int(255*op)))
+    core=core.filter(ImageFilter.GaussianBlur(11))
+    el=Image.new("RGBA",(cw,ch),(0,0,0,0))
+    el.alpha_composite(halo); el.alpha_composite(core)
     im.alpha_composite(el,(int(cx-el.width/2),int(cy-el.height/2)))
 
 def price_block(im,cx,cy,price,price_old=None,unit="c/u",color=RED,scale=1.0):
-    """Bloque de precio canónico: $ superíndice + número Anton, tachado y pill unidad."""
+    """Bloque de precio HERO: número gigante con sombra sutil, '$' volado snug arriba,
+    unidad discreta en texto fino gris (no pill cuadrada chillona)."""
     d=ImageDraw.Draw(im)
     num=fmt(price)[1:]  # sin el $
-    fp=f_price(int(300*scale)); fd=f_price(int(120*scale))
-    bb=d.textbbox((0,0),num,font=fp); nw=bb[2]-bb[0]; nh=bb[3]-bb[1]
-    bd=d.textbbox((0,0),"$",font=fd); dw=bd[2]-bd[0]
-    total=dw+18+nw
+    fp=f_price(int(310*scale)); fd=f_price(int(118*scale))
+    bb=d.textbbox((0,0),num,font=fp); nw=bb[2]-bb[0]; nh=bb[3]-bb[1]; ntop=bb[1]
+    bd=d.textbbox((0,0),"$",font=fd); dw=bd[2]-bd[0]; dh=bd[3]-bd[1]
+    gap=int(8*scale)
+    total=dw+gap+nw
     x0=cx-total/2
-    # $ superíndice
-    d.text((x0,cy-nh*0.46),"$",font=fd,fill=color,anchor="lm")
-    d.text((x0+dw+18,cy),num,font=fp,fill=color,anchor="lm")
-    # tachado "Normal $X"
+    num_top=cy-nh/2  # tope visual del número
+    # sombra sutil del número (lo despega del crema, look caro)
+    sh=Image.new("RGBA",im.size,(0,0,0,0))
+    ImageDraw.Draw(sh).text((x0+dw+gap-bb[0], num_top-ntop), num, font=fp,
+                            fill=(30,12,14,150))
+    sh=sh.filter(ImageFilter.GaussianBlur(6))
+    im.alpha_composite(sh,(int(4*scale),int(7*scale)))
+    d=ImageDraw.Draw(im)
+    # '$' volado: alineado al tope del número (superíndice), snug
+    d.text((x0, num_top - ntop), "$", font=fd, fill=color, anchor="la")
+    # número hero
+    d.text((x0+dw+gap-bb[0], num_top-ntop), num, font=fp, fill=color, anchor="la")
+    num_bottom=num_top+nh
+    # tachado "Normal $X" (fino, arriba del número)
     if price_old:
-        fo=f_strike(int(44*scale))
+        fo=f_strike(int(42*scale))
         old="Normal "+fmt(price_old)
-        oy=cy-nh*0.62
+        oy=num_top-int(34*scale)
         d.text((cx,oy),old,font=fo,fill=GREY_STRIKE,anchor="mm")
         ob=d.textbbox((0,0),old,font=fo); ow=ob[2]-ob[0]
-        d.line([(cx-ow/2-6,oy),(cx+ow/2+6,oy)],fill=RED,width=5)
-    # pill de unidad
-    fu=f_ui(int(34*scale)); ub=d.textbbox((0,0),unit,font=fu); uw=ub[2]-ub[0]
-    uy=cy+nh*0.62
-    pill(d,cx,uy,uw+44,52*scale,GOLD)
-    d.text((cx,uy),unit,font=fu,fill=RED_INK,anchor="mm")
+        d.line([(cx-ow/2-6,oy),(cx+ow/2+6,oy)],fill=RED,width=max(3,int(4*scale)))
+    # unidad: texto fino gris con tracking (no pill)
+    fu=f_ui(int(30*scale))
+    ut=" ".join(unit.upper())  # tracking simple
+    d.text((cx,num_bottom+int(20*scale)),ut,font=fu,fill=INK_SOFT,anchor="mm")
 
 def badge_pct(im,cx,cy,pct):
     """Estrella de descuento con anillo dorado + anillo crema (-10°)."""
@@ -229,6 +269,24 @@ def badge_pct(im,cx,cy,pct):
     d=ImageDraw.Draw(im)
     txt(d,(cx,cy-26),f"-{pct}%",f_price(96),WHITE)
     txt(d,(cx,cy+44),"DCTO",f_name(36),WHITE)
+
+def tag_pill(im,cx,cy,text):
+    """Sello OFERTA tipo ticket: pill rojo con filete oro, texto display crema.
+    Posición libre (no choca con el logo). Persistente en imagen y video."""
+    d=ImageDraw.Draw(im)
+    s=text.upper()
+    fnt=f_display(54)
+    bb=d.textbbox((0,0),s,font=fnt); tw=bb[2]-bb[0]
+    w=tw+72; h=82
+    x0,y0,x1,y1=cx-w/2,cy-h/2,cx+w/2,cy+h/2
+    # sombra suave
+    sh=Image.new("RGBA",(int(w)+40,int(h)+40),(0,0,0,0))
+    ImageDraw.Draw(sh).rounded_rectangle([20,24,sh.width-20,sh.height-16],radius=h//2,fill=(30,10,12,90))
+    sh=sh.filter(ImageFilter.GaussianBlur(12))
+    im.alpha_composite(sh,(int(x0-20),int(y0-20)))
+    d.rounded_rectangle([x0,y0,x1,y1],radius=h//2,fill=RED)
+    d.rounded_rectangle([x0,y0,x1,y1],radius=h//2,outline=GOLD,width=3)
+    txt(d,(cx,cy),s,fnt,CREAM_HI)
 
 def ribbon_oferta(im,text,corner="tl"):
     """Cinta diagonal 'OFERTA' en una esquina."""
@@ -261,18 +319,18 @@ def soft_panel(im,box,fill=CREAM_HI,radius=40,shadow=True):
 def style_premium(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt="story"):
     Wf,Hf=dims(fmt)
     im=bg_cream(Wf,Hf); cx=Wf/2
-    bar=int(Hf*0.078)
+    bar=int(Hf*0.068)   # barra superior más slim (menos pesada)
     bar_red(im,0,bar,"bottom")
     bar_red(im,Hf-bar,Hf,"top")
     d=ImageDraw.Draw(im)
-    # logo sobre barra roja (Opción B)
-    lg=logo(int(Wf*0.28)); paste_c(im,lg,cx,bar*0.5)
-    # gancho: badge % si hay precio anterior, si no cinta OFERTA
+    # logo centrado sobre la barra roja, tamaño equilibrado
+    lg=logo(int(Wf*0.30)); paste_c(im,lg,cx,bar*0.5)
+    # gancho: badge % si hay precio anterior; si no, sello OFERTA tipo ticket (no choca el logo)
     if price_old:
         pct=round((1-price/price_old)*100)
-        badge_pct(im,Wf-185,int(Hf*0.245),pct)
+        badge_pct(im,Wf-185,int(Hf*0.235),pct)
     else:
-        ribbon_oferta(im,tag,"tl")
+        tag_pill(im,int(Wf*0.135),int(bar+Hf*0.052),tag)
     # producto con sombra de contacto elíptica bajo el producto
     feed=(Hf<=Wf*1.05)
     prod=load_product(product,int(Wf*0.72),int(Hf*(0.34 if feed else 0.40)))

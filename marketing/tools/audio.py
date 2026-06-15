@@ -203,12 +203,32 @@ def load_audio_mono(path, dur):
     return arr[:n].copy()
 
 def write_wav(path, x):
-    x = np.clip(x, -1.0, 1.0)
-    pcm = (x * 32767.0).astype("<i2")
+    """Escribe WAV. Acepta mono (1D) o estéreo (Nx2). Estéreo = nivel agencia."""
+    x = np.asarray(x, dtype=np.float64)
+    if x.ndim == 1:
+        x = np.clip(x, -1.0, 1.0)
+        pcm = (x * 32767.0).astype("<i2")
+        nch = 1
+    else:
+        x = np.clip(x, -1.0, 1.0)
+        # interleave L/R -> [L0,R0,L1,R1,...]
+        pcm = (x * 32767.0).astype("<i2").reshape(-1)
+        nch = x.shape[1]
     with wave.open(path, "wb") as w:
-        w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
+        w.setnchannels(nch); w.setsampwidth(2); w.setframerate(SR)
         w.writeframes(pcm.tobytes())
     return path
+
+def _stereo_widen(mono, amount=0.35):
+    """Convierte mono->estéreo con un ensanchado Haas/decorrelación leve (pads anchos)."""
+    n = len(mono)
+    delay = int(0.012 * SR)  # ~12ms Haas
+    d = np.zeros(n)
+    if n > delay:
+        d[delay:] = mono[:-delay]
+    L = mono + amount * d
+    R = mono - amount * d * 0.85
+    return L, R
 
 # ---------------------------------------------------------------- mezcla
 def _place(track, snippet, at_sec):
@@ -218,12 +238,28 @@ def _place(track, snippet, at_sec):
     if end > off:
         track[off:end] += snippet[:end - off]
 
-def build_track(dur, beats):
-    """Construye la pista completa (bed + SFX) como float mono."""
-    n = int(dur * SR)
-    track = np.zeros(n, dtype=np.float64)
+def _duck_envelope(n, at_sec, depth=0.5, attack=0.04, hold=0.25, release=0.45):
+    """Envolvente de ducking (sidechain): baja el bed a (1-depth) alrededor de at_sec."""
+    env = np.ones(n, dtype=np.float64)
+    a = int(attack * SR); h = int(hold * SR); r = int(release * SR)
+    start = int(at_sec * SR)
+    lo = 1.0 - depth
+    # ataque (1 -> lo)
+    i0 = max(0, start); i1 = min(n, start + a)
+    if i1 > i0: env[i0:i1] = np.linspace(1.0, lo, i1 - i0)
+    # hold (lo)
+    i2 = min(n, i1 + h)
+    if i2 > i1: env[i1:i2] = lo
+    # release (lo -> 1)
+    i3 = min(n, i2 + r)
+    if i3 > i2: env[i2:i3] = np.linspace(lo, 1.0, i3 - i2)
+    return env
 
-    # --- bed ---
+def build_track(dur, beats):
+    """Construye la pista ESTÉREO (bed con paneo + ducking en el precio + SFX al centro)."""
+    n = int(dur * SR)
+
+    # --- bed (mono) ---
     bed = None
     bedp = find_bed()
     if bedp:
@@ -233,21 +269,37 @@ def build_track(dur, beats):
             bed = None
     if bed is None:
         bed = synth_bed(dur) * 0.7
-    # fade in/out del bed
+    bed = bed[:n]
+    if len(bed) < n: bed = np.pad(bed, (0, n - len(bed)))
+    # fade in/out
     fi = int(0.4 * SR); fo = int(0.5 * SR)
     if len(bed) >= fi: bed[:fi] *= np.linspace(0, 1, fi)
     if len(bed) >= fo: bed[-fo:] *= np.linspace(1, 0, fo)
-    track[:len(bed)] += bed[:n]
 
-    # --- SFX por beat ---
+    # --- ducking sidechain en el momento del precio (clímax) ---
+    price_t = (beats or {}).get("price", None)
+    if price_t is not None:
+        bed = bed * _duck_envelope(n, price_t - 0.05, depth=0.55)
+
+    # bed -> estéreo ancho (pads L/R)
+    bedL, bedR = _stereo_widen(bed, amount=0.35)
+
+    # --- SFX (mono, al centro) ---
+    fx_mono = np.zeros(n, dtype=np.float64)
     for beat_name, t in (beats or {}).items():
         for fx, gain, offset in SFX_FOR_BEAT.get(beat_name, []):
             snip = SFX_BUILDERS[fx]() * gain
-            _place(track, snip, t - offset)
+            _place(fx_mono, snip, t - offset)
 
-    # limitador suave
-    track = np.tanh(track * 1.1)
-    return _norm(track, 0.89)
+    L = bedL + fx_mono
+    R = bedR + fx_mono
+
+    # limitador suave por canal
+    L = np.tanh(L * 1.1); R = np.tanh(R * 1.1)
+    st = np.stack([L, R], axis=1)
+    m = np.max(np.abs(st)) or 1.0
+    st = st * (0.89 / m)
+    return st
 
 def add_audio(silent_mp4, out_mp4, dur, beats):
     """
