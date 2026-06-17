@@ -22,7 +22,8 @@ const views = {
     loans: () => window.Views.loans(document.getElementById('view-container')),
     cash_register: () => window.Views.cash_register(document.getElementById('view-container')),
     credits: () => window.Views.credits(document.getElementById('view-container')),
-    barcode: () => window.Views.barcode(document.getElementById('view-container'))
+    barcode: () => window.Views.barcode(document.getElementById('view-container')),
+    caja_dia: () => window.Views.caja_dia(document.getElementById('view-container'))
 };
 
 // ── Tema neutro premium para Chart.js (gris-dominante, sin glow) ──
@@ -263,6 +264,20 @@ async function init() {
         window.Auth.session = session;
         await window.Auth._loadTenant();
         window.state.currentUser = session.user.email;
+
+        // --- CANDADO DE ROL: trabajadoras (employee) solo ven lo permitido (cero finanzas) ---
+        const _userRole = localStorage.getItem('wm_user_role') || '';
+        window._isEmployee = (_userRole === 'employee');
+        if (window._isEmployee) {
+            const ALLOWED = new Set(['caja_dia']); // vistas permitidas a trabajadoras
+            document.querySelectorAll('.nav-item[data-view], #bottom-nav .bottom-nav-item[data-view], .more-menu-item[data-view]').forEach(el => {
+                const v = el.dataset.view;
+                if (v && v !== 'logout' && !ALLOWED.has(v)) el.style.display = 'none';
+            });
+            const moreBtn = document.getElementById('btn-bottom-more');
+            if (moreBtn) moreBtn.style.display = 'none';
+            window.state.currentView = 'caja_dia';
+        }
         localStorage.setItem('wm_auth', 'true');
         localStorage.setItem('wm_auth_email', session.user.email);
         localStorage.setItem('wm_user', session.user.email.split('@')[0]);
@@ -554,8 +569,16 @@ async function init() {
             console.warn('[Push] Init error (no crítico):', pushErr);
         }
 
-        // Initial Load
-        views.dashboard();
+        // Initial Load (trabajadora arranca en Caja del Día; owner en Resumen)
+        if (window._isEmployee) {
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            const cajaBtn = document.querySelector('.nav-item[data-view="caja_dia"]');
+            if (cajaBtn) cajaBtn.classList.add('active');
+            const pt = document.getElementById('page-title'); if (pt) pt.textContent = 'Caja del Día';
+            views.caja_dia();
+        } else {
+            views.dashboard();
+        }
 
         // Sincronizar cuando vuelve a primer plano
         document.addEventListener('visibilitychange', () => {
