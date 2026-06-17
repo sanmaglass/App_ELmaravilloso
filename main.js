@@ -276,6 +276,9 @@ async function init() {
             });
             const moreBtn = document.getElementById('btn-bottom-more');
             if (moreBtn) moreBtn.style.display = 'none';
+            // En móvil: ocultar toda la barra inferior (la trabajadora solo tiene una vista)
+            const bn = document.getElementById('bottom-nav');
+            if (bn) bn.style.display = 'none';
             window.state.currentView = 'caja_dia';
         }
         localStorage.setItem('wm_auth', 'true');
