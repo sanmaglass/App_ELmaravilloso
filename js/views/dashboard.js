@@ -559,6 +559,19 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         /* Dark mode divider */
         body.dark-mode .ed-section-line { background: rgba(255,255,255,0.08); }
 
+        /* Pulso Tributario widget */
+        .tax-pulse { border-radius:12px; border:1px solid var(--border); overflow:hidden; background:var(--bg-card); }
+        .tax-pulse-bar { display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer; transition:background 0.2s; }
+        .tax-pulse-bar:hover { background:var(--bg-elevated); }
+        .tax-pulse-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .tax-pulse-icon i { font-size:1.2rem; color:white; }
+        .tax-pulse-grid { display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--border); }
+        .tax-pulse-cell { padding:12px 10px; text-align:center; border-right:1px solid var(--border); }
+        .tax-pulse-cell:last-child { border-right:none; }
+        .tax-pulse-cell .tp-lbl { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted); margin-bottom:4px; }
+        .tax-pulse-cell .tp-val { font-size:1.05rem; font-weight:800; font-variant-numeric:tabular-nums; }
+        @media(max-width:640px) { .tax-pulse-grid { grid-template-columns:repeat(2,1fr); } .tax-pulse-cell:nth-child(2) { border-right:none; } .tax-pulse-cell:nth-child(n+3) { border-top:1px solid var(--border); } }
+
         /* Terminal ticker (kept hidden but functional) */
         .term-ticker-wrap { margin: 2px 0 18px; }
         .term-ticker { background:#050a07; border:1px solid rgba(0,255,102,0.22); border-radius:12px; overflow:hidden; font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace; }
@@ -757,6 +770,15 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             <div id="ceo-cash-breakdown" style="display:none;"></div>
         </div>
 
+        <!-- ⑥b PULSO TRIBUTARIO (mini contador SII) -->
+        <div class="ed-section" id="dash-tax-section" style="display:none;">
+            <div class="ed-section-head">
+                <span class="ed-section-title"><i class="ph ph-calculator" style="color:#7c3aed;"></i> Pulso Tributario</span>
+                <div class="ed-section-line"></div>
+            </div>
+            <div id="dash-tax-widget"></div>
+        </div>
+
         <!-- ⑦ OPERACIÓN -->
         <div class="ed-section">
             <div class="ed-section-head">
@@ -888,6 +910,19 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const employees = allEmployees.filter(e => !e.deleted);
         const invoices = allInvoices.filter(i => !i.deleted);
         const suppliers = allSuppliers.filter(s => !s.deleted);
+
+        // --- AUTO-SYNC SII en background (respeta límites diarios/mensuales) ---
+        if (window.SII_API && window.SII_API.isConfigured()) {
+            const siiPolicy = window.SII_API.shouldAutoSync();
+            if (siiPolicy.shouldSync) {
+                window.SII_API.smartSync(false).then(result => {
+                    if (result.synced) {
+                        console.log('[Dashboard] SII smartSync OK — refrescando datos');
+                        window.Views.dashboard(container, selectedMonth);
+                    }
+                }).catch(e => console.warn('[Dashboard] SII sync bg:', e.message));
+            }
+        }
 
         // --- FILTRADO ESTRICTO Y GUARDIA DE NEGOCIO ---
         // Excluimos registros marcados como borrados y aquellos con montos absurdos (TESTS)
@@ -1867,12 +1902,17 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             elevByMonth.set(ms, (elevByMonth.get(ms) || 0) + (parseFloat(s.total) || 0));
         });
 
-        // Pre-agrupar facturas por mes (una sola pasada, en vez de 6 filter+reduce)
+        // Pre-agrupar facturas por mes — NETO (sin IVA) para reflejar costo real
         const invByMonth = new Map();
         invoices.forEach(inv => {
             if (!inv.date) return;
             const k = inv.date.substring(0, 7);
-            invByMonth.set(k, (invByMonth.get(k) || 0) + (parseFloat(inv.amount) || 0));
+            // SII: usar montoNeto directo. Manual: descontar 19% IVA
+            const neto = inv.siiImportado
+                ? (parseFloat(inv.siiMontoNeto) || 0) + (parseFloat(inv.siiMontoExento) || 0)
+                : Math.round((parseFloat(inv.amount) || 0) / 1.19);
+            const signo = inv.siiTipoDoc === 61 ? -1 : 1;
+            invByMonth.set(k, (invByMonth.get(k) || 0) + (signo * neto));
         });
 
         const months6Labels = [];
@@ -1915,7 +1955,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
                         pointBorderWidth: 2, pointBorderColor: '#4c8dff'
                     },
                     {
-                        label: 'Compras',
+                        label: 'Compras (neto)',
                         data: months6Costs,
                         borderColor: '#94a3b8',
                         backgroundColor: plGradientG,
@@ -2178,6 +2218,94 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
         const edPagosSub     = document.getElementById('ed-pagos-sub');
         if (edPagosPend) { edPagosPend.innerHTML = fmt(pendTotalEd + payrollEd); edPagosPend.style.color = 'var(--danger)'; }
         if (edPagosSub) edPagosSub.textContent = `${pendInvoicesEd.length} facturas + sueldos`;
+
+        // ⑥b PULSO TRIBUTARIO — lee caché localStorage, sin API calls
+        const taxSection = document.getElementById('dash-tax-section');
+        const taxWidget = document.getElementById('dash-tax-widget');
+        if (taxSection && taxWidget && window.SII_API) {
+            const _now = new Date();
+            const _taxPeriodo = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`;
+
+            // Ventas SII (caché)
+            const _ventasRaw = localStorage.getItem(`sii_ventas_v4_${_taxPeriodo}`)
+                || localStorage.getItem(`sii_ventas_v3_${_taxPeriodo}`);
+            const _ventasSII = _ventasRaw ? JSON.parse(_ventasRaw) : null;
+
+            // Compras del período (desde Dexie, ya cargadas)
+            const _taxInvs = invoices.filter(i => i.siiImportado && i.date && i.date.startsWith(_taxPeriodo));
+            let _ivaCredito = 0;
+            _taxInvs.forEach(inv => {
+                const iva = inv.siiMontoIva || 0;
+                _ivaCredito += (inv.siiTipoDoc === 61 ? -iva : iva);
+            });
+
+            const _ivaDebito = _ventasSII ? (_ventasSII.iva || 0) : 0;
+            const _tieneData = _ventasSII || _taxInvs.length > 0;
+
+            if (_tieneData) {
+                // Remanente mes anterior
+                const _pD = new Date(_now.getFullYear(), _now.getMonth() - 1, 1);
+                const _prevP = `${_pD.getFullYear()}-${String(_pD.getMonth() + 1).padStart(2, '0')}`;
+                const _remRaw = localStorage.getItem(`sii_remanente_iva_v1_${_prevP}`);
+                const _remAnterior = _remRaw ? (JSON.parse(_remRaw).remanente || 0) : 0;
+
+                const _balanceIVA = _ivaDebito - _ivaCredito - _remAnterior;
+                const _ppm = _ventasSII ? Math.round((_ventasSII.neto || 0) * 0.01) : 0;
+                const _f29 = Math.max(0, _balanceIVA) + _ppm;
+
+                // Vencimiento F29 (día 12 del mes siguiente)
+                const _f29Fecha = new Date(_now.getFullYear(), _now.getMonth() + 1, 12);
+                const _diasF29 = Math.round((_f29Fecha - new Date(_now.getFullYear(), _now.getMonth(), _now.getDate())) / 86400000);
+
+                // Visual
+                let _tIcon, _tColor, _tBg, _tMsg;
+                if (_f29 > 0) {
+                    _tIcon = 'ph-arrow-up-right'; _tColor = '#dc2626'; _tBg = 'rgba(220,38,38,0.12)';
+                    _tMsg = `F29: ${fmt(_f29)}`;
+                } else {
+                    _tIcon = 'ph-arrow-down-right'; _tColor = '#16a34a'; _tBg = 'rgba(22,163,106,0.12)';
+                    _tMsg = `Remanente: ${fmt(Math.abs(_balanceIVA))}`;
+                }
+
+                const _diasColor = _diasF29 <= 5 ? '#dc2626' : _diasF29 <= 10 ? '#f59e0b' : 'var(--text-muted)';
+
+                taxSection.style.display = '';
+                taxWidget.innerHTML = `
+                    <div class="tax-pulse">
+                        <div class="tax-pulse-bar" onclick="document.querySelector('[data-view=\\'purchase_invoices\\']')?.click();" title="Ver detalle tributario">
+                            <div class="tax-pulse-icon" style="background:${_tColor};">
+                                <i class="ph ${_tIcon}"></i>
+                            </div>
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-weight:800; font-size:1rem; color:${_tColor};">${_tMsg}</div>
+                                <div style="font-size:0.75rem; color:${_diasColor}; font-weight:600; margin-top:2px;">
+                                    <i class="ph ${_diasF29 <= 5 ? 'ph-warning-circle' : 'ph-calendar-check'}"></i>
+                                    Vence en ${_diasF29} días
+                                </div>
+                            </div>
+                            <i class="ph ph-arrow-right" style="color:var(--text-muted); font-size:1.1rem;"></i>
+                        </div>
+                        <div class="tax-pulse-grid">
+                            <div class="tax-pulse-cell">
+                                <div class="tp-lbl">IVA Débito</div>
+                                <div class="tp-val" style="color:#dc2626;">${fmt(_ivaDebito)}</div>
+                            </div>
+                            <div class="tax-pulse-cell">
+                                <div class="tp-lbl">IVA Crédito</div>
+                                <div class="tp-val" style="color:#16a34a;">${fmt(_ivaCredito)}</div>
+                            </div>
+                            <div class="tax-pulse-cell">
+                                <div class="tp-lbl">PPM</div>
+                                <div class="tp-val" style="color:#f59e0b;">${fmt(_ppm)}</div>
+                            </div>
+                            <div class="tax-pulse-cell">
+                                <div class="tp-lbl">Facturas</div>
+                                <div class="tp-val" style="color:#7c3aed;">${_taxInvs.filter(i => i.siiTipoDoc !== 61).length}</div>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+        }
 
         // ⑧ Alertas accionables con $
         const actionableAlerts = computeActionableAlerts(products, eleventaSales);
