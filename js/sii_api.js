@@ -75,7 +75,7 @@ window.SII_API = {
         return {
             apiKey: localStorage.getItem('sii_baseapi_key') || this._defaults.apiKey,
             rut: localStorage.getItem('sii_rut') || this._defaults.rut,
-            password: sessionStorage.getItem('sii_password') || this._defaults.password
+            password: localStorage.getItem('sii_password') || sessionStorage.getItem('sii_password') || this._defaults.password
         };
     },
 

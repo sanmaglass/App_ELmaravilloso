@@ -133,6 +133,7 @@ window.InactivityGuard = {
         ];
         keysToRemove.forEach(k => localStorage.removeItem(k));
         sessionStorage.removeItem('sii_password');
+        localStorage.removeItem('sii_password');
         // También limpiar cualquier cache SII con prefijo
         Object.keys(localStorage)
             .filter(k => k.startsWith('sii_') || k.startsWith('cache_sii'))
