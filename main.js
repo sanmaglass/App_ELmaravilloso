@@ -221,7 +221,7 @@ function showEmailGate() {
 
             btn.textContent = 'Ingresar';
             btn.disabled = false;
-            console.warn('Login error:', msg);
+            window.ErrorLogger?.log('auth.login_error', { message: msg }, {}, false);
         }
     }
 
@@ -306,15 +306,15 @@ async function init() {
         // El dashboard se muestra inmediatamente con datos locales de Dexie; sync corre en background.
         (async () => {
             try {
-                console.log("1️⃣ Inicializando SyncV2 (background)...");
+                if (localStorage.getItem('sync_debug')) console.log("1️⃣ Inicializando SyncV2 (background)...");
                 const synced = await window.SyncV2.init();
 
                 if (synced) {
                     window.Sync?.updateIndicator?.('syncing');
-                    console.log("2️⃣ SyncV2 listo - iniciando pull incremental...");
+                    if (localStorage.getItem('sync_debug')) console.log("2️⃣ SyncV2 listo - iniciando pull incremental...");
                     await window.SyncV2.syncAll();
 
-                    console.log("3️⃣ Pull completado - iniciando Realtime...");
+                    if (localStorage.getItem('sync_debug')) console.log("3️⃣ Pull completado - iniciando Realtime...");
                     await window.SyncV2.initRealtimeSync();
 
                     // Polling cada 90s como red de seguridad aunque la pestaña esté oculta.
@@ -346,7 +346,7 @@ async function init() {
                     }, 30 * 1000);
 
                     window.Sync?.updateIndicator?.('realtime');
-                    console.log("✅ SyncV2 activado (Realtime + Polling 90s)");
+                    if (localStorage.getItem('sync_debug')) console.log("✅ SyncV2 activado (Realtime + Polling 90s)");
                 } else {
                     window.Sync?.updateIndicator?.('off');
                 }
@@ -532,11 +532,11 @@ async function init() {
         try {
             const alertClient = window.SyncV2.client;
             if (alertClient) {
-                console.log("🔔 Iniciando suscripción a alertas globales...");
+                if (localStorage.getItem('sync_debug')) console.log("🔔 Iniciando suscripción a alertas globales...");
                 alertClient.channel('global-alerts')
                     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'eleventa_alertas' }, payload => {
                         const alertData = payload.new;
-                        console.log('🚨 ALERTA RECIBIDA:', alertData);
+                        if (localStorage.getItem('sync_debug')) console.log('🚨 ALERTA RECIBIDA:', alertData);
                         const isCredit = alertData.tipo === 'CREDITO_OTORGADO';
                         const icon = isCredit ? '<i class="ph ph-hand-holding-dollar" style="color:#f59e0b"></i>' : '<i class="ph ph-warning-circle" style="color:#dc2626"></i>';
 
@@ -587,14 +587,14 @@ async function init() {
         // Sincronizar cuando vuelve a primer plano
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
-                console.log("📱 Primer plano - sync...");
+                if (localStorage.getItem('sync_debug')) console.log("📱 Primer plano - sync...");
                 window.SyncV2.syncAll();
             }
         });
 
         // Sincronizar cuando se conecta a internet
         window.addEventListener('online', () => {
-            console.log("🌐 Online - sincronizando...");
+            if (localStorage.getItem('sync_debug')) console.log("🌐 Online - sincronizando...");
             window.Outbox?.drain();
             window.SyncV2?.syncAll();
             if (window.showToast) window.showToast('Conexión restaurada', 'success');

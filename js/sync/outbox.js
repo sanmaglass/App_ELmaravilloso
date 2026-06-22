@@ -61,7 +61,9 @@ window.Outbox = {
         .where('status').equals('pending')
         .sortBy('created_at');
 
-      if (!pending.length) return;
+      if (!pending.length) return [];
+
+      const drainedTables = new Set();
 
       if (localStorage.getItem('sync_debug')) console.log(`📤 Drenando ${pending.length} items del outbox...`);
 
@@ -72,6 +74,20 @@ window.Outbox = {
           const remote = item.remoteTable || window.Constants?.REMOTE_TABLE_MAP?.[item.tableName] || item.tableName;
 
           if (op === 'PUT') {
+            // Guard: re-leer registro local y comparar HLC.
+            // Si un pull posterior trajo una versión más nueva, descartar este item
+            // para no sobreescribir datos más recientes en Supabase.
+            const localRec = await window.db[item.tableName]?.get(payload.id);
+            if (localRec) {
+              const localHlc = Number(localRec.updated_at_hlc) || 0;
+              const outboxHlc = Number(payload.updated_at_hlc) || 0;
+              if (localHlc > outboxHlc) {
+                await window.db.sync_outbox.update(item.id, { status: 'done' });
+                if (localStorage.getItem('sync_debug')) console.log(`⏭️ ${item.tableName}#${payload.id} superado por pull (local HLC ${localHlc} > outbox ${outboxHlc}), descartado`);
+                continue;
+              }
+            }
+
             const { error } = await window.SyncV2.client.from(remote).upsert([payload], { onConflict: 'id' });
             if (error) {
                 if (error.code === '23505' || error.code === '409' || String(error.message).includes('409')) {
@@ -88,6 +104,7 @@ window.Outbox = {
 
           // Marcar como done
           await window.db.sync_outbox.update(item.id, { status: 'done' });
+          drainedTables.add(item.tableName);
           if (localStorage.getItem('sync_debug')) console.log(`✅ ${item.tableName}#${payload.id} sincronizado`);
 
           // Throttle: pausa entre requests para no saturar Supabase
@@ -123,6 +140,8 @@ window.Outbox = {
 
       // Purgar registros completados con más de 24h
       await this.purge();
+
+      return [...drainedTables];
     } finally {
       this._draining = false;
     }

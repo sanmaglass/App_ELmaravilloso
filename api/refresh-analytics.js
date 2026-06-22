@@ -2,9 +2,15 @@
 // Disparado por Vercel Cron (3x/día: 10, 13, 19 Chile = 14, 17, 23 UTC)
 import { createClient } from '@supabase/supabase-js';
 
-const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET } = process.env;
 
 export default async function handler(req, res) {
+    // Auth: solo Vercel Cron o llamadas con Bearer token
+    const auth = req.headers.authorization || '';
+    if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) {
+        return res.status(401).json({ error: 'no autorizado' });
+    }
+
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
         return res.status(500).json({ error: 'Missing env vars' });
     }
@@ -27,6 +33,6 @@ export default async function handler(req, res) {
         });
     } catch (err) {
         console.error('refresh-analytics error:', err);
-        return res.status(500).json({ error: err.message || 'Error interno' });
+        return res.status(500).json({ error: 'Error interno' });
     }
 }

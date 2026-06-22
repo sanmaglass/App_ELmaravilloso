@@ -32,8 +32,7 @@ export default async function handler(req, res) {
     try {
         // ── Autorización ──
         const auth = req.headers.authorization || '';
-        const qSecret = (req.query && req.query.secret) || '';
-        if (!CRON_SECRET || (auth !== `Bearer ${CRON_SECRET}` && qSecret !== CRON_SECRET)) {
+        if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) {
             return res.status(401).json({ error: 'no autorizado' });
         }
         if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !VAPID_PRIVATE_KEY || !VAPID_PUBLIC_KEY) {
@@ -45,7 +44,7 @@ export default async function handler(req, res) {
         const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
         const { data: subs, error: subErr } = await sb.from('push_subscriptions').select('*');
-        if (subErr) return res.status(500).json({ error: 'error leyendo suscripciones', detail: subErr.message });
+        if (subErr) return res.status(500).json({ error: 'error leyendo suscripciones' });
         if (!subs || !subs.length) return res.status(200).json({ ok: true, msg: 'sin suscripciones' });
 
         // Enviar un payload a todas las suscripciones (de un tenant, o todas si tenantId es null)
@@ -134,6 +133,7 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ ok: true, ...out });
     } catch (e) {
-        return res.status(500).json({ error: 'fallo interno', detail: e.message });
+        console.error('notify error:', e);
+        return res.status(500).json({ error: 'fallo interno' });
     }
 }

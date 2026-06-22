@@ -172,7 +172,11 @@ window.SyncV2 = {
   },
 
   async drainOutbox() {
-    await window.Outbox?.drain();
+    const drained = await window.Outbox?.drain();
+    // Si el outbox drenó items, notificar la UI para refrescar vistas
+    if (drained && drained.length > 0) {
+      this._notifyUI(drained);
+    }
   },
 
   async initRealtimeSync() {

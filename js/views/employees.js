@@ -546,7 +546,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                     await window.DataManager.saveAndSync('employees', emp);
 
                     modalContainer.classList.add('hidden');
-                    window.showToast(`Pago de ${window.Utils.formatCurrency(finalAmount)} a ${emp.name} registrado.`, 'success');
+                    window.showToast(`Pago de ${window.Utils.formatCurrency(finalAmount)} a ${window.Utils.escapeHTML(emp.name)} registrado.`, 'success');
                     await renderPagosTab(tabContainer);
                 } catch (err) {
                     window.showToast('Error al registrar pago: ' + err.message, 'error');
@@ -634,7 +634,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                     await window.DataManager.saveAndSync('expenses', expenseData);
 
                     modalContainer.classList.add('hidden');
-                    window.showToast(`Adelanto de ${window.Utils.formatCurrency(amount)} registrado para ${emp.name}.`, 'success');
+                    window.showToast(`Adelanto de ${window.Utils.formatCurrency(amount)} registrado para ${window.Utils.escapeHTML(emp.name)}.`, 'success');
                     await renderPagosTab(tabContainer);
                 } catch (err) {
                     window.showToast('Error al registrar adelanto: ' + err.message, 'error');

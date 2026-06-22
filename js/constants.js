@@ -21,7 +21,7 @@ window.Constants = {
     },
 
     // Versión actual de Dexie DB
-    DB_VERSION: 20,
+    DB_VERSION: 21,
 
     // Tablas versionadas (con control de versión optimista)
     VERSIONED_TABLES: ['purchase_invoices', 'electronic_invoices', 'loans'],
