@@ -23,7 +23,8 @@ const views = {
     cash_register: () => window.Views.cash_register(document.getElementById('view-container')),
     credits: () => window.Views.credits(document.getElementById('view-container')),
     barcode: () => window.Views.barcode(document.getElementById('view-container')),
-    caja_dia: () => window.Views.caja_dia(document.getElementById('view-container'))
+    caja_dia: () => window.Views.caja_dia(document.getElementById('view-container')),
+    intelligence: () => window.Views.intelligence(document.getElementById('view-container'))
 };
 
 // ── Tema neutro premium para Chart.js (gris-dominante, sin glow) ──
