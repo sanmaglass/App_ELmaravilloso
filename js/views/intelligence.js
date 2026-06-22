@@ -444,6 +444,7 @@ window.Views.intelligence = async (container) => {
                 <div>
                     <h1><i class="ph ph-brain"></i> Inteligencia</h1>
                     <p>${hoyCapitalizado}</p>
+                    <p id="intel-cache-ts" style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Refrescos: 10:00 · 13:00 · 19:00</p>
                 </div>
                 <button class="intel-btn-refresh" id="intel-refresh-btn">
                     <i class="ph ph-arrows-clockwise"></i> Actualizar
@@ -458,14 +459,87 @@ window.Views.intelligence = async (container) => {
         </div>
     `;
 
+    // ── Caché por ventanas horarias (10:00, 13:00, 19:00) ────────────────
+    // Solo consulta Supabase cuando se cruza la siguiente ventana.
+    // Entre ventanas muestra datos cacheados en localStorage.
+    const CACHE_KEY = 'intel_report_cache';
+    const VENTANAS = [10, 13, 19]; // horas de refresco (Chile local)
+
+    function getVentanaActual() {
+        const h = new Date().getHours();
+        // Buscar la última ventana que ya pasó
+        for (let i = VENTANAS.length - 1; i >= 0; i--) {
+            if (h >= VENTANAS[i]) return { ventana: VENTANAS[i], index: i };
+        }
+        // Antes de las 10 → usar ventana de las 19 del día anterior
+        return { ventana: 19, index: VENTANAS.length - 1 };
+    }
+
+    function necesitaRefrescar() {
+        try {
+            const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+            if (!cached || !cached._ts || !cached._ventana) return true;
+
+            const ahora = new Date();
+            const cacheDate = new Date(cached._ts);
+            const { ventana } = getVentanaActual();
+
+            // Si la ventana actual es distinta a la cacheada → refrescar
+            if (cached._ventana !== ventana) return true;
+
+            // Si el caché es de otro día → refrescar
+            if (cacheDate.toDateString() !== ahora.toDateString()) {
+                // Excepción: si estamos antes de las 10 y el caché es de las 19 de ayer, OK
+                if (ahora.getHours() < 10 && cached._ventana === 19) return false;
+                return true;
+            }
+
+            return false;
+        } catch { return true; }
+    }
+
+    function leerCache() {
+        try {
+            const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+            if (cached && cached.data) return cached.data;
+        } catch { /* corrupto */ }
+        return null;
+    }
+
+    function guardarCache(data) {
+        const { ventana } = getVentanaActual();
+        try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({
+                data,
+                _ts: new Date().toISOString(),
+                _ventana: ventana
+            }));
+        } catch { /* quota */ }
+    }
+
     // ── Función de render principal ────────────────────────────────────────
-    async function loadAndRender() {
+    async function loadAndRender(forceRefresh = false) {
         const body = document.getElementById('intel-body');
         const btn  = document.getElementById('intel-refresh-btn');
         if (!body) return;
 
+        // ¿Tenemos caché válido?
+        if (!forceRefresh && !necesitaRefrescar()) {
+            const cached = leerCache();
+            if (cached) {
+                const { ventana } = getVentanaActual();
+                const proxVentana = VENTANAS.find(v => v > new Date().getHours()) || VENTANAS[0];
+                body.innerHTML = renderIntelligence(cached);
+                // Mostrar hora del último refresco
+                const tsEl = document.getElementById('intel-cache-ts');
+                if (tsEl) tsEl.textContent = `Actualizado a las ${ventana}:00 · Próximo a las ${proxVentana}:00`;
+                document.getElementById('intel-refresh-btn')?.addEventListener('click', () => loadAndRender(true));
+                return;
+            }
+        }
+
         // Estado cargando
-        body.innerHTML = `<div class="intel-loader"><div class="intel-spinner"></div><span>Cargando reporte de inteligencia…</span></div>`;
+        body.innerHTML = `<div class="intel-loader"><div class="intel-spinner"></div><span>Consultando datos frescos…</span></div>`;
         if (btn) { btn.classList.add('loading'); btn.disabled = true; }
 
         let data, err;
@@ -480,23 +554,36 @@ window.Views.intelligence = async (container) => {
         if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
 
         if (err || !data) {
+            // Si falló pero hay caché viejo, mostrar eso
+            const fallback = leerCache();
+            if (fallback) {
+                body.innerHTML = renderIntelligence(fallback);
+                const tsEl = document.getElementById('intel-cache-ts');
+                if (tsEl) tsEl.textContent = '⚠ Datos cacheados (falló la actualización)';
+                document.getElementById('intel-refresh-btn')?.addEventListener('click', () => loadAndRender(true));
+                return;
+            }
             body.innerHTML = `
                 <div class="intel-error">
                     <i class="ph ph-warning-circle"></i>
                     <h3>No se pudo cargar el reporte</h3>
-                    <p>${err?.message || 'Error al llamar intelligence_report(). Verificá la conexión y que la función exista en Supabase.'}</p>
+                    <p>${err?.message || 'Error al llamar intelligence_report().'}</p>
                     <button class="intel-btn-retry" id="intel-retry-btn">
                         <i class="ph ph-arrows-clockwise"></i> Reintentar
                     </button>
                 </div>`;
-            document.getElementById('intel-retry-btn')?.addEventListener('click', loadAndRender);
+            document.getElementById('intel-retry-btn')?.addEventListener('click', () => loadAndRender(true));
             return;
         }
 
+        // Guardar en caché y renderizar
+        guardarCache(data);
         body.innerHTML = renderIntelligence(data);
-
-        // Re-bind botón refresh tras re-render
-        document.getElementById('intel-refresh-btn')?.addEventListener('click', loadAndRender);
+        const { ventana } = getVentanaActual();
+        const proxVentana = VENTANAS.find(v => v > new Date().getHours()) || VENTANAS[0];
+        const tsEl = document.getElementById('intel-cache-ts');
+        if (tsEl) tsEl.textContent = `Actualizado ahora (${ventana}:00) · Próximo a las ${proxVentana}:00`;
+        document.getElementById('intel-refresh-btn')?.addEventListener('click', () => loadAndRender(true));
     }
 
     // ── Render del contenido ───────────────────────────────────────────────
@@ -833,7 +920,4 @@ window.Views.intelligence = async (container) => {
 
     // ── Arranque ──────────────────────────────────────────────────────────────
     await loadAndRender();
-
-    // Bind botón (también se re-bindea dentro de loadAndRender tras renders con error)
-    document.getElementById('intel-refresh-btn')?.addEventListener('click', loadAndRender);
 };
