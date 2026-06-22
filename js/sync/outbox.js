@@ -38,18 +38,30 @@ window.Outbox = {
   },
 
   async drain() {
-    if (!window.SyncV2?.client) {
-      console.warn('⚠️ SyncV2 no está listo, drain abortado');
-      return;
-    }
+    if (!window.SyncV2?.client) return;
 
-    // Prevenir drain concurrente — con timeout de seguridad
+    // Cross-tab lock: si otra pestaña ya drena, saltar silenciosamente
+    if (navigator.locks) {
+      let result = [];
+      try {
+        await navigator.locks.request('wm-outbox-drain', { ifAvailable: true }, async lock => {
+          if (!lock) return;
+          result = await this._drainInternal();
+        });
+      } catch (e) {
+        result = await this._drainInternal();
+      }
+      return result;
+    }
+    return this._drainInternal();
+  },
+
+  async _drainInternal() {
+    // Prevenir drain concurrente dentro de la misma pestaña
     if (this._draining) {
       if (Date.now() - this._drainStartedAt > this._DRAIN_TIMEOUT_MS) {
-        console.warn('⚠️ Drain anterior excedió timeout, reseteando flag');
         this._draining = false;
       } else {
-        console.log('⏳ Drain ya en progreso, saltando');
         return;
       }
     }
