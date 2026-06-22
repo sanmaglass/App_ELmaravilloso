@@ -5,6 +5,7 @@
 window.Views = window.Views || {};
 
 window.Views.intelligence = async (container) => {
+    console.log('[INTEL] Vista intelligence iniciada, container:', !!container);
 
     // ── Helpers ──────────────────────────────────────────────────────────────
     const fmt = (n) => {
@@ -519,9 +520,10 @@ window.Views.intelligence = async (container) => {
 
     // ── Función de render principal ────────────────────────────────────────
     async function loadAndRender(forceRefresh = false) {
+        console.log('[INTEL] loadAndRender llamado, forceRefresh:', forceRefresh);
         const body = document.getElementById('intel-body');
         const btn  = document.getElementById('intel-refresh-btn');
-        if (!body) return;
+        if (!body) { console.error('[INTEL] intel-body NO encontrado en DOM'); return; }
 
         // ¿Tenemos caché válido?
         if (!forceRefresh && !necesitaRefrescar()) {
@@ -544,10 +546,16 @@ window.Views.intelligence = async (container) => {
 
         let data, err;
         try {
-            const res = await (window.SyncV2?.client || window.Sync?.client || window.supabase.createClient(window.AppConfig.supabaseUrl, window.AppConfig.supabaseKey)).rpc('intelligence_report');
+            const client = window.SyncV2?.client || window.Sync?.client || null;
+            console.log('[INTEL] Cliente Supabase:', client ? 'encontrado' : 'NULL — creando nuevo');
+            const sb = client || window.supabase.createClient(window.AppConfig.supabaseUrl, window.AppConfig.supabaseKey);
+            console.log('[INTEL] Llamando RPC intelligence_report...');
+            const res = await sb.rpc('intelligence_report');
+            console.log('[INTEL] RPC respuesta:', { data: !!res.data, error: res.error });
             data = res.data;
             err  = res.error;
         } catch (e) {
+            console.error('[INTEL] Excepción en RPC:', e);
             err = e;
         }
 
