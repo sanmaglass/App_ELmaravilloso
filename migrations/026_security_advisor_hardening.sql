@@ -41,5 +41,12 @@ REVOKE EXECUTE ON FUNCTION public.prevent_tenant_id_change() FROM PUBLIC, anon, 
 DROP POLICY IF EXISTS "Permitir acceso publico a las facturas" ON storage.objects;
 DROP POLICY IF EXISTS "Public Access to invoices" ON storage.objects;
 UPDATE storage.buckets SET public = false WHERE id = 'invoices';
--- NOTA: bucket 'marketing_media' (1 archivo, lo usa el estudio de marketing)
--- se deja como está pendiente de decisión — su policy ALL/public sigue abierta.
+-- 5) Bucket 'marketing_media' (lo usa el estudio de marketing): reemplazar la
+--    policy ALL por INSERT+UPDATE. Mantiene lectura por URL (bucket sigue público)
+--    y subida, pero quita listado (SELECT broad) y borrado (DELETE) por anon.
+DROP POLICY IF EXISTS "Permitir todo a la app" ON storage.objects;
+CREATE POLICY "marketing_media_insert" ON storage.objects
+  FOR INSERT TO public WITH CHECK (bucket_id = 'marketing_media');
+CREATE POLICY "marketing_media_update" ON storage.objects
+  FOR UPDATE TO public USING (bucket_id = 'marketing_media')
+  WITH CHECK (bucket_id = 'marketing_media');
