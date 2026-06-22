@@ -544,7 +544,7 @@ window.Views.intelligence = async (container) => {
 
         let data, err;
         try {
-            const res = await (window.SyncV2?.client || window.Auth?.client || window.Sync?.client).rpc('intelligence_report');
+            const res = await (window.SyncV2?.client || window.Sync?.client || window.supabase.createClient(window.AppConfig.supabaseUrl, window.AppConfig.supabaseKey)).rpc('intelligence_report');
             data = res.data;
             err  = res.error;
         } catch (e) {
