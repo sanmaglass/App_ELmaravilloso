@@ -916,7 +916,8 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             const siiPolicy = window.SII_API.shouldAutoSync();
             if (siiPolicy.shouldSync) {
                 window.SII_API.smartSync(false).then(result => {
-                    if (result.synced) {
+                    if (result.synced && document.getElementById('kpi-ventas-mes')) {
+                        // Solo re-renderizar si el dashboard sigue visible
                         console.log('[Dashboard] SII smartSync OK — refrescando datos');
                         window.Views.dashboard(container, selectedMonth);
                     }
