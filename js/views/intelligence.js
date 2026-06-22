@@ -526,7 +526,6 @@ window.Views.intelligence = async (container) => {
                 // Mostrar hora del último refresco
                 const tsEl = document.getElementById('intel-cache-ts');
                 if (tsEl) tsEl.textContent = `Actualizado a las ${ventana}:00 · Próximo a las ${proxVentana}:00`;
-                document.getElementById('intel-refresh-btn')?.addEventListener('click', () => loadAndRender(true));
                 return;
             }
         }
@@ -559,7 +558,6 @@ window.Views.intelligence = async (container) => {
                 body.innerHTML = renderIntelligence(fallback);
                 const tsEl = document.getElementById('intel-cache-ts');
                 if (tsEl) tsEl.textContent = '⚠ Datos cacheados (falló la actualización)';
-                document.getElementById('intel-refresh-btn')?.addEventListener('click', () => loadAndRender(true));
                 return;
             }
             body.innerHTML = `
@@ -582,7 +580,6 @@ window.Views.intelligence = async (container) => {
         const proxVentana = VENTANAS.find(v => v > new Date().getHours()) || VENTANAS[0];
         const tsEl = document.getElementById('intel-cache-ts');
         if (tsEl) tsEl.textContent = `Actualizado ahora (${ventana}:00) · Próximo a las ${proxVentana}:00`;
-        document.getElementById('intel-refresh-btn')?.addEventListener('click', () => loadAndRender(true));
     }
 
     // ── Render del contenido ───────────────────────────────────────────────
@@ -916,6 +913,9 @@ window.Views.intelligence = async (container) => {
             ${secMuertos}
         `;
     }
+
+    // ── Bind refresh button UNA sola vez ────────────────────────────────────
+    document.getElementById('intel-refresh-btn')?.addEventListener('click', () => loadAndRender(true));
 
     // ── Arranque ──────────────────────────────────────────────────────────────
     await loadAndRender();
