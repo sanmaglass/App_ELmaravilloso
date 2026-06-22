@@ -38,28 +38,28 @@ window.Views.intelligence = async (container) => {
     container.innerHTML = `
         <style>
             /* ── Intelligence View ── */
-            .intel-wrap { max-width: 1100px; margin: 0 auto; padding: 0 0 48px 0; }
+            .intel-wrap { max-width: 720px; margin: 0 auto; padding: 0 0 60px 0; }
 
             .intel-header {
                 display: flex;
                 justify-content: space-between;
-                align-items: flex-start;
-                margin-bottom: 28px;
+                align-items: center;
+                margin-bottom: 24px;
                 flex-wrap: wrap;
-                gap: 12px;
+                gap: 10px;
             }
             .intel-header h1 {
-                margin: 0 0 4px 0;
-                font-size: 1.55rem;
+                margin: 0 0 2px 0;
+                font-size: 1.15rem;
                 font-weight: 800;
                 color: var(--text-primary);
                 display: flex;
                 align-items: center;
-                gap: 10px;
+                gap: 8px;
                 letter-spacing: -0.02em;
             }
-            .intel-header h1 i { color: #818cf8; font-size: 1.4rem; }
-            .intel-header p { margin: 0; color: var(--text-muted); font-size: 0.85rem; }
+            .intel-header h1 i { color: #818cf8; font-size: 1.1rem; }
+            .intel-header p { margin: 0; color: var(--text-muted); font-size: 0.78rem; }
             .intel-btn-refresh {
                 display: flex;
                 align-items: center;
@@ -87,30 +87,22 @@ window.Views.intelligence = async (container) => {
             .intel-grid-2 {
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
-                gap: 16px;
-                margin-bottom: 16px;
-            }
-            .intel-grid-4 {
-                display: grid;
-                grid-template-columns: repeat(4, 1fr);
                 gap: 12px;
+                margin-bottom: 12px;
             }
-            @media (max-width: 900px) {
+            @media (max-width: 640px) {
                 .intel-grid-2 { grid-template-columns: 1fr; }
-                .intel-grid-4 { grid-template-columns: repeat(2, 1fr); }
-            }
-            @media (max-width: 560px) {
-                .intel-grid-4 { grid-template-columns: 1fr; }
             }
 
             /* ── Cards base ── */
             .intel-card {
                 background: var(--bg-card);
                 border: 1px solid var(--border);
-                border-radius: 14px;
-                padding: 20px;
-                margin-bottom: 16px;
-                animation: intel-fadeIn 0.35s ease both;
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 12px;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+                animation: intel-fadeIn 0.3s ease both;
             }
             @keyframes intel-fadeIn {
                 from { opacity: 0; transform: translateY(8px); }
@@ -119,38 +111,37 @@ window.Views.intelligence = async (container) => {
             .intel-card-full { grid-column: 1 / -1; }
 
             .intel-card-title {
-                font-size: 0.75rem;
+                font-size: 0.7rem;
                 font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 0.08em;
                 color: var(--text-muted);
-                margin: 0 0 14px 0;
+                margin: 0 0 10px 0;
                 display: flex;
                 align-items: center;
-                gap: 6px;
+                gap: 5px;
             }
-            .intel-card-title i { font-size: 1rem; }
+            .intel-card-title i { font-size: 0.9rem; }
 
             /* ── Métricas grandes ── */
-            .intel-metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+            .intel-metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
             @media (max-width: 700px) { .intel-metric-grid { grid-template-columns: repeat(2, 1fr); } }
-            @media (max-width: 400px) { .intel-metric-grid { grid-template-columns: 1fr 1fr; } }
 
             .intel-metric {
                 background: var(--bg-elevated);
-                border-radius: 10px;
-                padding: 14px 16px;
+                border-radius: 8px;
+                padding: 10px 12px;
             }
             .intel-metric-label {
-                font-size: 0.72rem;
+                font-size: 0.65rem;
                 color: var(--text-muted);
                 font-weight: 600;
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
-                margin-bottom: 4px;
+                margin-bottom: 3px;
             }
             .intel-metric-val {
-                font-size: 1.4rem;
+                font-size: 1.15rem;
                 font-weight: 800;
                 color: var(--text-primary);
                 font-variant-numeric: tabular-nums;
@@ -158,9 +149,9 @@ window.Views.intelligence = async (container) => {
                 line-height: 1.1;
             }
             .intel-metric-sub {
-                font-size: 0.75rem;
+                font-size: 0.68rem;
                 color: var(--text-muted);
-                margin-top: 3px;
+                margin-top: 2px;
             }
 
             /* ── Badges ── */
@@ -203,14 +194,14 @@ window.Views.intelligence = async (container) => {
             }
 
             /* ── Listas de productos ── */
-            .intel-product-list { display: flex; flex-direction: column; gap: 8px; }
+            .intel-product-list { display: flex; flex-direction: column; gap: 5px; }
             .intel-product-row {
                 display: flex;
                 align-items: center;
-                gap: 12px;
-                padding: 10px 12px;
+                gap: 8px;
+                padding: 8px 10px;
                 background: var(--bg-elevated);
-                border-radius: 9px;
+                border-radius: 8px;
                 transition: background 0.12s;
             }
             .intel-product-row:hover { background: var(--bg-card); filter: brightness(1.05); }
@@ -224,7 +215,7 @@ window.Views.intelligence = async (container) => {
             }
             .intel-product-name {
                 flex: 1;
-                font-size: 0.85rem;
+                font-size: 0.78rem;
                 font-weight: 600;
                 color: var(--text-primary);
                 white-space: nowrap;
@@ -232,7 +223,7 @@ window.Views.intelligence = async (container) => {
                 text-overflow: ellipsis;
             }
             .intel-product-meta {
-                font-size: 0.78rem;
+                font-size: 0.72rem;
                 color: var(--text-muted);
                 font-variant-numeric: tabular-nums;
                 white-space: nowrap;
@@ -255,33 +246,33 @@ window.Views.intelligence = async (container) => {
             .intel-alert-card {
                 display: flex;
                 align-items: flex-start;
-                gap: 12px;
-                padding: 12px 14px;
-                border-radius: 10px;
-                border: 1px solid rgba(239,68,68,0.25);
-                background: rgba(239,68,68,0.04);
-                margin-bottom: 8px;
+                gap: 10px;
+                padding: 10px 12px;
+                border-radius: 8px;
+                border: 1px solid rgba(239,68,68,0.2);
+                background: rgba(239,68,68,0.03);
+                margin-bottom: 6px;
             }
-            .intel-alert-card i { color: #ef4444; font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
-            .intel-alert-card .intel-product-name { font-size: 0.83rem; }
+            .intel-alert-card i { color: #ef4444; font-size: 0.95rem; flex-shrink: 0; margin-top: 1px; }
+            .intel-alert-card .intel-product-name { font-size: 0.78rem; }
 
             /* ── Cross-selling ── */
             .intel-cross-card {
                 display: flex;
                 align-items: center;
-                gap: 10px;
-                padding: 12px 14px;
+                gap: 8px;
+                padding: 10px 12px;
                 background: var(--bg-elevated);
-                border-radius: 10px;
-                margin-bottom: 8px;
+                border-radius: 8px;
+                margin-bottom: 6px;
                 flex-wrap: wrap;
             }
             .intel-cross-name {
-                font-size: 0.82rem;
+                font-size: 0.75rem;
                 font-weight: 600;
                 color: var(--text-primary);
                 flex: 1;
-                min-width: 80px;
+                min-width: 70px;
             }
             .intel-cross-link { color: #6366f1; font-size: 0.9rem; flex-shrink: 0; }
             .intel-cross-pct {
@@ -313,41 +304,41 @@ window.Views.intelligence = async (container) => {
             /* ── Tip del día ── */
             .intel-tip-card {
                 background: linear-gradient(135deg, #312e81 0%, #4c1d95 50%, #1e1b4b 100%);
-                border: 1px solid rgba(129,140,248,0.3);
-                border-radius: 14px;
-                padding: 22px 24px;
-                margin-bottom: 16px;
+                border: 1px solid rgba(129,140,248,0.25);
+                border-radius: 12px;
+                padding: 14px 16px;
+                margin-bottom: 12px;
                 display: flex;
-                gap: 16px;
+                gap: 12px;
                 align-items: flex-start;
-                animation: intel-fadeIn 0.35s ease both;
+                animation: intel-fadeIn 0.3s ease both;
             }
             body:not(.dark-mode) .intel-tip-card {
                 background: linear-gradient(135deg, #4338ca 0%, #6d28d9 50%, #3730a3 100%);
             }
             .intel-tip-icon {
-                width: 40px;
-                height: 40px;
-                border-radius: 10px;
+                width: 32px;
+                height: 32px;
+                border-radius: 8px;
                 background: rgba(255,255,255,0.15);
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 flex-shrink: 0;
             }
-            .intel-tip-icon i { color: #fde68a; font-size: 1.3rem; }
+            .intel-tip-icon i { color: #fde68a; font-size: 1.1rem; }
             .intel-tip-label {
-                font-size: 0.7rem;
+                font-size: 0.62rem;
                 font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 0.1em;
-                color: rgba(255,255,255,0.6);
-                margin-bottom: 6px;
+                color: rgba(255,255,255,0.55);
+                margin-bottom: 4px;
             }
             .intel-tip-text {
-                font-size: 0.93rem;
+                font-size: 0.82rem;
                 color: #fff;
-                line-height: 1.55;
+                line-height: 1.5;
                 font-weight: 500;
             }
 
@@ -378,7 +369,7 @@ window.Views.intelligence = async (container) => {
             }
             .intel-compare-col { text-align: center; flex: 1; }
             .intel-compare-val {
-                font-size: 1.2rem;
+                font-size: 1.05rem;
                 font-weight: 800;
                 font-variant-numeric: tabular-nums;
                 color: var(--text-primary);
@@ -666,8 +657,8 @@ window.Views.intelligence = async (container) => {
             <p class="intel-card-title"><i class="ph ph-target" style="color:#f59e0b;"></i> Meta de Hoy</p>
             <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; flex-wrap:wrap; gap:8px;">
                 <div>
-                    <span style="font-size:1.8rem; font-weight:900; color:${metaColor}; font-variant-numeric:tabular-nums;">${fmt(met.vendido_hoy)}</span>
-                    <span style="font-size:0.85rem; color:var(--text-muted);"> / ${fmt(met.meta)}</span>
+                    <span style="font-size:1.4rem; font-weight:900; color:${metaColor}; font-variant-numeric:tabular-nums;">${fmt(met.vendido_hoy)}</span>
+                    <span style="font-size:0.78rem; color:var(--text-muted);"> / ${fmt(met.meta)}</span>
                 </div>
                 <span class="intel-badge" style="background:${metaColor}22; color:${metaColor}; font-size:0.85rem; font-weight:800; padding:4px 10px;">
                     ${metaPct.toFixed(0)}%
@@ -766,7 +757,7 @@ window.Views.intelligence = async (container) => {
         <div class="intel-card" style="animation-delay:0.16s">
             <p class="intel-card-title"><i class="ph ph-percent" style="color:#a78bfa;"></i> Margen Últimos 7 Días</p>
             <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
-                <span style="font-size:2.2rem; font-weight:900; color:${mrgColor}; font-variant-numeric:tabular-nums;">${mrgActual.toFixed(1)}%</span>
+                <span style="font-size:1.6rem; font-weight:900; color:${mrgColor}; font-variant-numeric:tabular-nums;">${mrgActual.toFixed(1)}%</span>
                 <span class="intel-badge" style="background:${mrgColor}1a; color:${mrgColor};">
                     <i class="ph ${mrgIco}"></i> vs ${mrgAnterior.toFixed(1)}%
                 </span>
