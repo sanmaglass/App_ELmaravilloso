@@ -193,7 +193,7 @@ db.version(21).stores({
     sync_state: 'table_name',
     cash_register: 'id, date, type, category, deleted, updated_at_hlc',
     advances: 'id, employeeId, date, status, deleted, updated_at_hlc',
-    eleventa_abonos: 'id, abono_id, date_local, cancelado',
+    eleventa_abonos: 'id, abono_id, date_local, cancelado, updated_at_hlc',
     sync_conflicts: '++id, table_name, record_id, created_at'
 });
 

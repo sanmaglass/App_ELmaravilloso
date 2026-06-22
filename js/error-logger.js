@@ -37,7 +37,7 @@ window.ErrorLogger = {
         }
 
         const logEntry = {
-            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
             timestamp: now.toISOString(),
             context,
             errorMessage,
@@ -46,7 +46,7 @@ window.ErrorLogger = {
             severity: isTransient ? 'warning' : 'error',
             metadata: {
                 ...metadata,
-                userAgent: navigator.userAgent.substr(0, 100),
+                userAgent: navigator.userAgent.slice(0, 100),
                 appVersion: window.APP_VERSION || 'unknown'
             }
         };

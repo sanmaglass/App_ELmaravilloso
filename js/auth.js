@@ -6,6 +6,13 @@ window.Auth = {
     client: null,
     session: null,
     tenantId: null,
+    _role: null,
+
+    // Retorna el rol desde memoria (fuente de verdad server-side).
+    // Si Auth aún no cargó el tenant, retorna 'employee' (restrictivo por defecto).
+    getRole() {
+        return this._role || 'employee';
+    },
 
     // Inicializa el cliente Supabase Auth
     init() {
@@ -61,6 +68,7 @@ window.Auth = {
         }
         this.session = null;
         this.tenantId = null;
+        this._role = null;
         localStorage.removeItem('wm_auth');
         localStorage.removeItem('wm_auth_token');
         localStorage.removeItem('wm_auth_email');
@@ -84,12 +92,14 @@ window.Auth = {
         if (error || !data) {
             console.warn('⚠️ Usuario sin tenant asignado');
             this.tenantId = null;
+            this._role = null; // restrictivo por defecto
             return null;
         }
 
         this.tenantId = data.tenant_id;
+        this._role = data.role; // fuente de verdad — viene del servidor
         localStorage.setItem('wm_tenant_id', data.tenant_id);
-        localStorage.setItem('wm_user_role', data.role);
+        localStorage.setItem('wm_user_role', data.role); // cache de respaldo (no usar para auth)
         return data;
     },
 

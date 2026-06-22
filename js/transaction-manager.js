@@ -67,17 +67,18 @@ window.TransactionManager = {
 
             // ── Sync posterior (fuera de transacción) ──────────
             const syncErrors = [];
-            if (syncAfter && window.DataManager) {
+            if (syncAfter && window.DataManager && window.Outbox) {
                 for (const op of operations) {
                     if (op.action === 'delete') {
                         const res = await window.DataManager.deleteAndSync(op.table, op.data.id);
                         if (res.syncError) syncErrors.push({ table: op.table, id: op.data.id, error: res.syncError });
                     } else {
-                        // Leer registro fresco para sincronizar con versión actualizada
+                        // Leer registro fresco y encolarlo directamente en Outbox.
+                        // IMPORTANTE: usar Outbox.enqueue() en lugar de DataManager.saveAndSync()
+                        // para evitar doble version bump (saveAndSync hace put() nuevamente).
                         const fresh = await window.db[op.table].get(Number(op.data.id));
                         if (fresh) {
-                            const res = await window.DataManager.saveAndSync(op.table, fresh);
-                            if (res.syncError) syncErrors.push({ table: op.table, id: op.data.id, error: res.syncError });
+                            await window.Outbox.enqueue(op.table, 'PUT', fresh);
                         }
                     }
                 }

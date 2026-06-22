@@ -27,6 +27,7 @@ window.Constants = {
     VERSIONED_TABLES: ['purchase_invoices', 'electronic_invoices', 'loans'],
 
     // Tablas sincronizadas con Supabase
+    // Nota: eleventa_abonos es pull-only (SkipPush en SyncV2). Incluida aquí por HLC incremental.
     SYNCED_TABLES: [
         'employees', 'workLogs', 'products', 'promotions', 'suppliers',
         'purchase_invoices', 'sales_invoices', 'expenses', 'daily_sales',

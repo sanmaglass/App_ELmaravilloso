@@ -267,7 +267,9 @@ async function init() {
         window.state.currentUser = session.user.email;
 
         // --- CANDADO DE ROL: trabajadoras (employee) solo ven lo permitido (cero finanzas) ---
-        const _userRole = localStorage.getItem('wm_user_role') || '';
+        // Auth.getRole() es la fuente de verdad (viene del servidor vía user_tenants).
+        // localStorage NO se usa aquí para evitar que el usuario manipule su propio rol.
+        const _userRole = window.Auth.getRole();
         window._isEmployee = (_userRole === 'employee');
         if (window._isEmployee) {
             const ALLOWED = new Set(['caja_dia']); // vistas permitidas a trabajadoras
