@@ -536,7 +536,7 @@ window.Views.intelligence = async (container) => {
 
         let data, err;
         try {
-            const client = window.SyncV2?.client || window.Sync?.client || null;
+            const client = window.SyncV2?.client || null;
             console.log('[INTEL] Cliente Supabase:', client ? 'encontrado' : 'NULL — creando nuevo');
             const sb = client || window.supabase.createClient(window.AppConfig.supabaseUrl, window.AppConfig.supabaseKey);
             console.log('[INTEL] Llamando RPC intelligence_report...');

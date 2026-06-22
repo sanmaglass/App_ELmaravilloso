@@ -289,8 +289,7 @@ window.DataManager = {
             await window.db[tableName].put(data);
 
             // ── Intentar sync con retry exponencial ───────────
-            // SyncV2 tiene prioridad sobre el Sync legacy
-            const activeClient = window.SyncV2?.client || window.Sync?.client;
+            const activeClient = window.SyncV2?.client;
             if (activeClient) {
                 const syncResult = await this._syncWithRetry(tableName, remoteTable, data);
                 if (!syncResult.success) {
@@ -315,7 +314,7 @@ window.DataManager = {
         let syncData = this._prepareSyncData(tableName, data, fallbackTables);
 
         // Usar SyncV2 primero (es el sistema activo), con fallback al Sync legacy
-        const activeClient = window.SyncV2?.client || window.Sync?.client;
+        const activeClient = window.SyncV2?.client;
         if (!activeClient) return { success: false, error: 'Sin cliente de sync' };
 
         for (let attempt = 0; attempt < this.MAX_RETRIES; attempt++) {
@@ -393,7 +392,7 @@ window.DataManager = {
     async processPendingQueue() {
         if (this._isProcessingQueue) return;
         if (this.syncQueue.size === 0) return;
-        const activeClient = window.SyncV2?.client || window.Sync?.client;
+        const activeClient = window.SyncV2?.client;
         if (!activeClient) return;
 
         this._isProcessingQueue = true;
@@ -564,7 +563,7 @@ window.DataManager = {
 
             // 2. Intentar borrar en la nube con retry
             const deletePayload = { id: numericId, deleted: true, updated_at_hlc: hlcValue };
-            const activeClient = window.SyncV2?.client || window.Sync?.client;
+            const activeClient = window.SyncV2?.client;
             if (activeClient) {
                 const result = await this._syncWithRetry(tableName, remoteTable, deletePayload);
 
@@ -610,7 +609,7 @@ async function migrateCleanPersonal() {
     const flag = 'migration_clean_personal_v1052';
     if (localStorage.getItem(flag)) return;
     try {
-        const client = window.SyncV2?.client || window.Sync?.client;
+        const client = window.SyncV2?.client;
 
         // 1. Soft-delete employees local + Supabase
         const emps = await db.employees.toArray();

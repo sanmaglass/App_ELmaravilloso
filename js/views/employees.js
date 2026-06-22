@@ -15,7 +15,7 @@ async function _cleanLegacyPersonal() {
         const logsToUpdate = logs.map(log => ({ ...log, deleted: true }));
         await window.db.workLogs.bulkPut(logsToUpdate);
         // Borrar en Supabase
-        const client = window.SyncV2?.client || window.Sync?.client;
+        const client = window.SyncV2?.client;
         if (client) {
             await client.from('employees').update({ deleted: true }).neq('id', 0);
             await client.from('worklogs').update({ deleted: true }).neq('id', 0);
