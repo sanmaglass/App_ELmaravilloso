@@ -35,3 +35,11 @@ ALTER VIEW public.suspicious_activity SET (security_invoker = true);
 --    Los triggers siguen funcionando (corren como dueño de la tabla).
 REVOKE EXECUTE ON FUNCTION public.fn_audit_trigger() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.prevent_tenant_id_change() FROM PUBLIC, anon, authenticated;
+
+-- 4) Bucket 'invoices': vacío y sin uso en el cliente (las facturas viven en
+--    tablas, no en storage). Quitar acceso público total y marcarlo privado.
+DROP POLICY IF EXISTS "Permitir acceso publico a las facturas" ON storage.objects;
+DROP POLICY IF EXISTS "Public Access to invoices" ON storage.objects;
+UPDATE storage.buckets SET public = false WHERE id = 'invoices';
+-- NOTA: bucket 'marketing_media' (1 archivo, lo usa el estudio de marketing)
+-- se deja como está pendiente de decisión — su policy ALL/public sigue abierta.
