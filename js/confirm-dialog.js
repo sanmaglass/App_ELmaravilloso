@@ -49,13 +49,13 @@ window.showConfirmDialog = function (title, message) {
                     <h3 id="confirm-dialog-title" style="
                         margin:0;font-size:1rem;font-weight:700;
                         color:${textPrimary};line-height:1.3;
-                    ">${title}</h3>
+                    ">${window.Utils?.escapeHTML ? window.Utils.escapeHTML(title) : title}</h3>
                 </div>
                 <p id="confirm-dialog-msg" style="
                     margin:0 0 20px 0;font-size:0.9rem;
                     color:${textMuted};line-height:1.5;
                     white-space:pre-line;
-                ">${message}</p>
+                ">${window.Utils?.escapeHTML ? window.Utils.escapeHTML(message) : message}</p>
                 <div style="display:flex;gap:10px;justify-content:flex-end;">
                     <button id="confirm-dialog-cancel" style="
                         padding:9px 20px;border-radius:10px;font-size:0.88rem;font-weight:600;
