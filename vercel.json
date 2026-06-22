@@ -10,7 +10,7 @@
   ],
   "crons": [
     { "path": "/api/notify?job=all", "schedule": "0 12 * * *" },
-    { "path": "/api/refresh-analytics", "schedule": "57 13,16,22 * * *" }
+    { "path": "/api/refresh-analytics", "schedule": "0 14 * * *" }
   ],
   "headers": [
     {
