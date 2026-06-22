@@ -264,7 +264,7 @@
     </div>
 
     <!-- CDN Libs — bloqueantes, deben ir ANTES de los scripts de app que las usan -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous" defer></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 
@@ -286,7 +286,7 @@
     <script src="js/sii_api.js?v=1051"></script>
     <script src="js/confirm-dialog.js?v=1057"></script>
     <!-- Views — defer: no son críticos para el primer render -->
-    <script src="js/views/dashboard.js?v=1082" defer></script>
+    <script src="js/views/dashboard.js?v=1083" defer></script>
     <script src="js/views/employees.js?v=1051" defer></script>
     <script src="js/views/calculator.js?v=1020" defer></script>
     <script src="js/views/suppliers.js?v=1019" defer></script>

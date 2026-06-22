@@ -28,6 +28,36 @@ self.addEventListener('activate', (event) => {
             .then(keys => Promise.all(
                 keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
             ))
+            .then(() => caches.open(CACHE_NAME))
+            .then(cache => cache.keys())
+            .then(requests => {
+                // Agrupar entradas de JS por archivo base (sin query string)
+                // y eliminar las versiones antiguas, dejando solo la más reciente
+                const jsEntries = requests.filter(req => {
+                    const u = new URL(req.url);
+                    return u.pathname.endsWith('.js') && u.search.startsWith('?v=');
+                });
+                // Mapa: pathname → [{ request, version }]
+                const byBase = {};
+                for (const req of jsEntries) {
+                    const u = new URL(req.url);
+                    const ver = parseInt(u.searchParams.get('v') || '0', 10);
+                    if (!byBase[u.pathname]) byBase[u.pathname] = [];
+                    byBase[u.pathname].push({ request: req, version: ver });
+                }
+                // Para cada archivo, borrar todas las entradas excepto la de versión más alta
+                const toDelete = [];
+                for (const entries of Object.values(byBase)) {
+                    if (entries.length <= 1) continue;
+                    entries.sort((a, b) => b.version - a.version);
+                    for (const old of entries.slice(1)) {
+                        toDelete.push(old.request);
+                    }
+                }
+                return caches.open(CACHE_NAME).then(cache =>
+                    Promise.all(toDelete.map(req => cache.delete(req)))
+                );
+            })
             .then(() => self.clients.claim())
     );
 });
@@ -55,7 +85,25 @@ self.addEventListener('fetch', (event) => {
                     url.pathname === '/index.html'
                 )) {
                     const clone = response.clone();
-                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    caches.open(CACHE_NAME).then(cache => {
+                        // Si es un JS versionado (?v=XXXX), borrar entradas anteriores
+                        // del mismo archivo antes de guardar la nueva
+                        if (url.pathname.endsWith('.js') && url.search.startsWith('?v=')) {
+                            const currentVer = parseInt(url.searchParams.get('v') || '0', 10);
+                            cache.keys().then(keys => {
+                                const stale = keys.filter(req => {
+                                    const u = new URL(req.url);
+                                    if (u.pathname !== url.pathname) return false;
+                                    if (!u.search.startsWith('?v=')) return false;
+                                    const ver = parseInt(u.searchParams.get('v') || '0', 10);
+                                    return ver !== currentVer;
+                                });
+                                return Promise.all(stale.map(req => cache.delete(req)));
+                            }).then(() => cache.put(event.request, clone));
+                        } else {
+                            cache.put(event.request, clone);
+                        }
+                    });
                 }
                 return response;
             })

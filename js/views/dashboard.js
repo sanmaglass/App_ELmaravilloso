@@ -80,27 +80,19 @@ function computeRecommendations(products, eleventaSales, invoices) {
     const cutoff18Str = cutoff18.toISOString().split('T')[0];
     const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 
-    // Build product sales stats for current month
-    const salesQty = {}, salesRev = {};
-    (eleventaSales || []).forEach(sale => {
-        if (!sale.date || !sale.date.startsWith(currentMonthStr)) return;
-        if (!sale.items || !Array.isArray(sale.items)) return;
-        sale.items.forEach(item => {
-            const name = (item.name || '').trim().toLowerCase();
-            if (!name) return;
-            salesQty[name] = (salesQty[name] || 0) + (parseFloat(item.qty) || 1);
-            salesRev[name] = (salesRev[name] || 0) + (parseFloat(item.price) || 0);
-        });
-    });
-
-    // Track last sale date per product
-    const lastSaleDate = {};
+    // Build product sales stats (current month) + last sale date — single pass
+    const salesQty = {}, salesRev = {}, lastSaleDate = {};
     (eleventaSales || []).forEach(sale => {
         if (!sale.items || !Array.isArray(sale.items)) return;
         const dateStr = (sale.date_local || (sale.date || '').split('T')[0]);
+        const isCurrentMonth = sale.date && sale.date.startsWith(currentMonthStr);
         sale.items.forEach(item => {
             const name = (item.name || '').trim().toLowerCase();
             if (!name) return;
+            if (isCurrentMonth) {
+                salesQty[name] = (salesQty[name] || 0) + (parseFloat(item.qty) || 1);
+                salesRev[name] = (salesRev[name] || 0) + (parseFloat(item.price) || 0);
+            }
             if (!lastSaleDate[name] || dateStr > lastSaleDate[name]) lastSaleDate[name] = dateStr;
         });
     });
