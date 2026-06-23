@@ -289,7 +289,7 @@ async function init() {
         // localStorage NO se usa aquí para evitar que el usuario manipule su propio rol.
         const _userRole = window.Auth.getRole();
         window._isEmployee = (_userRole === 'employee');
-        window._employeeAllowed = new Set(['team_home', 'caja_dia', 'announcements', 'team_reports', 'team_scanner']);
+        window._employeeAllowed = new Set(['team_home', 'caja_dia', 'announcements', 'team_reports']);
         if (window._isEmployee) {
             // Tema claro para cajeras
             document.body.classList.add('light-theme');
@@ -321,9 +321,6 @@ async function init() {
                     </button>
                     <button class="bottom-nav-item" data-view="team_reports">
                         <i class="ph-fill ph-pencil-line"></i><span>Reportar</span>
-                    </button>
-                    <button class="bottom-nav-item" data-view="team_scanner">
-                        <i class="ph-fill ph-barcode"></i><span>Precios</span>
                     </button>
                 `;
                 // Re-bind click listeners en los nuevos botones
