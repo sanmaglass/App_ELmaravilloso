@@ -6,6 +6,19 @@ window.state = {
     currentUser: null
 };
 
+// ── Push trigger global — llama /api/notify con JWT del usuario ──
+window.triggerPush = async (job, body) => {
+    try {
+        const token = window.Auth?.session?.access_token;
+        if (!token) return;
+        fetch(`/api/notify?job=${encodeURIComponent(job)}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        }).catch(() => {}); // fire-and-forget
+    } catch (e) { /* silencio */ }
+};
+
 // Router / View Manager
 const views = {
     dashboard: () => window.Views.dashboard(document.getElementById('view-container')),

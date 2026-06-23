@@ -381,6 +381,8 @@ window.Views = window.Views || {};
                         version:       1
                     });
                     window.showToast('Aviso publicado', 'success');
+                    // Push al equipo (fire-and-forget)
+                    window.triggerPush?.('announcement', { title: titulo, tenant_id: tenantId, priority: selectedPriority });
                 }
                 cerrarFormulario();
                 // Recargar vista

@@ -2491,6 +2491,14 @@ async function showInvoiceModal(invoiceToEdit = null) {
             }
 
             modal.classList.add('hidden');
+            // Push al equipo cuando se registra factura NUEVA (no edición)
+            if (!isEdit) {
+                window.triggerPush?.('invoice', {
+                    supplier: supplierObj?.name || 'Proveedor',
+                    amount,
+                    tenant_id: window.Auth?.getTenantId()
+                });
+            }
             // Siempre refrescar el filtro de fechas (tanto en nueva como en edición)
             await initDateFilter();
             window.state.invoicesPage = 1;

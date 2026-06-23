@@ -1,11 +1,12 @@
 // ──────────────────────────────────────────────────────────────
-// /api/notify — Envía notificaciones Web Push (llega con la app cerrada)
-// Disparado por: Vercel Cron (diario) y/o Supabase pg_cron (instantáneo).
-// Auth: header "Authorization: Bearer <CRON_SECRET>" (lo manda Vercel Cron)
-//       o ?secret=<CRON_SECRET> para pruebas manuales.
-// Jobs: ?job=pulse  → recordatorios vencidos (idempotente, marca push_sent_at)
-//       ?job=daily  → resumen de la mañana (ventas ayer, por cobrar, pendientes)
-//       ?job=all    → ambos (default)
+// /api/notify — Envía notificaciones Web Push
+// Auth: "Authorization: Bearer <CRON_SECRET>" para cron jobs
+//       "Authorization: Bearer <supabase_jwt>" para triggers de cliente (admin/owner)
+// Jobs: ?job=pulse       → recordatorios vencidos
+//       ?job=daily       → resumen de la mañana
+//       ?job=announcement → aviso nuevo (body: { title, tenant_id })
+//       ?job=invoice     → factura nueva (body: { supplier, amount, tenant_id })
+//       ?job=all         → pulse + daily (default)
 // ──────────────────────────────────────────────────────────────
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
@@ -19,7 +20,6 @@ const {
     CRON_SECRET
 } = process.env;
 
-// Fecha YYYY-MM-DD en zona horaria de Chile
 function dateCL(offsetDays = 0) {
     const d = new Date(Date.now() + offsetDays * 86400000);
     return d.toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
@@ -28,28 +28,60 @@ function money(n) {
     return '$' + Math.round(+n || 0).toLocaleString('es-CL');
 }
 
+// Verificar JWT de Supabase y retornar user + rol
+async function verifyJwt(token, sb) {
+    const { data, error } = await sb.auth.getUser(token);
+    if (error || !data?.user) return null;
+    // Obtener rol desde user_tenants
+    const { data: ut } = await sb
+        .from('user_tenants')
+        .select('tenant_id, role')
+        .eq('user_id', data.user.id)
+        .eq('active', true)
+        .limit(1)
+        .single();
+    if (!ut) return null;
+    return { userId: data.user.id, tenantId: ut.tenant_id, role: ut.role };
+}
+
 export default async function handler(req, res) {
     try {
-        // ── Autorización ──
-        const auth = req.headers.authorization || '';
-        if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) {
-            return res.status(401).json({ error: 'no autorizado' });
-        }
         if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !VAPID_PRIVATE_KEY || !VAPID_PUBLIC_KEY) {
             return res.status(500).json({ error: 'faltan variables de entorno (Supabase/VAPID)' });
         }
 
-        const job = (req.query && req.query.job) || 'all';
-        webpush.setVapidDetails(VAPID_SUBJECT || 'mailto:samyweco123@gmail.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
         const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+        const auth = (req.headers.authorization || '').replace('Bearer ', '');
+        const job = (req.query && req.query.job) || 'all';
+
+        // ── Autorización ──
+        // Cron jobs: auth === CRON_SECRET
+        // Client triggers (announcement/invoice): JWT válido de admin/owner
+        const isCron = CRON_SECRET && auth === CRON_SECRET;
+        let caller = null;
+
+        if (!isCron) {
+            if (!auth) return res.status(401).json({ error: 'no autorizado' });
+            caller = await verifyJwt(auth, sb);
+            if (!caller) return res.status(401).json({ error: 'token inválido' });
+            // Solo admin/owner puede disparar push desde cliente
+            if (!['admin', 'owner'].includes(caller.role)) {
+                return res.status(403).json({ error: 'sin permisos' });
+            }
+        }
+
+        webpush.setVapidDetails(VAPID_SUBJECT || 'mailto:samyweco123@gmail.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
         const { data: subs, error: subErr } = await sb.from('push_subscriptions').select('*');
         if (subErr) return res.status(500).json({ error: 'error leyendo suscripciones' });
         if (!subs || !subs.length) return res.status(200).json({ ok: true, msg: 'sin suscripciones' });
 
-        // Enviar un payload a todas las suscripciones (de un tenant, o todas si tenantId es null)
-        const sendToTenant = async (tenantId, payload) => {
-            const targets = subs.filter(s => !tenantId || s.tenant_id === tenantId);
+        // Enviar a suscripciones de un tenant (excluir al emisor si se indica)
+        const sendToTenant = async (tenantId, payload, excludeUserId = null) => {
+            const targets = subs.filter(s =>
+                (!tenantId || s.tenant_id === tenantId) &&
+                (!excludeUserId || s.user_id !== excludeUserId)
+            );
             let sent = 0;
             for (const s of targets) {
                 try {
@@ -59,7 +91,6 @@ export default async function handler(req, res) {
                     );
                     sent++;
                 } catch (e) {
-                    // 404/410 = suscripción muerta → limpiar
                     if (e.statusCode === 404 || e.statusCode === 410) {
                         await sb.from('push_subscriptions').delete().eq('id', s.id);
                     }
@@ -68,9 +99,39 @@ export default async function handler(req, res) {
             return sent;
         };
 
-        const out = { reminders: 0, daily: 0, sent: 0 };
+        const out = { sent: 0 };
 
-        // ── 1) PULSE: recordatorios vencidos aún no notificados ──
+        // ── ANNOUNCEMENT: aviso nuevo → push a todo el equipo ──
+        if (job === 'announcement') {
+            const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+            const title = body.title || 'Nuevo aviso';
+            const tenantId = body.tenant_id || caller?.tenantId;
+            const isUrgent = body.priority === 'urgente';
+            out.sent = await sendToTenant(tenantId, {
+                title: isUrgent ? '🔴 Aviso urgente' : '📢 Nuevo aviso',
+                body: title,
+                tag: 'ann-' + Date.now(),
+                data: { url: '/', view: 'announcements' }
+            }, caller?.userId); // no notificar al que lo publicó
+            return res.status(200).json({ ok: true, ...out });
+        }
+
+        // ── INVOICE: factura nueva → push al owner/admins ──
+        if (job === 'invoice') {
+            const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+            const supplier = body.supplier || 'Proveedor';
+            const amount = body.amount ? money(body.amount) : '';
+            const tenantId = body.tenant_id || caller?.tenantId;
+            out.sent = await sendToTenant(tenantId, {
+                title: '🧾 Factura registrada',
+                body: `${supplier}${amount ? ' — ' + amount : ''}`,
+                tag: 'inv-' + Date.now(),
+                data: { url: '/', view: 'purchase_invoices' }
+            }, caller?.userId);
+            return res.status(200).json({ ok: true, ...out });
+        }
+
+        // ── PULSE: recordatorios vencidos ──
         if (job === 'all' || job === 'pulse') {
             const nowISO = new Date().toISOString();
             const { data: due } = await sb.from('reminders')
@@ -87,14 +148,13 @@ export default async function handler(req, res) {
                     tag: 'rem-' + r.id,
                     data: { url: '/' }
                 });
-                out.reminders++;
                 await sb.from('reminders')
                     .update({ push_sent_at: new Date().toISOString(), push_status: 'sent' })
                     .eq('id', r.id);
             }
         }
 
-        // ── 2) DAILY: resumen de la mañana ──
+        // ── DAILY: resumen de la mañana ──
         if (job === 'all' || job === 'daily') {
             const ayer = dateCL(-1);
             const [elev, man] = await Promise.all([
@@ -128,7 +188,6 @@ export default async function handler(req, res) {
                 tag: 'daily-' + dateCL(),
                 data: { url: '/' }
             });
-            out.daily = 1;
         }
 
         return res.status(200).json({ ok: true, ...out });
