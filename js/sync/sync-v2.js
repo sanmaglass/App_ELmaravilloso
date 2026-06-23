@@ -75,10 +75,20 @@ window.SyncV2 = {
     }
   },
 
+  // Tablas que NO se sincronizan al dispositivo de un employee (finanzas/config sensible)
+  EMPLOYEE_SKIP_TABLES: new Set([
+    'employees', 'worklogs', 'expenses', 'purchase_invoices', 'sales_invoices',
+    'electronic_invoices', 'loans', 'cash_register', 'advances', 'daily_sales',
+    'suppliers', 'reminders', 'settings'
+  ]),
+
   async pullIncremental() {
     const tables = window.Constants.REMOTE_TABLE_MAP;
+    const isEmployee = window._isEmployee || (window.Auth?.getRole?.() === 'employee');
 
     const results = await Promise.all(Object.entries(tables).map(async ([local, remote]) => {
+      // Employee: no sincronizar tablas financieras/sensibles
+      if (isEmployee && this.EMPLOYEE_SKIP_TABLES.has(local)) return null;
       if (this.syncLocks.has(remote)) return null;
       this.syncLocks.add(remote);
 
@@ -189,7 +199,11 @@ window.SyncV2 = {
       await this.closeRealtime();
     }
 
-    const tables = Object.values(window.Constants.REMOTE_TABLE_MAP);
+    const isEmployee = window._isEmployee || (window.Auth?.getRole?.() === 'employee');
+    const allTables = Object.entries(window.Constants.REMOTE_TABLE_MAP);
+    const tables = isEmployee
+        ? allTables.filter(([local]) => !this.EMPLOYEE_SKIP_TABLES.has(local)).map(([, remote]) => remote)
+        : allTables.map(([, remote]) => remote);
     this._subscribedCount = 0;
     const totalTables = tables.length;
 
