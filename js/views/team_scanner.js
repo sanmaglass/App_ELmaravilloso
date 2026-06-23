@@ -3,23 +3,24 @@
 window.Views = window.Views || {};
 
 (function () {
-    // Construir catálogo de precios desde eleventa_sales.items + db.products
+    // Construir catálogo de precios desde db.products + eleventa_sales.items
     async function buildCatalog() {
-        const catalog = new Map(); // name → { name, price, lastSeen }
+        const catalog = new Map(); // name → { name, price, stock, lastSeen }
 
-        // 1. Productos de la tabla products (precio oficial)
+        // 1. Productos de la tabla products (precio oficial + stock)
         try {
             const products = await window.db.products.toArray();
             for (const p of products) {
                 if (p.deleted) continue;
                 const name = (p.name || '').trim().toUpperCase();
                 if (!name) continue;
-                const price = parseFloat(p.price || p.salePrice || p.sellingPrice) || 0;
-                if (price > 0) catalog.set(name, { name, price, lastSeen: p.updated_at || p.created_at || '' });
+                const price = parseFloat(p.salePrice || p.price || p.sellingPrice) || 0;
+                const stock = parseFloat(p.stock) || 0;
+                if (price > 0) catalog.set(name, { name, price, stock, lastSeen: p.updated_at || p.created_at || '' });
             }
         } catch { /* tabla puede no existir */ }
 
-        // 2. Items de ventas Eleventa (sobreescribe si es más reciente)
+        // 2. Items de ventas Eleventa (precio más reciente, sin pisar stock)
         try {
             const sales = await window.db.eleventa_sales.toArray();
             for (const s of sales) {
@@ -35,7 +36,7 @@ window.Views = window.Views || {};
                     const price = parseFloat(item.price) || 0;
                     const existing = catalog.get(name);
                     if (!existing || new Date(s.date) > new Date(existing.lastSeen)) {
-                        catalog.set(name, { name, price, lastSeen: s.date });
+                        catalog.set(name, { name, price, stock: existing?.stock || 0, lastSeen: s.date });
                     }
                 }
             }
@@ -54,19 +55,27 @@ window.Views = window.Views || {};
             `;
             return;
         }
-        container.innerHTML = products.slice(0, 20).map(p => `
+        container.innerHTML = products.slice(0, 20).map(p => {
+            const stockColor = p.stock > 5 ? '#16a34a' : (p.stock > 0 ? '#d97706' : '#ef4444');
+            const stockLabel = p.stock > 0 ? `${Math.round(p.stock)} uds` : 'Sin stock';
+            return `
             <div style="display:flex; align-items:center; justify-content:space-between;
                         padding:14px 16px; background:var(--bg-card); border:1px solid var(--border);
                         border-radius:12px; margin-bottom:8px; gap:12px;">
-                <span style="font-weight:600; color:var(--text-primary); font-size:0.92rem; flex:1; min-width:0;
-                             overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    ${window.escapeHTML(p.name)}
-                </span>
+                <div style="flex:1; min-width:0;">
+                    <div style="font-weight:600; color:var(--text-primary); font-size:0.92rem;
+                                overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        ${window.escapeHTML(p.name)}
+                    </div>
+                    <div style="font-size:0.75rem; color:${stockColor}; font-weight:600; margin-top:2px;">
+                        <i class="ph ph-package" style="margin-right:2px;"></i>${stockLabel}
+                    </div>
+                </div>
                 <span style="font-size:1.15rem; font-weight:800; color:var(--primary); flex-shrink:0; white-space:nowrap;">
                     ${window.formatCurrency(p.price)}
                 </span>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     }
 
     window.Views.team_scanner = async (container) => {
@@ -101,10 +110,6 @@ window.Views = window.Views || {};
                     <i class="ph ph-barcode" style="font-size:1.2rem;"></i> Escanear Código
                 </button>
 
-                <!-- Input oculto para cámara (fallback) -->
-                <input id="ts-file-input" type="file" accept="image/*" capture="environment"
-                       style="display:none;">
-
                 <!-- Área de resultados -->
                 <div id="ts-results">
                     <div style="text-align:center; padding:40px 20px; color:var(--text-muted);">
@@ -127,7 +132,6 @@ window.Views = window.Views || {};
         const searchInput = container.querySelector('#ts-search-input');
         const resultsEl   = container.querySelector('#ts-results');
         const scanBtn     = container.querySelector('#ts-scan-btn');
-        const fileInput   = container.querySelector('#ts-file-input');
 
         // Foco al input
         searchInput.addEventListener('focus', () => {
@@ -166,62 +170,117 @@ window.Views = window.Views || {};
             renderResults(matches, resultsEl);
         }
 
-        // Botón escanear
+        // ── Escanear con cámara (BarcodeDetector nativo) ──
+        let _scanning = false;
+        let _scanStream = null;
+
+        async function stopScanning() {
+            _scanning = false;
+            if (_scanStream) {
+                _scanStream.getTracks().forEach(t => t.stop());
+                _scanStream = null;
+            }
+            const videoWrap = container.querySelector('#ts-camera-wrap');
+            if (videoWrap) videoWrap.remove();
+            scanBtn.disabled = false;
+            scanBtn.innerHTML = '<i class="ph ph-barcode" style="font-size:1.2rem;"></i> Escanear Código';
+        }
+
         scanBtn.addEventListener('click', async () => {
-            if (window.BarcodeScanner && typeof window.BarcodeScanner.startCameraScanner === 'function') {
-                // Usar el escáner de cámara si está disponible
-                try {
-                    scanBtn.disabled = true;
-                    scanBtn.innerHTML = '<i class="ph ph-spinner" style="font-size:1.2rem;"></i> Escaneando…';
-                    const result = await window.BarcodeScanner.startCameraScanner();
-                    if (result && result.barcode) {
-                        // Buscar por nombre que contenga el código, o mostrar el código directamente
-                        searchAndShow(result.nombre || result.barcode);
-                    }
-                } catch (err) {
-                    window.showToast('No se pudo usar la cámara. Sube una foto.', 'error');
-                    fileInput.click();
-                } finally {
-                    scanBtn.disabled = false;
-                    scanBtn.innerHTML = '<i class="ph ph-barcode" style="font-size:1.2rem;"></i> Escanear Código';
+            if (_scanning) { stopScanning(); return; }
+
+            // Verificar soporte
+            if (!('BarcodeDetector' in window)) {
+                window.showToast?.('Escáner no disponible en este navegador. Usa la búsqueda de texto.', 'error');
+                return;
+            }
+
+            scanBtn.disabled = true;
+            scanBtn.innerHTML = '<i class="ph ph-spinner ph-spin" style="font-size:1.2rem;"></i> Abriendo cámara…';
+
+            try {
+                _scanStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+                });
+
+                // Crear video inline
+                const wrap = document.createElement('div');
+                wrap.id = 'ts-camera-wrap';
+                wrap.style.cssText = 'position:relative; margin-bottom:16px; border-radius:14px; overflow:hidden; border:2px solid var(--primary);';
+                wrap.innerHTML = `
+                    <video id="ts-camera-video" autoplay playsinline muted
+                           style="width:100%; display:block; border-radius:12px;"></video>
+                    <div style="position:absolute; top:8px; right:8px;">
+                        <button id="ts-camera-close" style="background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:8px; padding:6px 10px; cursor:pointer; font-size:0.82rem;">
+                            <i class="ph ph-x"></i> Cerrar
+                        </button>
+                    </div>
+                    <div style="position:absolute; bottom:0; left:0; right:0; padding:8px; text-align:center; background:linear-gradient(transparent, rgba(0,0,0,0.6));">
+                        <span style="color:#fff; font-size:0.78rem;">Apunta al código de barras…</span>
+                    </div>
+                `;
+                resultsEl.before(wrap);
+                wrap.querySelector('#ts-camera-close').addEventListener('click', stopScanning);
+
+                const video = wrap.querySelector('#ts-camera-video');
+                video.srcObject = _scanStream;
+                await video.play();
+
+                _scanning = true;
+                scanBtn.disabled = false;
+                scanBtn.innerHTML = '<i class="ph ph-stop" style="font-size:1.2rem;"></i> Detener cámara';
+
+                const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'] });
+
+                // Loop de detección
+                const scanLoop = async () => {
+                    if (!_scanning) return;
+                    try {
+                        const codes = await detector.detect(video);
+                        if (codes.length > 0) {
+                            const barcode = codes[0].rawValue;
+                            stopScanning();
+                            // Buscar en catálogo por nombre que contenga el código
+                            const matches = catalog.filter(p => p.name.includes(barcode));
+                            if (matches.length > 0) {
+                                searchInput.value = barcode;
+                                renderResults(matches, resultsEl);
+                            } else {
+                                // Buscar en BarcodeScanner (APIs externas)
+                                searchInput.value = barcode;
+                                if (window.BarcodeScanner) {
+                                    const result = await window.BarcodeScanner.lookupProduct(barcode);
+                                    if (result?.success && result.product?.nombre) {
+                                        searchAndShow(result.product.nombre);
+                                    } else {
+                                        resultsEl.innerHTML = `
+                                            <div style="text-align:center; padding:30px 20px; background:var(--bg-card); border:1px solid var(--border); border-radius:14px;">
+                                                <i class="ph ph-barcode" style="font-size:2rem; color:var(--text-muted); opacity:0.5; display:block; margin-bottom:8px;"></i>
+                                                <p style="font-weight:700; color:var(--text-primary); margin:0 0 4px;">Código: ${window.escapeHTML(barcode)}</p>
+                                                <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Producto no encontrado en el catálogo.</p>
+                                            </div>
+                                        `;
+                                    }
+                                }
+                            }
+                            return;
+                        }
+                    } catch { /* ignore detection errors */ }
+                    if (_scanning) requestAnimationFrame(scanLoop);
+                };
+                requestAnimationFrame(scanLoop);
+
+            } catch (err) {
+                stopScanning();
+                if (err.name === 'NotAllowedError') {
+                    window.showToast?.('Permiso de cámara denegado. Actívalo en Ajustes.', 'error');
+                } else {
+                    window.showToast?.('No se pudo abrir la cámara.', 'error');
                 }
-            } else {
-                // Fallback: input de archivo (foto desde cámara)
-                fileInput.click();
             }
         });
 
-        // Fallback: escanear desde imagen capturada
-        fileInput.addEventListener('change', async () => {
-            const file = fileInput.files[0];
-            if (!file) return;
-            if (window.BarcodeScanner && typeof window.BarcodeScanner.lookupBarcode === 'function') {
-                scanBtn.disabled = true;
-                scanBtn.innerHTML = '<i class="ph ph-spinner" style="font-size:1.2rem;"></i> Buscando…';
-                try {
-                    // Intentar leer el barcode del archivo con la API del navegador
-                    if ('BarcodeDetector' in window) {
-                        const detector = new BarcodeDetector();
-                        const bitmap = await createImageBitmap(file);
-                        const codes = await detector.detect(bitmap);
-                        if (codes && codes.length > 0) {
-                            const barcode = codes[0].rawValue;
-                            const product = await window.BarcodeScanner.lookupBarcode(barcode);
-                            searchAndShow(product?.nombre || barcode);
-                        } else {
-                            window.showToast('No se detectó código en la imagen.', 'error');
-                        }
-                    } else {
-                        window.showToast('Escáner no disponible. Usa la búsqueda de texto.', 'error');
-                    }
-                } catch (err) {
-                    window.showToast('Error al leer el código.', 'error');
-                } finally {
-                    scanBtn.disabled = false;
-                    scanBtn.innerHTML = '<i class="ph ph-barcode" style="font-size:1.2rem;"></i> Escanear Código';
-                    fileInput.value = '';
-                }
-            }
-        });
+        // Cleanup al salir de la vista
+        window._viewCleanup = () => { stopScanning(); };
     };
 })();
