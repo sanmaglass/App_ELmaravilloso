@@ -283,11 +283,15 @@ window.Views = window.Views || {};
                         <span style="font-weight:700; font-size:0.92rem; color:var(--text-primary);">Cuadre de efectivo</span>
                     </div>
                     <!-- Resumen del esperado -->
-                    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; font-size:0.82rem; color:var(--text-muted);">
-                        <span>Fondo: ${fmt(fondoMonto)}</span>
-                        <span>+ Efectivo ventas: ${fmt(efectivoVentas)}</span>
-                        <span>- Gastos: ${fmt(totalGastos)}</span>
-                        <span style="font-weight:700; color:var(--text-primary);">= Esperado: ${fmt(efectivoEsperado)}</span>
+                    <div style="margin-bottom:14px;">
+                        <div style="font-size:1.15rem; font-weight:800; color:var(--text-primary); margin-bottom:6px;">
+                            Esperado: ${fmt(efectivoEsperado)}
+                        </div>
+                        <div style="display:flex; flex-wrap:wrap; gap:8px; font-size:0.78rem; color:var(--text-muted);">
+                            <span>Fondo ${fmt(fondoMonto)}</span>
+                            <span>+ Efectivo ${fmt(efectivoVentas)}</span>
+                            <span>- Gastos ${fmt(totalGastos)}</span>
+                        </div>
                     </div>
                     ${esHoy ? `
                     <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;">

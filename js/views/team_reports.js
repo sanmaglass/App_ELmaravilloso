@@ -12,10 +12,10 @@ window.Views = window.Views || {};
     };
 
     const STATUS_CFG = {
-        pendiente:   { label: 'Pendiente',   bg: '#fef9c3', color: '#854d0e' },
-        visto:       { label: 'Visto',       bg: '#dbeafe', color: '#1e40af' },
-        respondido:  { label: 'Respondido',  bg: '#dcfce7', color: '#166534' },
-        resuelto:    { label: 'Resuelto',    bg: '#f3f4f6', color: '#6b7280' },
+        pendiente:   { label: 'Pendiente',   bg: 'rgba(234,179,8,0.15)',  color: '#92400e' },
+        visto:       { label: 'Visto',       bg: 'rgba(37,99,235,0.12)',  color: '#1e40af' },
+        respondido:  { label: 'Respondido',  bg: 'rgba(22,163,74,0.12)', color: '#166534' },
+        resuelto:    { label: 'Resuelto',    bg: 'rgba(107,114,128,0.12)', color: '#6b7280' },
     };
 
     const MAX_FOTOS = 3;
@@ -229,7 +229,7 @@ window.Views = window.Views || {};
                         style="width:100%; box-sizing:border-box;">
 
                     <!-- Campos extra vendedor (solo visibles si tipo=vendedor) -->
-                    <div id="tr-vendedor-fields" style="display:none; flex-direction:column; gap:10px; padding:14px; background:var(--bg-main); border:1px solid var(--border); border-radius:12px;">
+                    <div id="tr-vendedor-fields" style="display:none; flex-direction:column; gap:10px; padding:14px; background:rgba(139,92,246,0.06); border:1px solid rgba(139,92,246,0.2); border-radius:12px;">
                         <div style="font-size:0.75rem; font-weight:700; color:#8b5cf6; text-transform:uppercase; letter-spacing:0.04em;">
                             <i class="ph ph-handshake"></i> Datos del vendedor
                         </div>

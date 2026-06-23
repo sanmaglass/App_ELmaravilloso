@@ -112,18 +112,6 @@ window.Views = window.Views || {};
                     </h1>
                 </div>
 
-                <!-- Badge avisos no leídos (inline, no tarjeta) -->
-                <div id="th-badge-avisos-banner" style="display:none; margin-bottom:20px;">
-                    <button class="th-ver-mas" data-nav="announcements"
-                        style="width:100%; display:flex; align-items:center; gap:10px; padding:12px 16px;
-                               background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2);
-                               border-radius:12px; cursor:pointer; transition:background 0.15s;">
-                        <i class="ph-fill ph-bell-ringing" style="font-size:1.2rem; color:#2563eb;"></i>
-                        <span id="th-badge-avisos-text" style="font-size:0.88rem; font-weight:600; color:var(--text-primary);"></span>
-                        <i class="ph ph-arrow-right" style="margin-left:auto; color:var(--text-muted);"></i>
-                    </button>
-                </div>
-
                 <!-- Checklist del turno -->
                 <div style="margin-bottom:24px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
@@ -151,8 +139,10 @@ window.Views = window.Views || {};
                 <div style="margin-bottom:24px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
                         <h3 style="margin:0; font-size:0.82rem; font-weight:700; color:var(--text-muted);
-                                   text-transform:uppercase; letter-spacing:0.8px;">
-                            <i class="ph-fill ph-chat-circle-dots" style="margin-right:5px;"></i>Avisos
+                                   text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:8px;">
+                            <i class="ph-fill ph-chat-circle-dots" style="margin-right:2px;"></i>Avisos
+                            <span id="th-avisos-badge" style="display:none; background:#2563eb; color:#fff; font-size:0.65rem;
+                                  padding:2px 7px; border-radius:10px; font-weight:700;"></span>
                         </h3>
                         <button class="th-ver-mas" data-nav="announcements"
                             style="font-size:0.8rem; color:var(--primary); background:none; border:none; cursor:pointer; padding:0;">
@@ -215,17 +205,14 @@ window.Views = window.Views || {};
                 window.db.team_reports.toArray()
             ]);
 
-            // — Banner de no leídos —
+            // — Badge de no leídos —
             const activos = announcements.filter(a => !a.deleted && a.active);
             const leidasPorMi = new Set(reads.filter(r => r.user_id === userId).map(r => r.announcement_id));
             const noLeidos = activos.filter(a => !leidasPorMi.has(a.id)).length;
-            const banner = container.querySelector('#th-badge-avisos-banner');
-            const bannerText = container.querySelector('#th-badge-avisos-text');
-            if (noLeidos > 0 && banner && bannerText) {
-                bannerText.textContent = noLeidos === 1
-                    ? 'Tienes 1 aviso sin leer'
-                    : `Tienes ${noLeidos} avisos sin leer`;
-                banner.style.display = 'block';
+            const badgeEl = container.querySelector('#th-avisos-badge');
+            if (noLeidos > 0 && badgeEl) {
+                badgeEl.textContent = noLeidos;
+                badgeEl.style.display = 'inline-block';
             }
 
             // — Avisos recientes (últimos 3) —
@@ -421,11 +408,6 @@ window.Views = window.Views || {};
             if (rp) rp.innerHTML = msg;
         }
 
-        // Animación sutil en banner de avisos
-        const bannerEl = container.querySelector('#th-badge-avisos-banner');
-        if (bannerEl && bannerEl.style.display === 'block') {
-            bannerEl.style.animation = 'th-fade-in 0.3s ease-out';
-        }
         const style = document.createElement('style');
         style.textContent = `
             @keyframes th-fade-in {

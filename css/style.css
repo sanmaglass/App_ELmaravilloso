@@ -15,9 +15,11 @@
     --bg-input: #0e1116;
     --bg-app: #0a0c0f;
     --bg-elevated: #171b21;
+    --bg-main: #0e1116;
     --border: rgba(255, 255, 255, 0.08);
 
     /* Semánticos — uso reservado: verde SOLO éxito */
+    --success: #22c55e;
     --danger: #f0556a;
     --color-success: #22c55e;
     --color-warning: #f5b14c;
@@ -775,6 +777,8 @@ body.light-theme {
     --bg-glass: rgba(255, 255, 255, 0.92);
     --bg-glass-hover: rgba(255, 255, 255, 0.98);
     --bg-glass-dark: rgba(245, 247, 250, 0.95);
+    --bg-main: #f0f2f5;
+    --success: #16a34a;
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.12);
@@ -863,6 +867,11 @@ body.light-theme .btn.btn-secondary {
 
 body.light-theme .top-bar {
     color: #1a1a2e !important;
+}
+
+body.light-theme .tr-type-chip {
+    border-color: rgba(0, 0, 0, 0.18) !important;
+    background: #f7f8fa !important;
 }
 
 body.light-theme .page-title,
