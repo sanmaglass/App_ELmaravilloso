@@ -123,6 +123,75 @@
   .spin{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
   .spin.dark{border-color:rgba(0,0,0,.2);border-top-color:var(--red)}
   @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* ── TABS ─────────────────────────────────────────── */
+  .tabs{display:flex;gap:6px;margin:20px 0 0;background:linear-gradient(180deg,#fff,var(--cream-2));
+        border:1px solid var(--line);border-radius:16px;padding:6px;box-shadow:var(--shadow-sm)}
+  .tab{flex:1;border:none;background:transparent;font:inherit;font-size:.92rem;font-weight:600;
+       color:var(--muted);padding:11px 18px;border-radius:11px;cursor:pointer;
+       transition:background .18s,color .18s,box-shadow .18s;display:flex;align-items:center;justify-content:center;gap:7px}
+  .tab:hover{background:#f3efe7;color:var(--ink)}
+  .tab.active{background:var(--grad-red);color:#fff;box-shadow:0 6px 18px -6px rgba(237,28,36,.5)}
+  .section{display:none}.section.active{display:block}
+
+  /* ── MÉTRICAS — estado vacío ──────────────────────── */
+  .ig-empty{text-align:center;padding:72px 40px;background:linear-gradient(180deg,#fffdf8,#fbf8f1);
+            border:2px dashed var(--line);border-radius:var(--r);margin-top:24px}
+  .ig-empty .ic-big{font-size:3.6rem;display:block;margin-bottom:14px}
+  .ig-empty p{color:var(--muted);margin:10px 0 22px;font-size:.96rem;line-height:1.6}
+
+  /* ── MÉTRICAS — cards ─────────────────────────────── */
+  .m-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:24px 0 6px}
+  .m-card{background:linear-gradient(180deg,#fff,var(--cream-2));border:1px solid var(--line);
+          border-left:4px solid var(--red);border-radius:16px;padding:20px 20px 16px;
+          box-shadow:var(--shadow-sm);transition:transform .2s var(--e-back),box-shadow .2s;position:relative;overflow:hidden}
+  .m-card:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+  .m-card .mn{font-size:2rem;font-weight:700;color:var(--red);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .m-card .ml{color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.7px;margin-top:5px}
+  .m-card .ms{color:var(--muted);font-size:.73rem;margin-top:3px}
+
+  /* ── MÉTRICAS — skeleton ─────────────────────────── */
+  .skel{background:linear-gradient(90deg,#ece6db 25%,#f6f3ec 50%,#ece6db 75%);
+        background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:8px;height:1em}
+  @keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+
+  /* ── MÉTRICAS — gráficos ─────────────────────────── */
+  .chart-wrap{background:linear-gradient(180deg,#fff,var(--cream-2));border:1px solid var(--line);
+              border-radius:var(--r);padding:24px;box-shadow:var(--shadow-sm);margin:14px 0 24px;position:relative}
+  .chart-wrap canvas{max-height:260px}
+  .chart-msg{text-align:center;padding:40px;color:var(--muted);font-size:.9rem}
+
+  /* ── MÉTRICAS — mejor horario callout ───────────────── */
+  .best-callout{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(237,28,36,.07),rgba(237,28,36,.03));
+                border:1px solid rgba(237,28,36,.2);border-radius:var(--r);padding:18px 22px;margin:14px 0 24px}
+  .best-callout .bico{font-size:2rem;flex-shrink:0}
+  .best-callout .btxt strong{display:block;font-size:1.08rem;color:var(--ink)}
+  .best-callout .btxt span{color:var(--muted);font-size:.86rem}
+
+  /* ── MÉTRICAS — top publicaciones ───────────────────── */
+  .media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin:14px 0}
+  .media-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+              box-shadow:var(--shadow-sm);transition:.2s;text-decoration:none;color:inherit;display:block}
+  .media-card:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
+  .media-card .mthumb{aspect-ratio:1/1;background:#f0ebe1 center/cover no-repeat}
+  .media-card .mbody{padding:12px 14px}
+  .media-card .mcap{font-size:.83rem;color:var(--ink);line-height:1.45;overflow:hidden;display:-webkit-box;
+                    -webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:10px;min-height:2.4em}
+  .media-card .mstats{display:flex;flex-wrap:wrap;gap:6px}
+  .media-card .mstat{background:#f3efe7;border-radius:7px;padding:4px 9px;font-size:.74rem;
+                     font-weight:600;color:var(--ink);white-space:nowrap}
+  .media-card .mstat.er{background:rgba(237,28,36,.08);color:var(--red)}
+
+  /* ── MÉTRICAS — perfil strip ────────────────────────── */
+  .ig-profile{display:flex;align-items:center;gap:16px;background:linear-gradient(180deg,#fff,var(--cream-2));
+              border:1px solid var(--line);border-radius:16px;padding:16px 22px;margin:16px 0;box-shadow:var(--shadow-sm)}
+  .ig-profile img{width:52px;height:52px;border-radius:50%;border:2px solid var(--red);object-fit:cover}
+  .ig-profile .pname{font-weight:700;font-size:1.05rem}
+  .ig-profile .puser{color:var(--muted);font-size:.85rem;margin-top:1px}
+  .ig-refresh{margin-left:auto;background:#f3efe7;color:var(--ink);border:none;border-radius:11px;
+              padding:9px 16px;font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;
+              display:inline-flex;align-items:center;gap:6px;transition:.16s}
+  .ig-refresh:hover{background:#ece6db;transform:translateY(-1px)}
 </style>
 </head>
 <body>
@@ -139,41 +208,274 @@
     </div>
   </header>
 
-  <div class="stats">
-    <div class="stat"><div class="n" id="s-listo">0</div><div class="l">Piezas listas</div></div>
-    <div class="stat"><div class="n" id="s-dias">0</div><div class="l">Días de contenido</div></div>
-    <div class="stat"><div class="n" id="s-prog">0</div><div class="l">Programadas</div></div>
-    <div class="stat"><div class="n" id="s-pend">0</div><div class="l">Fotos por procesar</div></div>
+  <!-- TABS -->
+  <div class="tabs" role="tablist">
+    <button class="tab active" id="tab-estudio" role="tab" aria-selected="true" aria-controls="sec-estudio" onclick="switchTab('estudio')">🎬 Estudio</button>
+    <button class="tab" id="tab-metricas" role="tab" aria-selected="false" aria-controls="sec-metricas" onclick="switchTab('metricas')">📊 Métricas</button>
   </div>
 
-  <h2><span class="dot"></span>Subir fotos</h2>
-  <label class="drop" id="drop">
-    <div class="ic">📥</div>
-    <b>Arrastra tus fotos aquí</b>
-    <span>o haz clic para elegir · JPG / PNG · nombra con el producto (ej: milo.jpg)</span>
-    <input type="file" id="file" multiple accept="image/*">
-  </label>
+  <!-- SECCIÓN ESTUDIO (todo el contenido anterior) -->
+  <div id="sec-estudio" class="section active" role="tabpanel" aria-labelledby="tab-estudio">
+    <div class="stats">
+      <div class="stat"><div class="n" id="s-listo">0</div><div class="l">Piezas listas</div></div>
+      <div class="stat"><div class="n" id="s-dias">0</div><div class="l">Días de contenido</div></div>
+      <div class="stat"><div class="n" id="s-prog">0</div><div class="l">Programadas</div></div>
+      <div class="stat"><div class="n" id="s-pend">0</div><div class="l">Fotos por procesar</div></div>
+    </div>
 
-  <h2><span class="dot"></span>Por procesar <small id="pend-c"></small>
-    <button class="btn btn-ghost btn-sm act" id="gen-all" style="width:auto;display:none">⚡ Generar todas</button>
-  </h2>
-  <div class="grid" id="pend-grid"></div>
+    <h2><span class="dot"></span>Subir fotos</h2>
+    <label class="drop" id="drop">
+      <div class="ic">📥</div>
+      <b>Arrastra tus fotos aquí</b>
+      <span>o haz clic para elegir · JPG / PNG · nombra con el producto (ej: milo.jpg)</span>
+      <input type="file" id="file" multiple accept="image/*">
+    </label>
 
-  <h2><span class="dot"></span>Listo para publicar <small>imagen · video · descripción</small>
-    <span class="act" style="display:flex;gap:8px">
-      <button class="btn btn-ghost btn-sm" id="autosch" style="width:auto">🗓️ Auto-agendar</button>
-      <button class="btn btn-ghost btn-sm" id="export" style="width:auto">⬇ Exportar CSV</button>
-    </span>
-  </h2>
-  <div class="grid" id="post-grid"></div>
+    <h2><span class="dot"></span>Por procesar <small id="pend-c"></small>
+      <button class="btn btn-ghost btn-sm act" id="gen-all" style="width:auto;display:none">⚡ Generar todas</button>
+    </h2>
+    <div class="grid" id="pend-grid"></div>
+
+    <h2><span class="dot"></span>Listo para publicar <small>imagen · video · descripción</small>
+      <span class="act" style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" id="autosch" style="width:auto">🗓️ Auto-agendar</button>
+        <button class="btn btn-ghost btn-sm" id="export" style="width:auto">⬇ Exportar CSV</button>
+      </span>
+    </h2>
+    <div class="grid" id="post-grid"></div>
+  </div>
+
+  <!-- SECCIÓN MÉTRICAS -->
+  <div id="sec-metricas" class="section" role="tabpanel" aria-labelledby="tab-metricas">
+    <div id="ig-metrics-root"></div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
 const $=s=>document.querySelector(s);
 const api=(u,d)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 function copy(txt){navigator.clipboard.writeText(txt);toast('Copiado ✓');}
+
+/* ─── HELPERS MÉTRICAS ────────────────────────────────── */
+function fmtN(n){if(n==null||n===undefined)return'—';return Number(n).toLocaleString('es-CL');}
+function fmtPct(n){if(n==null||n===undefined)return'—';return Number(n).toFixed(2)+'%';}
+
+/* ─── SISTEMA DE TABS ─────────────────────────────────── */
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=>{
+    const active=t.id==='tab-'+name;
+    t.classList.toggle('active',active);
+    t.setAttribute('aria-selected',active);
+  });
+  document.querySelectorAll('.section').forEach(s=>{
+    s.classList.toggle('active',s.id==='sec-'+name);
+  });
+  if(name==='metricas') loadMetrics();
+}
+
+/* ─── GRÁFICOS (instancias para destruir al recargar) ─── */
+let _chartGrowth=null, _chartHours=null;
+function destroyCharts(){
+  if(_chartGrowth){_chartGrowth.destroy();_chartGrowth=null;}
+  if(_chartHours){_chartHours.destroy();_chartHours=null;}
+}
+
+/* ─── RENDER MÉTRICAS ─────────────────────────────────── */
+let _metricsLoaded=false;
+
+async function loadMetrics(force=false){
+  if(_metricsLoaded&&!force)return;
+  _metricsLoaded=true;
+  destroyCharts();
+  const root=document.getElementById('ig-metrics-root');
+  root.innerHTML=`<div style="padding:48px;text-align:center;color:var(--muted)"><span class="spin dark" style="display:inline-block;width:28px;height:28px;border-width:3px"></span><p style="margin-top:14px;font-size:.92rem">Cargando métricas…</p></div>`;
+
+  /* 1. Verificar conexión */
+  let status;
+  try{status=await fetch('/api/ig-status').then(r=>r.json());}
+  catch(e){
+    root.innerHTML=`<div class="ig-empty"><span class="ic-big">⚠️</span><p>No se pudieron cargar las métricas.<br>Verifica que el servidor local esté corriendo.</p></div>`;
+    return;
+  }
+
+  if(!status.connected){
+    root.innerHTML=`
+      <div class="ig-empty">
+        <span class="ic-big">📊</span>
+        <strong style="font-size:1.15rem;display:block">Conecta tu Instagram</strong>
+        <p>Vincula tu cuenta para ver alcance, crecimiento,<br>mejores horarios y tus publicaciones más exitosas.</p>
+        <button class="btn btn-red" style="width:auto;padding:12px 32px" onclick="window.location='/api/fb-connect'">🔗 Conectar Instagram</button>
+      </div>`;
+    return;
+  }
+
+  /* 2. Cargar datos en paralelo */
+  let account, growth, media, besttimes;
+  try{
+    [account, growth, media, besttimes] = await Promise.all([
+      fetch('/api/insights/account?period=days_28').then(r=>r.json()),
+      fetch('/api/insights/growth').then(r=>r.json()),
+      fetch('/api/insights/media?limit=12').then(r=>r.json()),
+      fetch('/api/insights/besttimes').then(r=>r.json()),
+    ]);
+  }catch(e){
+    root.innerHTML=`<div class="ig-empty"><span class="ic-big">⚠️</span><p>No se pudieron cargar las métricas.<br>Intenta de nuevo en unos segundos.</p><button class="btn btn-ghost btn-sm" style="width:auto;margin-top:14px" onclick="refreshMetrics()">🔄 Reintentar</button></div>`;
+    return;
+  }
+
+  /* 3. Construir HTML */
+  const prof=account.profile||{};
+  const m=account.metrics||{};
+  const periodLabel=account.period==='days_28'?'últimos 28 días':account.period||'período';
+
+  /* perfil strip */
+  const profHTML=prof.username?`
+    <div class="ig-profile">
+      ${prof.profile_picture_url?`<img src="${prof.profile_picture_url}" alt="${prof.username}" onerror="this.style.display='none'">`:''}
+      <div>
+        <div class="pname">${prof.name||prof.username}</div>
+        <div class="puser">@${prof.username}</div>
+      </div>
+      <button class="ig-refresh" onclick="refreshMetrics()">🔄 Actualizar</button>
+    </div>`:`<div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="ig-refresh" onclick="refreshMetrics()">🔄 Actualizar</button></div>`;
+
+  /* cards de stats */
+  const cardsData=[
+    {val:fmtN(prof.followers),label:'Seguidores',sub:'total'},
+    {val:fmtN(m.reach),label:'Alcance',sub:periodLabel},
+    {val:fmtPct(account.engagement_rate),label:'Engagement rate',sub:periodLabel},
+    {val:fmtN(m.total_interactions),label:'Interacciones',sub:periodLabel},
+    {val:fmtN(m.profile_views),label:'Visitas al perfil',sub:periodLabel},
+    {val:fmtN(prof.media_count),label:'Publicaciones',sub:'total'},
+  ];
+  const cardsHTML=cardsData.map(c=>`
+    <div class="m-card">
+      <div class="mn">${c.val}</div>
+      <div class="ml">${c.label}</div>
+      <div class="ms">${c.sub}</div>
+    </div>`).join('');
+
+  /* gráfico crecimiento — placeholder, lo llenamos con JS */
+  const growthSeries=(growth.series||[]);
+  const growthSection= growthSeries.length<2
+    ? `<div class="chart-wrap"><div class="chart-msg">📈 El crecimiento se grafica a partir de mañana (se guarda un snapshot diario).</div></div>`
+    : `<div class="chart-wrap"><canvas id="chart-growth"></canvas></div>`;
+
+  /* mejores horarios */
+  const best=besttimes.best||{};
+  const bestCallout= best.weekday_label
+    ? `<div class="best-callout"><span class="bico">⏰</span><div class="btxt"><strong>Tu mejor momento para publicar</strong><span>${best.weekday_label}${best.hour!=null?' ~'+best.hour+':00 hrs':''}</span></div></div>`
+    : '';
+  const byWeekday=besttimes.by_weekday||[];
+  const hoursSection= byWeekday.length
+    ? `<div class="chart-wrap"><canvas id="chart-hours"></canvas></div>`
+    : `<div class="chart-wrap"><div class="chart-msg">Aún no hay suficientes datos de horarios.</div></div>`;
+
+  /* top publicaciones */
+  const mediaList=(media.media||[]);
+  const mediaCards= mediaList.length
+    ? mediaList.map(p=>{
+        const thumb=p.thumbnail||'';
+        const cap=(p.caption||'').replace(/</g,'&lt;');
+        const er=p.engagement_rate!=null?(+p.engagement_rate).toFixed(2)+'%':'—';
+        return `<a class="media-card" href="${p.permalink||'#'}" target="_blank" rel="noopener" aria-label="Ver publicación">
+          <div class="mthumb" style="${thumb?`background-image:url('${thumb}')`:''}" role="img" aria-label="miniatura"></div>
+          <div class="mbody">
+            <div class="mcap">${cap||'<em style="color:var(--muted)">Sin descripción</em>'}</div>
+            <div class="mstats">
+              <span class="mstat">👁 ${fmtN(p.reach)}</span>
+              <span class="mstat">❤️ ${fmtN(p.likes)}</span>
+              <span class="mstat">💬 ${fmtN(p.comments)}</span>
+              <span class="mstat er">ER ${er}</span>
+            </div>
+          </div>
+        </a>`;}).join('')
+    : `<div class="empty">No hay publicaciones disponibles aún.</div>`;
+
+  /* ensamblar todo */
+  root.innerHTML=`
+    ${profHTML}
+    <h2><span class="dot"></span>Resumen <small>${periodLabel}</small></h2>
+    <div class="m-grid">${cardsHTML}</div>
+    <h2><span class="dot"></span>Crecimiento de seguidores</h2>
+    ${growthSection}
+    <h2><span class="dot"></span>Mejores horarios para publicar</h2>
+    ${bestCallout}
+    ${hoursSection}
+    <h2><span class="dot"></span>Top publicaciones <small>últimas ${mediaList.length}</small></h2>
+    <div class="media-grid">${mediaCards}</div>
+  `;
+
+  /* 4. Dibujar gráficos con Chart.js */
+  const palette={red:'rgba(237,28,36,.9)',redLight:'rgba(237,28,36,.12)',cream:'#f6f3ec',ink:'#1b1b1f',muted:'#85838c'};
+  Chart.defaults.font.family='"Bahnschrift","Segoe UI",system-ui,sans-serif';
+  Chart.defaults.color=palette.muted;
+
+  /* gráfico de crecimiento (línea) */
+  if(growthSeries.length>=2){
+    const gCtx=document.getElementById('chart-growth');
+    if(gCtx){
+      _chartGrowth=new Chart(gCtx,{
+        type:'line',
+        data:{
+          labels:growthSeries.map(d=>d.date),
+          datasets:[{
+            label:'Seguidores',data:growthSeries.map(d=>d.followers),
+            borderColor:palette.red,backgroundColor:palette.redLight,
+            borderWidth:2.5,pointRadius:3,pointHoverRadius:6,
+            pointBackgroundColor:palette.red,tension:.35,fill:true,
+          }]
+        },
+        options:{
+          responsive:true,maintainAspectRatio:true,
+          plugins:{legend:{display:false},tooltip:{
+            callbacks:{label:ctx=>' '+fmtN(ctx.parsed.y)+' seguidores'}
+          }},
+          scales:{
+            x:{grid:{color:'rgba(0,0,0,.05)'},ticks:{maxRotation:30,maxTicksLimit:10}},
+            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{callback:v=>fmtN(v)},beginAtZero:false}
+          }
+        }
+      });
+    }
+  }
+
+  /* gráfico horarios (barras por día) */
+  if(byWeekday.length){
+    const hCtx=document.getElementById('chart-hours');
+    if(hCtx){
+      _chartHours=new Chart(hCtx,{
+        type:'bar',
+        data:{
+          labels:byWeekday.map(d=>d.label||d.weekday),
+          datasets:[{
+            label:'Alcance promedio',data:byWeekday.map(d=>d.avg_reach||0),
+            backgroundColor:byWeekday.map((_,i)=>i===byWeekday.findIndex(d=>d.label===best.weekday_label)?palette.red:'rgba(237,28,36,.3)'),
+            borderRadius:8,borderSkipped:false,
+          }]
+        },
+        options:{
+          responsive:true,maintainAspectRatio:true,
+          plugins:{legend:{display:false},tooltip:{
+            callbacks:{label:ctx=>' '+fmtN(ctx.parsed.y)+' alcance promedio'}
+          }},
+          scales:{
+            x:{grid:{display:false}},
+            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{callback:v=>fmtN(v)}}
+          }
+        }
+      });
+    }
+  }
+}
+
+function refreshMetrics(){
+  _metricsLoaded=false;
+  loadMetrics();
+}
 
 async function igStatus(){
   const chip=$('#igchip'); chip.style.display='inline-flex';

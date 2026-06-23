@@ -355,7 +355,7 @@ def public_url(local_rel):
 
 # ---------- OAuth con Facebook: conectar Instagram con 1 clic ----------
 FB_REDIRECT = os.environ.get("FB_REDIRECT_URI", "http://localhost:8000/api/fb-callback")
-FB_SCOPES = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,business_management"
+FB_SCOPES = "instagram_basic,instagram_content_publish,instagram_manage_insights,pages_show_list,pages_read_engagement,business_management"
 IG_AUTH_FILE = os.path.join(HERE, "ig_auth.json")
 
 def load_ig_auth():
@@ -481,6 +481,268 @@ def ig_id_helper():
     except Exception as e:
         return JSONResponse({"error": str(e)[:180]}, status_code=500)
 
+# ---------- Métricas orgánicas Instagram (Graph API) ----------
+
+INSIGHTS_SNAPSHOTS = os.path.join(HERE, "insights_snapshots.json")
+
+def _load_snapshots():
+    if os.path.exists(INSIGHTS_SNAPSHOTS):
+        try: return json.load(open(INSIGHTS_SNAPSHOTS, encoding="utf-8"))
+        except Exception: pass
+    return {"snapshots": []}
+
+def _save_snapshot_today(followers: int):
+    """Guarda (o actualiza) el snapshot de hoy y devuelve la serie ordenada."""
+    data = _load_snapshots()
+    today = datetime.now().strftime("%Y-%m-%d")
+    snaps = [s for s in data.get("snapshots", []) if s.get("date") != today]
+    snaps.append({"date": today, "followers": followers})
+    snaps.sort(key=lambda s: s["date"])
+    data["snapshots"] = snaps
+    json.dump(data, open(INSIGHTS_SNAPSHOTS, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    return snaps
+
+def _get_metric_value(ig_id, token, metric, period):
+    """Intenta obtener una métrica de insights; devuelve (valor|None)."""
+    # intento 1: metric_type total_value con el period pedido
+    try:
+        r = _ig_api("GET", f"{ig_id}/insights",
+                    {"metric": metric, "period": period,
+                     "metric_type": "total_value", "access_token": token})
+        return r["data"][0]["total_value"]["value"]
+    except Exception:
+        pass
+    # intento 2: period=day, suma values
+    try:
+        r = _ig_api("GET", f"{ig_id}/insights",
+                    {"metric": metric, "period": "day", "access_token": token})
+        return sum(v.get("value", 0) for item in r.get("data", []) for v in item.get("values", []))
+    except Exception:
+        return None
+
+@app.get("/api/insights/account")
+def insights_account(period: str = "days_28"):
+    token, ig_id = get_ig_auth()
+    if not token or not ig_id:
+        return {"connected": False}
+    # perfil
+    try:
+        profile_raw = _ig_api("GET", ig_id,
+            {"fields": "username,followers_count,follows_count,media_count,name,profile_picture_url",
+             "access_token": token})
+    except Exception as e:
+        return JSONResponse({"error": str(e)[:180]}, status_code=502)
+
+    followers = profile_raw.get("followers_count")
+    profile = {
+        "username": profile_raw.get("username"),
+        "followers": followers,
+        "following": profile_raw.get("follows_count"),
+        "media_count": profile_raw.get("media_count"),
+        "name": profile_raw.get("name"),
+        "profile_picture_url": profile_raw.get("profile_picture_url"),
+    }
+
+    # snapshot de seguidores de hoy
+    series = []
+    if followers is not None:
+        try: series = _save_snapshot_today(int(followers))
+        except Exception: pass
+
+    # métricas (cada una defensiva)
+    metric_names = ["reach", "profile_views", "accounts_engaged",
+                    "total_interactions", "likes", "comments", "views"]
+    metrics = {}
+    for m in metric_names:
+        try:
+            metrics[m] = _get_metric_value(ig_id, token, m, period)
+        except Exception:
+            metrics[m] = None
+
+    # engagement_rate
+    er = None
+    ti = metrics.get("total_interactions")
+    reach = metrics.get("reach")
+    try:
+        if ti is not None and reach and reach > 0:
+            er = round(ti / reach * 100, 1)
+        elif ti is not None and followers and followers > 0:
+            er = round(ti / followers * 100, 1)
+    except Exception:
+        er = None
+
+    return {"connected": True, "profile": profile, "period": period,
+            "metrics": metrics, "engagement_rate": er}
+
+@app.get("/api/insights/growth")
+def insights_growth():
+    token, ig_id = get_ig_auth()
+    if not token or not ig_id:
+        return {"connected": False, "series": []}
+    data = _load_snapshots()
+    return {"connected": True, "series": data.get("snapshots", [])}
+
+def _fetch_media_with_insights(ig_id, token, limit=12):
+    """Devuelve lista de posts con métricas individuales (defensivo)."""
+    try:
+        media_raw = _ig_api("GET", f"{ig_id}/media",
+            {"fields": "id,caption,media_type,media_product_type,timestamp,"
+                       "permalink,like_count,comments_count,thumbnail_url,media_url",
+             "limit": limit, "access_token": token})
+    except Exception:
+        return []
+
+    result = []
+    for m in media_raw.get("data", []):
+        mid = m.get("id")
+        mtype = m.get("media_type", "")
+        mptype = m.get("media_product_type", "")
+        is_video = mptype == "REELS" or mtype == "VIDEO"
+
+        if is_video:
+            metrics_req = "reach,views,likes,comments,shares,saved,total_interactions"
+            minimal_req = "reach,views"
+        else:
+            metrics_req = "reach,total_interactions,likes,comments,saved,shares"
+            minimal_req = "reach"
+
+        ins = {}
+        try:
+            ins_raw = _ig_api("GET", f"{mid}/insights",
+                              {"metric": metrics_req, "access_token": token})
+            for item in ins_raw.get("data", []):
+                vals = item.get("values") or []
+                ins[item["name"]] = vals[0]["value"] if vals else item.get("value")
+        except Exception:
+            # reintento con set mínimo
+            try:
+                ins_raw = _ig_api("GET", f"{mid}/insights",
+                                  {"metric": minimal_req, "access_token": token})
+                for item in ins_raw.get("data", []):
+                    vals = item.get("values") or []
+                    ins[item["name"]] = vals[0]["value"] if vals else item.get("value")
+            except Exception:
+                pass
+
+        cap = (m.get("caption") or "")[:120]
+        likes = ins.get("likes") if ins.get("likes") is not None else m.get("like_count")
+        comments = ins.get("comments") if ins.get("comments") is not None else m.get("comments_count")
+        reach_v = ins.get("reach")
+        total_int = ins.get("total_interactions")
+
+        er = None
+        try:
+            if total_int is not None and reach_v and reach_v > 0:
+                er = round(total_int / reach_v * 100, 1)
+        except Exception:
+            pass
+
+        result.append({
+            "id": mid,
+            "caption": cap,
+            "media_type": mtype,
+            "timestamp": m.get("timestamp"),
+            "permalink": m.get("permalink"),
+            "thumbnail": m.get("thumbnail_url") or m.get("media_url"),
+            "likes": likes,
+            "comments": comments,
+            "reach": reach_v,
+            "views": ins.get("views"),
+            "total_interactions": total_int,
+            "engagement_rate": er,
+        })
+
+    # ordenar por timestamp desc
+    result.sort(key=lambda x: x.get("timestamp") or "", reverse=True)
+    return result
+
+@app.get("/api/insights/media")
+def insights_media(limit: int = 12):
+    token, ig_id = get_ig_auth()
+    if not token or not ig_id:
+        return {"connected": False, "media": []}
+    media = _fetch_media_with_insights(ig_id, token, limit)
+    return {"connected": True, "media": media}
+
+@app.get("/api/insights/besttimes")
+def insights_besttimes():
+    token, ig_id = get_ig_auth()
+    if not token or not ig_id:
+        return {"connected": False,
+                "by_weekday": [], "by_hour": [],
+                "best": {"weekday_label": None, "hour": None}}
+
+    media = _fetch_media_with_insights(ig_id, token, limit=30)
+
+    LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+
+    # acumuladores por (weekday, hour)
+    from collections import defaultdict
+    wd_reach  = defaultdict(list)
+    wd_eng    = defaultdict(list)
+    hr_reach  = defaultdict(list)
+    combo     = defaultdict(lambda: {"reach": [], "eng": []})
+
+    for m in media:
+        ts = m.get("timestamp")
+        if not ts:
+            continue
+        try:
+            # parsea ISO 8601 con offset (ej: 2024-03-01T14:30:00+0000)
+            ts_clean = ts.replace("Z", "+00:00")
+            # Python 3.7+ fromisoformat no soporta +0000 sin los dos puntos
+            if len(ts_clean) >= 5 and ts_clean[-5] in ("+", "-") and ":" not in ts_clean[-5:]:
+                ts_clean = ts_clean[:-2] + ":" + ts_clean[-2:]
+            dt = datetime.fromisoformat(ts_clean)
+            wd = dt.weekday()   # 0=lunes
+            hr = dt.hour
+        except Exception:
+            continue
+
+        r = m.get("reach") or 0
+        e = m.get("total_interactions") or 0
+
+        wd_reach[wd].append(r)
+        wd_eng[wd].append(e)
+        hr_reach[hr].append(r)
+        combo[(wd, hr)]["reach"].append(r)
+        combo[(wd, hr)]["eng"].append(e)
+
+    def avg(lst):
+        return round(sum(lst) / len(lst), 1) if lst else 0.0
+
+    by_weekday = []
+    for i in range(7):
+        by_weekday.append({
+            "weekday": i,
+            "label": LABELS[i],
+            "avg_reach": avg(wd_reach[i]),
+            "avg_engagement": avg(wd_eng[i]),
+            "posts": len(wd_reach[i]),
+        })
+
+    by_hour = [
+        {"hour": h, "avg_reach": avg(hr_reach[h]), "posts": len(hr_reach[h])}
+        for h in sorted(hr_reach.keys())
+    ]
+
+    # mejor combinación (weekday, hour) por avg_reach
+    best_wd_label = None
+    best_hr = None
+    if combo:
+        best_key = max(combo.keys(), key=lambda k: avg(combo[k]["reach"]))
+        best_wd_label = LABELS[best_key[0]]
+        best_hr = best_key[1]
+
+    return {
+        "connected": True,
+        "by_weekday": by_weekday,
+        "by_hour": by_hour,
+        "best": {"weekday_label": best_wd_label, "hour": best_hr},
+    }
+
+
+# ---------- Eliminar post ----------
 @app.post("/api/delete")
 async def delete(req: Request):
     b = await req.json()
