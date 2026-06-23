@@ -79,6 +79,7 @@ window.Views = window.Views || {};
 
         // Auto-marcar como leído con IntersectionObserver
         if (activos.length > 0) {
+            if (window._annObserver) window._annObserver.disconnect();
             const observer = new IntersectionObserver(async (entries) => {
                 for (const entry of entries) {
                     if (!entry.isIntersecting) continue;
@@ -106,6 +107,7 @@ window.Views = window.Views || {};
             container.querySelectorAll('.ann-card[data-ann-id]').forEach(card => {
                 observer.observe(card);
             });
+            window._annObserver = observer;
 
             // Expand/collapse al hacer click
             container.querySelectorAll('.ann-card').forEach(card => {
@@ -537,9 +539,10 @@ window.Views = window.Views || {};
         // Realtime: re-render cuando llegan datos nuevos
         const _realtimeHandler = () => loadAndRender();
         window.addEventListener('sync-data-updated', _realtimeHandler);
-        // Cleanup al salir de la vista
+        // Cleanup al salir de la vista (observer + listener)
         window._viewCleanup = () => {
             window.removeEventListener('sync-data-updated', _realtimeHandler);
+            if (window._annObserver) { window._annObserver.disconnect(); window._annObserver = null; }
             _lastKnownAnnCount = 0;
         };
     };

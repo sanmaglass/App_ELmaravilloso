@@ -39,11 +39,12 @@ window.Views = window.Views || {};
         return new Date(isoStr).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
     }
 
+    // BUG 2 FIX: added `ph` prefix class so Phosphor Icons render correctly
     function typeBadgeHTML(type) {
         const cfg = TIPOS[type];
         if (!cfg) return '';
         return `<span style="display:inline-flex; align-items:center; gap:5px; background:${cfg.bg}; color:${cfg.color}; border-radius:20px; padding:3px 10px; font-size:0.78rem; font-weight:700;">
-            <i class="${cfg.icon}" style="font-size:0.9rem;"></i> ${cfg.label}
+            <i class="ph ${cfg.icon}" style="font-size:0.9rem;"></i> ${cfg.label}
         </span>`;
     }
 
@@ -78,232 +79,6 @@ window.Views = window.Views || {};
             const { data } = await supabase.storage.from('team-photos').createSignedUrl(path, 3600);
             return data?.signedUrl || null;
         } catch { return null; }
-    }
-
-    // ── Renderizar previews de fotos (formulario) ──
-    function renderPreviews() {
-        const previewEl = document.getElementById('tr-photo-previews');
-        if (!previewEl) return;
-        if (_pendingFiles.length === 0) {
-            previewEl.innerHTML = '';
-            return;
-        }
-        previewEl.innerHTML = _pendingFiles.map((item, idx) => `
-            <div style="position:relative; display:inline-block;">
-                <img src="${item.previewUrl}" alt="foto ${idx + 1}"
-                     style="width:72px; height:72px; object-fit:cover; border-radius:10px; border:2px solid var(--border);">
-                <button data-remove-idx="${idx}"
-                    style="position:absolute; top:-6px; right:-6px; background:#ef4444; color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:0.7rem; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"
-                    title="Quitar foto">
-                    <i class="ph ph-x"></i>
-                </button>
-            </div>
-        `).join('');
-
-        previewEl.querySelectorAll('[data-remove-idx]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const idx = parseInt(btn.dataset.removeIdx, 10);
-                URL.revokeObjectURL(_pendingFiles[idx]?.previewUrl);
-                _pendingFiles.splice(idx, 1);
-                renderPreviews();
-                updatePhotoBtn();
-            });
-        });
-    }
-
-    function updatePhotoBtn() {
-        const btn = document.getElementById('tr-btn-foto');
-        if (!btn) return;
-        const remaining = MAX_FOTOS - _pendingFiles.length;
-        if (remaining <= 0) {
-            btn.disabled = true;
-            btn.innerHTML = `<i class="ph ph-image" style="font-size:1rem;"></i> Máx. ${MAX_FOTOS} fotos`;
-        } else {
-            btn.disabled = false;
-            btn.innerHTML = `<i class="ph ph-camera" style="font-size:1rem;"></i> Adjuntar Foto${_pendingFiles.length > 0 ? ` (${_pendingFiles.length}/${MAX_FOTOS})` : ''}`;
-        }
-    }
-
-    // ── Seleccionar tipo en formulario ──
-    function selectType(type) {
-        _selectedType = type;
-
-        // Actualizar chips
-        document.querySelectorAll('.tr-type-chip').forEach(chip => {
-            const isActive = chip.dataset.type === type;
-            const cfg = TIPOS[chip.dataset.type];
-            chip.style.background = isActive ? cfg.color : 'var(--bg-card)';
-            chip.style.color      = isActive ? '#fff'    : 'var(--text-primary)';
-            chip.style.borderColor = isActive ? cfg.color : 'var(--border)';
-            chip.style.fontWeight  = isActive ? '700' : '500';
-            chip.style.boxShadow   = isActive ? `0 2px 8px ${cfg.color}40` : 'none';
-        });
-
-        // Mostrar/ocultar campo form y actualizar placeholders
-        const formFields = document.getElementById('tr-form-fields');
-        if (formFields) {
-            formFields.style.display = 'flex';
-            const cfg = TIPOS[type];
-            const titleInput = document.getElementById('tr-title');
-            const descInput  = document.getElementById('tr-desc');
-            if (titleInput) titleInput.placeholder = cfg.placeholder_title;
-            if (descInput)  descInput.placeholder  = cfg.placeholder_desc;
-        }
-    }
-
-    // ── Limpiar formulario ──
-    function resetForm() {
-        _selectedType = null;
-        _pendingFiles = [];
-        const titleInput = document.getElementById('tr-title');
-        const descInput  = document.getElementById('tr-desc');
-        if (titleInput) titleInput.value = '';
-        if (descInput)  descInput.value  = '';
-
-        document.querySelectorAll('.tr-type-chip').forEach(chip => {
-            const cfg = TIPOS[chip.dataset.type];
-            chip.style.background  = 'var(--bg-card)';
-            chip.style.color       = 'var(--text-primary)';
-            chip.style.borderColor = 'var(--border)';
-            chip.style.fontWeight  = '500';
-            chip.style.boxShadow   = 'none';
-        });
-
-        const formFields = document.getElementById('tr-form-fields');
-        if (formFields) formFields.style.display = 'none';
-
-        renderPreviews();
-        updatePhotoBtn();
-    }
-
-    // ── Enviar reporte ──
-    async function submitReport() {
-        if (!_selectedType) {
-            window.showToast('Selecciona un tipo de reporte');
-            return;
-        }
-        const titleEl = document.getElementById('tr-title');
-        const descEl  = document.getElementById('tr-desc');
-        const title   = titleEl?.value.trim() || '';
-        if (!title) {
-            window.showToast('Ingresa un título');
-            titleEl?.focus();
-            return;
-        }
-
-        const submitBtn = document.getElementById('tr-submit-btn');
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Enviando...';
-        }
-
-        try {
-            // Subir fotos
-            let photoPaths = [];
-            if (_pendingFiles.length > 0) {
-                photoPaths = await uploadFotos(_pendingFiles.map(f => f.file));
-            }
-
-            const tenantId = window.Auth.getTenantId();
-            const userId   = window.Auth.session?.user?.id;
-
-            const reportData = {
-                id:         crypto.randomUUID(),
-                tenant_id:  tenantId,
-                user_id:    userId,
-                type:       _selectedType,
-                title:      title,
-                description: descEl?.value.trim() || '',
-                photo_urls: photoPaths,
-                items:      [],
-                status:     'pendiente',
-                admin_response:       null,
-                admin_responded_at:   null,
-                admin_responded_by:   null,
-                created_at: new Date().toISOString(),
-                deleted:    false,
-                version:    1,
-            };
-
-            await window.DataManager.saveAndSync('team_reports', reportData);
-            window.showToast('Reporte enviado correctamente');
-            resetForm();
-            await renderList();
-
-        } catch (err) {
-            console.error('Error enviando reporte:', err);
-            window.showToast('Error al enviar el reporte. Intenta de nuevo.');
-        } finally {
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Enviar Reporte';
-            }
-        }
-    }
-
-    // ── Render lista de reportes ──
-    async function renderList() {
-        const listEl = document.getElementById('tr-list');
-        if (!listEl) return;
-
-        listEl.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">
-            <i class="ph ph-spinner ph-spin" style="font-size:1.5rem;"></i>
-        </div>`;
-
-        try {
-            const userId = window.Auth.session?.user?.id;
-            const all    = await window.db.team_reports.toArray();
-            const mine   = all
-                .filter(r => !r.deleted && r.user_id === userId)
-                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-            if (mine.length === 0) {
-                listEl.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-muted);">
-                    <i class="ph ph-clipboard-text" style="font-size:2.5rem; display:block; margin-bottom:8px; opacity:0.4;"></i>
-                    <p style="margin:0;">Aún no has enviado ningún reporte</p>
-                </div>`;
-                return;
-            }
-
-            const toShow = _showingAll ? mine : mine.slice(0, PAGE_SIZE);
-            const cards  = await Promise.all(toShow.map(r => buildCardHTML(r)));
-
-            let html = cards.join('');
-
-            if (mine.length > PAGE_SIZE) {
-                if (!_showingAll) {
-                    html += `<div style="text-align:center; margin-top:8px;">
-                        <button id="tr-ver-mas" style="background:none; border:1px solid var(--border); border-radius:10px; padding:8px 22px; cursor:pointer; color:var(--text-muted); font-size:0.9rem;">
-                            Ver más (${mine.length - PAGE_SIZE} restantes)
-                        </button>
-                    </div>`;
-                } else {
-                    html += `<div style="text-align:center; margin-top:8px;">
-                        <button id="tr-ver-menos" style="background:none; border:1px solid var(--border); border-radius:10px; padding:8px 22px; cursor:pointer; color:var(--text-muted); font-size:0.9rem;">
-                            Ver menos
-                        </button>
-                    </div>`;
-                }
-            }
-
-            listEl.innerHTML = html;
-
-            const verMasBtn   = document.getElementById('tr-ver-mas');
-            const verMenosBtn = document.getElementById('tr-ver-menos');
-            if (verMasBtn)   verMasBtn.addEventListener('click',   () => { _showingAll = true;  renderList(); });
-            if (verMenosBtn) verMenosBtn.addEventListener('click', () => { _showingAll = false; renderList(); });
-
-            // Cargar fotos de forma asíncrona (no bloquea render)
-            toShow.forEach(r => {
-                if (r.photo_urls && r.photo_urls.length > 0) {
-                    loadCardPhotos(r.id, r.photo_urls);
-                }
-            });
-
-        } catch (err) {
-            console.error('Error cargando reportes:', err);
-            listEl.innerHTML = `<p style="color:var(--danger); text-align:center; padding:20px;">Error al cargar reportes.</p>`;
-        }
     }
 
     // ── Construir HTML de una tarjeta ──
@@ -352,10 +127,10 @@ window.Views = window.Views || {};
 
     // ── Cargar fotos asíncronas para una tarjeta ──
     async function loadCardPhotos(reportId, photoPaths) {
-        const container = document.getElementById(`photos-${reportId}`);
-        if (!container) return;
+        const el = document.getElementById(`photos-${reportId}`);
+        if (!el) return;
 
-        const slots = container.querySelectorAll('div');
+        const slots = el.querySelectorAll('div');
         const urls  = await Promise.all(photoPaths.map(p => getSignedUrl(p)));
 
         urls.forEach((url, i) => {
@@ -427,7 +202,7 @@ window.Views = window.Views || {};
                 <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
                     ${Object.entries(TIPOS).map(([key, cfg]) => `
                         <button class="tr-type-chip" data-type="${key}">
-                            <i class="${cfg.icon}" style="font-size:1rem;"></i>
+                            <i class="ph ${cfg.icon}" style="font-size:1rem;"></i>
                             ${cfg.label}
                         </button>
                     `).join('')}
@@ -480,6 +255,234 @@ window.Views = window.Views || {};
         </div>
         `;
 
+        // ── BUG 1 FIX: helpers defined inside view scope to access `container` ──
+
+        // ── Renderizar previews de fotos (formulario) ──
+        function renderPreviews() {
+            const previewEl = container.querySelector('#tr-photo-previews');
+            if (!previewEl) return;
+            if (_pendingFiles.length === 0) {
+                previewEl.innerHTML = '';
+                return;
+            }
+            previewEl.innerHTML = _pendingFiles.map((item, idx) => `
+                <div style="position:relative; display:inline-block;">
+                    <img src="${item.previewUrl}" alt="foto ${idx + 1}"
+                         style="width:72px; height:72px; object-fit:cover; border-radius:10px; border:2px solid var(--border);">
+                    <button data-remove-idx="${idx}"
+                        style="position:absolute; top:-6px; right:-6px; background:#ef4444; color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:0.7rem; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"
+                        title="Quitar foto">
+                        <i class="ph ph-x"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            previewEl.querySelectorAll('[data-remove-idx]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.dataset.removeIdx, 10);
+                    URL.revokeObjectURL(_pendingFiles[idx]?.previewUrl);
+                    _pendingFiles.splice(idx, 1);
+                    renderPreviews();
+                    updatePhotoBtn();
+                });
+            });
+        }
+
+        function updatePhotoBtn() {
+            const btn = container.querySelector('#tr-btn-foto');
+            if (!btn) return;
+            const remaining = MAX_FOTOS - _pendingFiles.length;
+            if (remaining <= 0) {
+                btn.disabled = true;
+                btn.innerHTML = `<i class="ph ph-image" style="font-size:1rem;"></i> Máx. ${MAX_FOTOS} fotos`;
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="ph ph-camera" style="font-size:1rem;"></i> Adjuntar Foto${_pendingFiles.length > 0 ? ` (${_pendingFiles.length}/${MAX_FOTOS})` : ''}`;
+            }
+        }
+
+        // ── Seleccionar tipo en formulario ──
+        function selectType(type) {
+            _selectedType = type;
+
+            // Actualizar chips
+            container.querySelectorAll('.tr-type-chip').forEach(chip => {
+                const isActive = chip.dataset.type === type;
+                const cfg = TIPOS[chip.dataset.type];
+                chip.style.background = isActive ? cfg.color : 'var(--bg-card)';
+                chip.style.color      = isActive ? '#fff'    : 'var(--text-primary)';
+                chip.style.borderColor = isActive ? cfg.color : 'var(--border)';
+                chip.style.fontWeight  = isActive ? '700' : '500';
+                chip.style.boxShadow   = isActive ? `0 2px 8px ${cfg.color}40` : 'none';
+            });
+
+            // Mostrar/ocultar campo form y actualizar placeholders
+            const formFields = container.querySelector('#tr-form-fields');
+            if (formFields) {
+                formFields.style.display = 'flex';
+                const cfg = TIPOS[type];
+                const titleInput = container.querySelector('#tr-title');
+                const descInput  = container.querySelector('#tr-desc');
+                if (titleInput) titleInput.placeholder = cfg.placeholder_title;
+                if (descInput)  descInput.placeholder  = cfg.placeholder_desc;
+            }
+        }
+
+        // ── Limpiar formulario ──
+        function resetForm() {
+            _selectedType = null;
+            _pendingFiles = [];
+            const titleInput = container.querySelector('#tr-title');
+            const descInput  = container.querySelector('#tr-desc');
+            if (titleInput) titleInput.value = '';
+            if (descInput)  descInput.value  = '';
+
+            container.querySelectorAll('.tr-type-chip').forEach(chip => {
+                const cfg = TIPOS[chip.dataset.type];
+                chip.style.background  = 'var(--bg-card)';
+                chip.style.color       = 'var(--text-primary)';
+                chip.style.borderColor = 'var(--border)';
+                chip.style.fontWeight  = '500';
+                chip.style.boxShadow   = 'none';
+            });
+
+            const formFields = container.querySelector('#tr-form-fields');
+            if (formFields) formFields.style.display = 'none';
+
+            renderPreviews();
+            updatePhotoBtn();
+        }
+
+        // ── Enviar reporte ──
+        async function submitReport() {
+            if (!_selectedType) {
+                window.showToast('Selecciona un tipo de reporte');
+                return;
+            }
+            const titleEl = container.querySelector('#tr-title');
+            const descEl  = container.querySelector('#tr-desc');
+            const title   = titleEl?.value.trim() || '';
+            if (!title) {
+                window.showToast('Ingresa un título');
+                titleEl?.focus();
+                return;
+            }
+
+            const submitBtn = container.querySelector('#tr-submit-btn');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Enviando...';
+            }
+
+            try {
+                // Subir fotos
+                let photoPaths = [];
+                if (_pendingFiles.length > 0) {
+                    photoPaths = await uploadFotos(_pendingFiles.map(f => f.file));
+                }
+
+                const tenantId = window.Auth.getTenantId();
+                const userId   = window.Auth.session?.user?.id;
+
+                const reportData = {
+                    id:         crypto.randomUUID(),
+                    tenant_id:  tenantId,
+                    user_id:    userId,
+                    type:       _selectedType,
+                    title:      title,
+                    description: descEl?.value.trim() || '',
+                    photo_urls: photoPaths,
+                    items:      [],
+                    status:     'pendiente',
+                    admin_response:       null,
+                    admin_responded_at:   null,
+                    admin_responded_by:   null,
+                    created_at: new Date().toISOString(),
+                    deleted:    false,
+                    version:    1,
+                };
+
+                await window.DataManager.saveAndSync('team_reports', reportData);
+                window.showToast('Reporte enviado correctamente');
+                resetForm();
+                await renderList();
+
+            } catch (err) {
+                console.error('Error enviando reporte:', err);
+                window.showToast('Error al enviar el reporte. Intenta de nuevo.');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Enviar Reporte';
+                }
+            }
+        }
+
+        // ── Render lista de reportes ──
+        async function renderList() {
+            const listEl = container.querySelector('#tr-list');
+            if (!listEl) return;
+
+            listEl.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">
+                <i class="ph ph-spinner ph-spin" style="font-size:1.5rem;"></i>
+            </div>`;
+
+            try {
+                const userId = window.Auth.session?.user?.id;
+                const all    = await window.db.team_reports.toArray();
+                const mine   = all
+                    .filter(r => !r.deleted && r.user_id === userId)
+                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                if (mine.length === 0) {
+                    listEl.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-muted);">
+                        <i class="ph ph-clipboard-text" style="font-size:2.5rem; display:block; margin-bottom:8px; opacity:0.4;"></i>
+                        <p style="margin:0;">Aún no has enviado ningún reporte</p>
+                    </div>`;
+                    return;
+                }
+
+                const toShow = _showingAll ? mine : mine.slice(0, PAGE_SIZE);
+                const cards  = await Promise.all(toShow.map(r => buildCardHTML(r)));
+
+                let html = cards.join('');
+
+                if (mine.length > PAGE_SIZE) {
+                    if (!_showingAll) {
+                        html += `<div style="text-align:center; margin-top:8px;">
+                            <button id="tr-ver-mas" style="background:none; border:1px solid var(--border); border-radius:10px; padding:8px 22px; cursor:pointer; color:var(--text-muted); font-size:0.9rem;">
+                                Ver más (${mine.length - PAGE_SIZE} restantes)
+                            </button>
+                        </div>`;
+                    } else {
+                        html += `<div style="text-align:center; margin-top:8px;">
+                            <button id="tr-ver-menos" style="background:none; border:1px solid var(--border); border-radius:10px; padding:8px 22px; cursor:pointer; color:var(--text-muted); font-size:0.9rem;">
+                                Ver menos
+                            </button>
+                        </div>`;
+                    }
+                }
+
+                listEl.innerHTML = html;
+
+                const verMasBtn   = listEl.querySelector('#tr-ver-mas');
+                const verMenosBtn = listEl.querySelector('#tr-ver-menos');
+                if (verMasBtn)   verMasBtn.addEventListener('click',   () => { _showingAll = true;  renderList(); });
+                if (verMenosBtn) verMenosBtn.addEventListener('click', () => { _showingAll = false; renderList(); });
+
+                // Cargar fotos de forma asíncrona (no bloquea render)
+                toShow.forEach(r => {
+                    if (r.photo_urls && r.photo_urls.length > 0) {
+                        loadCardPhotos(r.id, r.photo_urls);
+                    }
+                });
+
+            } catch (err) {
+                console.error('Error cargando reportes:', err);
+                listEl.innerHTML = `<p style="color:var(--danger); text-align:center; padding:20px;">Error al cargar reportes.</p>`;
+            }
+        }
+
         // ── Event listeners ──
 
         // Chips de tipo
@@ -514,19 +517,15 @@ window.Views = window.Views || {};
         // Cargar lista inicial
         await renderList();
 
-        // ── Actualización en tiempo real ──
-        if (window._trSyncHandler) {
-            window.removeEventListener('sync-data-updated', window._trSyncHandler);
-            window._trSyncHandler = null;
-        }
-        window._trSyncHandler = () => {
-            if (document.getElementById('tr-list')) {
+        // ── BUG 3 FIX: use _viewCleanup instead of custom _trSyncHandler ──
+        const handler = () => {
+            if (container.querySelector('#tr-list')) {
                 renderList();
-            } else {
-                window.removeEventListener('sync-data-updated', window._trSyncHandler);
-                window._trSyncHandler = null;
             }
         };
-        window.addEventListener('sync-data-updated', window._trSyncHandler);
+        window.addEventListener('sync-data-updated', handler);
+        window._viewCleanup = () => {
+            window.removeEventListener('sync-data-updated', handler);
+        };
     };
 })();

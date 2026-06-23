@@ -362,7 +362,8 @@ window.Views = window.Views || {};
 
             // — Checklist diario —
             const clType = getChecklistType();
-            const clDate = chileNow().toISOString().slice(0, 10);
+            const _cn = chileNow();
+            const clDate = `${_cn.getFullYear()}-${String(_cn.getMonth()+1).padStart(2,'0')}-${String(_cn.getDate()).padStart(2,'0')}`;
             const clTasks = clType === 'apertura' ? CHECKLIST_APERTURA : CHECKLIST_CIERRE;
             let checklist = null;
             try {

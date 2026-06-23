@@ -342,15 +342,18 @@ window.Views = window.Views || {};
             photosEl.innerHTML = thumbs.map((url, i) => {
                 if (url) {
                     return `<img src="${url}" alt="Foto ${i + 1}"
+                                 data-open-url="${url.replace(/"/g, '&quot;')}"
                                  style="width:64px; height:64px; border-radius:10px; object-fit:cover;
-                                        border:1px solid var(--border); cursor:pointer;"
-                                 onclick="window.open('${url}', '_blank')">`;
+                                        border:1px solid var(--border); cursor:pointer;">`;
                 }
                 return `<div style="width:64px; height:64px; border-radius:10px; background:var(--bg-main);
                                     border:1px solid var(--border); display:flex; align-items:center; justify-content:center;">
                             <i class="ph ph-image-broken" style="font-size:1.4rem; color:var(--text-muted);"></i>
                         </div>`;
             }).join('');
+            photosEl.querySelectorAll('[data-open-url]').forEach(img => {
+                img.addEventListener('click', () => window.open(img.dataset.openUrl, '_blank'));
+            });
         });
 
         async function updateReport(id, changes) {
@@ -604,7 +607,7 @@ window.Views = window.Views || {};
 
                 const now = new Date().toISOString();
                 const newA = {
-                    id: 'ann_' + Date.now() + '_' + Math.floor(Math.random() * 9999),
+                    id: crypto.randomUUID(),
                     tenant_id: tenantId,
                     author_id: userId,
                     title,
