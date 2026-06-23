@@ -289,8 +289,9 @@ async function init() {
         // localStorage NO se usa aquí para evitar que el usuario manipule su propio rol.
         const _userRole = window.Auth.getRole();
         window._isEmployee = (_userRole === 'employee');
+        window._employeeAllowed = new Set(['team_home', 'caja_dia', 'announcements', 'team_reports', 'team_scanner']);
         if (window._isEmployee) {
-            const ALLOWED = new Set(['team_home', 'caja_dia', 'announcements', 'team_reports', 'team_scanner']);
+            const ALLOWED = window._employeeAllowed;
             // Ocultar nav-items no permitidos en sidebar
             document.querySelectorAll('.nav-item[data-view], .more-menu-item[data-view]').forEach(el => {
                 const v = el.dataset.view;
@@ -333,6 +334,22 @@ async function init() {
                 });
             }
             window.state.currentView = 'team_home';
+
+            // ── Limpiar datos sensibles de Dexie (employee no debe tener datos de admin en local) ──
+            const _sensitiveTables = ['employees', 'workLogs', 'expenses', 'purchase_invoices',
+                'cash_register', 'loans', 'advances', 'daily_sales', 'suppliers',
+                'sales_invoices', 'electronic_invoices', 'reminders'];
+            for (const t of _sensitiveTables) {
+                try { if (window.db[t]) await window.db[t].clear(); } catch (e) { /* tabla puede no existir */ }
+            }
+
+            // ── Proteger window.Views: employee no puede llamar vistas directamente desde consola ──
+            const _origViews = { ...window.Views };
+            for (const vName of Object.keys(window.Views)) {
+                if (!window._employeeAllowed.has(vName)) {
+                    window.Views[vName] = () => { console.warn('[Security] Vista bloqueada:', vName); };
+                }
+            }
         }
         localStorage.setItem('wm_auth', 'true');
         localStorage.setItem('wm_auth_email', session.user.email);
@@ -469,6 +486,11 @@ async function init() {
         }
 
         function navigateToView(viewName, label) {
+            // ── Guard de rol: employee solo puede acceder a vistas permitidas ──
+            if (window._isEmployee && window._employeeAllowed && !window._employeeAllowed.has(viewName)) {
+                console.warn('[Security] Vista bloqueada para employee:', viewName);
+                return;
+            }
             // Cleanup previous view
             if (window._viewCleanup) {
                 try { window._viewCleanup(); } catch (e) { /* ignore */ }

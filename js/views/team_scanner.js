@@ -3,28 +3,44 @@
 window.Views = window.Views || {};
 
 (function () {
-    // Construir catálogo de precios desde eleventa_sales.items
+    // Construir catálogo de precios desde eleventa_sales.items + db.products
     async function buildCatalog() {
-        const sales = await window.db.eleventa_sales.toArray();
         const catalog = new Map(); // name → { name, price, lastSeen }
-        for (const s of sales) {
-            if (s.deleted) continue;
-            let items = s.items;
-            if (typeof items === 'string') {
-                try { items = JSON.parse(items || '[]'); } catch { items = []; }
-            }
-            if (!Array.isArray(items)) continue;
-            for (const item of items) {
-                const name = (item.name || '').trim().toUpperCase();
+
+        // 1. Productos de la tabla products (precio oficial)
+        try {
+            const products = await window.db.products.toArray();
+            for (const p of products) {
+                if (p.deleted) continue;
+                const name = (p.name || '').trim().toUpperCase();
                 if (!name) continue;
-                const price = parseFloat(item.price) || 0;
-                const existing = catalog.get(name);
-                if (!existing || new Date(s.date) > new Date(existing.lastSeen)) {
-                    catalog.set(name, { name, price, lastSeen: s.date });
+                const price = parseFloat(p.price || p.salePrice || p.sellingPrice) || 0;
+                if (price > 0) catalog.set(name, { name, price, lastSeen: p.updated_at || p.created_at || '' });
+            }
+        } catch { /* tabla puede no existir */ }
+
+        // 2. Items de ventas Eleventa (sobreescribe si es más reciente)
+        try {
+            const sales = await window.db.eleventa_sales.toArray();
+            for (const s of sales) {
+                if (s.deleted) continue;
+                let items = s.items;
+                if (typeof items === 'string') {
+                    try { items = JSON.parse(items || '[]'); } catch { items = []; }
+                }
+                if (!Array.isArray(items)) continue;
+                for (const item of items) {
+                    const name = (item.name || '').trim().toUpperCase();
+                    if (!name) continue;
+                    const price = parseFloat(item.price) || 0;
+                    const existing = catalog.get(name);
+                    if (!existing || new Date(s.date) > new Date(existing.lastSeen)) {
+                        catalog.set(name, { name, price, lastSeen: s.date });
+                    }
                 }
             }
-        }
-        // Ordenar alfabéticamente
+        } catch { /* tabla puede no existir */ }
+
         return Array.from(catalog.values()).sort((a, b) => a.name.localeCompare(b.name, 'es-CL'));
     }
 

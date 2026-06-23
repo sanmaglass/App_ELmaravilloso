@@ -375,19 +375,27 @@ window.Views = window.Views || {};
             }
 
             try {
-                // Subir fotos
+                // Subir fotos (si falla, guardar reporte sin fotos)
                 let photoPaths = [];
+                let photosFailed = false;
                 if (_pendingFiles.length > 0) {
-                    photoPaths = await uploadFotos(_pendingFiles.map(f => f.file));
+                    try {
+                        photoPaths = await uploadFotos(_pendingFiles.map(f => f.file));
+                    } catch (uploadErr) {
+                        console.warn('Upload de fotos falló, guardando reporte sin fotos:', uploadErr);
+                        photosFailed = true;
+                    }
                 }
 
                 const tenantId = window.Auth.getTenantId();
                 const userId   = window.Auth.session?.user?.id;
 
+                const userEmail = window.Auth.session?.user?.email || '';
                 const reportData = {
                     id:         crypto.randomUUID(),
                     tenant_id:  tenantId,
                     user_id:    userId,
+                    user_email: userEmail,
                     type:       _selectedType,
                     title:      title,
                     description: descEl?.value.trim() || '',
@@ -403,7 +411,17 @@ window.Views = window.Views || {};
                 };
 
                 await window.DataManager.saveAndSync('team_reports', reportData);
-                window.showToast('Reporte enviado correctamente');
+
+                // Notificar al admin por push
+                const tipoLabel = TIPOS[_selectedType]?.label || _selectedType;
+                if (window.triggerPush) {
+                    window.triggerPush('report', {
+                        title: `Nuevo reporte: ${tipoLabel}`,
+                        body: `${userEmail.split('@')[0]} — ${title}`,
+                    }).catch(() => {});
+                }
+
+                window.showToast(photosFailed ? 'Reporte enviado (sin fotos — sin conexión)' : 'Reporte enviado correctamente');
                 resetForm();
                 await renderList();
 

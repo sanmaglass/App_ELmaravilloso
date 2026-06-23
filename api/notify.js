@@ -64,8 +64,8 @@ export default async function handler(req, res) {
             if (!auth) return res.status(401).json({ error: 'no autorizado' });
             caller = await verifyJwt(auth, sb);
             if (!caller) return res.status(401).json({ error: 'token inválido' });
-            // Solo admin/owner puede disparar push desde cliente
-            if (!['admin', 'owner'].includes(caller.role)) {
+            // admin/owner puede disparar cualquier push; employee solo 'report'
+            if (!['admin', 'owner'].includes(caller.role) && job !== 'report') {
                 return res.status(403).json({ error: 'sin permisos' });
             }
         }
@@ -113,6 +113,79 @@ export default async function handler(req, res) {
                 tag: 'ann-' + Date.now(),
                 data: { url: '/', view: 'announcements' }
             }, caller?.userId); // no notificar al que lo publicó
+            return res.status(200).json({ ok: true, ...out });
+        }
+
+        // ── REPORT: reporte de empleada → push a admins/owners del tenant ──
+        if (job === 'report') {
+            const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+            const title = body.title || 'Nuevo reporte';
+            const bodyText = body.body || '';
+            const tenantId = caller?.tenantId;
+            // Solo notificar a admins/owners, no a otros employees
+            const { data: admins } = await sb.from('user_tenants')
+                .select('user_id')
+                .eq('tenant_id', tenantId)
+                .in('role', ['admin', 'owner'])
+                .eq('active', true);
+            const adminIds = new Set((admins || []).map(a => a.user_id));
+            const targets = subs.filter(s =>
+                s.tenant_id === tenantId && adminIds.has(s.user_id)
+            );
+            let sent = 0;
+            for (const s of targets) {
+                try {
+                    await webpush.sendNotification(
+                        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+                        JSON.stringify({
+                            title: '📋 ' + title,
+                            body: bodyText,
+                            tag: 'report-' + Date.now(),
+                            data: { url: '/', view: 'team_admin' }
+                        })
+                    );
+                    sent++;
+                } catch (e) {
+                    if (e.statusCode === 404 || e.statusCode === 410) {
+                        await sb.from('push_subscriptions').delete().eq('id', s.id);
+                    }
+                }
+            }
+            out.sent = sent;
+            return res.status(200).json({ ok: true, ...out });
+        }
+
+        // ── REPORT_REPLY: admin respondió reporte → push solo a la cajera que lo envió ──
+        if (job === 'report_reply') {
+            const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+            const title = body.title || 'Tu reporte';
+            const bodyText = body.body || 'El admin respondió tu reporte';
+            const targetUserId = body.target_user_id;
+            const tenantId = caller?.tenantId;
+            if (!targetUserId) return res.status(200).json({ ok: true, sent: 0 });
+            const targets = subs.filter(s =>
+                s.tenant_id === tenantId && s.user_id === targetUserId
+            );
+            let sent = 0;
+            for (const s of targets) {
+                try {
+                    await webpush.sendNotification(
+                        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+                        JSON.stringify({
+                            title: '💬 Respuesta a: ' + title,
+                            body: bodyText,
+                            tag: 'reply-' + Date.now(),
+                            data: { url: '/', view: 'team_reports' }
+                        })
+                    );
+                    sent++;
+                } catch (e) {
+                    if (e.statusCode === 404 || e.statusCode === 410) {
+                        await sb.from('push_subscriptions').delete().eq('id', s.id);
+                    }
+                }
+            }
+            out.sent = sent;
             return res.status(200).json({ ok: true, ...out });
         }
 

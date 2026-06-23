@@ -78,9 +78,10 @@ window.Views = window.Views || {};
         }
 
         const tabs = [
-            { id: 'reportes', label: 'Reportes',  icon: 'ph-note-pencil' },
-            { id: 'avisos',   label: 'Avisos',    icon: 'ph-megaphone' },
-            { id: 'lecturas', label: 'Lecturas',  icon: 'ph-eye' },
+            { id: 'reportes',   label: 'Reportes',   icon: 'ph-note-pencil' },
+            { id: 'avisos',     label: 'Avisos',      icon: 'ph-megaphone' },
+            { id: 'lecturas',   label: 'Lecturas',    icon: 'ph-eye' },
+            { id: 'checklists', label: 'Checklists',  icon: 'ph-check-square' },
         ];
 
         container.innerHTML = `
@@ -124,6 +125,7 @@ window.Views = window.Views || {};
         if (_tab === 'reportes')   await renderReportes(content, tenantId, userId);
         else if (_tab === 'avisos') await renderAvisos(content, tenantId, userId, userEmail);
         else if (_tab === 'lecturas') await renderLecturas(content, tenantId);
+        else if (_tab === 'checklists') await renderChecklists(content, tenantId);
     };
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -400,12 +402,22 @@ window.Views = window.Views || {};
                 const text  = zone?.querySelector('.ta-reply-text')?.value?.trim();
                 if (!text) { window.showToast('Escribe una respuesta antes de enviar.', 'error'); return; }
                 btn.disabled = true;
-                await updateReport(btn.dataset.id, {
+                const reportId = btn.dataset.id;
+                await updateReport(reportId, {
                     status: 'respondido',
                     admin_response: text,
                     admin_responded_at: new Date().toISOString(),
                     admin_responded_by: adminUserId,
                 });
+                // Push a la cajera que envió el reporte
+                const report = allReports.find(r => r.id === reportId);
+                if (report && window.triggerPush) {
+                    window.triggerPush('report_reply', {
+                        title: report.title || 'Tu reporte',
+                        body: text.slice(0, 100),
+                        target_user_id: report.user_id,
+                    }).catch(() => {});
+                }
                 window.showToast('Respuesta enviada.', 'success');
             });
         });
@@ -896,6 +908,148 @@ window.Views = window.Views || {};
 
         } catch (err) {
             content.innerHTML = `<p style="color:var(--danger);">Error al cargar lecturas: ${window.escapeHTML(err.message)}</p>`;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // TAB 4 — CHECKLISTS (ver apertura/cierre de cada empleada)
+    // ═══════════════════════════════════════════════════════════════════════
+    async function renderChecklists(content, tenantId) {
+        content.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">Cargando checklists…</div>`;
+
+        try {
+            // Traer todos los checklists
+            const allChecklists = await window.db.team_checklists.toArray();
+            const checklists = allChecklists
+                .filter(c => !c.deleted && (!tenantId || c.tenant_id === tenantId || !c.tenant_id))
+                .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created_at || '').localeCompare(a.created_at || ''));
+
+            if (checklists.length === 0) {
+                content.innerHTML = `
+                    <div style="text-align:center; padding:40px; color:var(--text-muted);">
+                        <i class="ph ph-check-square" style="font-size:2.5rem; opacity:0.4; display:block; margin-bottom:10px;"></i>
+                        <p style="font-size:0.9rem;">Sin checklists registrados aún.</p>
+                        <p style="font-size:0.82rem;">Cuando las trabajadoras completen tareas de apertura o cierre, aparecerán aquí.</p>
+                    </div>`;
+                return;
+            }
+
+            // Obtener emails de empleados
+            let emailMap = {};
+            try {
+                const client = window.SyncV2?.client;
+                if (client) {
+                    const { data } = await client
+                        .from('user_tenants')
+                        .select('user_id, email')
+                        .eq('tenant_id', tenantId);
+                    if (data) data.forEach(e => { emailMap[e.user_id] = e.email; });
+                }
+            } catch { /* sin mapa de emails */ }
+
+            // Agrupar por fecha
+            const byDate = {};
+            for (const c of checklists) {
+                if (!byDate[c.date]) byDate[c.date] = [];
+                byDate[c.date].push(c);
+            }
+
+            const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a)).slice(0, 14); // últimos 14 días
+
+            function formatDateLabel(dateStr) {
+                try {
+                    const d = new Date(dateStr + 'T12:00:00');
+                    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+                    if (dateStr === hoy) return 'Hoy';
+                    const ayer = new Date(); ayer.setDate(ayer.getDate() - 1);
+                    if (dateStr === ayer.toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })) return 'Ayer';
+                    return d.toLocaleDateString('es-CL', { weekday: 'short', day: '2-digit', month: 'short' });
+                } catch { return dateStr; }
+            }
+
+            content.innerHTML = `
+                <p style="color:var(--text-muted); font-size:0.85rem; margin:0 0 20px;">
+                    Checklists de apertura y cierre completados por el equipo (últimos 14 días).
+                </p>
+                ${dates.map(date => {
+                    const items = byDate[date];
+                    return `
+                        <div style="margin-bottom:20px;">
+                            <div style="font-weight:700; font-size:0.88rem; color:var(--text-primary); margin-bottom:10px;
+                                        display:flex; align-items:center; gap:8px;">
+                                <i class="ph ph-calendar" style="color:var(--primary);"></i>
+                                ${formatDateLabel(date)}
+                                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">${date}</span>
+                            </div>
+                            ${items.map(c => {
+                                const email = emailMap[c.user_id] || c.user_email || c.user_id || 'Empleado';
+                                const tipo = c.checklist_type || 'apertura';
+                                const tipoColor = tipo === 'apertura' ? '#f59e0b' : '#6366f1';
+                                const tipoIcon = tipo === 'apertura' ? 'ph-sun' : 'ph-moon';
+                                const taskItems = Array.isArray(c.items) ? c.items : [];
+                                const done = taskItems.filter(t => t.done).length;
+                                const total = taskItems.length;
+                                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                                const allDone = done === total && total > 0;
+
+                                // Última tarea completada (hora)
+                                const lastCompleted = taskItems
+                                    .filter(t => t.done && t.completed_at)
+                                    .sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''))
+                                    [0];
+                                const lastTime = lastCompleted?.completed_at
+                                    ? new Date(lastCompleted.completed_at).toLocaleTimeString('es-CL', { timeZone: 'America/Santiago', hour: '2-digit', minute: '2-digit' })
+                                    : null;
+
+                                return `
+                                    <div style="background:var(--bg-card); border:1px solid var(--border);
+                                                border-left:4px solid ${allDone ? '#16a34a' : tipoColor};
+                                                border-radius:14px; padding:14px 16px; margin-bottom:8px;">
+                                        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                                            <div style="display:flex; align-items:center; gap:8px;">
+                                                <i class="ph ${tipoIcon}" style="color:${tipoColor}; font-size:1.1rem;"></i>
+                                                <span style="font-size:0.72rem; font-weight:700; padding:2px 9px; border-radius:8px;
+                                                             background:${tipoColor}18; color:${tipoColor}; text-transform:uppercase;">
+                                                    ${tipo}
+                                                </span>
+                                                <span style="font-size:0.85rem; color:var(--text-primary); font-weight:600;">
+                                                    ${window.escapeHTML(email.split('@')[0])}
+                                                </span>
+                                            </div>
+                                            <div style="display:flex; align-items:center; gap:8px;">
+                                                ${lastTime ? `<span style="font-size:0.75rem; color:var(--text-muted);">${lastTime}</span>` : ''}
+                                                <span style="font-size:0.78rem; font-weight:700;
+                                                             color:${allDone ? '#16a34a' : (pct >= 50 ? '#d97706' : 'var(--danger)')};">
+                                                    ${done}/${total}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <!-- Barra de progreso -->
+                                        <div style="height:6px; background:var(--border); border-radius:4px; overflow:hidden; margin-bottom:8px;">
+                                            <div style="height:100%; width:${pct}%;
+                                                        background:${allDone ? '#16a34a' : (pct >= 50 ? '#d97706' : 'var(--danger)')};
+                                                        border-radius:4px; transition:width 0.3s;"></div>
+                                        </div>
+                                        <!-- Detalle tareas -->
+                                        <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                                            ${taskItems.map(t => `
+                                                <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px;
+                                                             background:${t.done ? 'rgba(22,163,74,0.1)' : 'rgba(107,114,128,0.08)'};
+                                                             color:${t.done ? '#16a34a' : 'var(--text-muted)'};
+                                                             ${t.done ? '' : 'opacity:0.7;'}">
+                                                    ${t.done ? '✓' : '○'} ${window.escapeHTML(t.task || t.label || '')}
+                                                </span>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                }).join('')}
+            `;
+        } catch (err) {
+            content.innerHTML = `<p style="color:var(--danger);">Error al cargar checklists: ${window.escapeHTML(err.message)}</p>`;
         }
     }
 

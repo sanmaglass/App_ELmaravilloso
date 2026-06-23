@@ -59,6 +59,9 @@ window.Views.cash_register = async (container) => {
                 <option value="salida_gasto">Gasto de Caja Chica</option>
                 <option value="salida_sueldo">Pago a Trabajador</option>
                 <option value="salida_retiro">Retiro del Dueño</option>
+                <option value="fondo_apertura">Fondo Apertura</option>
+                <option value="gasto_caja">Caja Chica</option>
+                <option value="cuadre">Cuadre Cajera</option>
                 <option value="arqueo">Arqueos</option>
             </select>
         </div>
@@ -264,19 +267,43 @@ async function renderCajaView() {
             }
         });
 
-        // 4. Manual cash_register entries (arqueos and manual extractions)
+        // 4. Manual cash_register entries (arqueos, cuadres de cajera, y extracciones manuales)
         activeRecords.forEach(rec => {
-            const isArqueo = rec.type === 'arqueo';
+            const quien = rec.reference ? ` — ${rec.reference.split('@')[0]}` : '';
+            let icon, color, bg, description, category;
+
+            if (rec.type === 'arqueo') {
+                icon = 'ph ph-scales'; color = '#6366f1'; bg = 'rgba(99,102,241,0.1)';
+                description = rec.description || 'Arqueo de caja';
+                category = 'Arqueo';
+            } else if (rec.type === 'cuadre') {
+                icon = 'ph ph-check-square'; color = '#0891b2'; bg = 'rgba(8,145,178,0.1)';
+                description = (rec.description || 'Cuadre de cajera') + quien;
+                category = 'Cuadre Cajera';
+            } else if (rec.type === 'fondo_apertura') {
+                icon = 'ph ph-vault'; color = '#f59e0b'; bg = 'rgba(245,158,11,0.1)';
+                description = (rec.description || 'Fondo de apertura') + quien;
+                category = 'Fondo Apertura';
+            } else if (rec.type === 'gasto_caja') {
+                icon = 'ph ph-coins'; color = '#ef4444'; bg = 'rgba(239,68,68,0.1)';
+                description = (rec.description || 'Gasto caja chica') + quien;
+                category = 'Caja Chica';
+            } else {
+                icon = rec.amount >= 0 ? 'ph ph-arrow-square-in' : 'ph ph-arrow-square-out';
+                color = rec.amount >= 0 ? '#10b981' : '#ef4444';
+                bg = rec.amount >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
+                description = rec.description || 'Movimiento manual';
+                category = rec.category || rec.type;
+            }
+
             movements.push({
                 id: `cr-${rec.id}`,
                 date: rec.date,
                 type: rec.type,
-                category: rec.category || (isArqueo ? 'Arqueo' : rec.type),
+                category,
                 amount: parseFloat(rec.amount) || 0,
-                description: rec.description || (isArqueo ? 'Arqueo de caja' : 'Movimiento manual'),
-                icon: isArqueo ? 'ph ph-scales' : (rec.amount >= 0 ? 'ph ph-arrow-square-in' : 'ph ph-arrow-square-out'),
-                color: isArqueo ? '#6366f1' : (rec.amount >= 0 ? '#10b981' : '#ef4444'),
-                bg: isArqueo ? 'rgba(99,102,241,0.1)' : (rec.amount >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'),
+                description,
+                icon, color, bg,
                 source: 'cash_register',
                 sourceId: rec.id,
                 notes: rec.notes,
@@ -444,6 +471,9 @@ async function renderCajaView() {
                     'salida_gasto': '🔧 Gasto',
                     'salida_sueldo': '👷 Sueldo',
                     'salida_retiro': '💼 Retiro',
+                    'cuadre': '🔲 Cuadre',
+                    'fondo_apertura': '🔓 Fondo',
+                    'gasto_caja': '🧾 Caja Chica',
                 }[m.type] || m.type;
 
                 html += `
