@@ -369,8 +369,8 @@ window.Views = window.Views || {};
                 if (isNaN(v)) { difEl.textContent = ''; return; }
                 const dif = v - efectivoEsperado;
                 if (Math.abs(dif) < 1) { difEl.textContent = '✓ Cuadra'; difEl.style.color = '#16a34a'; }
-                else if (dif > 0) { difEl.textContent = `Sobra ${fmt(dif)}`; difEl.style.color = '#d97706'; }
-                else { difEl.textContent = `Falta ${fmt(-dif)}`; difEl.style.color = 'var(--danger)'; }
+                else if (dif > 0) { difEl.innerHTML = `Sobra ${fmt(dif)}`; difEl.style.color = '#d97706'; }
+                else { difEl.innerHTML = `Falta ${fmt(-dif)}`; difEl.style.color = 'var(--danger)'; }
             }
 
             if (contado) {
