@@ -1,7 +1,7 @@
 // Cache Nuker — corre UNA vez por usuario al cambiar NUKE_VERSION.
 // Desregistra SWs, borra Cache Storage e IndexedDB, luego recarga.
 (function cacheNuker() {
-    var NUKE_VERSION = 'v1062';
+    var NUKE_VERSION = 'v1095';
     var FLAG = 'wm_cache_nuked_' + NUKE_VERSION;
     if (localStorage.getItem(FLAG)) return;
 
