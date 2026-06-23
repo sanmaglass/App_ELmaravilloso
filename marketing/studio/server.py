@@ -355,7 +355,7 @@ def public_url(local_rel):
 
 # ---------- OAuth con Facebook: conectar Instagram con 1 clic ----------
 FB_REDIRECT = os.environ.get("FB_REDIRECT_URI", "http://localhost:8000/api/fb-callback")
-FB_SCOPES = "instagram_basic,instagram_content_publish,instagram_manage_insights,pages_show_list,pages_read_engagement,business_management"
+FB_SCOPES = "instagram_basic,instagram_content_publish,instagram_manage_insights,pages_show_list,pages_read_engagement,business_management,instagram_manage_comments,instagram_manage_messages,pages_manage_metadata,pages_messaging"
 IG_AUTH_FILE = os.path.join(HERE, "ig_auth.json")
 
 def load_ig_auth():
@@ -741,6 +741,206 @@ def insights_besttimes():
         "best": {"weekday_label": best_wd_label, "hour": best_hr},
     }
 
+
+# ---------- INBOX: comentarios y DMs de Instagram ----------
+
+def _ig_post_json(path, payload, token):
+    """POST a Graph API con cuerpo JSON (para endpoints que no aceptan urlencode)."""
+    url = f"{GRAPH}/{path}?access_token={urllib.parse.quote(token, safe='')}"
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data, method="POST")
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        try:
+            msg = json.loads(e.read().decode("utf-8", "ignore")).get("error", {}).get("message", "")
+        except Exception:
+            msg = ""
+        raise RuntimeError(msg or f"HTTP {e.code}")
+
+def ai_reply(context_text, kind):
+    """Genera borrador de respuesta en voz de marca (Haiku, barato)."""
+    import anthropic
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not key:
+        raise RuntimeError("no_key")
+    client = anthropic.Anthropic(api_key=key)
+    kind_rules = (
+        "Estás respondiendo un COMENTARIO en una publicación de Instagram. "
+        "Sé breve (1-2 frases), agradece o valida, e invita a pasar por el local o escribir por DM."
+        if kind == "comment" else
+        "Estás respondiendo un DM (mensaje directo) de Instagram. "
+        "Sé breve (1-3 frases), resuelve la duda del cliente y orienta a compra o despacho."
+    )
+    system = (
+        "Eres el community manager de Distribuidora El Maravilloso (Hualpén, Chile). "
+        "Escribes en español chileno informal y cercano. "
+        "NUNCA menciones fiado ni crédito. "
+        f"{kind_rules} "
+        "Devuelve SOLO el texto de la respuesta, sin comillas ni explicaciones.\n\n"
+        "Voz de marca:\n" + BRAND_MD
+    )
+    msg = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=120,
+        system=system,
+        messages=[{"role": "user", "content": context_text}],
+    )
+    return next(b.text for b in msg.content if b.type == "text").strip()
+
+# --- Comentarios ---
+
+@app.get("/api/inbox/comments")
+def inbox_comments(limit: int = 8):
+    token, ig_id = get_ig_auth()
+    if not token or not ig_id:
+        return {"connected": False}
+    # medias recientes
+    try:
+        medias_raw = _ig_api("GET", f"{ig_id}/media",
+            {"fields": "id,permalink,thumbnail_url,media_url,caption",
+             "limit": limit, "access_token": token})
+    except Exception:
+        return {"connected": True, "comments": []}
+
+    comments = []
+    for m in medias_raw.get("data", []):
+        mid = m.get("id")
+        thumb = m.get("thumbnail_url") or m.get("media_url")
+        permalink = m.get("permalink")
+        try:
+            c_raw = _ig_api("GET", f"{mid}/comments",
+                {"fields": "id,text,username,timestamp,like_count,replies{id,text,username}",
+                 "access_token": token})
+        except Exception:
+            continue  # saltar esta media si falla
+        for c in c_raw.get("data", []):
+            replies = (c.get("replies") or {}).get("data", [])
+            replied = len(replies) > 0
+            comments.append({
+                "id": c.get("id"),
+                "media_id": mid,
+                "media_thumbnail": thumb,
+                "media_permalink": permalink,
+                "text": c.get("text"),
+                "username": c.get("username"),
+                "timestamp": c.get("timestamp"),
+                "like_count": c.get("like_count", 0),
+                "replied": replied,
+            })
+
+    comments.sort(key=lambda x: x.get("timestamp") or "", reverse=True)
+    return {"connected": True, "comments": comments}
+
+@app.post("/api/inbox/comment-reply")
+async def inbox_comment_reply(req: Request):
+    b = await req.json()
+    token, ig_id = get_ig_auth()
+    if not token or not ig_id:
+        return {"connected": False}
+    comment_id = b.get("comment_id")
+    message = b.get("message", "")
+    try:
+        r = _ig_api("POST", f"{comment_id}/replies",
+                    {"message": message, "access_token": token})
+        return {"ok": True, "id": r.get("id")}
+    except Exception as e:
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+@app.post("/api/inbox/comment-hide")
+async def inbox_comment_hide(req: Request):
+    b = await req.json()
+    token, ig_id = get_ig_auth()
+    if not token or not ig_id:
+        return {"connected": False}
+    comment_id = b.get("comment_id")
+    hide = "true" if b.get("hide") else "false"
+    try:
+        _ig_api("POST", f"{comment_id}", {"hide": hide, "access_token": token})
+        return {"ok": True}
+    except Exception as e:
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+# --- DMs / Conversaciones ---
+
+@app.get("/api/inbox/conversations")
+def inbox_conversations(limit: int = 20):
+    token, ig_id = get_ig_auth()
+    if not token or not ig_id:
+        return {"connected": False}
+    try:
+        conv_raw = _ig_api("GET", f"{ig_id}/conversations",
+            {"platform": "instagram",
+             "fields": "participants,updated_time,messages.limit(15){message,from,created_time}",
+             "limit": limit, "access_token": token})
+    except Exception:
+        return {"connected": True, "conversations": []}
+
+    conversations = []
+    for conv in conv_raw.get("data", []):
+        # participante que NO es ig_id
+        participants = (conv.get("participants") or {}).get("data", [])
+        other = next((p for p in participants if str(p.get("id")) != str(ig_id)), None)
+        user_id = other.get("id") if other else None
+        username = other.get("username") or other.get("name") if other else None
+
+        # mensajes en orden cronológico
+        msgs_raw = (conv.get("messages") or {}).get("data", [])
+        messages = []
+        for msg in msgs_raw:
+            frm = msg.get("from") or {}
+            messages.append({
+                "text": msg.get("message"),
+                "from_me": str(frm.get("id")) == str(ig_id),
+                "time": msg.get("created_time"),
+            })
+        messages.sort(key=lambda x: x.get("time") or "")
+        last_message = messages[-1]["text"] if messages else None
+
+        conversations.append({
+            "id": conv.get("id"),
+            "user_id": user_id,
+            "username": username,
+            "updated_time": conv.get("updated_time"),
+            "last_message": last_message,
+            "messages": messages,
+        })
+
+    conversations.sort(key=lambda x: x.get("updated_time") or "", reverse=True)
+    return {"connected": True, "conversations": conversations}
+
+@app.post("/api/inbox/dm-reply")
+async def inbox_dm_reply(req: Request):
+    b = await req.json()
+    token, ig_id = get_ig_auth()
+    if not token or not ig_id:
+        return {"connected": False}
+    recipient_id = b.get("recipient_id")
+    message = b.get("message", "")
+    try:
+        _ig_post_json(f"{ig_id}/messages",
+                      {"recipient": {"id": recipient_id}, "message": {"text": message}},
+                      token)
+        return {"ok": True}
+    except Exception as e:
+        return JSONResponse({"error": str(e)[:300]}, status_code=500)
+
+@app.post("/api/inbox/ai-reply")
+async def inbox_ai_reply(req: Request):
+    b = await req.json()
+    context = b.get("context", "")
+    kind = b.get("kind", "comment")
+    try:
+        reply = ai_reply(context, kind)
+        return {"reply": reply}
+    except RuntimeError as e:
+        if "no_key" in str(e):
+            return JSONResponse({"error": "no_key"}, status_code=400)
+        return JSONResponse({"error": "fallo"}, status_code=500)
+    except Exception:
+        return JSONResponse({"error": "fallo"}, status_code=500)
 
 # ---------- Eliminar post ----------
 @app.post("/api/delete")

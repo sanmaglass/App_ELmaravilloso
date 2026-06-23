@@ -192,6 +192,106 @@
               padding:9px 16px;font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;
               display:inline-flex;align-items:center;gap:6px;transition:.16s}
   .ig-refresh:hover{background:#ece6db;transform:translateY(-1px)}
+
+  /* ── INBOX ───────────────────────────────────────────── */
+  .inbox-toolbar{display:flex;align-items:center;gap:10px;margin:20px 0 16px;flex-wrap:wrap}
+  .inbox-toolbar h2{margin:0;font-size:1.05rem}
+  .inbox-segs{display:flex;gap:4px;background:linear-gradient(180deg,#fff,var(--cream-2));
+              border:1px solid var(--line);border-radius:13px;padding:4px}
+  .inbox-seg{border:none;background:transparent;font:inherit;font-size:.88rem;font-weight:600;
+             color:var(--muted);padding:8px 16px;border-radius:9px;cursor:pointer;
+             transition:background .16s,color .16s,box-shadow .16s}
+  .inbox-seg:hover{background:#f3efe7;color:var(--ink)}
+  .inbox-seg.active{background:var(--grad-red);color:#fff;box-shadow:0 4px 14px -4px rgba(237,28,36,.45)}
+  .inbox-refresh{margin-left:auto;background:#f3efe7;color:var(--ink);border:none;border-radius:11px;
+                 padding:8px 14px;font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;
+                 display:inline-flex;align-items:center;gap:6px;transition:.16s}
+  .inbox-refresh:hover{background:#ece6db;transform:translateY(-1px)}
+
+  /* comentarios */
+  .inbox-list{display:flex;flex-direction:column;gap:14px;margin-top:4px}
+  .cmt-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;
+            overflow:hidden;box-shadow:var(--shadow-sm);animation:rise .38s cubic-bezier(.2,.7,.3,1) both;
+            transition:box-shadow .18s,transform .18s;display:flex;gap:0}
+  .cmt-card:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
+  .cmt-thumb-wrap{width:80px;flex-shrink:0;position:relative}
+  .cmt-thumb{width:80px;height:80px;background:#f0ebe1 center/cover no-repeat;display:block;flex-shrink:0}
+  .cmt-thumb-wrap a{display:block;height:100%}
+  .cmt-body{flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+  .cmt-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .cmt-user{font-weight:700;font-size:.92rem;color:var(--red)}
+  .cmt-time{color:var(--muted);font-size:.78rem}
+  .cmt-replied{background:#e7f6ec;color:var(--ok);font-size:.72rem;font-weight:700;
+               padding:3px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:4px}
+  .cmt-text{font-size:.92rem;color:var(--ink);line-height:1.5;word-break:break-word}
+  .cmt-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:2px}
+  .cmt-textarea{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:11px;
+                font:inherit;font-size:.88rem;background:#fff;resize:vertical;min-height:54px;
+                transition:.15s;color:var(--ink)}
+  .cmt-textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(237,28,36,.10)}
+  .btn-ai{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:10px;
+          padding:7px 13px;font:inherit;font-size:.82rem;font-weight:700;cursor:pointer;
+          display:inline-flex;align-items:center;gap:5px;transition:.16s;position:relative;overflow:hidden}
+  .btn-ai::after{content:"";position:absolute;top:0;left:-120%;width:60%;height:100%;
+                 background:linear-gradient(100deg,transparent,rgba(255,255,255,.3),transparent);transition:left .45s ease}
+  .btn-ai:hover::after{left:140%}
+  .btn-ai:hover{filter:brightness(1.08);transform:translateY(-1px)}
+  .btn-ai:disabled{opacity:.6;cursor:wait;transform:none}
+  .btn-inbox-act{background:#f3efe7;color:var(--ink);border:none;border-radius:10px;
+                 padding:7px 13px;font:inherit;font-size:.82rem;font-weight:600;cursor:pointer;
+                 display:inline-flex;align-items:center;gap:5px;transition:.16s}
+  .btn-inbox-act:hover{background:#ece6db;transform:translateY(-1px)}
+  .btn-inbox-act.red{background:var(--grad-red);color:#fff;box-shadow:0 6px 16px -5px rgba(237,28,36,.45)}
+  .btn-inbox-act.red:hover{filter:brightness(1.05)}
+  .btn-inbox-act:disabled{opacity:.6;cursor:wait;transform:none}
+  .nokey-warn{font-size:.8rem;color:var(--amber);margin-top:4px;
+              background:#fff8ea;border:1px solid rgba(196,127,26,.25);border-radius:9px;padding:6px 10px}
+
+  /* DMs */
+  .conv-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;
+             overflow:hidden;box-shadow:var(--shadow-sm);animation:rise .38s cubic-bezier(.2,.7,.3,1) both;
+             margin-bottom:14px;transition:box-shadow .18s}
+  .conv-card:hover{box-shadow:var(--shadow)}
+  .conv-header{display:flex;align-items:center;gap:10px;padding:14px 16px 10px;
+               border-bottom:1px solid var(--line)}
+  .conv-user{font-weight:700;font-size:.96rem}
+  .conv-time{color:var(--muted);font-size:.78rem;margin-left:auto}
+  .conv-messages{padding:12px 16px;display:flex;flex-direction:column;gap:7px;max-height:240px;overflow-y:auto}
+  .bubble{max-width:72%;padding:9px 13px;border-radius:16px;font-size:.88rem;line-height:1.45;word-break:break-word;
+          animation:bub-in .22s ease both}
+  @keyframes bub-in{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+  .bubble.mine{align-self:flex-end;background:var(--grad-red);color:#fff;border-bottom-right-radius:4px}
+  .bubble.theirs{align-self:flex-start;background:#f3efe7;color:var(--ink);border-bottom-left-radius:4px}
+  .bub-time{font-size:.7rem;color:var(--muted);margin-top:2px}
+  .mine .bub-time{text-align:right;color:rgba(255,255,255,.65)}
+  .conv-reply{padding:12px 16px 14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+  .conv-reply textarea{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:11px;
+                       font:inherit;font-size:.88rem;background:#fff;resize:vertical;min-height:50px;
+                       transition:.15s;color:var(--ink)}
+  .conv-reply textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(237,28,36,.10)}
+  .conv-reply-btns{display:flex;gap:7px;flex-wrap:wrap}
+  .conv-error{font-size:.82rem;color:#c0392b;background:#fff0ee;border:1px solid rgba(192,57,43,.22);
+              border-radius:9px;padding:7px 11px;margin-top:4px;display:none}
+  .conv-error.show{display:block}
+
+  /* inbox skeletons */
+  .inbox-skel-item{background:linear-gradient(180deg,#fff,var(--cream-2));border:1px solid var(--line);
+                   border-radius:18px;padding:18px;display:flex;gap:14px;margin-bottom:12px}
+  .inbox-skel-sq{width:80px;height:80px;flex-shrink:0;border-radius:12px;
+                 background:linear-gradient(90deg,#ece6db 25%,#f6f3ec 50%,#ece6db 75%);
+                 background-size:200% 100%;animation:shimmer 1.4s infinite}
+  .inbox-skel-lines{flex:1;display:flex;flex-direction:column;gap:8px;justify-content:center}
+  .inbox-skel-line{height:.85em;border-radius:6px;
+                   background:linear-gradient(90deg,#ece6db 25%,#f6f3ec 50%,#ece6db 75%);
+                   background-size:200% 100%;animation:shimmer 1.4s infinite}
+
+  @media(max-width:680px){
+    .cmt-card{flex-direction:column}
+    .cmt-thumb-wrap{width:100%}
+    .cmt-thumb{width:100%;height:120px}
+    .conv-messages{max-height:180px}
+    .bubble{max-width:88%}
+  }
 </style>
 </head>
 <body>
@@ -212,6 +312,7 @@
   <div class="tabs" role="tablist">
     <button class="tab active" id="tab-estudio" role="tab" aria-selected="true" aria-controls="sec-estudio" onclick="switchTab('estudio')">🎬 Estudio</button>
     <button class="tab" id="tab-metricas" role="tab" aria-selected="false" aria-controls="sec-metricas" onclick="switchTab('metricas')">📊 Métricas</button>
+    <button class="tab" id="tab-inbox" role="tab" aria-selected="false" aria-controls="sec-inbox" onclick="switchTab('inbox')">💬 Inbox</button>
   </div>
 
   <!-- SECCIÓN ESTUDIO (todo el contenido anterior) -->
@@ -249,6 +350,11 @@
   <div id="sec-metricas" class="section" role="tabpanel" aria-labelledby="tab-metricas">
     <div id="ig-metrics-root"></div>
   </div>
+
+  <!-- SECCIÓN INBOX -->
+  <div id="sec-inbox" class="section" role="tabpanel" aria-labelledby="tab-inbox">
+    <div id="inbox-root"></div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -274,6 +380,7 @@ function switchTab(name){
     s.classList.toggle('active',s.id==='sec-'+name);
   });
   if(name==='metricas') loadMetrics();
+  if(name==='inbox') loadInbox();
 }
 
 /* ─── GRÁFICOS (instancias para destruir al recargar) ─── */
@@ -638,6 +745,321 @@ async function upload(files){
   const fd=new FormData();[...files].forEach(f=>fd.append('files',f));
   toast('Subiendo…'); await fetch('/api/upload',{method:'POST',body:fd}); toast('Fotos subidas ✓'); load();
 }
+/* ─────────────────────────────────────────────────────── */
+/* ── INBOX ────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────── */
+
+let _inboxLoaded=false;
+let _inboxSub='comments'; // 'comments' | 'dms'
+
+/* tiempo relativo en español */
+function timeAgo(ts){
+  if(!ts)return'';
+  const d=new Date(ts),now=new Date(),diff=Math.floor((now-d)/1000);
+  if(diff<60)return'hace unos segundos';
+  if(diff<3600){const m=Math.floor(diff/60);return`hace ${m} min`;}
+  if(diff<86400){const h=Math.floor(diff/3600);return`hace ${h} h`;}
+  if(diff<172800)return'ayer';
+  const days=Math.floor(diff/86400);
+  if(days<7)return`hace ${days} días`;
+  return d.toLocaleDateString('es-CL',{day:'numeric',month:'short'});
+}
+
+/* skeleton loader */
+function inboxSkeleton(n=3){
+  return Array.from({length:n},()=>`
+    <div class="inbox-skel-item">
+      <div class="inbox-skel-sq"></div>
+      <div class="inbox-skel-lines">
+        <div class="inbox-skel-line" style="width:40%"></div>
+        <div class="inbox-skel-line" style="width:75%"></div>
+        <div class="inbox-skel-line" style="width:55%"></div>
+      </div>
+    </div>`).join('');
+}
+
+/* render de controles de toolbar */
+function inboxToolbarHTML(){
+  return `
+    <div class="inbox-toolbar">
+      <h2 style="margin:0;display:flex;align-items:center;gap:10px">
+        <span class="dot"></span>Inbox Instagram
+      </h2>
+      <div class="inbox-segs" role="group" aria-label="Sub-sección">
+        <button class="inbox-seg ${_inboxSub==='comments'?'active':''}" onclick="inboxSetSub('comments')" aria-pressed="${_inboxSub==='comments'}">💬 Comentarios</button>
+        <button class="inbox-seg ${_inboxSub==='dms'?'active':''}" onclick="inboxSetSub('dms')" aria-pressed="${_inboxSub==='dms'}">✉️ Mensajes</button>
+      </div>
+      <button class="inbox-refresh" onclick="refreshInbox()" aria-label="Actualizar inbox">🔄 Actualizar</button>
+    </div>`;
+}
+
+/* estado vacío de conexión (reutilizable) */
+function inboxNotConnected(){
+  return `
+    <div class="ig-empty">
+      <span class="ic-big">💬</span>
+      <strong style="font-size:1.15rem;display:block">Conecta tu Instagram para ver tu inbox</strong>
+      <p>Vincula tu cuenta para responder comentarios<br>y mensajes directos desde aquí.</p>
+      <button class="btn btn-red" style="width:auto;padding:12px 32px" onclick="window.location='/api/fb-connect'">🔗 Conectar Instagram</button>
+    </div>`;
+}
+
+/* ── COMENTARIOS ────────────────────────────────────────── */
+function renderComments(comments){
+  if(!comments.length) return `<div class="empty">No hay comentarios recientes.</div>`;
+  return `<div class="inbox-list" id="cmt-list">${comments.map((c,i)=>commentCard(c,i)).join('')}</div>`;
+}
+
+function commentCard(c,i=0){
+  const esc=s=>(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const thumb=c.media_thumbnail
+    ?`<div class="cmt-thumb" style="background-image:url('${esc(c.media_thumbnail)}')" role="img" aria-label="miniatura"></div>`
+    :`<div class="cmt-thumb" style="background:#f0ebe1 center/cover no-repeat" role="img" aria-label="sin miniatura"></div>`;
+  const thumbWrap=c.media_permalink
+    ?`<div class="cmt-thumb-wrap"><a href="${esc(c.media_permalink)}" target="_blank" rel="noopener" title="Ver publicación">${thumb}</a></div>`
+    :`<div class="cmt-thumb-wrap">${thumb}</div>`;
+  return `
+    <div class="cmt-card" style="animation-delay:${i*45}ms" id="cmt-${esc(c.id)}">
+      ${thumbWrap}
+      <div class="cmt-body">
+        <div class="cmt-meta">
+          <span class="cmt-user">@${esc(c.username)}</span>
+          <span class="cmt-time">${timeAgo(c.timestamp)}</span>
+          ${c.like_count?`<span class="cmt-time">❤️ ${fmtN(c.like_count)}</span>`:''}
+          ${c.replied?'<span class="cmt-replied">✓ respondido</span>':''}
+        </div>
+        <div class="cmt-text">${esc(c.text)}</div>
+        <textarea class="cmt-textarea" id="ta-${esc(c.id)}" placeholder="Escribe tu respuesta…" rows="2" aria-label="Respuesta al comentario de @${esc(c.username)}"></textarea>
+        <div id="nokey-${esc(c.id)}" class="nokey-warn" style="display:none">⚠️ Falta la API key de Claude en .env</div>
+        <div class="cmt-actions">
+          <button class="btn-ai" onclick="cmtAI('${esc(c.id)}','${esc(c.text).replace(/'/g,"\\'")}',this)" aria-label="Sugerir respuesta con IA">✨ Sugerir IA</button>
+          <button class="btn-inbox-act red" onclick="cmtReply('${esc(c.id)}',this)" aria-label="Enviar respuesta">Responder</button>
+          <button class="btn-inbox-act" onclick="cmtHide('${esc(c.id)}',this)" aria-label="Ocultar comentario">🚫 Ocultar</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function cmtAI(comment_id,context,btn){
+  btn.disabled=true;
+  const orig=btn.innerHTML;
+  btn.innerHTML='<span class="spin"></span>';
+  const nk=document.getElementById('nokey-'+comment_id);
+  try{
+    const r=await api('/api/inbox/ai-reply',{context,kind:'comment'});
+    if(r.error==='no_key'){if(nk)nk.style.display='block';}
+    else if(r.reply){
+      const ta=document.getElementById('ta-'+comment_id);
+      if(ta){ta.value=r.reply;ta.focus();}
+      if(nk)nk.style.display='none';
+    } else if(r.error){toast('IA: '+r.error);}
+  }catch(e){toast('Error al contactar IA');}
+  btn.disabled=false;btn.innerHTML=orig;
+}
+
+async function cmtReply(comment_id,btn){
+  const ta=document.getElementById('ta-'+comment_id);
+  const message=(ta?ta.value:'').trim();
+  if(!message){ta&&ta.focus();toast('Escribe una respuesta primero');return;}
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{
+    const r=await api('/api/inbox/comment-reply',{comment_id,message});
+    if(r.ok){
+      toast('Respuesta enviada ✓');
+      /* marcar como respondido sin recargar todo */
+      const card=document.getElementById('cmt-'+comment_id);
+      if(card){
+        const meta=card.querySelector('.cmt-meta');
+        if(meta&&!meta.querySelector('.cmt-replied')){
+          meta.insertAdjacentHTML('beforeend','<span class="cmt-replied">✓ respondido</span>');
+        }
+        if(ta)ta.value='';
+      }
+    } else {toast('Error: '+(r.error||'desconocido'));}
+  }catch(e){toast('Error al enviar respuesta');}
+  btn.disabled=false;btn.innerHTML='Responder';
+}
+
+async function cmtHide(comment_id,btn){
+  if(!confirm('¿Ocultar este comentario en Instagram?'))return;
+  btn.disabled=true;btn.innerHTML='<span class="spin dark"></span>';
+  try{
+    const r=await api('/api/inbox/comment-hide',{comment_id,hide:true});
+    if(r.ok){
+      toast('Comentario ocultado');
+      const card=document.getElementById('cmt-'+comment_id);
+      if(card){card.style.opacity='.4';card.style.pointerEvents='none';}
+    } else {toast('Error: '+(r.error||'desconocido'));}
+  }catch(e){toast('Error al ocultar comentario');}
+  btn.disabled=false;btn.innerHTML='🚫 Ocultar';
+}
+
+/* ── MENSAJES DIRECTOS ─────────────────────────────────── */
+function renderDMs(conversations){
+  if(!conversations.length) return `<div class="empty">No hay conversaciones recientes.</div>`;
+  return conversations.map((conv,i)=>convCard(conv,i)).join('');
+}
+
+function convCard(conv,i=0){
+  const esc=s=>(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const msgs=(conv.messages||[]);
+  const bubbles=msgs.map(m=>`
+    <div>
+      <div class="bubble ${m.from_me?'mine':'theirs'}">${esc(m.text)}</div>
+      ${m.time?`<div class="bub-time">${timeAgo(m.time)}</div>`:''}
+    </div>`).join('');
+  /* context para IA: último mensaje del usuario o hilo completo */
+  const lastUserMsg=msgs.filter(m=>!m.from_me).map(m=>m.text).pop()||conv.last_message||'';
+  const aiCtx=lastUserMsg;
+  return `
+    <div class="conv-card" style="animation-delay:${i*45}ms" id="conv-${esc(conv.id)}">
+      <div class="conv-header">
+        <span style="font-size:1.3rem">👤</span>
+        <div>
+          <div class="conv-user">@${esc(conv.username)}</div>
+          ${conv.last_message?`<div style="font-size:.78rem;color:var(--muted);margin-top:1px;max-width:260px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${esc(conv.last_message)}</div>`:''}
+        </div>
+        <span class="conv-time">${timeAgo(conv.updated_time)}</span>
+      </div>
+      ${msgs.length?`<div class="conv-messages" id="msgs-${esc(conv.id)}">${bubbles}</div>`:''}
+      <div class="conv-reply">
+        <textarea id="dta-${esc(conv.id)}" placeholder="Escribe un mensaje…" rows="2" aria-label="Mensaje a @${esc(conv.username)}"></textarea>
+        <div id="nokey-dm-${esc(conv.id)}" class="nokey-warn" style="display:none">⚠️ Falta la API key de Claude en .env</div>
+        <div class="conv-reply-btns">
+          <button class="btn-ai" onclick="dmAI('${esc(conv.id)}','${esc(conv.user_id)}','${esc(aiCtx).replace(/'/g,"\\'")}',this)" aria-label="Sugerir respuesta con IA">✨ Sugerir IA</button>
+          <button class="btn-inbox-act red" onclick="dmSend('${esc(conv.id)}','${esc(conv.user_id)}',this)" aria-label="Enviar mensaje">Enviar</button>
+        </div>
+        <div class="conv-error" id="dm-err-${esc(conv.id)}"></div>
+      </div>
+    </div>`;
+}
+
+async function dmAI(conv_id,user_id,context,btn){
+  btn.disabled=true;
+  const orig=btn.innerHTML;
+  btn.innerHTML='<span class="spin"></span>';
+  const nk=document.getElementById('nokey-dm-'+conv_id);
+  try{
+    const r=await api('/api/inbox/ai-reply',{context,kind:'dm'});
+    if(r.error==='no_key'){if(nk)nk.style.display='block';}
+    else if(r.reply){
+      const ta=document.getElementById('dta-'+conv_id);
+      if(ta){ta.value=r.reply;ta.focus();}
+      if(nk)nk.style.display='none';
+    } else if(r.error){toast('IA: '+r.error);}
+  }catch(e){toast('Error al contactar IA');}
+  btn.disabled=false;btn.innerHTML=orig;
+}
+
+async function dmSend(conv_id,recipient_id,btn){
+  const ta=document.getElementById('dta-'+conv_id);
+  const message=(ta?ta.value:'').trim();
+  if(!message){ta&&ta.focus();toast('Escribe un mensaje primero');return;}
+  const errEl=document.getElementById('dm-err-'+conv_id);
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  if(errEl){errEl.classList.remove('show');errEl.textContent='';}
+  try{
+    const r=await api('/api/inbox/dm-reply',{recipient_id,message});
+    if(r.ok){
+      toast('Mensaje enviado ✓');
+      if(ta)ta.value='';
+      /* agregar burbuja propia al hilo */
+      const msgs=document.getElementById('msgs-'+conv_id);
+      if(msgs){
+        msgs.insertAdjacentHTML('beforeend',`
+          <div>
+            <div class="bubble mine">${message.replace(/</g,'&lt;')}</div>
+            <div class="bub-time">ahora</div>
+          </div>`);
+        msgs.scrollTop=msgs.scrollHeight;
+      }
+    } else {
+      const msg=r.error||'No se pudo enviar';
+      if(errEl){errEl.textContent=msg;errEl.classList.add('show');}
+      else toast('Error: '+msg);
+    }
+  }catch(e){toast('Error al enviar mensaje');}
+  btn.disabled=false;btn.innerHTML='Enviar';
+}
+
+/* ── CARGA PRINCIPAL DEL INBOX ─────────────────────────── */
+async function loadInbox(force=false){
+  if(_inboxLoaded&&!force)return;
+  _inboxLoaded=true;
+  const root=document.getElementById('inbox-root');
+
+  /* spinner inicial */
+  root.innerHTML=`
+    <div style="padding:48px;text-align:center;color:var(--muted)">
+      <span class="spin dark" style="display:inline-block;width:28px;height:28px;border-width:3px"></span>
+      <p style="margin-top:14px;font-size:.92rem">Cargando inbox…</p>
+    </div>`;
+
+  /* verificar conexión */
+  let status;
+  try{status=await fetch('/api/ig-status').then(r=>r.json());}
+  catch(e){
+    root.innerHTML=`
+      ${inboxToolbarHTML()}
+      <div class="ig-empty"><span class="ic-big">⚠️</span>
+        <p>No se pudo verificar la conexión.<br>Asegúrate de que el servidor esté corriendo.</p>
+      </div>`;
+    return;
+  }
+
+  if(!status.connected){
+    root.innerHTML=inboxNotConnected();
+    return;
+  }
+
+  /* mostrar toolbar + skeleton mientras carga */
+  root.innerHTML=`${inboxToolbarHTML()}<div id="inbox-content">${inboxSkeleton(3)}</div>`;
+  await renderInboxSub();
+}
+
+async function renderInboxSub(){
+  const content=document.getElementById('inbox-content');
+  if(!content)return;
+  content.innerHTML=inboxSkeleton(3);
+
+  try{
+    if(_inboxSub==='comments'){
+      const data=await fetch('/api/inbox/comments?limit=8').then(r=>r.json());
+      if(data.connected===false){content.innerHTML=inboxNotConnected();return;}
+      content.innerHTML=renderComments(data.comments||[]);
+    } else {
+      const data=await fetch('/api/inbox/conversations?limit=20').then(r=>r.json());
+      if(data.connected===false){content.innerHTML=inboxNotConnected();return;}
+      content.innerHTML=renderDMs(data.conversations||[]);
+      /* scroll al fondo de cada hilo */
+      document.querySelectorAll('.conv-messages').forEach(el=>{ el.scrollTop=el.scrollHeight; });
+    }
+  }catch(e){
+    content.innerHTML=`
+      <div class="ig-empty"><span class="ic-big">⚠️</span>
+        <p>Error al cargar el inbox.<br>
+           <button class="btn btn-ghost btn-sm" style="width:auto;margin-top:10px" onclick="refreshInbox()">🔄 Reintentar</button>
+        </p>
+      </div>`;
+  }
+}
+
+function inboxSetSub(sub){
+  _inboxSub=sub;
+  /* actualizar pills */
+  document.querySelectorAll('.inbox-seg').forEach(b=>{
+    const isActive=b.textContent.toLowerCase().includes(sub==='comments'?'comentar':'mensaje');
+    b.classList.toggle('active',isActive);
+    b.setAttribute('aria-pressed',isActive);
+  });
+  renderInboxSub();
+}
+
+function refreshInbox(){
+  _inboxLoaded=false;
+  loadInbox();
+}
+
 load();
 </script>
 </body>
