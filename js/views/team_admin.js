@@ -36,6 +36,12 @@ window.Views = window.Views || {};
         resuelto:   { label: 'Resuelto',   color: '#16a34a', bg: 'rgba(22,163,74,0.12)' },
     };
 
+    function nameFromEmail(email) {
+        if (!email) return 'Equipo';
+        const parte = email.split('@')[0];
+        return parte.charAt(0).toUpperCase() + parte.slice(1);
+    }
+
     function badge(cfg) {
         if (!cfg) return '';
         return `<span style="font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:8px;
@@ -255,10 +261,10 @@ window.Views = window.Views || {};
                     </span>
                 </div>
 
-                <!-- Email remitente -->
+                <!-- Nombre remitente -->
                 <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">
                     <i class="ph ph-user" style="margin-right:4px;"></i>
-                    ${window.escapeHTML(r.user_email || r.user_id || 'Equipo')}
+                    ${window.escapeHTML(nameFromEmail(r.user_email))}
                 </div>
 
                 <!-- Título y descripción -->
@@ -327,7 +333,7 @@ window.Views = window.Views || {};
                     <button class="ta-action-btn ta-marcar-visto" data-id="${r.id}"
                             style="padding:7px 14px; border:1px solid #2563eb; border-radius:8px; background:transparent;
                                    color:#2563eb; cursor:pointer; font-size:0.82rem; font-weight:600; transition:all 0.15s;">
-                        <i class="ph ph-eye"></i> Marcar visto
+                        <i class="ph ph-check"></i> Recibido
                     </button>` : ''}
                     ${r.status !== 'respondido' && r.status !== 'resuelto' ? `
                     <button class="ta-action-btn ta-responder" data-id="${r.id}"
@@ -339,7 +345,7 @@ window.Views = window.Views || {};
                     <button class="ta-action-btn ta-resolver" data-id="${r.id}"
                             style="padding:7px 14px; border:1px solid #16a34a; border-radius:8px; background:transparent;
                                    color:#16a34a; cursor:pointer; font-size:0.82rem; font-weight:600; transition:all 0.15s;">
-                        <i class="ph ph-check-circle"></i> Resolver
+                        <i class="ph ph-check-circle"></i> Resuelto
                     </button>` : ''}
                 </div>
             </div>
@@ -385,7 +391,7 @@ window.Views = window.Views || {};
         list.querySelectorAll('.ta-marcar-visto').forEach(btn => {
             btn.addEventListener('click', async () => {
                 await updateReport(btn.dataset.id, { status: 'visto' });
-                window.showToast('Reporte marcado como visto.', 'success');
+                window.showToast('Recibido ✓', 'success');
             });
         });
 
