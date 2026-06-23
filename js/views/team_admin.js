@@ -26,6 +26,7 @@ window.Views = window.Views || {};
         merma:     { label: 'Merma',     color: '#dc2626', bg: 'rgba(220,38,38,0.12)' },
         limpieza:  { label: 'Limpieza',  color: '#16a34a', bg: 'rgba(22,163,74,0.12)' },
         reporte:   { label: 'Reporte',   color: '#7c3aed', bg: 'rgba(124,58,237,0.12)' },
+        vendedor:  { label: 'Vendedor',  color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
     };
 
     const STATUS_CONFIG = {
@@ -268,6 +269,15 @@ window.Views = window.Views || {};
                 <div style="font-size:0.88rem; color:var(--text-muted); margin-bottom:10px; line-height:1.5;">
                     ${window.escapeHTML(r.description)}
                 </div>` : ''}
+
+                ${(r.type === 'vendedor' && r.items && r.items[0]) ? (() => {
+                    const v = r.items[0];
+                    return `<div style="display:flex; flex-wrap:wrap; gap:6px 14px; margin-bottom:10px; font-size:0.82rem; color:var(--text-muted);">
+                        ${v.empresa   ? `<span><i class="ph ph-buildings" style="margin-right:3px;"></i>${window.escapeHTML(v.empresa)}</span>` : ''}
+                        ${v.telefono  ? `<span><i class="ph ph-phone" style="margin-right:3px;"></i><a href="tel:${window.escapeHTML(v.telefono)}" style="color:inherit; text-decoration:underline;">${window.escapeHTML(v.telefono)}</a></span>` : ''}
+                        ${v.productos ? `<span><i class="ph ph-tag" style="margin-right:3px;"></i>${window.escapeHTML(v.productos)}</span>` : ''}
+                    </div>`;
+                })() : ''}
 
                 <!-- Fotos -->
                 ${hasPhotos ? `

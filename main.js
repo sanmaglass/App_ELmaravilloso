@@ -641,7 +641,7 @@ async function init() {
         try {
             if (window.PushSubscribe) {
                 await window.PushSubscribe.init();
-                if (Notification.permission === 'granted') {
+                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                     await window.PushSubscribe.subscribe();
                 }
             }
@@ -668,7 +668,7 @@ async function init() {
         }
         // ── Prompt agresivo de notificaciones (employees) ──────────
         // Muestra modal la primera vez si no tiene permiso. Se guarda en localStorage.
-        if (window._isEmployee && Notification.permission !== 'granted' && !localStorage.getItem('wm_push_asked')) {
+        if (window._isEmployee && typeof Notification !== 'undefined' && Notification.permission !== 'granted' && !localStorage.getItem('wm_push_asked')) {
             setTimeout(() => {
                 const overlay = document.createElement('div');
                 overlay.id = 'push-prompt-overlay';

@@ -8,6 +8,7 @@ window.Views = window.Views || {};
         merma:    { label: 'Merma',    icon: 'ph-trash',     color: '#ef4444', bg: '#fef2f2', placeholder_title: '¿Qué producto se dañó o venció?', placeholder_desc: 'Describe el estado, cantidad afectada...' },
         limpieza: { label: 'Limpieza', icon: 'ph-broom',     color: '#22c55e', bg: '#f0fdf4', placeholder_title: '¿Qué producto de aseo usaste?',   placeholder_desc: 'Indica cantidad utilizada y área limpiada...' },
         reporte:  { label: 'Reporte',  icon: 'ph-chat-text', color: '#f97316', bg: '#fff7ed', placeholder_title: 'Asunto del reporte',              placeholder_desc: 'Describe la situación con el mayor detalle posible...' },
+        vendedor: { label: 'Vendedor', icon: 'ph-handshake', color: '#8b5cf6', bg: '#f5f3ff', placeholder_title: 'Nombre del vendedor',            placeholder_desc: 'Notas adicionales (dejó catálogo, muestras, etc.)...' },
     };
 
     const STATUS_CFG = {
@@ -87,6 +88,14 @@ window.Views = window.Views || {};
         const desc     = r.description ? (r.description.length > 60 ? r.description.slice(0, 60) + '…' : r.description) : '';
         const hasPhotos = r.photo_urls && r.photo_urls.length > 0;
 
+        // Datos extra vendedor
+        const vend = (r.type === 'vendedor' && r.items && r.items[0]) ? r.items[0] : null;
+        const vendHTML = vend ? `<div style="display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:6px; font-size:0.82rem; color:var(--text-muted);">
+            ${vend.empresa   ? `<span><i class="ph ph-buildings" style="margin-right:3px;"></i>${window.escapeHTML(vend.empresa)}</span>` : ''}
+            ${vend.telefono  ? `<span><i class="ph ph-phone" style="margin-right:3px;"></i>${window.escapeHTML(vend.telefono)}</span>` : ''}
+            ${vend.productos ? `<span><i class="ph ph-tag" style="margin-right:3px;"></i>${window.escapeHTML(vend.productos)}</span>` : ''}
+        </div>` : '';
+
         const responseHTML = r.admin_response
             ? `<div style="margin-top:10px; background:var(--bg-main); border-left:3px solid ${typeCfg.color}; border-radius:0 8px 8px 0; padding:10px 12px;">
                     <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px; display:flex; align-items:center; gap:5px;">
@@ -117,6 +126,7 @@ window.Views = window.Views || {};
                     </div>
                     <div style="font-weight:700; font-size:0.97rem; color:var(--text-primary); word-break:break-word;">${window.escapeHTML(r.title)}</div>
                     ${desc ? `<div style="font-size:0.85rem; color:var(--text-muted);">${window.escapeHTML(desc)}</div>` : ''}
+                    ${vendHTML}
                 </div>
                 <div style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap; flex-shrink:0;">${timeAgo(r.created_at)}</div>
             </div>
@@ -188,7 +198,7 @@ window.Views = window.Views || {};
                 </div>
                 <div>
                     <h1 style="margin:0; font-size:1.2rem; font-weight:800; color:var(--text-primary);">Mis Reportes</h1>
-                    <p style="margin:0; font-size:0.82rem; color:var(--text-muted);">Pedidos, mermas, limpieza y avisos al equipo</p>
+                    <p style="margin:0; font-size:0.82rem; color:var(--text-muted);">Pedidos, mermas, limpieza, vendedores y avisos</p>
                 </div>
             </div>
 
@@ -217,6 +227,22 @@ window.Views = window.Views || {};
                         class="form-input"
                         placeholder="Título"
                         style="width:100%; box-sizing:border-box;">
+
+                    <!-- Campos extra vendedor (solo visibles si tipo=vendedor) -->
+                    <div id="tr-vendedor-fields" style="display:none; flex-direction:column; gap:10px; padding:14px; background:var(--bg-main); border:1px solid var(--border); border-radius:12px;">
+                        <div style="font-size:0.75rem; font-weight:700; color:#8b5cf6; text-transform:uppercase; letter-spacing:0.04em;">
+                            <i class="ph ph-handshake"></i> Datos del vendedor
+                        </div>
+                        <input id="tr-vend-empresa" type="text" maxlength="100" class="form-input"
+                               placeholder="Empresa o marca que representa"
+                               style="width:100%; box-sizing:border-box;">
+                        <input id="tr-vend-telefono" type="tel" maxlength="20" class="form-input"
+                               placeholder="Teléfono de contacto"
+                               style="width:100%; box-sizing:border-box;">
+                        <input id="tr-vend-productos" type="text" maxlength="200" class="form-input"
+                               placeholder="¿Qué productos ofrece?"
+                               style="width:100%; box-sizing:border-box;">
+                    </div>
 
                     <textarea
                         id="tr-desc"
@@ -326,6 +352,10 @@ window.Views = window.Views || {};
                 if (titleInput) titleInput.placeholder = cfg.placeholder_title;
                 if (descInput)  descInput.placeholder  = cfg.placeholder_desc;
             }
+
+            // Campos extra vendedor
+            const vendFields = container.querySelector('#tr-vendedor-fields');
+            if (vendFields) vendFields.style.display = type === 'vendedor' ? 'flex' : 'none';
         }
 
         // ── Limpiar formulario ──
@@ -336,6 +366,14 @@ window.Views = window.Views || {};
             const descInput  = container.querySelector('#tr-desc');
             if (titleInput) titleInput.value = '';
             if (descInput)  descInput.value  = '';
+
+            // Limpiar campos vendedor
+            ['tr-vend-empresa', 'tr-vend-telefono', 'tr-vend-productos'].forEach(id => {
+                const el = container.querySelector('#' + id);
+                if (el) el.value = '';
+            });
+            const vendFields = container.querySelector('#tr-vendedor-fields');
+            if (vendFields) vendFields.style.display = 'none';
 
             container.querySelectorAll('.tr-type-chip').forEach(chip => {
                 const cfg = TIPOS[chip.dataset.type];
@@ -391,6 +429,16 @@ window.Views = window.Views || {};
                 const userId   = window.Auth.session?.user?.id;
 
                 const userEmail = window.Auth.session?.user?.email || '';
+
+                // Datos extra para tipo vendedor
+                let items = [];
+                if (_selectedType === 'vendedor') {
+                    const empresa   = container.querySelector('#tr-vend-empresa')?.value.trim() || '';
+                    const telefono  = container.querySelector('#tr-vend-telefono')?.value.trim() || '';
+                    const productos = container.querySelector('#tr-vend-productos')?.value.trim() || '';
+                    items = [{ empresa, telefono, productos }];
+                }
+
                 const reportData = {
                     id:         crypto.randomUUID(),
                     tenant_id:  tenantId,
@@ -400,7 +448,7 @@ window.Views = window.Views || {};
                     title:      title,
                     description: descEl?.value.trim() || '',
                     photo_urls: photoPaths,
-                    items:      [],
+                    items:      items,
                     status:     'pendiente',
                     admin_response:       null,
                     admin_responded_at:   null,
