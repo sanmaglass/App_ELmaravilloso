@@ -12,13 +12,13 @@ window.Views = window.Views || {};
     const userRef = () => window.state?.currentUser || window.Auth?.session?.user?.email || '';
 
     const PM = {
-        'Efectivo':      { col: '#16a34a', emoji: '💵' },
-        'Tarjeta':       { col: '#2563eb', emoji: '💳' },
-        'Transferencia': { col: '#7c3aed', emoji: '🏦' },
-        'Crédito':       { col: '#d97706', emoji: '📒' },
-        'Mixto':         { col: '#0891b2', emoji: '🔀' },
+        'Efectivo':      { col: '#16a34a', icon: 'ph-money' },
+        'Tarjeta':       { col: '#2563eb', icon: 'ph-credit-card' },
+        'Transferencia': { col: '#7c3aed', icon: 'ph-bank' },
+        'Crédito':       { col: '#d97706', icon: 'ph-notebook' },
+        'Mixto':         { col: '#0891b2', icon: 'ph-arrows-split' },
     };
-    const pmInfo = (k) => PM[k] || { col: '#64748b', emoji: '🧾' };
+    const pmInfo = (k) => PM[k] || { col: '#64748b', icon: 'ph-receipt' };
 
     // ── Helpers DB (cash_register) ──
     async function loadByType(dia, type) {
@@ -164,7 +164,7 @@ window.Views = window.Views || {};
                 const g = grupos[fp]; const info = pmInfo(fp);
                 return `<div style="flex:1; min-width:120px; background:var(--bg-card); border:1px solid var(--border); border-left:4px solid ${info.col}; border-radius:14px; padding:14px 16px;">
                     <div style="display:flex; align-items:center; gap:7px; color:var(--text-muted); font-size:0.82rem; font-weight:600;">
-                        <span style="font-size:1.05rem;">${info.emoji}</span> ${fp}
+                        <i class="ph-fill ${info.icon}" style="font-size:1.05rem;"></i> ${fp}
                     </div>
                     <div style="font-size:1.7rem; font-weight:800; color:${info.col}; margin-top:6px; line-height:1;">${fmt(g.monto)}</div>
                     <div style="color:var(--text-muted); font-size:0.78rem; margin-top:4px;">${g.n} venta${g.n !== 1 ? 's' : ''}</div>
@@ -189,17 +189,26 @@ window.Views = window.Views || {};
                         <span style="color:#16a34a; font-size:0.82rem; font-weight:600;">Cuadre guardado: ${fmt(cuadre.amount)} — ${cuadre.notes}</span>
                    </div>` : '';
 
-            // ── Lista de ventas ──
-            const listaVentas = sales.slice(0, 80).map(s => {
+            // ── Lista de ventas (5 iniciales + ver más) ──
+            const VENTAS_INIT = 5;
+            const ventaRow = (s) => {
                 const info = pmInfo(s.forma_pago || 'Efectivo');
                 return `<div style="display:flex; align-items:center; justify-content:space-between; padding:11px 14px; border-bottom:1px solid var(--border);">
                     <div style="display:flex; align-items:center; gap:10px;">
                         <span style="font-size:0.85rem; color:var(--text-muted); font-variant-numeric:tabular-nums;">${chileTime(s.date)}</span>
-                        <span style="font-size:0.78rem; color:${info.col}; font-weight:600;">${info.emoji} ${s.forma_pago || 'Efectivo'}</span>
+                        <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px; font-weight:600; background:${info.col}14; color:${info.col};">${s.forma_pago || 'Efectivo'}</span>
                     </div>
                     <span style="font-weight:700; color:var(--text-primary); font-variant-numeric:tabular-nums;">${fmt(parseFloat(s.total) || 0)}</span>
                 </div>`;
-            }).join('');
+            };
+            const listaVentas = sales.slice(0, VENTAS_INIT).map(ventaRow).join('');
+            const ventasRestantes = sales.length > VENTAS_INIT ? sales.slice(VENTAS_INIT) : [];
+            const verMasHTML = ventasRestantes.length > 0
+                ? `<div id="ventas-extra" style="display:none;">${ventasRestantes.map(ventaRow).join('')}</div>
+                   <button id="btn-ver-mas-ventas" style="width:100%; padding:12px; background:none; border:none; border-top:1px solid var(--border); color:var(--primary); font-weight:600; font-size:0.88rem; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                       <i class="ph ph-caret-down"></i> Ver ${ventasRestantes.length} venta${ventasRestantes.length !== 1 ? 's' : ''} más
+                   </button>`
+                : '';
 
             // ═══════════════════════ RENDER HTML ═══════════════════════
             body.innerHTML = `
@@ -303,10 +312,14 @@ window.Views = window.Views || {};
                 <!-- ── VENTAS DEL DÍA ── -->
                 <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:20px;">
                     <div style="padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                        <h3 style="margin:0; color:var(--text-primary); font-size:1.05rem;">Ventas del día</h3>
-                        <span style="color:var(--text-muted); font-size:0.82rem;">${nTickets} ticket${nTickets !== 1 ? 's' : ''}${nTickets > 80 ? ' · mostrando 80' : ''}</span>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <i class="ph-fill ph-receipt" style="color:var(--primary); font-size:1.1rem;"></i>
+                            <h3 style="margin:0; color:var(--text-primary); font-size:1.05rem;">Ventas del día</h3>
+                        </div>
+                        <span style="color:var(--text-muted); font-size:0.82rem;">${nTickets} ticket${nTickets !== 1 ? 's' : ''}</span>
                     </div>
                     ${listaVentas}
+                    ${verMasHTML}
                 </div>` : ''}
 
                 <!-- ── FACTURAS ── -->
@@ -356,6 +369,21 @@ window.Views = window.Views || {};
                     render();
                 });
             });
+
+            // ── Ver más ventas ──
+            const btnVerMas = body.querySelector('#btn-ver-mas-ventas');
+            if (btnVerMas) {
+                btnVerMas.addEventListener('click', () => {
+                    const extra = body.querySelector('#ventas-extra');
+                    if (extra) {
+                        const showing = extra.style.display !== 'none';
+                        extra.style.display = showing ? 'none' : 'block';
+                        btnVerMas.innerHTML = showing
+                            ? `<i class="ph ph-caret-down"></i> Ver ${ventasRestantes.length} venta${ventasRestantes.length !== 1 ? 's' : ''} más`
+                            : `<i class="ph ph-caret-up"></i> Ocultar`;
+                    }
+                });
+            }
 
             // ── Cuadre interactivo ──
             const contado = body.querySelector('#caja-contado');
