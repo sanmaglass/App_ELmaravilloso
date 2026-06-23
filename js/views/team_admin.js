@@ -629,9 +629,14 @@ window.Views = window.Views || {};
             });
 
             zone.querySelector('.ta-aviso-save').addEventListener('click', async () => {
+                const saveBtn = zone.querySelector('.ta-aviso-save');
+                if (saveBtn.disabled) return;
                 const title = zone.querySelector('.ta-aviso-titulo').value.trim();
                 const body  = zone.querySelector('.ta-aviso-body').value.trim();
                 if (!title) { window.showToast('El título es obligatorio.', 'error'); return; }
+
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Publicando…';
 
                 const now = new Date().toISOString();
                 const newA = {
@@ -656,6 +661,8 @@ window.Views = window.Views || {};
                     renderAll();
                     window.showToast('Aviso publicado.', 'success');
                 } catch (err) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Publicar';
                     window.showToast('Error al guardar: ' + err.message, 'error');
                 }
             });
