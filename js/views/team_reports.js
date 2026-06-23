@@ -1,0 +1,532 @@
+// Team Reports View — Reportes del equipo (pedidos, mermas, limpieza, reportes)
+window.Views = window.Views || {};
+
+(function () {
+    // ── Constantes de tipo ──
+    const TIPOS = {
+        pedido:   { label: 'Pedido',   icon: 'ph-package',   color: '#3b82f6', bg: '#eff6ff', placeholder_title: '¿Qué producto necesitas?',       placeholder_desc: 'Indica cantidad, urgencia u otros detalles...' },
+        merma:    { label: 'Merma',    icon: 'ph-trash',     color: '#ef4444', bg: '#fef2f2', placeholder_title: '¿Qué producto se dañó o venció?', placeholder_desc: 'Describe el estado, cantidad afectada...' },
+        limpieza: { label: 'Limpieza', icon: 'ph-broom',     color: '#22c55e', bg: '#f0fdf4', placeholder_title: '¿Qué producto de aseo usaste?',   placeholder_desc: 'Indica cantidad utilizada y área limpiada...' },
+        reporte:  { label: 'Reporte',  icon: 'ph-chat-text', color: '#f97316', bg: '#fff7ed', placeholder_title: 'Asunto del reporte',              placeholder_desc: 'Describe la situación con el mayor detalle posible...' },
+    };
+
+    const STATUS_CFG = {
+        pendiente:   { label: 'Pendiente',   bg: '#fef9c3', color: '#854d0e' },
+        visto:       { label: 'Visto',       bg: '#dbeafe', color: '#1e40af' },
+        respondido:  { label: 'Respondido',  bg: '#dcfce7', color: '#166534' },
+        resuelto:    { label: 'Resuelto',    bg: '#f3f4f6', color: '#6b7280' },
+    };
+
+    const MAX_FOTOS = 3;
+    const PAGE_SIZE = 20;
+
+    // Estado local del formulario
+    let _selectedType = null;
+    let _pendingFiles = []; // { file, previewUrl }
+    let _showingAll = false;
+
+    // ── Helpers ──
+    function timeAgo(isoStr) {
+        if (!isoStr) return '';
+        const diff = Date.now() - new Date(isoStr).getTime();
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1)  return 'hace un momento';
+        if (mins < 60) return `hace ${mins} min`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24)  return `hace ${hrs}h`;
+        const days = Math.floor(hrs / 24);
+        if (days < 7)  return `hace ${days} días`;
+        return new Date(isoStr).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+    }
+
+    function typeBadgeHTML(type) {
+        const cfg = TIPOS[type];
+        if (!cfg) return '';
+        return `<span style="display:inline-flex; align-items:center; gap:5px; background:${cfg.bg}; color:${cfg.color}; border-radius:20px; padding:3px 10px; font-size:0.78rem; font-weight:700;">
+            <i class="${cfg.icon}" style="font-size:0.9rem;"></i> ${cfg.label}
+        </span>`;
+    }
+
+    function statusBadgeHTML(status) {
+        const cfg = STATUS_CFG[status] || STATUS_CFG.pendiente;
+        return `<span style="display:inline-flex; align-items:center; gap:4px; background:${cfg.bg}; color:${cfg.color}; border-radius:20px; padding:3px 10px; font-size:0.78rem; font-weight:700;">
+            ${cfg.label}
+        </span>`;
+    }
+
+    // ── Upload a Supabase Storage ──
+    async function uploadFotos(files) {
+        const supabase = window.SyncV2?.client;
+        if (!supabase) throw new Error('Cliente Supabase no disponible');
+        const tenantId = window.Auth.getTenantId();
+        const paths = [];
+        for (const file of files) {
+            const ext = file.name.split('.').pop() || 'jpg';
+            const fileName = `${tenantId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+            const { error } = await supabase.storage.from('team-photos').upload(fileName, file, { upsert: false });
+            if (error) throw error;
+            paths.push(fileName);
+        }
+        return paths;
+    }
+
+    // ── Obtener URL firmada para un path ──
+    async function getSignedUrl(path) {
+        const supabase = window.SyncV2?.client;
+        if (!supabase || !path) return null;
+        try {
+            const { data } = await supabase.storage.from('team-photos').createSignedUrl(path, 3600);
+            return data?.signedUrl || null;
+        } catch { return null; }
+    }
+
+    // ── Renderizar previews de fotos (formulario) ──
+    function renderPreviews() {
+        const previewEl = document.getElementById('tr-photo-previews');
+        if (!previewEl) return;
+        if (_pendingFiles.length === 0) {
+            previewEl.innerHTML = '';
+            return;
+        }
+        previewEl.innerHTML = _pendingFiles.map((item, idx) => `
+            <div style="position:relative; display:inline-block;">
+                <img src="${item.previewUrl}" alt="foto ${idx + 1}"
+                     style="width:72px; height:72px; object-fit:cover; border-radius:10px; border:2px solid var(--border);">
+                <button data-remove-idx="${idx}"
+                    style="position:absolute; top:-6px; right:-6px; background:#ef4444; color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:0.7rem; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"
+                    title="Quitar foto">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+        `).join('');
+
+        previewEl.querySelectorAll('[data-remove-idx]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.removeIdx, 10);
+                URL.revokeObjectURL(_pendingFiles[idx]?.previewUrl);
+                _pendingFiles.splice(idx, 1);
+                renderPreviews();
+                updatePhotoBtn();
+            });
+        });
+    }
+
+    function updatePhotoBtn() {
+        const btn = document.getElementById('tr-btn-foto');
+        if (!btn) return;
+        const remaining = MAX_FOTOS - _pendingFiles.length;
+        if (remaining <= 0) {
+            btn.disabled = true;
+            btn.innerHTML = `<i class="ph ph-image" style="font-size:1rem;"></i> Máx. ${MAX_FOTOS} fotos`;
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="ph ph-camera" style="font-size:1rem;"></i> Adjuntar Foto${_pendingFiles.length > 0 ? ` (${_pendingFiles.length}/${MAX_FOTOS})` : ''}`;
+        }
+    }
+
+    // ── Seleccionar tipo en formulario ──
+    function selectType(type) {
+        _selectedType = type;
+
+        // Actualizar chips
+        document.querySelectorAll('.tr-type-chip').forEach(chip => {
+            const isActive = chip.dataset.type === type;
+            const cfg = TIPOS[chip.dataset.type];
+            chip.style.background = isActive ? cfg.color : 'var(--bg-card)';
+            chip.style.color      = isActive ? '#fff'    : 'var(--text-primary)';
+            chip.style.borderColor = isActive ? cfg.color : 'var(--border)';
+            chip.style.fontWeight  = isActive ? '700' : '500';
+            chip.style.boxShadow   = isActive ? `0 2px 8px ${cfg.color}40` : 'none';
+        });
+
+        // Mostrar/ocultar campo form y actualizar placeholders
+        const formFields = document.getElementById('tr-form-fields');
+        if (formFields) {
+            formFields.style.display = 'flex';
+            const cfg = TIPOS[type];
+            const titleInput = document.getElementById('tr-title');
+            const descInput  = document.getElementById('tr-desc');
+            if (titleInput) titleInput.placeholder = cfg.placeholder_title;
+            if (descInput)  descInput.placeholder  = cfg.placeholder_desc;
+        }
+    }
+
+    // ── Limpiar formulario ──
+    function resetForm() {
+        _selectedType = null;
+        _pendingFiles = [];
+        const titleInput = document.getElementById('tr-title');
+        const descInput  = document.getElementById('tr-desc');
+        if (titleInput) titleInput.value = '';
+        if (descInput)  descInput.value  = '';
+
+        document.querySelectorAll('.tr-type-chip').forEach(chip => {
+            const cfg = TIPOS[chip.dataset.type];
+            chip.style.background  = 'var(--bg-card)';
+            chip.style.color       = 'var(--text-primary)';
+            chip.style.borderColor = 'var(--border)';
+            chip.style.fontWeight  = '500';
+            chip.style.boxShadow   = 'none';
+        });
+
+        const formFields = document.getElementById('tr-form-fields');
+        if (formFields) formFields.style.display = 'none';
+
+        renderPreviews();
+        updatePhotoBtn();
+    }
+
+    // ── Enviar reporte ──
+    async function submitReport() {
+        if (!_selectedType) {
+            window.showToast('Selecciona un tipo de reporte');
+            return;
+        }
+        const titleEl = document.getElementById('tr-title');
+        const descEl  = document.getElementById('tr-desc');
+        const title   = titleEl?.value.trim() || '';
+        if (!title) {
+            window.showToast('Ingresa un título');
+            titleEl?.focus();
+            return;
+        }
+
+        const submitBtn = document.getElementById('tr-submit-btn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Enviando...';
+        }
+
+        try {
+            // Subir fotos
+            let photoPaths = [];
+            if (_pendingFiles.length > 0) {
+                photoPaths = await uploadFotos(_pendingFiles.map(f => f.file));
+            }
+
+            const tenantId = window.Auth.getTenantId();
+            const userId   = window.Auth.session?.user?.id;
+
+            const reportData = {
+                id:         crypto.randomUUID(),
+                tenant_id:  tenantId,
+                user_id:    userId,
+                type:       _selectedType,
+                title:      title,
+                description: descEl?.value.trim() || '',
+                photo_urls: photoPaths,
+                items:      [],
+                status:     'pendiente',
+                admin_response:       null,
+                admin_responded_at:   null,
+                admin_responded_by:   null,
+                created_at: new Date().toISOString(),
+                deleted:    false,
+                version:    1,
+            };
+
+            await window.DataManager.saveAndSync('team_reports', reportData);
+            window.showToast('Reporte enviado correctamente');
+            resetForm();
+            await renderList();
+
+        } catch (err) {
+            console.error('Error enviando reporte:', err);
+            window.showToast('Error al enviar el reporte. Intenta de nuevo.');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Enviar Reporte';
+            }
+        }
+    }
+
+    // ── Render lista de reportes ──
+    async function renderList() {
+        const listEl = document.getElementById('tr-list');
+        if (!listEl) return;
+
+        listEl.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">
+            <i class="ph ph-spinner ph-spin" style="font-size:1.5rem;"></i>
+        </div>`;
+
+        try {
+            const userId = window.Auth.session?.user?.id;
+            const all    = await window.db.team_reports.toArray();
+            const mine   = all
+                .filter(r => !r.deleted && r.user_id === userId)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            if (mine.length === 0) {
+                listEl.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-muted);">
+                    <i class="ph ph-clipboard-text" style="font-size:2.5rem; display:block; margin-bottom:8px; opacity:0.4;"></i>
+                    <p style="margin:0;">Aún no has enviado ningún reporte</p>
+                </div>`;
+                return;
+            }
+
+            const toShow = _showingAll ? mine : mine.slice(0, PAGE_SIZE);
+            const cards  = await Promise.all(toShow.map(r => buildCardHTML(r)));
+
+            let html = cards.join('');
+
+            if (mine.length > PAGE_SIZE) {
+                if (!_showingAll) {
+                    html += `<div style="text-align:center; margin-top:8px;">
+                        <button id="tr-ver-mas" style="background:none; border:1px solid var(--border); border-radius:10px; padding:8px 22px; cursor:pointer; color:var(--text-muted); font-size:0.9rem;">
+                            Ver más (${mine.length - PAGE_SIZE} restantes)
+                        </button>
+                    </div>`;
+                } else {
+                    html += `<div style="text-align:center; margin-top:8px;">
+                        <button id="tr-ver-menos" style="background:none; border:1px solid var(--border); border-radius:10px; padding:8px 22px; cursor:pointer; color:var(--text-muted); font-size:0.9rem;">
+                            Ver menos
+                        </button>
+                    </div>`;
+                }
+            }
+
+            listEl.innerHTML = html;
+
+            const verMasBtn   = document.getElementById('tr-ver-mas');
+            const verMenosBtn = document.getElementById('tr-ver-menos');
+            if (verMasBtn)   verMasBtn.addEventListener('click',   () => { _showingAll = true;  renderList(); });
+            if (verMenosBtn) verMenosBtn.addEventListener('click', () => { _showingAll = false; renderList(); });
+
+            // Cargar fotos de forma asíncrona (no bloquea render)
+            toShow.forEach(r => {
+                if (r.photo_urls && r.photo_urls.length > 0) {
+                    loadCardPhotos(r.id, r.photo_urls);
+                }
+            });
+
+        } catch (err) {
+            console.error('Error cargando reportes:', err);
+            listEl.innerHTML = `<p style="color:var(--danger); text-align:center; padding:20px;">Error al cargar reportes.</p>`;
+        }
+    }
+
+    // ── Construir HTML de una tarjeta ──
+    async function buildCardHTML(r) {
+        const typeCfg  = TIPOS[r.type]  || TIPOS.reporte;
+        const desc     = r.description ? (r.description.length > 60 ? r.description.slice(0, 60) + '…' : r.description) : '';
+        const hasPhotos = r.photo_urls && r.photo_urls.length > 0;
+
+        const responseHTML = r.admin_response
+            ? `<div style="margin-top:10px; background:var(--bg-main); border-left:3px solid ${typeCfg.color}; border-radius:0 8px 8px 0; padding:10px 12px;">
+                    <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px; display:flex; align-items:center; gap:5px;">
+                        <i class="ph ph-arrow-bend-down-right"></i> Respuesta del administrador
+                    </div>
+                    <div style="font-size:0.88rem; color:var(--text-primary);">${window.escapeHTML(r.admin_response)}</div>
+                    ${r.admin_responded_at ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">${timeAgo(r.admin_responded_at)}</div>` : ''}
+               </div>`
+            : '';
+
+        const photoSlotsHTML = hasPhotos
+            ? `<div id="photos-${r.id}" style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;">
+                ${r.photo_urls.map(() => `
+                    <div style="width:60px; height:60px; border-radius:8px; background:var(--bg-main); border:1px solid var(--border); display:flex; align-items:center; justify-content:center;">
+                        <i class="ph ph-image" style="color:var(--text-muted); font-size:1.2rem;"></i>
+                    </div>
+                `).join('')}
+               </div>`
+            : '';
+
+        return `
+        <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:14px 16px; border-left:4px solid ${typeCfg.color};">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:8px;">
+                <div style="display:flex; flex-direction:column; gap:6px; min-width:0;">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        ${typeBadgeHTML(r.type)}
+                        ${statusBadgeHTML(r.status)}
+                    </div>
+                    <div style="font-weight:700; font-size:0.97rem; color:var(--text-primary); word-break:break-word;">${window.escapeHTML(r.title)}</div>
+                    ${desc ? `<div style="font-size:0.85rem; color:var(--text-muted);">${window.escapeHTML(desc)}</div>` : ''}
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap; flex-shrink:0;">${timeAgo(r.created_at)}</div>
+            </div>
+            ${photoSlotsHTML}
+            ${responseHTML}
+        </div>`;
+    }
+
+    // ── Cargar fotos asíncronas para una tarjeta ──
+    async function loadCardPhotos(reportId, photoPaths) {
+        const container = document.getElementById(`photos-${reportId}`);
+        if (!container) return;
+
+        const slots = container.querySelectorAll('div');
+        const urls  = await Promise.all(photoPaths.map(p => getSignedUrl(p)));
+
+        urls.forEach((url, i) => {
+            if (!url || !slots[i]) return;
+            slots[i].innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block; width:100%; height:100%;">
+                <img src="${url}" alt="Foto ${i + 1}"
+                     style="width:100%; height:100%; object-fit:cover; border-radius:8px;">
+            </a>`;
+            slots[i].style.background = 'transparent';
+            slots[i].style.border = 'none';
+        });
+    }
+
+    // ══════════════════════════════════
+    // VISTA PRINCIPAL
+    // ══════════════════════════════════
+    window.Views.team_reports = async (container) => {
+        _selectedType = null;
+        _pendingFiles = [];
+        _showingAll   = false;
+
+        container.innerHTML = `
+        <style>
+            .tr-type-chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                padding: 9px 16px;
+                border-radius: 30px;
+                border: 2px solid var(--border);
+                background: var(--bg-card);
+                color: var(--text-primary);
+                font-size: 0.9rem;
+                font-weight: 500;
+                cursor: pointer;
+                transition: background 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.18s;
+                -webkit-tap-highlight-color: transparent;
+                user-select: none;
+            }
+            .tr-type-chip:hover {
+                filter: brightness(0.96);
+            }
+            #tr-form-fields {
+                flex-direction: column;
+                gap: 12px;
+            }
+        </style>
+
+        <div style="max-width: 680px; margin: 0 auto; padding-bottom: 40px;">
+
+            <!-- Encabezado -->
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+                <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,#3b82f6,#6366f1); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i class="ph ph-clipboard-text" style="color:#fff; font-size:1.3rem;"></i>
+                </div>
+                <div>
+                    <h1 style="margin:0; font-size:1.2rem; font-weight:800; color:var(--text-primary);">Mis Reportes</h1>
+                    <p style="margin:0; font-size:0.82rem; color:var(--text-muted);">Pedidos, mermas, limpieza y avisos al equipo</p>
+                </div>
+            </div>
+
+            <!-- ── SECCIÓN A: FORMULARIO ── -->
+            <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:20px; margin-bottom:24px;">
+                <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:14px;">
+                    Nuevo reporte
+                </div>
+
+                <!-- Selector de tipo -->
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+                    ${Object.entries(TIPOS).map(([key, cfg]) => `
+                        <button class="tr-type-chip" data-type="${key}">
+                            <i class="${cfg.icon}" style="font-size:1rem;"></i>
+                            ${cfg.label}
+                        </button>
+                    `).join('')}
+                </div>
+
+                <!-- Campos del formulario (ocultos hasta elegir tipo) -->
+                <div id="tr-form-fields" style="display:none; margin-top:16px;">
+                    <input
+                        id="tr-title"
+                        type="text"
+                        maxlength="120"
+                        class="form-input"
+                        placeholder="Título"
+                        style="width:100%; box-sizing:border-box;">
+
+                    <textarea
+                        id="tr-desc"
+                        rows="3"
+                        class="form-input"
+                        placeholder="Detalle..."
+                        style="width:100%; box-sizing:border-box; resize:vertical; min-height:70px;"></textarea>
+
+                    <!-- Fotos -->
+                    <div>
+                        <button id="tr-btn-foto" style="display:inline-flex; align-items:center; gap:7px; padding:9px 16px; border:2px dashed var(--border); border-radius:12px; background:var(--bg-main); color:var(--text-muted); font-size:0.88rem; cursor:pointer; transition:border-color 0.15s;">
+                            <i class="ph ph-camera" style="font-size:1rem;"></i> Adjuntar Foto
+                        </button>
+                        <input id="tr-file-input" type="file" accept="image/*" capture="environment" style="display:none;" multiple>
+                        <div id="tr-photo-previews" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;"></div>
+                    </div>
+
+                    <!-- Botón enviar -->
+                    <button id="tr-submit-btn" class="btn btn-primary" style="width:100%; padding:12px; font-size:0.95rem; border-radius:12px;">
+                        <i class="ph ph-paper-plane-tilt"></i> Enviar Reporte
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── SECCIÓN B: LISTA DE REPORTES ── -->
+            <div>
+                <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:14px;">
+                    Mis reportes enviados
+                </div>
+                <div id="tr-list" style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="text-align:center; padding:20px; color:var(--text-muted);">
+                        <i class="ph ph-spinner ph-spin" style="font-size:1.5rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+
+        // ── Event listeners ──
+
+        // Chips de tipo
+        container.querySelectorAll('.tr-type-chip').forEach(chip => {
+            chip.addEventListener('click', () => selectType(chip.dataset.type));
+        });
+
+        // Botón adjuntar foto
+        const btnFoto   = container.querySelector('#tr-btn-foto');
+        const fileInput = container.querySelector('#tr-file-input');
+
+        btnFoto.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', () => {
+            const files = Array.from(fileInput.files || []);
+            const remaining = MAX_FOTOS - _pendingFiles.length;
+            const toAdd = files.slice(0, remaining);
+            toAdd.forEach(file => {
+                _pendingFiles.push({ file, previewUrl: URL.createObjectURL(file) });
+            });
+            if (files.length > remaining) {
+                window.showToast(`Solo puedes adjuntar hasta ${MAX_FOTOS} fotos`);
+            }
+            fileInput.value = '';
+            renderPreviews();
+            updatePhotoBtn();
+        });
+
+        // Botón enviar
+        container.querySelector('#tr-submit-btn').addEventListener('click', submitReport);
+
+        // Cargar lista inicial
+        await renderList();
+
+        // ── Actualización en tiempo real ──
+        if (window._trSyncHandler) {
+            window.removeEventListener('sync-data-updated', window._trSyncHandler);
+            window._trSyncHandler = null;
+        }
+        window._trSyncHandler = () => {
+            if (document.getElementById('tr-list')) {
+                renderList();
+            } else {
+                window.removeEventListener('sync-data-updated', window._trSyncHandler);
+                window._trSyncHandler = null;
+            }
+        };
+        window.addEventListener('sync-data-updated', window._trSyncHandler);
+    };
+})();

@@ -197,6 +197,35 @@ db.version(21).stores({
     sync_conflicts: '++id, table_name, record_id, created_at'
 });
 
+// v22: Módulo Equipo — reportes, avisos, acuse de lectura
+db.version(22).stores({
+    employees: 'id, rut, deleted, updated_at_hlc',
+    workLogs: 'id, employeeId, date, deleted, updated_at_hlc',
+    products: 'id, category, deleted, updated_at_hlc',
+    promotions: 'id, deleted, updated_at_hlc',
+    suppliers: 'id, name, deleted, updated_at_hlc',
+    purchase_invoices: 'id, supplierId, date, paymentStatus, paymentMethod, invoiceNumber, deleted, version, updated_at_hlc',
+    sales_invoices: 'id, date, clientName, invoiceNumber, deleted, updated_at_hlc',
+    electronic_invoices: 'id, date, folio, status, deleted, version, updated_at_hlc',
+    expenses: 'id, date, deleted, updated_at_hlc',
+    daily_sales: 'id, date, deleted, updated_at_hlc',
+    settings: 'key',
+    reminders: 'id, deleted, completed, [completed+deleted], updated_at_hlc',
+    eleventa_sales: 'id, ticket_id, date, deleted, updated_at_hlc',
+    loans: 'id, supplierId, date, deleted, direction, status, version, updated_at_hlc',
+    error_logs: 'id, timestamp, level, [level+timestamp]',
+    sync_outbox: '++id, tableName, status, created_at',
+    sync_state: 'table_name',
+    cash_register: 'id, date, type, category, deleted, updated_at_hlc',
+    advances: 'id, employeeId, date, status, deleted, updated_at_hlc',
+    eleventa_abonos: 'id, abono_id, date_local, cancelado, updated_at_hlc',
+    sync_conflicts: '++id, table_name, record_id, created_at',
+    team_reports: 'id, user_id, type, status, deleted, updated_at_hlc',
+    announcements: 'id, active, deleted, updated_at_hlc',
+    announcement_reads: 'id, announcement_id, user_id, updated_at_hlc',
+    team_checklists: 'id, user_id, date, checklist_type, completed, deleted, updated_at_hlc'
+});
+
 // ──────────────────────────────────────────────────────────────
 async function seedDatabase() {
     const count = await db.settings.count();

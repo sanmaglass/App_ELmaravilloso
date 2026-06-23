@@ -24,7 +24,12 @@ const views = {
     credits: () => window.Views.credits(document.getElementById('view-container')),
     barcode: () => window.Views.barcode(document.getElementById('view-container')),
     caja_dia: () => window.Views.caja_dia(document.getElementById('view-container')),
-    intelligence: () => window.Views.intelligence(document.getElementById('view-container'))
+    intelligence: () => window.Views.intelligence(document.getElementById('view-container')),
+    team_home: () => window.Views.team_home(document.getElementById('view-container')),
+    announcements: () => window.Views.announcements(document.getElementById('view-container')),
+    team_reports: () => window.Views.team_reports(document.getElementById('view-container')),
+    team_scanner: () => window.Views.team_scanner(document.getElementById('view-container')),
+    team_admin: () => window.Views.team_admin(document.getElementById('view-container'))
 };
 
 // ── Tema neutro premium para Chart.js (gris-dominante, sin glow) ──
@@ -272,7 +277,7 @@ async function init() {
         const _userRole = window.Auth.getRole();
         window._isEmployee = (_userRole === 'employee');
         if (window._isEmployee) {
-            const ALLOWED = new Set(['caja_dia']); // vistas permitidas a trabajadoras
+            const ALLOWED = new Set(['team_home', 'caja_dia', 'announcements', 'team_reports', 'team_scanner']); // vistas permitidas a trabajadoras
             document.querySelectorAll('.nav-item[data-view], #bottom-nav .bottom-nav-item[data-view], .more-menu-item[data-view]').forEach(el => {
                 const v = el.dataset.view;
                 if (v && v !== 'logout' && !ALLOWED.has(v)) el.style.display = 'none';
@@ -282,7 +287,7 @@ async function init() {
             // En móvil: ocultar toda la barra inferior (la trabajadora solo tiene una vista)
             const bn = document.getElementById('bottom-nav');
             if (bn) bn.style.display = 'none';
-            window.state.currentView = 'caja_dia';
+            window.state.currentView = 'team_home';
         }
         localStorage.setItem('wm_auth', 'true');
         localStorage.setItem('wm_auth_email', session.user.email);
