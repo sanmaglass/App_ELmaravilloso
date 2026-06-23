@@ -782,15 +782,28 @@ body.light-theme {
     background-image: none !important;
 }
 
+body.light-theme .top-bar,
 body.light-theme .header {
-    background: rgba(255, 255, 255, 0.95) !important;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+    background: rgba(255, 255, 255, 0.97) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
     backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
 }
 
-body.light-theme .header .page-title {
+body.light-theme .top-bar .header-left .mobile-toggle,
+body.light-theme .top-bar .actions .btn-icon {
+    color: #4a5568 !important;
+    background: transparent !important;
+}
+
+body.light-theme #page-title {
     color: #1a1a2e !important;
+}
+
+body.light-theme #sync-indicator {
+    background: rgba(0, 0, 0, 0.04) !important;
+    color: #718096 !important;
 }
 
 body.light-theme #bottom-nav {
