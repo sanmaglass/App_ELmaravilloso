@@ -198,7 +198,7 @@ db.version(21).stores({
 });
 
 // v22: Módulo Equipo — reportes, avisos, acuse de lectura
-db.version(22).stores({
+db.version(23).stores({
     employees: 'id, rut, deleted, updated_at_hlc',
     workLogs: 'id, employeeId, date, deleted, updated_at_hlc',
     products: 'id, category, deleted, updated_at_hlc',
@@ -223,7 +223,8 @@ db.version(22).stores({
     team_reports: 'id, user_id, type, status, deleted, updated_at_hlc',
     announcements: 'id, active, deleted, updated_at_hlc',
     announcement_reads: 'id, announcement_id, user_id, updated_at_hlc',
-    team_checklists: 'id, user_id, date, checklist_type, completed, deleted, updated_at_hlc'
+    team_checklists: 'id, user_id, date, checklist_type, completed, deleted, updated_at_hlc',
+    checklist_templates: 'id, tenant_id, checklist_type, deleted, updated_at_hlc'
 });
 
 // ──────────────────────────────────────────────────────────────

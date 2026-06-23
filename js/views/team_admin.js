@@ -928,145 +928,456 @@ window.Views = window.Views || {};
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // TAB 4 — CHECKLISTS (ver apertura/cierre de cada empleada)
+    // TAB 4 — CHECKLISTS
     // ═══════════════════════════════════════════════════════════════════════
     async function renderChecklists(content, tenantId) {
         content.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">Cargando checklists…</div>`;
 
-        try {
-            // Traer todos los checklists
-            const allChecklists = await window.db.team_checklists.toArray();
-            const checklists = allChecklists
-                .filter(c => !c.deleted && (!tenantId || c.tenant_id === tenantId || !c.tenant_id))
-                .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created_at || '').localeCompare(a.created_at || ''));
+        // Sub-tabs internos
+        let activeSection = 'completados';
 
-            if (checklists.length === 0) {
-                content.innerHTML = `
-                    <div style="text-align:center; padding:40px; color:var(--text-muted);">
-                        <i class="ph ph-check-square" style="font-size:2.5rem; opacity:0.4; display:block; margin-bottom:10px;"></i>
-                        <p style="font-size:0.9rem;">Sin checklists registrados aún.</p>
-                        <p style="font-size:0.82rem;">Cuando las trabajadoras completen tareas de apertura o cierre, aparecerán aquí.</p>
-                    </div>`;
+        function sectionBtnStyle(active) {
+            return `padding:7px 16px; border:none; border-radius:8px; font-weight:600; font-size:0.82rem;
+                    cursor:pointer; transition:all 0.15s;
+                    background:${active ? 'var(--primary)' : 'transparent'};
+                    color:${active ? '#fff' : 'var(--text-muted)'};`;
+        }
+
+        function renderLayout() {
+            content.innerHTML = `
+                <!-- Sub-tabs -->
+                <div style="display:flex; gap:0; background:var(--bg-card); border:1px solid var(--border);
+                            border-radius:12px; padding:3px; margin-bottom:22px; width:fit-content;">
+                    <button class="cl-section-btn" data-section="completados"
+                            style="${sectionBtnStyle(activeSection === 'completados')}">
+                        <i class="ph ph-list-checks" style="margin-right:5px;"></i>Completados
+                    </button>
+                    <button class="cl-section-btn" data-section="editar"
+                            style="${sectionBtnStyle(activeSection === 'editar')}">
+                        <i class="ph ph-pencil-simple" style="margin-right:5px;"></i>Editar Tareas
+                    </button>
+                </div>
+                <div id="cl-section-content"></div>
+            `;
+
+            content.querySelectorAll('.cl-section-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    activeSection = btn.dataset.section;
+                    content.querySelectorAll('.cl-section-btn').forEach(b => {
+                        b.style.cssText = sectionBtnStyle(b.dataset.section === activeSection);
+                    });
+                    loadSection();
+                });
+            });
+
+            loadSection();
+        }
+
+        async function loadSection() {
+            const sectionEl = content.querySelector('#cl-section-content');
+            if (!sectionEl) return;
+            if (activeSection === 'completados') {
+                await renderCompletados(sectionEl, tenantId);
+            } else {
+                await renderEditarTareas(sectionEl, tenantId);
+            }
+        }
+
+        renderLayout();
+    }
+
+    // ── Sección 1: Completados ───────────────────────────────────────────────
+    async function renderCompletados(el, tenantId) {
+        el.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-muted);">Cargando…</div>`;
+
+        // Fecha por defecto: hoy
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+
+        let selectedDate = todayStr;
+        let allChecklists = [];
+        let emailMap = {};
+
+        try {
+            const raw = await window.db.team_checklists.toArray();
+            allChecklists = raw
+                .filter(c => !c.deleted && (!tenantId || c.tenant_id === tenantId || !c.tenant_id));
+        } catch (err) {
+            el.innerHTML = `<p style="color:var(--danger);">Error al cargar checklists: ${window.escapeHTML(err.message)}</p>`;
+            return;
+        }
+
+        try {
+            const client = window.SyncV2?.client;
+            if (client && tenantId) {
+                const { data } = await client
+                    .from('user_tenants')
+                    .select('user_id, email')
+                    .eq('tenant_id', tenantId);
+                if (data) data.forEach(e => { emailMap[e.user_id] = e.email; });
+            }
+        } catch { /* sin mapa de emails */ }
+
+        function getFiltered() {
+            return allChecklists
+                .filter(c => {
+                    const cDate = c.date || (c.created_at ? c.created_at.slice(0, 10) : '');
+                    return cDate === selectedDate;
+                })
+                .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+        }
+
+        function renderTable() {
+            const tableEl = el.querySelector('#cl-table-body');
+            const countEl = el.querySelector('#cl-count');
+            if (!tableEl) return;
+
+            const rows = getFiltered();
+            if (countEl) countEl.textContent = rows.length;
+
+            if (rows.length === 0) {
+                tableEl.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted); font-size:0.88rem;">
+                            Sin checklists para esta fecha.
+                        </td>
+                    </tr>
+                `;
                 return;
             }
 
-            // Obtener emails de empleados
-            let emailMap = {};
-            try {
-                const client = window.SyncV2?.client;
-                if (client) {
-                    const { data } = await client
-                        .from('user_tenants')
-                        .select('user_id, email')
-                        .eq('tenant_id', tenantId);
-                    if (data) data.forEach(e => { emailMap[e.user_id] = e.email; });
-                }
-            } catch { /* sin mapa de emails */ }
+            tableEl.innerHTML = rows.map(c => {
+                const email = emailMap[c.user_id] || c.user_email || c.user_id || '';
+                const nombre = window.escapeHTML(nameFromEmail(email));
+                const tipo = c.checklist_type || 'apertura';
+                const tipoColor = tipo === 'apertura' ? '#f59e0b' : '#6366f1';
+                const tipoIcon = tipo === 'apertura' ? 'ph-sun' : 'ph-moon';
+                const taskItems = Array.isArray(c.items) ? c.items : [];
+                const done = taskItems.filter(t => t.done).length;
+                const total = taskItems.length;
+                const allDone = total > 0 && done === total;
+                const hora = c.created_at
+                    ? new Date(c.created_at).toLocaleTimeString('es-CL', { timeZone: 'America/Santiago', hour: '2-digit', minute: '2-digit' })
+                    : '—';
 
-            // Agrupar por fecha
-            const byDate = {};
-            for (const c of checklists) {
-                if (!byDate[c.date]) byDate[c.date] = [];
-                byDate[c.date].push(c);
-            }
-
-            const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a)).slice(0, 14); // últimos 14 días
-
-            function formatDateLabel(dateStr) {
-                try {
-                    const d = new Date(dateStr + 'T12:00:00');
-                    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
-                    if (dateStr === hoy) return 'Hoy';
-                    const ayer = new Date(); ayer.setDate(ayer.getDate() - 1);
-                    if (dateStr === ayer.toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })) return 'Ayer';
-                    return d.toLocaleDateString('es-CL', { weekday: 'short', day: '2-digit', month: 'short' });
-                } catch { return dateStr; }
-            }
-
-            content.innerHTML = `
-                <p style="color:var(--text-muted); font-size:0.85rem; margin:0 0 20px;">
-                    Checklists de apertura y cierre completados por el equipo (últimos 14 días).
-                </p>
-                ${dates.map(date => {
-                    const items = byDate[date];
-                    return `
-                        <div style="margin-bottom:20px;">
-                            <div style="font-weight:700; font-size:0.88rem; color:var(--text-primary); margin-bottom:10px;
-                                        display:flex; align-items:center; gap:8px;">
-                                <i class="ph ph-calendar" style="color:var(--primary);"></i>
-                                ${formatDateLabel(date)}
-                                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">${date}</span>
+                return `
+                    <tr style="border-bottom:1px solid var(--border);">
+                        <td style="padding:10px 12px; font-size:0.88rem; font-weight:600; color:var(--text-primary);">
+                            ${nombre || '<span style="color:var(--text-muted);">—</span>'}
+                        </td>
+                        <td style="padding:10px 12px; font-size:0.82rem; color:var(--text-muted);">${hora}</td>
+                        <td style="padding:10px 12px;">
+                            <span style="font-size:0.72rem; font-weight:700; padding:2px 9px; border-radius:8px;
+                                         background:${tipoColor}18; color:${tipoColor}; display:inline-flex; align-items:center; gap:4px;">
+                                <i class="ph ${tipoIcon}"></i> ${window.escapeHTML(tipo)}
+                            </span>
+                        </td>
+                        <td style="padding:10px 12px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size:0.82rem; font-weight:700;
+                                             color:${allDone ? '#16a34a' : (done > 0 ? '#d97706' : 'var(--text-muted)')};
+                                             white-space:nowrap;">
+                                    ${done}/${total}
+                                </span>
+                                ${total > 0 ? `
+                                <div style="flex:1; min-width:40px; height:5px; background:var(--border); border-radius:3px; overflow:hidden;">
+                                    <div style="height:100%; width:${total > 0 ? Math.round((done/total)*100) : 0}%;
+                                                background:${allDone ? '#16a34a' : (done > 0 ? '#d97706' : 'var(--border)')};
+                                                border-radius:3px;"></div>
+                                </div>` : ''}
                             </div>
-                            ${items.map(c => {
-                                const email = emailMap[c.user_id] || c.user_email || c.user_id || 'Empleado';
-                                const tipo = c.checklist_type || 'apertura';
-                                const tipoColor = tipo === 'apertura' ? '#f59e0b' : '#6366f1';
-                                const tipoIcon = tipo === 'apertura' ? 'ph-sun' : 'ph-moon';
-                                const taskItems = Array.isArray(c.items) ? c.items : [];
-                                const done = taskItems.filter(t => t.done).length;
-                                const total = taskItems.length;
-                                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-                                const allDone = done === total && total > 0;
-
-                                // Última tarea completada (hora)
-                                const lastCompleted = taskItems
-                                    .filter(t => t.done && t.completed_at)
-                                    .sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''))
-                                    [0];
-                                const lastTime = lastCompleted?.completed_at
-                                    ? new Date(lastCompleted.completed_at).toLocaleTimeString('es-CL', { timeZone: 'America/Santiago', hour: '2-digit', minute: '2-digit' })
-                                    : null;
-
-                                return `
-                                    <div style="background:var(--bg-card); border:1px solid var(--border);
-                                                border-left:4px solid ${allDone ? '#16a34a' : tipoColor};
-                                                border-radius:14px; padding:14px 16px; margin-bottom:8px;">
-                                        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
-                                            <div style="display:flex; align-items:center; gap:8px;">
-                                                <i class="ph ${tipoIcon}" style="color:${tipoColor}; font-size:1.1rem;"></i>
-                                                <span style="font-size:0.72rem; font-weight:700; padding:2px 9px; border-radius:8px;
-                                                             background:${tipoColor}18; color:${tipoColor}; text-transform:uppercase;">
-                                                    ${tipo}
-                                                </span>
-                                                <span style="font-size:0.85rem; color:var(--text-primary); font-weight:600;">
-                                                    ${window.escapeHTML(email.split('@')[0])}
-                                                </span>
-                                            </div>
-                                            <div style="display:flex; align-items:center; gap:8px;">
-                                                ${lastTime ? `<span style="font-size:0.75rem; color:var(--text-muted);">${lastTime}</span>` : ''}
-                                                <span style="font-size:0.78rem; font-weight:700;
-                                                             color:${allDone ? '#16a34a' : (pct >= 50 ? '#d97706' : 'var(--danger)')};">
-                                                    ${done}/${total}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <!-- Barra de progreso -->
-                                        <div style="height:6px; background:var(--border); border-radius:4px; overflow:hidden; margin-bottom:8px;">
-                                            <div style="height:100%; width:${pct}%;
-                                                        background:${allDone ? '#16a34a' : (pct >= 50 ? '#d97706' : 'var(--danger)')};
-                                                        border-radius:4px; transition:width 0.3s;"></div>
-                                        </div>
-                                        <!-- Detalle tareas -->
-                                        <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                                            ${taskItems.map(t => `
-                                                <span style="font-size:0.72rem; padding:2px 8px; border-radius:6px;
-                                                             background:${t.done ? 'rgba(22,163,74,0.1)' : 'rgba(107,114,128,0.08)'};
-                                                             color:${t.done ? '#16a34a' : 'var(--text-muted)'};
-                                                             ${t.done ? '' : 'opacity:0.7;'}">
-                                                    ${t.done ? '✓' : '○'} ${window.escapeHTML(t.task || t.label || '')}
-                                                </span>
-                                            `).join('')}
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    `;
-                }).join('')}
-            `;
-        } catch (err) {
-            content.innerHTML = `<p style="color:var(--danger);">Error al cargar checklists: ${window.escapeHTML(err.message)}</p>`;
+                        </td>
+                        <td style="padding:10px 12px; text-align:center;">
+                            ${allDone
+                                ? `<span style="font-size:0.78rem; font-weight:700; color:#16a34a;">✓ Completo</span>`
+                                : `<span style="font-size:0.78rem; color:#d97706; font-weight:600;">Parcial</span>`
+                            }
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
+
+        const thStyle = `padding:8px 12px; font-size:0.72rem; font-weight:700; color:var(--text-muted);
+                         text-transform:uppercase; letter-spacing:0.5px; text-align:left; white-space:nowrap;
+                         border-bottom:2px solid var(--border);`;
+
+        el.innerHTML = `
+            <!-- Filtro fecha -->
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:18px; flex-wrap:wrap;">
+                <label style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">Fecha:</label>
+                <input type="date" id="cl-date-filter" value="${selectedDate}"
+                       style="padding:7px 12px; border:1px solid var(--border); border-radius:10px;
+                              background:var(--bg-card); color:var(--text-primary); font-size:0.88rem; cursor:pointer;
+                              outline:none;">
+                <span style="font-size:0.82rem; color:var(--text-muted);">
+                    <span id="cl-count">0</span> registro(s)
+                </span>
+            </div>
+            <!-- Tabla -->
+            <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:var(--bg-main);">
+                            <th style="${thStyle}">Nombre</th>
+                            <th style="${thStyle}">Hora</th>
+                            <th style="${thStyle}">Tipo</th>
+                            <th style="${thStyle}">Tareas</th>
+                            <th style="${thStyle}; text-align:center;">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cl-table-body"></tbody>
+                </table>
+            </div>
+        `;
+
+        el.querySelector('#cl-date-filter').addEventListener('change', (e) => {
+            selectedDate = e.target.value;
+            renderTable();
+        });
+
+        renderTable();
+    }
+
+    // ── Sección 2: Editar Tareas ─────────────────────────────────────────────
+    async function renderEditarTareas(el, tenantId) {
+        el.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-muted);">Cargando plantillas…</div>`;
+
+        let templates = [];
+        try {
+            const all = await window.db.checklist_templates.toArray();
+            templates = all.filter(t => !t.deleted && (!tenantId || t.tenant_id === tenantId || !t.tenant_id));
+        } catch (err) {
+            el.innerHTML = `<p style="color:var(--danger);">Error al cargar plantillas: ${window.escapeHTML(err.message)}</p>`;
+            return;
+        }
+
+        // Asegurar que existen plantillas para apertura y cierre
+        const DEFAULT_ICON = 'ph-fill ph-check-square';
+
+        function getOrCreate(tipo) {
+            let tpl = templates.find(t => t.checklist_type === tipo);
+            if (!tpl) {
+                tpl = {
+                    id: crypto.randomUUID(),
+                    tenant_id: tenantId,
+                    checklist_type: tipo,
+                    tasks: [],
+                    version: 1,
+                    deleted: false,
+                };
+                templates.push(tpl);
+            }
+            if (!Array.isArray(tpl.tasks)) tpl.tasks = [];
+            return tpl;
+        }
+
+        let tplApertura = getOrCreate('apertura');
+        let tplCierre   = getOrCreate('cierre');
+
+        function buildCard(tipo) {
+            const tpl = tipo === 'apertura' ? tplApertura : tplCierre;
+            const tipoColor = tipo === 'apertura' ? '#f59e0b' : '#6366f1';
+            const tipoIcon  = tipo === 'apertura' ? 'ph-sun' : 'ph-moon';
+            const tasks = tpl.tasks || [];
+
+            return `
+                <div class="cl-tpl-card" data-tipo="${tipo}"
+                     style="background:var(--bg-card); border:1px solid var(--border); border-radius:16px;
+                            padding:18px; margin-bottom:16px;">
+                    <!-- Encabezado -->
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+                        <i class="ph ${tipoIcon}" style="color:${tipoColor}; font-size:1.3rem;"></i>
+                        <div style="font-weight:700; font-size:1rem; color:var(--text-primary); flex:1;">
+                            ${tipo === 'apertura' ? 'Apertura' : 'Cierre'}
+                        </div>
+                        <span style="font-size:0.75rem; color:var(--text-muted); background:var(--bg-main);
+                                     padding:2px 10px; border-radius:8px; border:1px solid var(--border);">
+                            ${tasks.length} tarea${tasks.length !== 1 ? 's' : ''}
+                        </span>
+                    </div>
+
+                    <!-- Lista de tareas -->
+                    <div class="cl-task-list" data-tipo="${tipo}" style="margin-bottom:12px;">
+                        ${tasks.length === 0
+                            ? `<div class="cl-empty-tasks" style="font-size:0.85rem; color:var(--text-muted); padding:10px 0; text-align:center; opacity:0.7;">
+                                Sin tareas aún — agrega la primera abajo.
+                               </div>`
+                            : tasks.map((task, idx) => buildTaskRow(task, idx, tipo, tasks.length)).join('')
+                        }
+                    </div>
+
+                    <!-- Input + Agregar -->
+                    <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+                        <input type="text" class="cl-new-task-input" data-tipo="${tipo}"
+                               placeholder="Nueva tarea…"
+                               style="flex:1; padding:9px 12px; border:1px solid var(--border); border-radius:10px;
+                                      background:var(--bg-main); color:var(--text-primary); font-size:0.88rem;
+                                      outline:none;">
+                        <button class="cl-add-task-btn" data-tipo="${tipo}"
+                                style="padding:9px 16px; background:var(--primary); color:#fff; border:none;
+                                       border-radius:10px; cursor:pointer; font-size:0.85rem; font-weight:700;
+                                       white-space:nowrap; transition:opacity 0.15s;">
+                            <i class="ph ph-plus"></i> Agregar
+                        </button>
+                    </div>
+
+                    <!-- Guardar -->
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button class="cl-save-btn" data-tipo="${tipo}"
+                                style="padding:9px 22px; background:var(--primary); color:#fff; border:none;
+                                       border-radius:10px; cursor:pointer; font-size:0.88rem; font-weight:700;
+                                       transition:opacity 0.15s;">
+                            <i class="ph ph-floppy-disk"></i> Guardar cambios
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function buildTaskRow(task, idx, tipo, total) {
+            const label = typeof task === 'string' ? task : (task.label || task.task || '');
+            const icon  = (typeof task === 'object' && task.icon) ? task.icon : DEFAULT_ICON;
+            return `
+                <div class="cl-task-row" data-tipo="${tipo}" data-idx="${idx}"
+                     style="display:flex; align-items:center; gap:8px; padding:7px 0;
+                            border-bottom:1px solid var(--border);">
+                    <i class="${window.escapeHTML(icon)}" style="color:var(--primary); font-size:1rem; flex-shrink:0;"></i>
+                    <span style="flex:1; font-size:0.88rem; color:var(--text-primary);">
+                        ${window.escapeHTML(label)}
+                    </span>
+                    <!-- Orden arriba/abajo -->
+                    <button class="cl-task-up" data-tipo="${tipo}" data-idx="${idx}"
+                            title="Subir"
+                            style="width:28px; height:28px; border-radius:7px; border:1px solid var(--border);
+                                   background:transparent; cursor:pointer; display:flex; align-items:center;
+                                   justify-content:center; flex-shrink:0; ${idx === 0 ? 'opacity:0.3; pointer-events:none;' : ''}">
+                        <i class="ph ph-arrow-up" style="font-size:0.8rem; color:var(--text-muted);"></i>
+                    </button>
+                    <button class="cl-task-down" data-tipo="${tipo}" data-idx="${idx}"
+                            title="Bajar"
+                            style="width:28px; height:28px; border-radius:7px; border:1px solid var(--border);
+                                   background:transparent; cursor:pointer; display:flex; align-items:center;
+                                   justify-content:center; flex-shrink:0; ${idx === total - 1 ? 'opacity:0.3; pointer-events:none;' : ''}">
+                        <i class="ph ph-arrow-down" style="font-size:0.8rem; color:var(--text-muted);"></i>
+                    </button>
+                    <!-- Eliminar -->
+                    <button class="cl-task-del" data-tipo="${tipo}" data-idx="${idx}"
+                            title="Eliminar tarea"
+                            style="width:28px; height:28px; border-radius:7px; border:1px solid var(--border);
+                                   background:transparent; cursor:pointer; display:flex; align-items:center;
+                                   justify-content:center; flex-shrink:0;">
+                        <i class="ph ph-x" style="font-size:0.8rem; color:var(--danger);"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        function refreshCard(tipo) {
+            const card = el.querySelector(`.cl-tpl-card[data-tipo="${tipo}"]`);
+            if (!card) return;
+            const tpl   = tipo === 'apertura' ? tplApertura : tplCierre;
+            const tasks = tpl.tasks || [];
+            const taskListEl = card.querySelector(`.cl-task-list[data-tipo="${tipo}"]`);
+            if (!taskListEl) return;
+
+            taskListEl.innerHTML = tasks.length === 0
+                ? `<div class="cl-empty-tasks" style="font-size:0.85rem; color:var(--text-muted); padding:10px 0; text-align:center; opacity:0.7;">
+                      Sin tareas aún — agrega la primera abajo.
+                   </div>`
+                : tasks.map((task, idx) => buildTaskRow(task, idx, tipo, tasks.length)).join('');
+
+            // Update counter badge
+            const badge = card.querySelector('span[style*="border-radius:8px"]');
+            if (badge) badge.textContent = `${tasks.length} tarea${tasks.length !== 1 ? 's' : ''}`;
+
+            wireTaskListEvents(card, tipo);
+        }
+
+        function wireTaskListEvents(scope, tipo) {
+            const tpl = tipo === 'apertura' ? tplApertura : tplCierre;
+
+            scope.querySelectorAll(`.cl-task-up[data-tipo="${tipo}"]`).forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.dataset.idx, 10);
+                    if (idx <= 0) return;
+                    [tpl.tasks[idx - 1], tpl.tasks[idx]] = [tpl.tasks[idx], tpl.tasks[idx - 1]];
+                    refreshCard(tipo);
+                });
+            });
+
+            scope.querySelectorAll(`.cl-task-down[data-tipo="${tipo}"]`).forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.dataset.idx, 10);
+                    if (idx >= tpl.tasks.length - 1) return;
+                    [tpl.tasks[idx], tpl.tasks[idx + 1]] = [tpl.tasks[idx + 1], tpl.tasks[idx]];
+                    refreshCard(tipo);
+                });
+            });
+
+            scope.querySelectorAll(`.cl-task-del[data-tipo="${tipo}"]`).forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.dataset.idx, 10);
+                    tpl.tasks.splice(idx, 1);
+                    refreshCard(tipo);
+                });
+            });
+        }
+
+        function wireCardEvents(tipo) {
+            const card = el.querySelector(`.cl-tpl-card[data-tipo="${tipo}"]`);
+            if (!card) return;
+            const tpl = tipo === 'apertura' ? tplApertura : tplCierre;
+
+            // Agregar tarea
+            const addBtn   = card.querySelector(`.cl-add-task-btn[data-tipo="${tipo}"]`);
+            const inputEl  = card.querySelector(`.cl-new-task-input[data-tipo="${tipo}"]`);
+
+            function addTask() {
+                const val = inputEl.value.trim();
+                if (!val) { window.showToast('Escribe una tarea antes de agregar.', 'error'); return; }
+                tpl.tasks.push({ task: val, icon: DEFAULT_ICON });
+                inputEl.value = '';
+                refreshCard(tipo);
+            }
+
+            addBtn.addEventListener('click', addTask);
+            inputEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); addTask(); }
+            });
+
+            // Guardar
+            card.querySelector(`.cl-save-btn[data-tipo="${tipo}"]`).addEventListener('click', async () => {
+                const saveBtn = card.querySelector(`.cl-save-btn[data-tipo="${tipo}"]`);
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Guardando…';
+                try {
+                    const data = {
+                        ...tpl,
+                        updated_at_hlc: window.HLC?.now?.() || Date.now(),
+                    };
+                    await window.DataManager.saveAndSync('checklist_templates', data);
+                    window.showToast(`Plantilla de ${tipo} guardada.`, 'success');
+                } catch (err) {
+                    window.showToast('Error al guardar: ' + window.escapeHTML(err.message), 'error');
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="ph ph-floppy-disk"></i> Guardar cambios';
+                }
+            });
+
+            wireTaskListEvents(card, tipo);
+        }
+
+        el.innerHTML = `
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0 0 18px;">
+                Define las tareas que aparecen en los checklists de apertura y cierre.
+            </p>
+            ${buildCard('apertura')}
+            ${buildCard('cierre')}
+        `;
+
+        wireCardEvents('apertura');
+        wireCardEvents('cierre');
     }
 
 })();

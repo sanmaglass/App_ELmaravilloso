@@ -21,11 +21,12 @@ window.Constants = {
         'team_reports': 'team_reports',
         'announcements': 'announcements',
         'announcement_reads': 'announcement_reads',
-        'team_checklists': 'team_checklists'
+        'team_checklists': 'team_checklists',
+        'checklist_templates': 'checklist_templates'
     },
 
     // Versión actual de Dexie DB
-    DB_VERSION: 22,
+    DB_VERSION: 23,
 
     // Tablas versionadas (con control de versión optimista)
     VERSIONED_TABLES: ['purchase_invoices', 'electronic_invoices', 'loans'],
@@ -36,7 +37,7 @@ window.Constants = {
         'employees', 'workLogs', 'products', 'promotions', 'suppliers',
         'purchase_invoices', 'sales_invoices', 'expenses', 'daily_sales',
         'electronic_invoices', 'reminders', 'eleventa_sales', 'loans', 'cash_register', 'advances', 'eleventa_abonos',
-        'team_reports', 'announcements', 'announcement_reads', 'team_checklists'
+        'team_reports', 'announcements', 'announcement_reads', 'team_checklists', 'checklist_templates'
     ],
 
     // Límites de sincronización

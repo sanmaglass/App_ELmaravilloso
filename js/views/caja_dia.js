@@ -99,6 +99,7 @@ window.Views = window.Views || {};
     // ══════════════════════════════════════════════════════════════
     window.Views.caja_dia = async (container) => {
         const today = chileDate(new Date());
+        const isEmp = !!window._isEmployee;
 
         container.innerHTML = `
           <div style="max-width:680px; margin:0 auto; padding:0 16px 32px;">
@@ -109,8 +110,8 @@ window.Views = window.Views || {};
                     <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">Fondo, ventas, gastos y cuadre</p>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <input type="date" id="caja-fecha" value="${today}" max="${today}"
-                        style="padding:9px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; color:var(--text-primary); font:inherit;">
+                    ${isEmp ? '' : `<input type="date" id="caja-fecha" value="${today}" max="${today}"
+                        style="padding:9px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; color:var(--text-primary); font:inherit;">`}
                     <button id="caja-refresh" class="btn btn-secondary" style="padding:9px 12px; display:inline-flex; align-items:center; gap:6px;">
                         <i class="ph ph-arrows-clockwise"></i>
                     </button>
@@ -123,7 +124,7 @@ window.Views = window.Views || {};
         const fechaInput = container.querySelector('#caja-fecha');
 
         async function render() {
-            const dia = fechaInput.value || today;
+            const dia = isEmp ? today : (fechaInput?.value || today);
             const esHoy = dia === today;
 
             // ── Datos ──
@@ -212,7 +213,7 @@ window.Views = window.Views || {};
 
             // ═══════════════════════ RENDER HTML ═══════════════════════
             body.innerHTML = `
-                <!-- ── FONDO DE APERTURA ── -->
+                <!-- ── FONDO DE APERTURA ── (solo admin ve el monto, cajera solo registra) -->
                 <div style="background:var(--bg-card); border:1px solid var(--border); border-left:4px solid #f59e0b; border-radius:14px; padding:16px; margin-bottom:16px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
                         <div style="display:flex; align-items:center; gap:8px;">
@@ -232,8 +233,14 @@ window.Views = window.Views || {};
                     ${fondo && esHoy ? `<span style="font-size:0.72rem; color:var(--text-muted); margin-top:4px; display:block;">Registrado: ${fmt(fondoMonto)}</span>` : ''}
                 </div>
 
-                ${nTickets > 0 ? `
-                <!-- ── RESUMEN VENTAS ── -->
+                ${nTickets > 0 ? (isEmp ? `
+                <!-- ── RESUMEN VENTAS (cajera: solo cantidad, sin montos) ── -->
+                <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:16px; text-align:center;">
+                    <i class="ph-fill ph-receipt" style="font-size:1.5rem; color:var(--primary); margin-bottom:6px;"></i>
+                    <div style="font-size:1.4rem; font-weight:800; color:var(--text-primary);">${nTickets}</div>
+                    <div style="font-size:0.82rem; color:var(--text-muted);">venta${nTickets !== 1 ? 's' : ''} registrada${nTickets !== 1 ? 's' : ''} hoy</div>
+                </div>` : `
+                <!-- ── RESUMEN VENTAS (admin: montos completos) ── -->
                 <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:16px;">
                     <div style="flex:2; min-width:200px; background:linear-gradient(135deg, var(--primary), #c0392b); border-radius:16px; padding:18px 22px; color:#fff;">
                         <div style="font-size:0.82rem; opacity:0.9; text-transform:uppercase; letter-spacing:0.5px;">Total ventas</div>
@@ -241,7 +248,7 @@ window.Views = window.Views || {};
                         <div style="font-size:0.82rem; opacity:0.9; margin-top:6px;">${nTickets} ventas · promedio ${fmt(totalVentas / nTickets)}</div>
                     </div>
                 </div>
-                <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:20px;">${fpCards}</div>` : `
+                <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:20px;">${fpCards}</div>`) : `
                 <div style="text-align:center; padding:30px 20px; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; margin-bottom:16px;">
                     <i class="ph ph-receipt-x" style="font-size:2.5rem; color:var(--text-muted); opacity:0.5;"></i>
                     <p style="color:var(--text-muted); margin:10px 0 0; font-size:0.9rem;">Sin ventas ${esHoy ? 'todavía hoy' : 'ese día'}</p>
@@ -308,8 +315,8 @@ window.Views = window.Views || {};
                     <p style="color:var(--text-muted); font-size:0.72rem; margin:8px 0 0;">Solo puedes cuadrar el día de hoy.</p>`}
                 </div>
 
-                ${nTickets > 0 ? `
-                <!-- ── VENTAS DEL DÍA ── -->
+                ${!isEmp && nTickets > 0 ? `
+                <!-- ── VENTAS DEL DÍA (solo admin) ── -->
                 <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:20px;">
                     <div style="padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
                         <div style="display:flex; align-items:center; gap:8px;">
@@ -322,13 +329,14 @@ window.Views = window.Views || {};
                     ${verMasHTML}
                 </div>` : ''}
 
-                <!-- ── FACTURAS ── -->
+                ${!isEmp ? `
+                <!-- ── FACTURAS (solo admin) ── -->
                 <div style="margin-top:8px;">
                     <h2 style="font-size:1.1rem; color:var(--text-primary); margin:0 0 12px; display:flex; align-items:center; gap:8px;">
                         <i class="ph ph-receipt" style="color:var(--primary);"></i> Facturas de Proveedores
                     </h2>
                     ${facturasHTML}
-                </div>
+                </div>` : ''}
             `;
 
             // ═══════════════ EVENT LISTENERS ═══════════════
@@ -431,7 +439,7 @@ window.Views = window.Views || {};
         }
 
         await render();
-        fechaInput.addEventListener('change', render);
+        if (fechaInput) fechaInput.addEventListener('change', render);
         container.querySelector('#caja-refresh').addEventListener('click', render);
         const iv = setInterval(render, 60000);
         window._viewCleanup = () => clearInterval(iv);

@@ -57,20 +57,29 @@ window.Views = window.Views || {};
         return 'Buenas noches';
     }
 
-    // Checklist tareas por defecto (configurable por admin en el futuro)
-    const CHECKLIST_APERTURA = [
+    // Checklist tareas — se cargan desde BD (checklist_templates), con fallback hardcodeado
+    const FALLBACK_APERTURA = [
         { task: 'Abrir caja y contar efectivo', icon: 'ph-fill ph-wallet' },
         { task: 'Limpiar mesón y vitrinas', icon: 'ph-fill ph-broom' },
         { task: 'Verificar stock de productos destacados', icon: 'ph-fill ph-package' },
         { task: 'Revisar promos del día', icon: 'ph-fill ph-tag' },
         { task: 'Encender luces y letrero', icon: 'ph-fill ph-lightning' }
     ];
-    const CHECKLIST_CIERRE = [
+    const FALLBACK_CIERRE = [
         { task: 'Cuadrar caja del día', icon: 'ph-fill ph-wallet' },
         { task: 'Cerrar y limpiar', icon: 'ph-fill ph-broom' },
         { task: 'Revisar vencimientos próximos', icon: 'ph-fill ph-calendar-check' },
         { task: 'Reportar novedades del turno', icon: 'ph-fill ph-pencil-line' }
     ];
+
+    async function loadChecklistTasks(type) {
+        try {
+            const templates = await window.db.checklist_templates.toArray();
+            const tpl = templates.find(t => t.checklist_type === type && !t.deleted && t.active);
+            if (tpl && Array.isArray(tpl.tasks) && tpl.tasks.length > 0) return tpl.tasks;
+        } catch { /* tabla aún no existe, usar fallback */ }
+        return type === 'apertura' ? FALLBACK_APERTURA : FALLBACK_CIERRE;
+    }
 
     function getChecklistType() {
         const h = chileNow().getHours();
@@ -312,7 +321,7 @@ window.Views = window.Views || {};
             const clType = getChecklistType();
             const _cn = chileNow();
             const clDate = `${_cn.getFullYear()}-${String(_cn.getMonth()+1).padStart(2,'0')}-${String(_cn.getDate()).padStart(2,'0')}`;
-            const clTasks = clType === 'apertura' ? CHECKLIST_APERTURA : CHECKLIST_CIERRE;
+            const clTasks = await loadChecklistTasks(clType);
             let checklist = null;
             try {
                 const all = await window.db.team_checklists.toArray();
