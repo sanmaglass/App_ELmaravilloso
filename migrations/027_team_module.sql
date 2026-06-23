@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS public.announcement_reads (
     tenant_id UUID NOT NULL,
     read_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at_hlc BIGINT NOT NULL DEFAULT 0,
+    deleted BOOLEAN NOT NULL DEFAULT false,
+    version INTEGER NOT NULL DEFAULT 1,
     UNIQUE(announcement_id, user_id)
 );
 
