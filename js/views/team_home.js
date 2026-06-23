@@ -39,7 +39,8 @@ window.Views = window.Views || {};
         pedido: 'Pedido',
         merma: 'Merma',
         limpieza: 'Limpieza',
-        reporte: 'Reporte'
+        reporte: 'Reporte',
+        vendedor: 'Vendedor'
     };
 
     const STATUS_CONFIG = {
@@ -171,8 +172,26 @@ window.Views = window.Views || {};
                     </div>
                 </div>
 
+                <!-- Cerrar sesión -->
+                <div style="margin-top:32px; padding-top:20px; border-top:1px solid var(--border);">
+                    <button id="th-logout" style="width:100%; padding:14px; background:none; border:1px solid rgba(239,68,68,0.25);
+                            border-radius:12px; color:#ef4444; font-size:0.9rem; font-weight:600; cursor:pointer;
+                            display:flex; align-items:center; justify-content:center; gap:8px;
+                            transition:background 0.15s;">
+                        <i class="ph ph-sign-out"></i> Cerrar sesión
+                    </button>
+                </div>
+
             </div>
         `;
+
+        // Cerrar sesión
+        const logoutBtn = container.querySelector('#th-logout');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                if (confirm('¿Cerrar sesión?')) window.Auth.logout();
+            });
+        }
 
         // "Ver todos" links y banner de avisos
         container.querySelectorAll('.th-ver-mas').forEach(btn => {
