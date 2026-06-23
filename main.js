@@ -291,6 +291,10 @@ async function init() {
         window._isEmployee = (_userRole === 'employee');
         window._employeeAllowed = new Set(['team_home', 'caja_dia', 'announcements', 'team_reports', 'team_scanner']);
         if (window._isEmployee) {
+            // Tema claro para cajeras
+            document.body.classList.add('light-theme');
+            document.body.classList.remove('dark-mode');
+
             const ALLOWED = window._employeeAllowed;
             // Ocultar nav-items no permitidos en sidebar
             document.querySelectorAll('.nav-item[data-view], .more-menu-item[data-view]').forEach(el => {

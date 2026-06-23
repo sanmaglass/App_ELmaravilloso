@@ -761,7 +761,127 @@ body.privacy-mode .money-sensitive:hover {
 }
 
 /* ============================================
-   🌙 DARK MODE — MODO OSCURO PREMIUM
+   TEMA CLARO — Panel Cajeras
+   ============================================ */
+body.light-theme {
+    --text-primary: #1a1a2e;
+    --text-secondary: #4a5568;
+    --text-muted: #718096;
+    --bg-card: #ffffff;
+    --bg-input: #f7f8fa;
+    --bg-app: #f0f2f5;
+    --bg-elevated: #ffffff;
+    --border: rgba(0, 0, 0, 0.08);
+    --bg-glass: rgba(255, 255, 255, 0.92);
+    --bg-glass-hover: rgba(255, 255, 255, 0.98);
+    --bg-glass-dark: rgba(245, 247, 250, 0.95);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.12);
+    background: #f0f2f5 !important;
+    background-image: none !important;
+}
+
+body.light-theme .header {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+    backdrop-filter: blur(20px) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
+}
+
+body.light-theme .header .page-title {
+    color: #1a1a2e !important;
+}
+
+body.light-theme #bottom-nav {
+    background: rgba(255, 255, 255, 0.97) !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.light-theme .bottom-nav-item {
+    color: #718096 !important;
+}
+
+body.light-theme .bottom-nav-item.active {
+    color: var(--primary) !important;
+}
+
+body.light-theme .bottom-nav-item.active span {
+    color: var(--primary) !important;
+}
+
+body.light-theme .bottom-nav-item i {
+    color: inherit !important;
+}
+
+body.light-theme .bottom-nav-item::before,
+body.light-theme .bottom-nav-item::after {
+    display: none !important;
+}
+
+body.light-theme .btn-icon {
+    color: #4a5568 !important;
+}
+
+body.light-theme .form-input,
+body.light-theme input[type="text"],
+body.light-theme input[type="number"],
+body.light-theme input[type="tel"],
+body.light-theme input[type="date"],
+body.light-theme textarea {
+    background: #f7f8fa !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+    color: #1a1a2e !important;
+}
+
+body.light-theme .btn-primary,
+body.light-theme .btn.btn-primary {
+    background: var(--primary) !important;
+    color: #fff !important;
+}
+
+body.light-theme .btn-secondary,
+body.light-theme .btn.btn-secondary {
+    background: #f0f2f5 !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+    color: #4a5568 !important;
+}
+
+body.light-theme .top-bar {
+    color: #1a1a2e !important;
+}
+
+body.light-theme .page-title,
+body.light-theme h1, body.light-theme h2, body.light-theme h3 {
+    color: #1a1a2e !important;
+}
+
+/* Sidebar no se muestra a cajeras pero por si acaso */
+body.light-theme .sidebar {
+    background: rgba(255, 255, 255, 0.97) !important;
+    border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Toast/notificaciones */
+body.light-theme .toast,
+body.light-theme [class*="toast"] {
+    background: #1a1a2e !important;
+    color: #fff !important;
+}
+
+/* Scrollbar sutil */
+body.light-theme ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15) !important;
+}
+
+body.light-theme ::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+/* ============================================
+   DARK MODE — MODO OSCURO PREMIUM
    ============================================ */
 
 /* Paleta de variables dark — neutro profundo */
