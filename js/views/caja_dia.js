@@ -178,7 +178,7 @@ window.Views = window.Views || {};
                     <span style="font-size:0.85rem; color:var(--text-primary);">${window.escapeHTML ? window.escapeHTML(g.description) : g.description}</span>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span style="font-weight:700; color:#ef4444; font-size:0.88rem;">-${fmt(Math.abs(g.amount))}</span>
-                        ${esHoy ? `<button class="btn-del-gasto" data-id="${g.id}" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:2px 4px; font-size:0.9rem;" title="Eliminar"><i class="ph ph-x-circle"></i></button>` : ''}
+                        ${esHoy && !isEmp ? `<button class="btn-del-gasto" data-id="${g.id}" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:2px 4px; font-size:0.9rem;" title="Eliminar"><i class="ph ph-x-circle"></i></button>` : ''}
                     </div>
                 </div>
             `).join('') : '<p style="color:var(--text-muted); font-size:0.82rem; margin:4px 0;">Sin gastos registrados.</p>';
