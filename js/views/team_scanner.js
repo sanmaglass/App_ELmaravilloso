@@ -170,7 +170,7 @@ window.Views = window.Views || {};
             renderResults(matches, resultsEl);
         }
 
-        // ── Escanear con cámara (BarcodeDetector nativo) ──
+        // ── Escanear con cámara ──
         let _scanning = false;
         let _scanStream = null;
 
@@ -180,104 +180,144 @@ window.Views = window.Views || {};
                 _scanStream.getTracks().forEach(t => t.stop());
                 _scanStream = null;
             }
+            // QuaggaJS cleanup
+            if (typeof Quagga !== 'undefined') {
+                try { Quagga.offDetected(); Quagga.stop(); } catch {}
+            }
+            // Liberar tracks de video manualmente (iOS no siempre los suelta)
+            try {
+                container.querySelectorAll('video').forEach(v => {
+                    if (v.srcObject) { v.srcObject.getTracks().forEach(t => t.stop()); v.srcObject = null; }
+                });
+            } catch {}
             const videoWrap = container.querySelector('#ts-camera-wrap');
             if (videoWrap) videoWrap.remove();
             scanBtn.disabled = false;
             scanBtn.innerHTML = '<i class="ph ph-barcode" style="font-size:1.2rem;"></i> Escanear Código';
         }
 
+        function onBarcodeDetected(barcode) {
+            stopScanning();
+            searchInput.value = barcode;
+            // Buscar en catálogo
+            const matches = catalog.filter(p => p.name.includes(barcode));
+            if (matches.length > 0) {
+                renderResults(matches, resultsEl);
+            } else if (window.BarcodeScanner) {
+                resultsEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:1.5rem;"></i></div>';
+                window.BarcodeScanner.lookupProduct(barcode).then(result => {
+                    if (result?.success && result.product?.nombre) {
+                        searchAndShow(result.product.nombre);
+                    } else {
+                        resultsEl.innerHTML = `
+                            <div style="text-align:center; padding:30px 20px; background:var(--bg-card); border:1px solid var(--border); border-radius:14px;">
+                                <i class="ph ph-barcode" style="font-size:2rem; color:var(--text-muted); opacity:0.5; display:block; margin-bottom:8px;"></i>
+                                <p style="font-weight:700; color:var(--text-primary); margin:0 0 4px;">Código: ${window.escapeHTML(barcode)}</p>
+                                <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Producto no encontrado en el catálogo.</p>
+                            </div>`;
+                    }
+                }).catch(() => {
+                    resultsEl.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px;">Código: ${window.escapeHTML(barcode)} — no encontrado.</p>`;
+                });
+            }
+        }
+
         scanBtn.addEventListener('click', async () => {
             if (_scanning) { stopScanning(); return; }
-
-            // Verificar soporte
-            if (!('BarcodeDetector' in window)) {
-                window.showToast?.('Escáner no disponible en este navegador. Usa la búsqueda de texto.', 'error');
-                return;
-            }
 
             scanBtn.disabled = true;
             scanBtn.innerHTML = '<i class="ph ph-spinner ph-spin" style="font-size:1.2rem;"></i> Abriendo cámara…';
 
-            try {
-                _scanStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-                });
+            // Crear contenedor de video
+            const wrap = document.createElement('div');
+            wrap.id = 'ts-camera-wrap';
+            wrap.style.cssText = 'position:relative; margin-bottom:16px; border-radius:14px; overflow:hidden; border:2px solid var(--primary);';
 
-                // Crear video inline
-                const wrap = document.createElement('div');
-                wrap.id = 'ts-camera-wrap';
-                wrap.style.cssText = 'position:relative; margin-bottom:16px; border-radius:14px; overflow:hidden; border:2px solid var(--primary);';
-                wrap.innerHTML = `
-                    <video id="ts-camera-video" autoplay playsinline muted
-                           style="width:100%; display:block; border-radius:12px;"></video>
-                    <div style="position:absolute; top:8px; right:8px;">
-                        <button id="ts-camera-close" style="background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:8px; padding:6px 10px; cursor:pointer; font-size:0.82rem;">
-                            <i class="ph ph-x"></i> Cerrar
-                        </button>
-                    </div>
-                    <div style="position:absolute; bottom:0; left:0; right:0; padding:8px; text-align:center; background:linear-gradient(transparent, rgba(0,0,0,0.6));">
-                        <span style="color:#fff; font-size:0.78rem;">Apunta al código de barras…</span>
-                    </div>
-                `;
-                resultsEl.before(wrap);
-                wrap.querySelector('#ts-camera-close').addEventListener('click', stopScanning);
+            // ── Método 1: BarcodeDetector nativo (Chrome/Android) ──
+            if ('BarcodeDetector' in window) {
+                try {
+                    _scanStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+                    });
+                    wrap.innerHTML = `
+                        <video id="ts-camera-video" autoplay playsinline muted style="width:100%; display:block; border-radius:12px;"></video>
+                        <div style="position:absolute; top:8px; right:8px;">
+                            <button id="ts-camera-close" style="background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:8px; padding:6px 10px; cursor:pointer; font-size:0.82rem;">
+                                <i class="ph ph-x"></i> Cerrar</button>
+                        </div>
+                        <div style="position:absolute; bottom:0; left:0; right:0; padding:8px; text-align:center; background:linear-gradient(transparent, rgba(0,0,0,0.6));">
+                            <span style="color:#fff; font-size:0.78rem;">Apunta al código de barras…</span>
+                        </div>`;
+                    resultsEl.before(wrap);
+                    wrap.querySelector('#ts-camera-close').addEventListener('click', stopScanning);
+                    const video = wrap.querySelector('#ts-camera-video');
+                    video.srcObject = _scanStream;
+                    await video.play();
+                    _scanning = true;
+                    scanBtn.disabled = false;
+                    scanBtn.innerHTML = '<i class="ph ph-stop" style="font-size:1.2rem;"></i> Detener cámara';
 
-                const video = wrap.querySelector('#ts-camera-video');
-                video.srcObject = _scanStream;
-                await video.play();
-
-                _scanning = true;
-                scanBtn.disabled = false;
-                scanBtn.innerHTML = '<i class="ph ph-stop" style="font-size:1.2rem;"></i> Detener cámara';
-
-                const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'] });
-
-                // Loop de detección
-                const scanLoop = async () => {
-                    if (!_scanning) return;
-                    try {
-                        const codes = await detector.detect(video);
-                        if (codes.length > 0) {
-                            const barcode = codes[0].rawValue;
-                            stopScanning();
-                            // Buscar en catálogo por nombre que contenga el código
-                            const matches = catalog.filter(p => p.name.includes(barcode));
-                            if (matches.length > 0) {
-                                searchInput.value = barcode;
-                                renderResults(matches, resultsEl);
-                            } else {
-                                // Buscar en BarcodeScanner (APIs externas)
-                                searchInput.value = barcode;
-                                if (window.BarcodeScanner) {
-                                    const result = await window.BarcodeScanner.lookupProduct(barcode);
-                                    if (result?.success && result.product?.nombre) {
-                                        searchAndShow(result.product.nombre);
-                                    } else {
-                                        resultsEl.innerHTML = `
-                                            <div style="text-align:center; padding:30px 20px; background:var(--bg-card); border:1px solid var(--border); border-radius:14px;">
-                                                <i class="ph ph-barcode" style="font-size:2rem; color:var(--text-muted); opacity:0.5; display:block; margin-bottom:8px;"></i>
-                                                <p style="font-weight:700; color:var(--text-primary); margin:0 0 4px;">Código: ${window.escapeHTML(barcode)}</p>
-                                                <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Producto no encontrado en el catálogo.</p>
-                                            </div>
-                                        `;
-                                    }
-                                }
-                            }
-                            return;
-                        }
-                    } catch { /* ignore detection errors */ }
-                    if (_scanning) requestAnimationFrame(scanLoop);
-                };
-                requestAnimationFrame(scanLoop);
-
-            } catch (err) {
-                stopScanning();
-                if (err.name === 'NotAllowedError') {
-                    window.showToast?.('Permiso de cámara denegado. Actívalo en Ajustes.', 'error');
-                } else {
-                    window.showToast?.('No se pudo abrir la cámara.', 'error');
+                    const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'] });
+                    const scanLoop = async () => {
+                        if (!_scanning) return;
+                        try {
+                            const codes = await detector.detect(video);
+                            if (codes.length > 0) { onBarcodeDetected(codes[0].rawValue); return; }
+                        } catch {}
+                        if (_scanning) requestAnimationFrame(scanLoop);
+                    };
+                    requestAnimationFrame(scanLoop);
+                    return;
+                } catch (err) {
+                    stopScanning();
+                    // Si falla, intentar QuaggaJS
                 }
             }
+
+            // ── Método 2: QuaggaJS (Safari/iOS/Firefox) ──
+            if (typeof Quagga !== 'undefined') {
+                try {
+                    wrap.innerHTML = `
+                        <div id="ts-quagga-target" style="width:100%; min-height:280px; background:#000; border-radius:12px; overflow:hidden;"></div>
+                        <div style="position:absolute; top:8px; right:8px;">
+                            <button id="ts-camera-close" style="background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:8px; padding:6px 10px; cursor:pointer; font-size:0.82rem;">
+                                <i class="ph ph-x"></i> Cerrar</button>
+                        </div>
+                        <div style="position:absolute; bottom:0; left:0; right:0; padding:8px; text-align:center; background:linear-gradient(transparent, rgba(0,0,0,0.6));">
+                            <span style="color:#fff; font-size:0.78rem;">Apunta al código de barras…</span>
+                        </div>`;
+                    resultsEl.before(wrap);
+                    wrap.querySelector('#ts-camera-close').addEventListener('click', stopScanning);
+
+                    await new Promise((resolve, reject) => {
+                        Quagga.init({
+                            inputStream: { name: 'Live', type: 'LiveStream', target: document.getElementById('ts-quagga-target'),
+                                constraints: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } },
+                            decoder: { readers: ['ean_reader', 'ean_8_reader', 'upc_reader'] },
+                            locate: true, frequency: 10
+                        }, (err) => { if (err) reject(err); else resolve(); });
+                    });
+                    Quagga.start();
+                    _scanning = true;
+                    scanBtn.disabled = false;
+                    scanBtn.innerHTML = '<i class="ph ph-stop" style="font-size:1.2rem;"></i> Detener cámara';
+
+                    let lastCode = null, codeCount = 0;
+                    Quagga.onDetected((result) => {
+                        const code = result.codeResult?.code;
+                        if (!code || code.length < 8) return;
+                        if (code === lastCode) { codeCount++; } else { lastCode = code; codeCount = 1; }
+                        if (codeCount >= 3) { onBarcodeDetected(code); }
+                    });
+                    return;
+                } catch (err) {
+                    stopScanning();
+                }
+            }
+
+            // ── Sin escáner disponible ──
+            stopScanning();
+            window.showToast?.('No se pudo abrir la cámara. Usa la búsqueda de texto.', 'error');
         });
 
         // Cleanup al salir de la vista
