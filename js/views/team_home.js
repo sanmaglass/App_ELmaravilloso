@@ -58,17 +58,17 @@ window.Views = window.Views || {};
 
     // Checklist tareas por defecto (configurable por admin en el futuro)
     const CHECKLIST_APERTURA = [
-        { task: 'Abrir caja y contar efectivo', icon: 'ph-cash-register' },
-        { task: 'Limpiar mesón y vitrinas', icon: 'ph-broom' },
-        { task: 'Verificar stock de productos destacados', icon: 'ph-package' },
-        { task: 'Revisar promos del día', icon: 'ph-tag' },
-        { task: 'Encender luces y letrero', icon: 'ph-lightbulb' }
+        { task: 'Abrir caja y contar efectivo', icon: 'ph-fill ph-wallet' },
+        { task: 'Limpiar mesón y vitrinas', icon: 'ph-fill ph-broom' },
+        { task: 'Verificar stock de productos destacados', icon: 'ph-fill ph-package' },
+        { task: 'Revisar promos del día', icon: 'ph-fill ph-tag' },
+        { task: 'Encender luces y letrero', icon: 'ph-fill ph-lightning' }
     ];
     const CHECKLIST_CIERRE = [
-        { task: 'Cuadrar caja del día', icon: 'ph-cash-register' },
-        { task: 'Cerrar y limpiar', icon: 'ph-broom' },
-        { task: 'Revisar vencimientos próximos', icon: 'ph-calendar' },
-        { task: 'Reportar novedades del turno', icon: 'ph-note-pencil' }
+        { task: 'Cuadrar caja del día', icon: 'ph-fill ph-wallet' },
+        { task: 'Cerrar y limpiar', icon: 'ph-fill ph-broom' },
+        { task: 'Revisar vencimientos próximos', icon: 'ph-fill ph-calendar-check' },
+        { task: 'Reportar novedades del turno', icon: 'ph-fill ph-pencil-line' }
     ];
 
     function getChecklistType() {
@@ -88,97 +88,38 @@ window.Views = window.Views || {};
         const tenantId = window.Auth?.getTenantId();
         const hoy      = formatFechaChile(chileNow());
 
-        // Esqueleto base rápido
+        // Esqueleto base — sin accesos rápidos (ya están en el bottom-nav)
         container.innerHTML = `
             <div style="max-width:680px; margin:0 auto; padding:0 16px 32px;">
 
                 <!-- Saludo -->
-                <div style="margin-bottom:28px;">
-                    <div style="font-size:0.78rem; color:var(--primary); font-weight:700; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:4px;">
-                        El Maravilloso
-                    </div>
-                    <h1 style="margin:0 0 4px; font-size:1.8rem; color:var(--text-primary);">
-                        ${saludoContextual()}, ${window.escapeHTML(nombre)} 👋
-                    </h1>
-                    <p style="margin:0; color:var(--text-muted); font-size:0.9rem; text-transform:capitalize;">
+                <div style="margin-bottom:24px;">
+                    <p style="margin:0 0 2px; color:var(--text-muted); font-size:0.82rem; text-transform:capitalize;">
                         ${hoy}
                     </p>
+                    <h1 style="margin:0; font-size:1.6rem; color:var(--text-primary); font-weight:800;">
+                        ${saludoContextual()}, ${window.escapeHTML(nombre)}
+                    </h1>
                 </div>
 
-                <!-- Accesos rápidos -->
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:32px;">
-
-                    <!-- Caja del Día -->
-                    <button class="th-card-btn" data-nav="caja_dia"
-                        style="background:var(--bg-card); border:1px solid var(--border); border-radius:16px;
-                               padding:20px 16px; cursor:pointer; text-align:left; transition:all 0.18s;
-                               display:flex; flex-direction:column; gap:10px;">
-                        <div style="width:44px; height:44px; border-radius:12px; background:rgba(22,163,74,0.15);
-                                    display:flex; align-items:center; justify-content:center;">
-                            <i class="ph ph-cash-register" style="font-size:1.5rem; color:#16a34a;"></i>
-                        </div>
-                        <div>
-                            <div style="font-weight:700; color:var(--text-primary); font-size:0.95rem;">Caja del Día</div>
-                            <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">Ver ventas de hoy</div>
-                        </div>
+                <!-- Badge avisos no leídos (inline, no tarjeta) -->
+                <div id="th-badge-avisos-banner" style="display:none; margin-bottom:20px;">
+                    <button class="th-ver-mas" data-nav="announcements"
+                        style="width:100%; display:flex; align-items:center; gap:10px; padding:12px 16px;
+                               background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2);
+                               border-radius:12px; cursor:pointer; transition:background 0.15s;">
+                        <i class="ph-fill ph-bell-ringing" style="font-size:1.2rem; color:#2563eb;"></i>
+                        <span id="th-badge-avisos-text" style="font-size:0.88rem; font-weight:600; color:var(--text-primary);"></span>
+                        <i class="ph ph-arrow-right" style="margin-left:auto; color:var(--text-muted);"></i>
                     </button>
-
-                    <!-- Avisos -->
-                    <button class="th-card-btn" data-nav="announcements"
-                        style="background:var(--bg-card); border:1px solid var(--border); border-radius:16px;
-                               padding:20px 16px; cursor:pointer; text-align:left; transition:all 0.18s;
-                               display:flex; flex-direction:column; gap:10px; position:relative;">
-                        <div style="width:44px; height:44px; border-radius:12px; background:rgba(37,99,235,0.15);
-                                    display:flex; align-items:center; justify-content:center; position:relative;">
-                            <i class="ph ph-megaphone" style="font-size:1.5rem; color:#2563eb;"></i>
-                            <span id="th-badge-avisos" style="display:none; position:absolute; top:-6px; right:-6px;
-                                min-width:18px; height:18px; border-radius:9px; background:#ef4444; color:#fff;
-                                font-size:0.68rem; font-weight:700; line-height:18px; text-align:center; padding:0 4px;"></span>
-                        </div>
-                        <div>
-                            <div style="font-weight:700; color:var(--text-primary); font-size:0.95rem;">Avisos</div>
-                            <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">Tablero del equipo</div>
-                        </div>
-                    </button>
-
-                    <!-- Reportar -->
-                    <button class="th-card-btn" data-nav="team_reports"
-                        style="background:var(--bg-card); border:1px solid var(--border); border-radius:16px;
-                               padding:20px 16px; cursor:pointer; text-align:left; transition:all 0.18s;
-                               display:flex; flex-direction:column; gap:10px;">
-                        <div style="width:44px; height:44px; border-radius:12px; background:rgba(234,88,12,0.15);
-                                    display:flex; align-items:center; justify-content:center;">
-                            <i class="ph ph-note-pencil" style="font-size:1.5rem; color:#ea580c;"></i>
-                        </div>
-                        <div>
-                            <div style="font-weight:700; color:var(--text-primary); font-size:0.95rem;">Reportar</div>
-                            <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">Pedidos, mermas, limpieza</div>
-                        </div>
-                    </button>
-
-                    <!-- Consultar Precio -->
-                    <button class="th-card-btn" data-nav="team_scanner"
-                        style="background:var(--bg-card); border:1px solid var(--border); border-radius:16px;
-                               padding:20px 16px; cursor:pointer; text-align:left; transition:all 0.18s;
-                               display:flex; flex-direction:column; gap:10px;">
-                        <div style="width:44px; height:44px; border-radius:12px; background:rgba(124,58,237,0.15);
-                                    display:flex; align-items:center; justify-content:center;">
-                            <i class="ph ph-scan" style="font-size:1.5rem; color:#7c3aed;"></i>
-                        </div>
-                        <div>
-                            <div style="font-weight:700; color:var(--text-primary); font-size:0.95rem;">Consultar Precio</div>
-                            <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">Escanear producto</div>
-                        </div>
-                    </button>
-
                 </div>
 
                 <!-- Checklist del turno -->
-                <div style="margin-bottom:28px;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-                        <h3 style="margin:0; font-size:0.85rem; font-weight:700; color:var(--text-muted);
-                                   text-transform:uppercase; letter-spacing:1px;">
-                            <i class="ph ph-check-square" style="margin-right:6px;"></i>Checklist ${getChecklistType() === 'apertura' ? 'Apertura' : 'Cierre'}
+                <div style="margin-bottom:24px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                        <h3 style="margin:0; font-size:0.82rem; font-weight:700; color:var(--text-muted);
+                                   text-transform:uppercase; letter-spacing:0.8px;">
+                            <i class="ph-fill ph-list-checks" style="margin-right:5px;"></i>${getChecklistType() === 'apertura' ? 'Apertura' : 'Cierre'}
                         </h3>
                         <span id="th-checklist-progress" style="font-size:0.78rem; color:var(--text-muted);"></span>
                     </div>
@@ -188,20 +129,20 @@ window.Views = window.Views || {};
                 </div>
 
                 <!-- Promo del día -->
-                <div id="th-promo-section" style="margin-bottom:28px; display:none;">
-                    <h3 style="margin:0 0 12px; font-size:0.85rem; font-weight:700; color:var(--text-muted);
-                               text-transform:uppercase; letter-spacing:1px;">
-                        <i class="ph ph-star" style="margin-right:6px;"></i>Promo vigente
+                <div id="th-promo-section" style="margin-bottom:24px; display:none;">
+                    <h3 style="margin:0 0 10px; font-size:0.82rem; font-weight:700; color:var(--text-muted);
+                               text-transform:uppercase; letter-spacing:0.8px;">
+                        <i class="ph-fill ph-sparkle" style="margin-right:5px;"></i>Promo vigente
                     </h3>
                     <div id="th-promo-card"></div>
                 </div>
 
                 <!-- Avisos recientes -->
-                <div style="margin-bottom:28px;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-                        <h3 style="margin:0; font-size:0.85rem; font-weight:700; color:var(--text-muted);
-                                   text-transform:uppercase; letter-spacing:1px;">
-                            <i class="ph ph-megaphone" style="margin-right:6px;"></i>Avisos recientes
+                <div style="margin-bottom:24px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                        <h3 style="margin:0; font-size:0.82rem; font-weight:700; color:var(--text-muted);
+                                   text-transform:uppercase; letter-spacing:0.8px;">
+                            <i class="ph-fill ph-chat-circle-dots" style="margin-right:5px;"></i>Avisos
                         </h3>
                         <button class="th-ver-mas" data-nav="announcements"
                             style="font-size:0.8rem; color:var(--primary); background:none; border:none; cursor:pointer; padding:0;">
@@ -215,10 +156,10 @@ window.Views = window.Views || {};
 
                 <!-- Mis reportes recientes -->
                 <div>
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-                        <h3 style="margin:0; font-size:0.85rem; font-weight:700; color:var(--text-muted);
-                                   text-transform:uppercase; letter-spacing:1px;">
-                            <i class="ph ph-note-pencil" style="margin-right:6px;"></i>Mis reportes
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                        <h3 style="margin:0; font-size:0.82rem; font-weight:700; color:var(--text-muted);
+                                   text-transform:uppercase; letter-spacing:0.8px;">
+                            <i class="ph-fill ph-clipboard-text" style="margin-right:5px;"></i>Mis reportes
                         </h3>
                         <button class="th-ver-mas" data-nav="team_reports"
                             style="font-size:0.8rem; color:var(--primary); background:none; border:none; cursor:pointer; padding:0;">
@@ -233,22 +174,7 @@ window.Views = window.Views || {};
             </div>
         `;
 
-        // Hover effect en tarjetas
-        container.querySelectorAll('.th-card-btn').forEach(btn => {
-            btn.addEventListener('mouseenter', () => {
-                btn.style.transform = 'translateY(-2px)';
-                btn.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
-                btn.style.borderColor = 'var(--primary)';
-            });
-            btn.addEventListener('mouseleave', () => {
-                btn.style.transform = '';
-                btn.style.boxShadow = '';
-                btn.style.borderColor = 'var(--border)';
-            });
-            btn.addEventListener('click', () => navTo(btn.dataset.nav));
-        });
-
-        // "Ver todos" links
+        // "Ver todos" links y banner de avisos
         container.querySelectorAll('.th-ver-mas').forEach(btn => {
             btn.addEventListener('click', () => navTo(btn.dataset.nav));
         });
@@ -261,14 +187,17 @@ window.Views = window.Views || {};
                 window.db.team_reports.toArray()
             ]);
 
-            // — Badge de no leídos —
+            // — Banner de no leídos —
             const activos = announcements.filter(a => !a.deleted && a.active);
             const leidasPorMi = new Set(reads.filter(r => r.user_id === userId).map(r => r.announcement_id));
             const noLeidos = activos.filter(a => !leidasPorMi.has(a.id)).length;
-            const badge = container.querySelector('#th-badge-avisos');
-            if (noLeidos > 0) {
-                badge.textContent = noLeidos > 99 ? '99+' : String(noLeidos);
-                badge.style.display = 'block';
+            const banner = container.querySelector('#th-badge-avisos-banner');
+            const bannerText = container.querySelector('#th-badge-avisos-text');
+            if (noLeidos > 0 && banner && bannerText) {
+                bannerText.textContent = noLeidos === 1
+                    ? 'Tienes 1 aviso sin leer'
+                    : `Tienes ${noLeidos} avisos sin leer`;
+                banner.style.display = 'block';
             }
 
             // — Avisos recientes (últimos 3) —
@@ -390,7 +319,7 @@ window.Views = window.Views || {};
                            data-cl-idx="${i}">
                         <input type="checkbox" ${done ? 'checked' : ''} data-cl-idx="${i}"
                                style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer; flex-shrink:0;">
-                        <i class="ph ${t.icon}" style="font-size:1.1rem; color:${done ? 'var(--text-muted)' : 'var(--primary)'};"></i>
+                        <i class="${t.icon}" style="font-size:1.1rem; color:${done ? 'var(--text-muted)' : 'var(--primary)'};"></i>
                         <span style="font-size:0.9rem; color:var(--text-primary); ${done ? 'text-decoration:line-through;' : ''}">${t.task}</span>
                     </label>`;
                 }).join('') + (allDone ? `
@@ -445,7 +374,7 @@ window.Views = window.Views || {};
                                     border:1px solid var(--border); border-left:4px solid #ea580c;
                                     border-radius:14px; padding:18px 20px;">
                             <div style="font-weight:700; color:var(--text-primary); font-size:1rem; margin-bottom:6px;">
-                                <i class="ph ph-tag" style="color:#ea580c; margin-right:6px;"></i>
+                                <i class="ph-fill ph-tag" style="color:#ea580c; margin-right:6px;"></i>
                                 ${window.escapeHTML(promo.name || promo.title || 'Promoción')}
                             </div>
                             ${promo.description ? `<div style="font-size:0.88rem; color:var(--text-muted);">${window.escapeHTML(promo.description)}</div>` : ''}
@@ -464,16 +393,16 @@ window.Views = window.Views || {};
             if (rp) rp.innerHTML = msg;
         }
 
-        // Badge animado (pulso) con CSS
-        const badgeEl = container.querySelector('#th-badge-avisos');
-        if (badgeEl && badgeEl.style.display === 'block') {
-            badgeEl.style.animation = 'th-pulse 2s ease-in-out infinite';
+        // Animación sutil en banner de avisos
+        const bannerEl = container.querySelector('#th-badge-avisos-banner');
+        if (bannerEl && bannerEl.style.display === 'block') {
+            bannerEl.style.animation = 'th-fade-in 0.3s ease-out';
         }
         const style = document.createElement('style');
         style.textContent = `
-            @keyframes th-pulse {
-                0%, 100% { transform:scale(1); }
-                50% { transform:scale(1.2); }
+            @keyframes th-fade-in {
+                from { opacity:0; transform:translateY(-6px); }
+                to { opacity:1; transform:translateY(0); }
             }
         `;
         container.appendChild(style);

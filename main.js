@@ -293,19 +293,19 @@ async function init() {
             if (bn) {
                 bn.innerHTML = `
                     <button class="bottom-nav-item active" data-view="team_home">
-                        <i class="ph ph-house"></i><span>Inicio</span>
+                        <i class="ph-fill ph-house-simple"></i><span>Inicio</span>
                     </button>
                     <button class="bottom-nav-item" data-view="caja_dia">
-                        <i class="ph ph-cash-register"></i><span>Caja</span>
+                        <i class="ph-fill ph-wallet"></i><span>Caja</span>
                     </button>
                     <button class="bottom-nav-item" data-view="announcements">
-                        <i class="ph ph-megaphone"></i><span>Avisos</span>
+                        <i class="ph-fill ph-chat-circle-dots"></i><span>Avisos</span>
                     </button>
                     <button class="bottom-nav-item" data-view="team_reports">
-                        <i class="ph ph-note-pencil"></i><span>Reportar</span>
+                        <i class="ph-fill ph-pencil-line"></i><span>Reportar</span>
                     </button>
                     <button class="bottom-nav-item" data-view="team_scanner">
-                        <i class="ph ph-scan"></i><span>Precios</span>
+                        <i class="ph-fill ph-barcode"></i><span>Precios</span>
                     </button>
                 `;
                 // Re-bind click listeners en los nuevos botones
