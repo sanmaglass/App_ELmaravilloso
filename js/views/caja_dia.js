@@ -22,13 +22,14 @@ window.Views = window.Views || {};
         const today = chileDate(new Date());
 
         container.innerHTML = `
+          <div style="max-width:680px; margin:0 auto; padding:0 16px 32px;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px;">
                 <div>
                     <div style="font-size:0.8rem; color:var(--primary); font-weight:bold; letter-spacing:1px; text-transform:uppercase;">El Maravilloso</div>
                     <h1 style="margin:4px 0 4px; color:var(--text-primary);">Caja del Día</h1>
                     <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">Ventas en efectivo y tarjeta para cuadrar la caja</p>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     <input type="date" id="caja-fecha" value="${today}" max="${today}"
                         style="padding:9px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; color:var(--text-primary); font:inherit;">
                     <button id="caja-refresh" class="btn btn-secondary" style="padding:9px 12px; display:inline-flex; align-items:center; gap:6px;">
@@ -37,6 +38,7 @@ window.Views = window.Views || {};
                 </div>
             </div>
             <div id="caja-body"></div>
+          </div>
         `;
 
         const body = container.querySelector('#caja-body');
@@ -85,7 +87,7 @@ window.Views = window.Views || {};
             const cards = formas.map(fp => {
                 const g = grupos[fp]; const info = pmInfo(fp);
                 return `
-                    <div style="flex:1; min-width:150px; background:var(--bg-card); border:1px solid var(--border); border-left:4px solid ${info.col}; border-radius:14px; padding:16px 18px;">
+                    <div style="flex:1; min-width:120px; background:var(--bg-card); border:1px solid var(--border); border-left:4px solid ${info.col}; border-radius:14px; padding:14px 16px;">
                         <div style="display:flex; align-items:center; gap:7px; color:var(--text-muted); font-size:0.82rem; font-weight:600;">
                             <span style="font-size:1.05rem;">${info.emoji}</span> ${fp}
                         </div>
@@ -131,7 +133,7 @@ window.Views = window.Views || {};
                         <div>
                             <label style="color:var(--text-muted); font-size:0.78rem; display:block; margin-bottom:4px;">¿Cuánto contaste? ($)</label>
                             <input type="number" id="caja-contado" placeholder="0" inputmode="numeric"
-                                style="width:160px; padding:11px 13px; background:var(--bg-secondary, #0a0f0b); border:1px solid var(--border); border-radius:10px; color:var(--text-primary); font:inherit; font-size:1.05rem;">
+                                style="width:100%; max-width:160px; padding:11px 13px; background:var(--bg-secondary, #0a0f0b); border:1px solid var(--border); border-radius:10px; color:var(--text-primary); font:inherit; font-size:1.05rem; box-sizing:border-box;">
                         </div>
                         <div id="caja-dif" style="font-weight:700; font-size:1.05rem; padding-bottom:10px;"></div>
                     </div>

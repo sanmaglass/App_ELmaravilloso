@@ -55,7 +55,7 @@ window.Views = window.Views || {};
 
     window.Views.team_scanner = async (container) => {
         container.innerHTML = `
-            <div style="max-width:640px; margin:0 auto; padding:0 0 40px;">
+            <div style="max-width:640px; margin:0 auto; padding:0 16px 40px;">
 
                 <!-- Encabezado -->
                 <div style="margin-bottom:24px;">

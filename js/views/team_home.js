@@ -90,7 +90,7 @@ window.Views = window.Views || {};
 
         // Esqueleto base rápido
         container.innerHTML = `
-            <div style="max-width:680px; margin:0 auto; padding:0 0 32px;">
+            <div style="max-width:680px; margin:0 auto; padding:0 16px 32px;">
 
                 <!-- Saludo -->
                 <div style="margin-bottom:28px;">

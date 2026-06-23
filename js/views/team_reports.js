@@ -179,7 +179,7 @@ window.Views = window.Views || {};
             }
         </style>
 
-        <div style="max-width: 680px; margin: 0 auto; padding-bottom: 40px;">
+        <div style="max-width: 680px; margin: 0 auto; padding: 0 16px 40px;">
 
             <!-- Encabezado -->
             <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">

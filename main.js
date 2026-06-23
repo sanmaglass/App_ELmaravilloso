@@ -277,16 +277,48 @@ async function init() {
         const _userRole = window.Auth.getRole();
         window._isEmployee = (_userRole === 'employee');
         if (window._isEmployee) {
-            const ALLOWED = new Set(['team_home', 'caja_dia', 'announcements', 'team_reports', 'team_scanner']); // vistas permitidas a trabajadoras
-            document.querySelectorAll('.nav-item[data-view], #bottom-nav .bottom-nav-item[data-view], .more-menu-item[data-view]').forEach(el => {
+            const ALLOWED = new Set(['team_home', 'caja_dia', 'announcements', 'team_reports', 'team_scanner']);
+            // Ocultar nav-items no permitidos en sidebar
+            document.querySelectorAll('.nav-item[data-view], .more-menu-item[data-view]').forEach(el => {
                 const v = el.dataset.view;
                 if (v && v !== 'logout' && !ALLOWED.has(v)) el.style.display = 'none';
             });
+            // Ocultar menú "Más" (employee no lo necesita)
             const moreBtn = document.getElementById('btn-bottom-more');
             if (moreBtn) moreBtn.style.display = 'none';
-            // En móvil: ocultar toda la barra inferior (la trabajadora solo tiene una vista)
+            const moreMenu = document.getElementById('more-menu');
+            if (moreMenu) moreMenu.style.display = 'none';
+            // Reemplazar bottom-nav con las 5 vistas de employee
             const bn = document.getElementById('bottom-nav');
-            if (bn) bn.style.display = 'none';
+            if (bn) {
+                bn.innerHTML = `
+                    <button class="bottom-nav-item active" data-view="team_home">
+                        <i class="ph ph-house"></i><span>Inicio</span>
+                    </button>
+                    <button class="bottom-nav-item" data-view="caja_dia">
+                        <i class="ph ph-cash-register"></i><span>Caja</span>
+                    </button>
+                    <button class="bottom-nav-item" data-view="announcements">
+                        <i class="ph ph-megaphone"></i><span>Avisos</span>
+                    </button>
+                    <button class="bottom-nav-item" data-view="team_reports">
+                        <i class="ph ph-note-pencil"></i><span>Reportar</span>
+                    </button>
+                    <button class="bottom-nav-item" data-view="team_scanner">
+                        <i class="ph ph-scan"></i><span>Precios</span>
+                    </button>
+                `;
+                // Re-bind click listeners en los nuevos botones
+                bn.querySelectorAll('.bottom-nav-item[data-view]').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        bn.querySelectorAll('.bottom-nav-item').forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        const vName = tab.dataset.view;
+                        const titleMap = { team_home: 'Inicio', caja_dia: 'Caja del Día', announcements: 'Avisos', team_reports: 'Reportar', team_scanner: 'Consultar Precio' };
+                        navigateToView(vName, titleMap[vName] || vName);
+                    });
+                });
+            }
             window.state.currentView = 'team_home';
         }
         localStorage.setItem('wm_auth', 'true');
@@ -448,21 +480,24 @@ async function init() {
         // Exponer globalmente para accesos rápidos del dashboard
         window.navigateToView = navigateToView;
 
-        bottomTabs.forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                const viewName = tab.dataset.view;
-                // Sync bottom-nav active
-                bottomTabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                // Sync sidebar active (in case sidebar is visible)
-                navItems.forEach(b => b.classList.remove('active'));
-                const matchingSidebarItem = document.querySelector(`.nav-item[data-view="${viewName}"]`);
-                if (matchingSidebarItem) matchingSidebarItem.classList.add('active');
-                // Navigate
-                const label = tab.querySelector('span')?.textContent;
-                navigateToView(viewName, label);
+        // Solo bindear si NO es employee (employee ya tiene sus propios listeners)
+        if (!window._isEmployee) {
+            bottomTabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    const viewName = tab.dataset.view;
+                    // Sync bottom-nav active
+                    bottomTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    // Sync sidebar active (in case sidebar is visible)
+                    navItems.forEach(b => b.classList.remove('active'));
+                    const matchingSidebarItem = document.querySelector(`.nav-item[data-view="${viewName}"]`);
+                    if (matchingSidebarItem) matchingSidebarItem.classList.add('active');
+                    // Navigate
+                    const label = tab.querySelector('span')?.textContent;
+                    navigateToView(viewName, label);
+                });
             });
-        });
+        }
 
         // Bottom Nav Logic (Mobile)
         const bottomNav = document.getElementById('bottom-nav');
@@ -580,13 +615,13 @@ async function init() {
             console.warn('[Push] Init error (no crítico):', pushErr);
         }
 
-        // Initial Load (trabajadora arranca en Caja del Día; owner en Resumen)
+        // Initial Load (trabajadora arranca en Inicio Equipo; owner en Resumen)
         if (window._isEmployee) {
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-            const cajaBtn = document.querySelector('.nav-item[data-view="caja_dia"]');
-            if (cajaBtn) cajaBtn.classList.add('active');
-            const pt = document.getElementById('page-title'); if (pt) pt.textContent = 'Caja del Día';
-            views.caja_dia();
+            const homeBtn = document.querySelector('.nav-item[data-view="team_home"]');
+            if (homeBtn) homeBtn.classList.add('active');
+            const pt = document.getElementById('page-title'); if (pt) pt.textContent = 'Inicio';
+            views.team_home();
         } else {
             views.dashboard();
         }
