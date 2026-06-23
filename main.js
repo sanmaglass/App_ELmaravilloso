@@ -619,7 +619,6 @@ async function init() {
         try {
             if (window.PushSubscribe) {
                 await window.PushSubscribe.init();
-                // Si ya tenía permiso, suscribir automáticamente
                 if (Notification.permission === 'granted') {
                     await window.PushSubscribe.subscribe();
                 }
@@ -637,6 +636,140 @@ async function init() {
             views.team_home();
         } else {
             views.dashboard();
+        }
+
+        // Keyframe para modales (push + bio)
+        if (!document.getElementById('wm-modal-anim')) {
+            const s = document.createElement('style'); s.id = 'wm-modal-anim';
+            s.textContent = '@keyframes wm-modal-in{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}';
+            document.head.appendChild(s);
+        }
+        // ── Prompt agresivo de notificaciones (employees) ──────────
+        // Muestra modal la primera vez si no tiene permiso. Se guarda en localStorage.
+        if (window._isEmployee && Notification.permission !== 'granted' && !localStorage.getItem('wm_push_asked')) {
+            setTimeout(() => {
+                const overlay = document.createElement('div');
+                overlay.id = 'push-prompt-overlay';
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;animation:wm-modal-in 0.25s ease-out;';
+                overlay.innerHTML = `
+                    <div style="background:var(--bg-card);border-radius:20px;padding:28px 24px;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+                        <div style="width:56px;height:56px;border-radius:16px;background:rgba(37,99,235,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                            <i class="ph-fill ph-bell-ringing" style="font-size:1.8rem;color:#2563eb;"></i>
+                        </div>
+                        <h3 style="margin:0 0 8px;font-size:1.1rem;color:var(--text-primary);font-weight:800;">Activar Notificaciones</h3>
+                        <p style="margin:0 0 20px;font-size:0.88rem;color:var(--text-muted);line-height:1.5;">
+                            Recibe avisos importantes del equipo aunque no estés en la app.
+                        </p>
+                        <div style="display:flex;gap:10px;">
+                            <button id="push-prompt-no" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:0.9rem;font-weight:600;cursor:pointer;">
+                                Ahora no
+                            </button>
+                            <button id="push-prompt-yes" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--primary);color:#fff;font-size:0.9rem;font-weight:700;cursor:pointer;">
+                                Activar
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                const dismiss = () => { localStorage.setItem('wm_push_asked', '1'); overlay.remove(); };
+                document.getElementById('push-prompt-no').addEventListener('click', dismiss);
+                document.getElementById('push-prompt-yes').addEventListener('click', async () => {
+                    dismiss();
+                    try {
+                        if (window.PushSubscribe) await window.PushSubscribe.subscribe();
+                    } catch (e) { console.warn('[Push] Subscribe error:', e); }
+                });
+            }, 1500); // Esperar a que la vista cargue
+        }
+
+        // ── Bloqueo biométrico/PIN del dispositivo (employees) ──────
+        // Usa WebAuthn con authenticatorAttachment:"platform" → Face ID, huella, o PIN del celu.
+        // Registro: primera vez después de login. Verificación: cada vez que abre la app.
+        if (window._isEmployee && window.PublicKeyCredential) {
+            const bioKey = 'wm_bio_' + (session.user.email || '');
+            const bioRegistered = localStorage.getItem(bioKey);
+
+            if (bioRegistered) {
+                // Ya registró biométrico → verificar antes de mostrar la app
+                try {
+                    const credId = Uint8Array.from(atob(bioRegistered), c => c.charCodeAt(0));
+                    await navigator.credentials.get({
+                        publicKey: {
+                            challenge: crypto.getRandomValues(new Uint8Array(32)),
+                            allowCredentials: [{ id: credId, type: 'public-key', transports: ['internal'] }],
+                            userVerification: 'required',
+                            timeout: 60000
+                        }
+                    });
+                    // Verificación OK — la app ya está visible
+                } catch (bioErr) {
+                    // Falló o canceló → logout por seguridad
+                    console.warn('[Bio] Verificación fallida:', bioErr.name);
+                    if (bioErr.name !== 'NotAllowedError') {
+                        // Error técnico, no bloquear (puede que el celu no soporte)
+                    } else {
+                        window.Auth.logout();
+                        return;
+                    }
+                }
+            } else if (!localStorage.getItem(bioKey + '_skip')) {
+                // No registrado → ofrecer registrar (una vez, con opción de omitir)
+                setTimeout(() => {
+                    const overlay = document.createElement('div');
+                    overlay.id = 'bio-prompt-overlay';
+                    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;animation:wm-modal-in 0.25s ease-out;';
+                    overlay.innerHTML = `
+                        <div style="background:var(--bg-card);border-radius:20px;padding:28px 24px;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+                            <div style="width:56px;height:56px;border-radius:16px;background:rgba(22,163,74,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                                <i class="ph-fill ph-fingerprint" style="font-size:1.8rem;color:#16a34a;"></i>
+                            </div>
+                            <h3 style="margin:0 0 8px;font-size:1.1rem;color:var(--text-primary);font-weight:800;">Proteger con tu celular</h3>
+                            <p style="margin:0 0 20px;font-size:0.88rem;color:var(--text-muted);line-height:1.5;">
+                                Usa Face ID, huella o código del celular para entrar más rápido y seguro.
+                            </p>
+                            <div style="display:flex;gap:10px;">
+                                <button id="bio-prompt-skip" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:0.9rem;font-weight:600;cursor:pointer;">
+                                    Omitir
+                                </button>
+                                <button id="bio-prompt-yes" style="flex:1;padding:12px;border-radius:12px;border:none;background:#16a34a;color:#fff;font-size:0.9rem;font-weight:700;cursor:pointer;">
+                                    Activar
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(overlay);
+                    document.getElementById('bio-prompt-skip').addEventListener('click', () => {
+                        localStorage.setItem(bioKey + '_skip', '1');
+                        overlay.remove();
+                    });
+                    document.getElementById('bio-prompt-yes').addEventListener('click', async () => {
+                        try {
+                            const userId = session.user.id;
+                            const userIdBytes = new TextEncoder().encode(userId);
+                            const credential = await navigator.credentials.create({
+                                publicKey: {
+                                    challenge: crypto.getRandomValues(new Uint8Array(32)),
+                                    rp: { name: 'El Maravilloso' },
+                                    user: { id: userIdBytes, name: session.user.email, displayName: session.user.email.split('@')[0] },
+                                    pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+                                    authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' },
+                                    timeout: 60000
+                                }
+                            });
+                            // Guardar credential ID en localStorage
+                            const rawId = new Uint8Array(credential.rawId);
+                            const b64 = btoa(String.fromCharCode(...rawId));
+                            localStorage.setItem(bioKey, b64);
+                            overlay.remove();
+                            window.showToast?.('Protección activada', 'success');
+                        } catch (e) {
+                            console.warn('[Bio] Registro fallido:', e);
+                            overlay.remove();
+                            window.showToast?.('No se pudo activar. Puedes intentar después.', 'error');
+                        }
+                    });
+                }, 3000); // Después del prompt de notificaciones
+            }
         }
 
         // Sincronizar cuando vuelve a primer plano
