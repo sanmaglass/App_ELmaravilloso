@@ -329,7 +329,11 @@ def export_csv():
 
 # ---------- Lector de precios desde la BD Supabase ----------
 SUPABASE_URL  = os.environ.get("SUPABASE_URL",  "https://ybonpeapvpdseqbtlysx.supabase.co")
-SUPABASE_ANON = os.environ.get("SUPABASE_ANON_KEY", "sb_publishable_WPhGxSOnQ4RN1aJBKGnj0g_TnZFPWIB")
+# Prefiere la service key (server-side, salta RLS); si no, anon; si no, fallback público anon.
+# La service key NUNCA va al cliente: este server es local.
+SUPABASE_KEY = (os.environ.get("SUPABASE_SERVICE_KEY")
+                or os.environ.get("SUPABASE_ANON_KEY")
+                or "sb_publishable_WPhGxSOnQ4RN1aJBKGnj0g_TnZFPWIB")
 PRODUCTS_CACHE = os.path.join(HERE, "products_cache.json")
 _products_mem  = {"products": [], "cached_at": None}   # cache en memoria
 
@@ -378,8 +382,8 @@ def fetch_products(force=False):
            f"&deleted=eq.false"
            f"&order=name")
     req = urllib.request.Request(url, headers={
-        "apikey":        SUPABASE_ANON,
-        "Authorization": f"Bearer {SUPABASE_ANON}",
+        "apikey":        SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
     })
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
