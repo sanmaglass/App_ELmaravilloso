@@ -377,9 +377,10 @@ def fetch_products(force=False):
             disk_ok = False
 
     # 3) Ir a la red
-    url = (f"{SUPABASE_URL}/rest/v1/products"
-           f"?select=name,salePrice,category,stock"
-           f"&deleted=eq.false"
+    # Catálogo real = vista marketing_catalog (derivada de Eleventa: producto + precio
+    # de su venta más reciente). Privada, solo legible con la service key.
+    url = (f"{SUPABASE_URL}/rest/v1/marketing_catalog"
+           f"?select=name,salePrice,last_sold,times_sold"
            f"&order=name")
     req = urllib.request.Request(url, headers={
         "apikey":        SUPABASE_KEY,
