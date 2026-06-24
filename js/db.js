@@ -293,8 +293,14 @@ window.DataManager = {
         const remoteTable = (window.Constants?.REMOTE_TABLE_MAP?.[tableName]) || tableName;
 
         try {
-            // ── ID Coercion: evitar duplicados por IDs string ──
-            if (data.id) data.id = Number(data.id);
+            // ── ID Coercion: normalizar IDs numéricos (string→number) para evitar
+            // duplicados, pero PRESERVAR UUIDs (announcements, announcement_reads, etc.).
+            // Number(uuid) daba NaN → se regeneraba un id numérico que no cabe en una
+            // columna uuid → el aviso nunca sincronizaba y se duplicaba al reponerlo.
+            if (data.id) {
+                const n = Number(data.id);
+                if (!Number.isNaN(n)) data.id = n;
+            }
 
             if (!data.id) {
                 // 53-bit safe random ID (Number.MAX_SAFE_INTEGER = 2^53-1)
