@@ -54,7 +54,8 @@
   h2 small{color:var(--muted);font-weight:400;font-size:.82rem}
   h2 .act{margin-left:auto}
 
-  .drop{border:2.5px dashed #dbd0bd;border-radius:var(--r);background:linear-gradient(180deg,#fffdf8,#fbf8f1);
+  .drop{display:flex;flex-direction:column;align-items:center;justify-content:center;
+        border:2.5px dashed #dbd0bd;border-radius:var(--r);background:linear-gradient(180deg,#fffdf8,#fbf8f1);
         padding:40px;text-align:center;cursor:pointer;transition:.2s;position:relative}
   .drop:hover,.drop.over{border-color:var(--red);background:#fff;transform:translateY(-2px);box-shadow:var(--shadow)}
   .drop .ic{font-size:2.8rem}
@@ -285,6 +286,16 @@
                    background:linear-gradient(90deg,#ece6db 25%,#f6f3ec 50%,#ece6db 75%);
                    background-size:200% 100%;animation:shimmer 1.4s infinite}
 
+  /* ── HINT PRECIO BD ─────────────────────────────────── */
+  .price-hint{font-size:.74rem;color:var(--ok);margin-top:4px;padding:4px 8px;
+              background:#e7f6ec;border-radius:8px;display:none;line-height:1.4}
+  .price-hint.show{display:block}
+  .price-hint .hint-name{font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+  .btn-sync-prices{background:#f3efe7;color:var(--ink);border:none;border-radius:10px;
+                   padding:7px 13px;font:inherit;font-size:.82rem;font-weight:600;cursor:pointer;
+                   display:inline-flex;align-items:center;gap:5px;transition:.16s;width:auto}
+  .btn-sync-prices:hover{background:#ece6db;transform:translateY(-1px)}
+
   @media(max-width:680px){
     .cmt-card{flex-direction:column}
     .cmt-thumb-wrap{width:100%}
@@ -333,7 +344,10 @@
     </label>
 
     <h2><span class="dot"></span>Por procesar <small id="pend-c"></small>
-      <button class="btn btn-ghost btn-sm act" id="gen-all" style="width:auto;display:none">⚡ Generar todas</button>
+      <span class="act" style="display:flex;gap:8px">
+        <button class="btn-sync-prices" id="sync-prices" style="display:none" onclick="syncPrices()">💲 Sincronizar precios</button>
+        <button class="btn btn-ghost btn-sm" id="gen-all" style="width:auto;display:none">⚡ Generar todas</button>
+      </span>
     </h2>
     <div class="grid" id="pend-grid"></div>
 
@@ -608,10 +622,61 @@ async function load(){
 }
 function guessName(f){return f.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase());}
 
+/* ─── PRECIOS DESDE BD ────────────────────────────────── */
+async function fetchMatchPrice(filename){
+  /* convierte nombre de archivo (sin extensión, guiones→espacios) en query */
+  const q=filename.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ');
+  try{
+    const r=await fetch('/api/match-price?q='+encodeURIComponent(q));
+    return await r.json();
+  }catch(e){return {match:null,candidates:[]};}
+}
+
+function applyPriceHint(card, matchData){
+  const input=card.querySelector('[data-k="price"]');
+  const hint=card.querySelector('.price-hint');
+  if(!input||!hint)return;
+  const m=matchData&&matchData.match;
+  if(m&&m.salePrice!=null){
+    input.value=Math.round(m.salePrice);
+    hint.querySelector('.hint-name').textContent='desde BD: '+m.name;
+    hint.classList.add('show');
+    hint.title='Precio editable. Fuente: tabla products (Supabase)';
+  }
+}
+
+async function syncPrices(){
+  /* fuerza refresh del cache y re-aplica hints a todas las cards pendientes */
+  const btn=document.getElementById('sync-prices');
+  if(btn){btn.innerHTML='<span class="spin dark"></span> Cargando…';btn.disabled=true;}
+  let count=0;
+  try{
+    const r=await fetch('/api/products?refresh=1').then(res=>res.json());
+    count=r.count||0;
+    toast(`💲 ${count} productos cargados desde BD`);
+  }catch(e){toast('No se pudo sincronizar precios');}
+  /* re-aplicar hints a cards actuales */
+  const cards=document.querySelectorAll('#pend-grid .card');
+  for(const card of cards){
+    const f=card.dataset.file;
+    if(f){
+      const m=await fetchMatchPrice(f);
+      applyPriceHint(card,m);
+    }
+  }
+  if(btn){btn.innerHTML='💲 Sincronizar precios';btn.disabled=false;}
+}
+
 function renderPending(files){
   const g=$('#pend-grid');
-  if(!files.length){g.innerHTML='<div class="empty">No hay fotos pendientes. Sube algunas arriba 👆</div>';return;}
+  const syncBtn=document.getElementById('sync-prices');
+  if(!files.length){
+    g.innerHTML='<div class="empty">No hay fotos pendientes. Sube algunas arriba 👆</div>';
+    if(syncBtn)syncBtn.style.display='none';
+    return;
+  }
   g.innerHTML='';
+  if(syncBtn)syncBtn.style.display='inline-flex';
   files.forEach((f,i)=>{
     const el=document.createElement('div');el.className='card';el.style.animationDelay=(i*40)+'ms';el.dataset.file=f;
     el.innerHTML=`
@@ -619,7 +684,11 @@ function renderPending(files){
       <div class="body">
         <label>Producto</label><input value="${guessName(f)}" data-k="name">
         <div class="row">
-          <div><label>Precio $</label><input type="number" placeholder="7190" data-k="price"></div>
+          <div>
+            <label>Precio $</label>
+            <input type="number" placeholder="7190" data-k="price">
+            <div class="price-hint"><span class="hint-name"></span></div>
+          </div>
           <div><label>Estilo</label><select data-k="style">
             <option value="premium">Premium</option><option value="clasica">Clásica</option>
           </select></div>
@@ -630,6 +699,8 @@ function renderPending(files){
       </div>`;
     el.querySelector('[data-gen]').onclick=()=>genOne(el);
     g.appendChild(el);
+    /* pre-llenar precio desde BD de forma asíncrona (no bloquea render) */
+    fetchMatchPrice(f).then(m=>applyPriceHint(el,m));
   });
 }
 

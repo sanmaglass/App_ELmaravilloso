@@ -327,6 +327,135 @@ def export_csv():
     return Response(out, media_type="text/csv",
                     headers={"Content-Disposition": "attachment; filename=calendario-maravilloso.csv"})
 
+# ---------- Lector de precios desde la BD Supabase ----------
+SUPABASE_URL  = os.environ.get("SUPABASE_URL",  "https://ybonpeapvpdseqbtlysx.supabase.co")
+SUPABASE_ANON = os.environ.get("SUPABASE_ANON_KEY", "sb_publishable_WPhGxSOnQ4RN1aJBKGnj0g_TnZFPWIB")
+PRODUCTS_CACHE = os.path.join(HERE, "products_cache.json")
+_products_mem  = {"products": [], "cached_at": None}   # cache en memoria
+
+import unicodedata
+
+def _normaliza(s):
+    """lower, sin tildes, sin signos, colapsa espacios."""
+    s = s.lower()
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = re.sub(r"[^a-z0-9 ]+", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+def fetch_products(force=False):
+    """Obtiene productos de Supabase; usa cache de disco/memoria si < 6h."""
+    import urllib.request, urllib.parse, urllib.error
+    global _products_mem
+
+    now = datetime.now()
+    # 1) Intentar servir desde memoria
+    if not force and _products_mem["cached_at"]:
+        age = (now - _products_mem["cached_at"]).total_seconds()
+        if age < 6 * 3600 and _products_mem["products"]:
+            return _products_mem
+
+    # 2) Intentar servir desde cache de disco
+    disk_ok = False
+    if not force and os.path.exists(PRODUCTS_CACHE):
+        try:
+            disk = json.load(open(PRODUCTS_CACHE, encoding="utf-8"))
+            cached_at_str = disk.get("cached_at")
+            if cached_at_str:
+                cached_at = datetime.fromisoformat(cached_at_str)
+                age = (now - cached_at).total_seconds()
+                if age < 6 * 3600 and disk.get("products"):
+                    _products_mem = {"products": disk["products"], "cached_at": cached_at}
+                    return _products_mem
+                disk_ok = bool(disk.get("products"))  # hay datos viejos como fallback
+        except Exception:
+            disk_ok = False
+
+    # 3) Ir a la red
+    url = (f"{SUPABASE_URL}/rest/v1/products"
+           f"?select=name,salePrice,category,stock"
+           f"&deleted=eq.false"
+           f"&order=name")
+    req = urllib.request.Request(url, headers={
+        "apikey":        SUPABASE_ANON,
+        "Authorization": f"Bearer {SUPABASE_ANON}",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            products = json.loads(r.read())
+        result = {"products": products, "cached_at": now.isoformat()}
+        _products_mem = {"products": products, "cached_at": now}
+        json.dump(result, open(PRODUCTS_CACHE, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+        return _products_mem
+    except Exception:
+        # Degradar elegante: devolver cache viejo si existe
+        if os.path.exists(PRODUCTS_CACHE):
+            try:
+                disk = json.load(open(PRODUCTS_CACHE, encoding="utf-8"))
+                if disk.get("products"):
+                    _products_mem = {"products": disk["products"],
+                                     "cached_at": datetime.fromisoformat(disk["cached_at"]) if disk.get("cached_at") else None}
+                    return _products_mem
+            except Exception:
+                pass
+        return {"products": [], "cached_at": None}
+
+@app.get("/api/products")
+def api_products(refresh: int = 0):
+    data = fetch_products(force=bool(refresh))
+    cached_at = data["cached_at"].isoformat() if isinstance(data["cached_at"], datetime) else (data["cached_at"] or "")
+    return {"products": data["products"], "count": len(data["products"]), "cached_at": cached_at}
+
+def _match_price(query: str, products: list):
+    """Devuelve (mejor_match|None, [candidatos hasta 5])."""
+    q = _normaliza(query)
+    q_words = set(q.split())
+    if not q or not products:
+        return None, []
+
+    scored = []
+    for p in products:
+        name = p.get("name") or ""
+        n = _normaliza(name)
+        n_words = set(n.split())
+
+        # exacto
+        if q == n:
+            scored.append((100, p))
+            continue
+        # todas las palabras del query en el nombre
+        if q_words and q_words.issubset(n_words):
+            scored.append((90, p))
+            continue
+        # substring
+        if q in n or n in q:
+            scored.append((70, p))
+            continue
+        # token overlap
+        overlap = len(q_words & n_words)
+        if overlap:
+            scored.append((overlap, p))
+
+    scored.sort(key=lambda x: -x[0])
+    candidates = [p for _, p in scored[:5]]
+    best = candidates[0] if candidates else None
+    # no devolver match si el score es muy bajo (solo 1 token y hay muchos)
+    if scored and scored[0][0] < 1:
+        best = None
+    return best, candidates
+
+@app.get("/api/match-price")
+def api_match_price(q: str = ""):
+    data = fetch_products()
+    best, candidates = _match_price(q, data["products"])
+    def slim(p):
+        return {"name": p.get("name"), "salePrice": p.get("salePrice")} if p else None
+    return {
+        "match":      slim(best),
+        "candidates": [slim(p) for p in candidates if p],
+    }
+
 # ---------- Publicación en Instagram (Graph API) ----------
 import urllib.request, urllib.parse, urllib.error, time
 GRAPH = "https://graph.facebook.com/v21.0"
