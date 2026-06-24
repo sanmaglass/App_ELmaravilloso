@@ -135,6 +135,15 @@ def radial_vignette(op=0.16):
     v = Image.new("RGBA", (W, H), (20, 12, 10, 0)); v.putalpha(Image.fromarray(L, "L"))
     return v
 
+def radial_vignette_dark(op=0.30):
+    """Viñeta más oscura para look dark."""
+    yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+    cx, cy = W / 2, H * 0.5
+    dd = np.clip(np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2) / (W * 0.75), 0, 1)
+    L = (dd * 255 * op).astype(np.uint8)
+    v = Image.new("RGBA", (W, H), (8, 5, 4, 0)); v.putalpha(Image.fromarray(L, "L"))
+    return v
+
 def text_img(txt, fnt, fill, stroke=0, stroke_fill=(0, 0, 0)):
     """Renderiza texto a su propia imagen RGBA ajustada."""
     tmp = Image.new("RGBA", (10, 10))
@@ -280,9 +289,19 @@ def build(args):
 GOLD = (198, 160, 92)
 RED_INK = (92, 8, 14)
 GREY_STRIKE = (154, 154, 154)
+RED_DEEP = (138, 12, 20)
+CREAM_HI = (250, 248, 243)
+INK_SOFT = (90, 84, 78)
 
-def build_premium(args):
-    """Premium nivel agencia: fondo crema con profundidad, motion fluido, shine, pop con resorte."""
+# ---------------------------------------------------------------------------
+# _build_look: motor de animación premium unificado, con config por look
+# ---------------------------------------------------------------------------
+def _build_look(args, look="premium"):
+    """
+    Motor de animación premium para los 4 looks: premium, dark, giant, split.
+    El timeline de animación es idéntico en todos; solo cambia la estética (fondo,
+    colores, posiciones de producto/precio, filetes).
+    """
     cx = W / 2
     args.price = int(re.sub(r"[^0-9]", "", str(args.price)) or 0)
     price_old = getattr(args, "price_old", None)
@@ -290,99 +309,224 @@ def build_premium(args):
     if price_old == 0: price_old = None
     unit = getattr(args, "unit", "c/u")
 
-    # --- base estática (crema con gradiente + barras con filete oro) ---
-    base = T.bg_cream(W, H)
-    bar = int(H * 0.068)   # barra slim como el estático
-    T.bar_red(base, 0, bar, "bottom")
-    T.bar_red(base, H - bar, H, "top")
-    vign = radial_vignette(0.16)
+    # ----------------------------------------------------------------
+    # CONFIG POR LOOK — solo estética, no lógica
+    # ----------------------------------------------------------------
+    if look == "dark":
+        # Fondo oscuro con halo radial cálido (replica premium_dark de templates.py)
+        base = Image.new("RGBA", (W, H), (20, 17, 15, 255))
+        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+        dd = np.clip(np.sqrt((xx - cx) ** 2 + (yy - H * 0.42) ** 2) / (W * 0.7), 0, 1)
+        halo = Image.new("RGBA", (W, H), (60, 30, 28, 0))
+        L_halo = Image.fromarray(((1 - dd) * 120).astype(np.uint8), "L")
+        halo.putalpha(L_halo)
+        base.alpha_composite(halo)
+        # Barras RED_DEEP con filete GOLD
+        bar = int(H * 0.078)
+        ImageDraw.Draw(base).rectangle([0, 0, W, bar], fill=RED_DEEP)
+        ImageDraw.Draw(base).rectangle([0, H - bar, W, H], fill=RED_DEEP)
+        ImageDraw.Draw(base).rectangle([0, bar - 2, W, bar], fill=GOLD)
+        ImageDraw.Draw(base).rectangle([0, H - bar, W, H - bar + 2], fill=GOLD)
+        cfg = {
+            "bar": bar,
+            "name_color": CREAM_HI,
+            "price_color": (255, 90, 96),
+            "footer_color": CREAM_HI,
+            "glow": brand_glow(cx, H * 0.44, W * 0.55, (80, 40, 30), 0.10),  # glow cálido tenue
+            "vign": radial_vignette_dark(0.28),
+            "prod_cy": H * 0.44,
+            "prod_maxw": W * 0.72,
+            "prod_maxh": H * 0.40,
+            "name_y": H * 0.665,
+            "price_y": int(H * 0.815),
+            "filetes": "gold_only",    # un solo filete GOLD
+            "logo_asset": "normal",    # usa logo.png (lockup transparente) como premium
+        }
+    elif look == "giant":
+        # Fondo crema estándar, precio gigante en tercio inferior
+        base = T.bg_cream(W, H)
+        bar = int(H * 0.078)
+        T.bar_red(base, 0, bar, "bottom")
+        T.bar_red(base, H - bar, H, "top")
+        cfg = {
+            "bar": bar,
+            "name_color": INK,
+            "price_color": RED,
+            "footer_color": CREAM_HI,
+            "glow": brand_glow(cx, H * 0.44, W * 0.55, BLUE, 0.10),
+            "vign": radial_vignette(0.14),
+            "prod_cy": H * 0.30,       # producto más arriba
+            "prod_maxw": W * 0.56,     # producto más chico
+            "prod_maxh": H * 0.30,
+            "name_y": H * 0.475,       # nombre en H*0.475
+            "price_y": int(H * 0.72),  # precio gigante en tercio inferior
+            "filetes": "none",
+            "logo_asset": "normal",
+        }
+    elif look == "split":
+        # Fondo crema + banda roja diagonal inferior
+        base = T.bg_cream(W, H)
+        bar = int(H * 0.078)
+        T.bar_red(base, 0, bar, "bottom")
+        # Banda diagonal inferior (replica premium_split de templates.py)
+        split_band = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        ImageDraw.Draw(split_band).polygon(
+            [(0, int(H * 0.62)), (W, int(H * 0.52)), (W, H), (0, H)],
+            fill=RED + (255,)
+        )
+        ImageDraw.Draw(split_band).line(
+            [(0, int(H * 0.62)), (W, int(H * 0.52))], fill=GOLD, width=4
+        )
+        base.alpha_composite(split_band)
+        cfg = {
+            "bar": bar,
+            "name_color": CREAM_HI,     # nombre sobre rojo
+            "price_color": CREAM_HI,    # precio sobre rojo en crema
+            "footer_color": YELLOW,
+            "glow": None,               # sin glow en split
+            "vign": radial_vignette(0.12),
+            "prod_cy": H * 0.40,        # producto centrado sobre la banda
+            "prod_maxw": W * 0.66,
+            "prod_maxh": H * 0.36,
+            "name_y": H * 0.685,        # nombre sobre la banda roja
+            "price_y": int(H * 0.84),   # precio sobre rojo
+            "filetes": "none",
+            "logo_asset": "normal",
+            "logo_cx": W * 0.26,        # logo arriba-izquierda
+            "logo_cy_factor": 0.07,     # cy relativo a H
+        }
+    else:
+        # PREMIUM (default): exactamente como el build_premium original
+        base = T.bg_cream(W, H)
+        bar = int(H * 0.068)
+        T.bar_red(base, 0, bar, "bottom")
+        T.bar_red(base, H - bar, H, "top")
+        cfg = {
+            "bar": bar,
+            "name_color": INK,
+            "price_color": RED,
+            "footer_color": (250, 248, 243),
+            "glow": brand_glow(cx, H * 0.44, W * 0.55, BLUE, 0.16),
+            "vign": radial_vignette(0.16),
+            "prod_cy": H * 0.44,
+            "prod_maxw": W * 0.72,
+            "prod_maxh": H * 0.40,
+            "name_y": H * 0.665,
+            "price_y": int(H * 0.815),
+            "filetes": "red_gold_blue",
+            "logo_asset": "normal",
+        }
 
-    lg = T.logo(int(W * 0.30))
-    glow = brand_glow(cx, H * 0.44, W * 0.55, BLUE, 0.16)
+    # ---- Assets comunes ----
+    # Logo: SIEMPRE logo.png (lockup horizontal transparente con texto), como premium.
+    # NO usar logo-dark.png (esfera 3D sobre fondo negro opaco) — se ve mal sobre la barra.
+    lg = T.logo(int(W * (0.28 if look == "split" else 0.30)))
 
-    # producto: defringe (quita halo del recorte) + escala
+    # Producto
     prod = Image.open(args.product).convert("RGBA")
     prod = T.defringe(prod)
-    scp = min((W * 0.72) / prod.width, (H * 0.40) / prod.height)
+    scp = min(cfg["prod_maxw"] / prod.width, cfg["prod_maxh"] / prod.height)
     prod = prod.resize((int(prod.width * scp), int(prod.height * scp)), Image.LANCZOS)
     floor = drop_shadow_ellipse(prod.width, op=0.30)
 
-    name_im = text_img(args.name.upper(), f_display(72), INK)
-    # bloque de precio pre-renderizado (mismo tratamiento que el estático)
-    num_str = fmt_price(args.price)[1:]
-    price_im = text_img(num_str, f_price(310), RED)
-    price_sh = text_img(num_str, f_price(310), (30, 12, 14, 150)).filter(ImageFilter.GaussianBlur(6))
-    dollar_im = text_img("$", f_price(118), RED)
-    foot_im = text_img("HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO", f_ui(34), (250, 248, 243))
-    unit_im = text_img(" ".join(unit.upper()), f_ui(30), (90, 84, 78))  # INK_SOFT, tracking
-    # sello OFERTA tipo ticket (persistente)
+    # Textos
+    name_im = text_img(args.name.upper(), f_display(72 if look != "giant" else 64), cfg["name_color"])
+
+    # Bloque precio: número + símbolo separados para el pop animado
+    num_str = fmt_price(args.price)[1:]  # sin el $
+    price_sz = 310 if look != "giant" else 360   # giant usa tamaño más grande
+    price_im = text_img(num_str, f_price(price_sz), cfg["price_color"])
+    price_sh = text_img(num_str, f_price(price_sz), (30, 12, 14, 150)).filter(ImageFilter.GaussianBlur(6))
+    dollar_sz = 118 if look != "giant" else 136
+    dollar_im = text_img("$", f_price(dollar_sz), cfg["price_color"])
+
+    foot_im = text_img("HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO", f_ui(34), cfg["footer_color"])
+    unit_im = text_img(" ".join(unit.upper()), f_ui(30), INK_SOFT if look not in ("dark", "split") else CREAM_HI)
+
+    # Para giant: pill de unidad sobre el fondo (se dibuja en frame)
     tag_im = _make_tag_pill(args.tag)
     old_im = None
     badge = None
     if price_old:
-        old_im = text_img("Normal " + fmt_price(price_old), f_strike(42), GREY_STRIKE)
+        old_color = GREY_STRIKE if look not in ("split",) else CREAM_HI
+        old_im = text_img("Normal " + fmt_price(price_old), f_strike(42), old_color)
         pct = round((1 - args.price / price_old) * 100)
         badge = _make_badge(pct)
-    # CTA de cierre como ticket inferior (NO cruza el producto)
     cta_im = text_img("APROVECHA HOY  ·  PIDE POR WHATSAPP", f_ui(36), WHITE)
 
     dur = args.seconds
     nframes = int(dur * FPS)
     silent = os.path.splitext(args.out)[0] + ".silent.mp4"
     ff = imageio_writer(silent)
+
     for fi in range(nframes):
         t = fi / FPS
         frame = base.copy()
-        frame.alpha_composite(glow)
 
-        # logo (cae suave)
+        # Glow de marca (opcional según look)
+        if cfg.get("glow") is not None:
+            frame.alpha_composite(cfg["glow"])
+
+        # ---- Logo ----
         la = ease_out(clamp01(t / 0.6))
-        paste_center(frame, lg, cx, bar * 0.5 + (1 - la) * -30, 1.0, la)
+        if look == "split":
+            logo_cx = cfg.get("logo_cx", W * 0.26)
+            logo_cy = H * cfg.get("logo_cy_factor", 0.07)
+            paste_center(frame, lg, logo_cx, logo_cy + (1 - la) * -30, 1.0, la)
+        else:
+            bar = cfg["bar"]
+            paste_center(frame, lg, cx, bar * 0.5 + (1 - la) * -30, 1.0, la)
 
-        # sello OFERTA persistente (entra con back, queda fijo) — solo si no hay badge %
+        # ---- Sello OFERTA o badge % ----
         if badge is None:
             ta = ease_out_back_soft(clamp01((t - 0.15) / 0.5))
-            if ta > 0.02:
-                paste_center(frame, tag_im, W * 0.155, bar + H * 0.052, ta, clamp01(ta * 1.3))
-
-        # producto: entra con back suave + Ken Burns + float + sway
-        apr = ease_out_back_soft(clamp01((t - 0.3) / 0.7))
-        zoom = (1.0 + 0.08 * ease_out(clamp01(t / dur))) * (0.92 + 0.08 * clamp01((t - 0.3) / 0.5))
-        floaty = math.sin(t * 1.5) * 12
-        sway = math.sin(t * 0.9) * 5
-        pcy = H * 0.44 + floaty
-        paste_center(frame, floor, cx, pcy + prod.height * 0.50 * zoom, zoom, 0.9)
-        prod_f = prod
-        # shine del producto 1.0-1.8
-        sp = seg(t, 1.0, 1.8)
-        if 0 < sp < 1:
-            prod_f = apply_shine(prod, sp, 0.9)
-        paste_center(frame, prod_f, cx + sway, pcy, zoom, clamp01(apr))
-
-        # badge % (entra con spin 0.4-1.0, antes para comunicar oferta cuanto antes)
-        if badge is not None:
+            if ta > 0.02 and look not in ("split",):
+                paste_center(frame, tag_im, W * 0.155, cfg["bar"] + H * 0.052, ta, clamp01(ta * 1.3))
+            elif ta > 0.02 and look == "split":
+                # en split, el sello va arriba derecha (ribbon en static pero pill animada aquí)
+                paste_center(frame, tag_im, W * 0.82, H * 0.16, ta, clamp01(ta * 1.3))
+        else:
             ba = ease_out_back_soft(clamp01((t - 0.4) / 0.6))
             if ba > 0.02:
                 bsp = badge.rotate(-10 + (1 - ba) * 60, expand=True, resample=Image.BICUBIC)
                 paste_center(frame, bsp, W - 175, H * 0.235, ba, clamp01(ba * 1.3))
 
-        # nombre + filetes (entra antes: 0.7s)
-        an = ease_out(clamp01((t - 0.7) / 0.5))
-        ny = H * 0.665
-        paste_center(frame, name_im, cx, ny + (1 - an) * 28, 1.0, an)
-        lw = int(180 * ease_out(clamp01((t - 1.0) / 0.5)))
-        if lw > 4:
-            dd = ImageDraw.Draw(frame)
-            dd.line([(cx - lw, ny + 58), (cx + lw, ny + 58)], fill=RED, width=6)
-            dd.line([(cx - lw, ny + 66), (cx + lw, ny + 66)], fill=GOLD, width=3)
-            dd.line([(cx - min(lw, 70), ny + 74), (cx + min(lw, 70), ny + 74)], fill=BLUE, width=3)
+        # ---- Producto: back suave + Ken Burns + float + sway ----
+        apr = ease_out_back_soft(clamp01((t - 0.3) / 0.7))
+        zoom = (1.0 + 0.08 * ease_out(clamp01(t / dur))) * (0.92 + 0.08 * clamp01((t - 0.3) / 0.5))
+        floaty = math.sin(t * 1.5) * 12
+        sway = math.sin(t * 0.9) * 5
+        pcy = cfg["prod_cy"] + floaty
+        paste_center(frame, floor, cx, pcy + prod.height * 0.50 * zoom, zoom, 0.9)
+        prod_f = prod
+        sp = seg(t, 1.0, 1.8)
+        if 0 < sp < 1:
+            prod_f = apply_shine(prod, sp, 0.9)
+        paste_center(frame, prod_f, cx + sway, pcy, zoom, clamp01(apr))
 
-        # PRECIO POP en t=1.4 con resorte (antes) — clímax sync con SFX (beat price)
-        py = int(H * 0.815)
+        # ---- Nombre + filetes ----
+        an = ease_out(clamp01((t - 0.7) / 0.5))
+        ny = cfg["name_y"]
+        paste_center(frame, name_im, cx, ny + (1 - an) * 28, 1.0, an)
+
+        # Filetes según look
+        filetes = cfg.get("filetes", "none")
+        if filetes != "none":
+            lw = int(180 * ease_out(clamp01((t - 1.0) / 0.5)))
+            if lw > 4:
+                dd = ImageDraw.Draw(frame)
+                if filetes == "red_gold_blue":
+                    dd.line([(cx - lw, ny + 58), (cx + lw, ny + 58)], fill=RED, width=6)
+                    dd.line([(cx - lw, ny + 66), (cx + lw, ny + 66)], fill=GOLD, width=3)
+                    dd.line([(cx - min(lw, 70), ny + 74), (cx + min(lw, 70), ny + 74)], fill=BLUE, width=3)
+                elif filetes == "gold_only":
+                    dd.line([(cx - lw, ny + 58), (cx + lw, ny + 58)], fill=GOLD, width=5)
+
+        # ---- PRECIO POP con resorte (clímax sync con SFX) ----
+        py = cfg["price_y"]
         if t >= 1.4:
             pr = clamp01((t - 1.4) / 0.55)
             psc = lerp(0.55, 1.0, ease_spring(pr))
-            # flash/scale-bounce sincronizado al SFX (beat price = 1.5s)
             if t > 1.55:
                 psc *= 1 + 0.045 * math.sin((t - 1.55) * 7.0) * math.exp(-(t - 1.55) * 2.2)
             pa = clamp01(pr * 1.4)
@@ -394,45 +538,92 @@ def build_premium(args):
             total = dollar_im.width + gap + num.width
             x_left = cx - (total * psc) / 2
             ntop = py - num.height / 2 * psc
-            # sombra del número (lo despega del crema)
             paste_center(frame, price_sh, cx + 4, py + 7, psc, pa * 0.6)
-            # '$' volado snug al tope del número
-            paste_center(frame, dollar_im, x_left + dollar_im.width / 2 * psc,
-                         ntop + dollar_im.height / 2 * psc, psc, pa)
-            # número hero
-            paste_center(frame, num, x_left + (dollar_im.width + gap + num.width / 2) * psc,
+            paste_center(frame, dollar_im,
+                         x_left + dollar_im.width / 2 * psc,
+                         ntop + dollar_im.height / 2 * psc,
+                         psc, pa)
+            paste_center(frame, num,
+                         x_left + (dollar_im.width + gap + num.width / 2) * psc,
                          py, psc, pa)
             num_bottom = py + num.height / 2 * psc
-            # tachado "Normal $X" (fino, arriba)
+
+            # Tachado "Normal $X"
             if old_im is not None:
                 oa = clamp01((t - 1.2) / 0.4)
                 oy = ntop - 30
                 paste_center(frame, old_im, cx, oy, 1.0, oa)
                 if oa > 0.5:
                     ow = old_im.width
-                    ImageDraw.Draw(frame).line([(cx - ow / 2, oy), (cx + ow / 2, oy)], fill=RED, width=5)
-            # unidad discreta (texto fino gris, NO pill)
+                    strike_color = RED if look not in ("split",) else YELLOW
+                    ImageDraw.Draw(frame).line(
+                        [(cx - ow / 2, oy), (cx + ow / 2, oy)],
+                        fill=strike_color, width=5
+                    )
+
+            # Unidad (para giant: pill GOLD animada; para el resto: texto fino)
             ua = clamp01((t - 1.7) / 0.4)
             if ua > 0.02:
-                paste_center(frame, unit_im, cx, num_bottom + 22, 1.0, ua)
+                if look == "giant":
+                    # Pill GOLD con texto RED_INK
+                    pill_w = int(260 * psc)
+                    pill_h = int(56 * psc)
+                    pill_y = int(num_bottom + 30)
+                    pill_img = Image.new("RGBA", (pill_w + 20, pill_h + 20), (0, 0, 0, 0))
+                    pill_d = ImageDraw.Draw(pill_img)
+                    pill_d.rounded_rectangle([10, 10, pill_w + 10, pill_h + 10],
+                                             radius=pill_h // 2, fill=GOLD + (int(255 * ua),))
+                    unit_txt = unit.upper()
+                    fnt_pill = f_ui(int(32 * psc))
+                    pill_d.text(((pill_w + 20) / 2, (pill_h + 20) / 2),
+                                unit_txt, font=fnt_pill, fill=RED_INK, anchor="mm")
+                    paste_center(frame, pill_img, cx, pill_y, 1.0, ua)
+                else:
+                    paste_center(frame, unit_im, cx, num_bottom + 22, 1.0, ua)
 
-        # CTA de cierre: ticket inferior justo arriba del footer (NO cruza el producto)
+        # ---- CTA de cierre ----
         if t >= dur - 1.6:
             ca = ease_out(clamp01((t - (dur - 1.6)) / 0.5))
-            cy_band = H - bar - 70
+            cy_band = H - cfg["bar"] - 70
             band = Image.new("RGBA", (W, 88), (237, 28, 36, int(235 * ca)))
             frame.alpha_composite(band, (0, int(cy_band - 44)))
             ImageDraw.Draw(frame).rectangle([0, int(cy_band - 44), W, int(cy_band - 41)], fill=GOLD)
             paste_center(frame, cta_im, cx, cy_band, 1.0, ca)
 
-        # footer + viñeta
-        paste_center(frame, foot_im, cx, H - bar * 0.5, 1.0, 1.0)
-        frame.alpha_composite(vign)
+        # ---- Footer + viñeta ----
+        paste_center(frame, foot_im, cx, H - cfg["bar"] * 0.5, 1.0, 1.0)
+        frame.alpha_composite(cfg["vign"])
+
         ff.append_data(np.asarray(frame.convert("RGB")))
+
     ff.close()
     beats = {"whoosh_tag": 0.20, "whoosh_prod": 0.45, "price": 1.50, "footer": dur - 1.4}
     _finalize(args, silent, beats)
-    print("OK ->", args.out, f"(premium, {nframes} frames, {dur}s)")
+    print("OK ->", args.out, f"({look}, {nframes} frames, {dur}s)")
+
+
+# ---------------------------------------------------------------------------
+# build_premium: mantiene API pública, delega a _build_look("premium")
+# ---------------------------------------------------------------------------
+def build_premium(args):
+    """Premium nivel agencia: fondo crema con profundidad, motion fluido, shine, pop con resorte."""
+    _build_look(args, "premium")
+
+
+# ---------------------------------------------------------------------------
+# render: punto de entrada unificado
+# ---------------------------------------------------------------------------
+def render(args):
+    """Despacha al look correcto según args.style."""
+    style = getattr(args, "style", "premium")
+    if style in ("premium", "dark", "giant", "split"):
+        _build_look(args, style)
+    elif style == "clasica":
+        build(args)
+    else:
+        # default: premium
+        _build_look(args, "premium")
+
 
 def _make_tag_pill(text):
     """Sello OFERTA tipo ticket (rojo + filete oro), como imagen para animar."""
@@ -485,14 +676,12 @@ if __name__ == "__main__":
     ap.add_argument("--audio", default="on", choices=["on", "off"])
     ap.add_argument("--cta", default="on")
     ap.add_argument("--seconds", type=float, default=6.0)
-    ap.add_argument("--style", default="premium", choices=["clasica", "premium"])
+    ap.add_argument("--style", default="premium",
+                    choices=["clasica", "premium", "dark", "giant", "split"])
     args = ap.parse_args()
     args.price = int(re.sub(r"[^0-9]", "", str(args.price)) or 0)
     if args.price_old:
         args.price_old = int(re.sub(r"[^0-9]", "", str(args.price_old)) or 0) or None
-    if args.style == "premium":
-        if args.tag == "OFERTA DE LA SEMANA":
-            args.tag = "OFERTA"
-        build_premium(args)
-    else:
-        build(args)
+    if args.style == "premium" and args.tag == "OFERTA DE LA SEMANA":
+        args.tag = "OFERTA"
+    render(args)

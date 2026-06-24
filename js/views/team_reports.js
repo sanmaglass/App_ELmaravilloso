@@ -11,11 +11,13 @@ window.Views = window.Views || {};
         vendedor: { label: 'Vendedor', icon: 'ph-handshake', color: '#8b5cf6', bg: '#f5f3ff', placeholder_title: 'Nombre del vendedor',            placeholder_desc: 'Notas adicionales (dejó catálogo, muestras, etc.)...' },
     };
 
+    // Acuse de recibo estilo WhatsApp: 1 check = enviado, 2 checks = lo vio admin.
+    // El color comunica el estado igual que en WhatsApp (azul = ya lo vieron).
     const STATUS_CFG = {
-        pendiente:   { label: 'Pendiente',   bg: 'rgba(234,179,8,0.15)',  color: '#92400e' },
-        visto:       { label: 'Visto',       bg: 'rgba(37,99,235,0.12)',  color: '#1e40af' },
-        respondido:  { label: 'Respondido',  bg: 'rgba(22,163,74,0.12)', color: '#166534' },
-        resuelto:    { label: 'Resuelto',    bg: 'rgba(107,114,128,0.12)', color: '#6b7280' },
+        pendiente:   { label: 'Enviado',     bg: 'rgba(107,114,128,0.12)', color: '#6b7280', checks: 1 },
+        visto:       { label: 'Recibido',    bg: 'rgba(37,99,235,0.12)',   color: '#1e40af', checks: 2 },
+        respondido:  { label: 'Respondido',  bg: 'rgba(22,163,74,0.12)',   color: '#166534', checks: 2 },
+        resuelto:    { label: 'Resuelto',    bg: 'rgba(107,114,128,0.12)', color: '#6b7280', checks: 2 },
     };
 
     const MAX_FOTOS = 3;
@@ -51,8 +53,9 @@ window.Views = window.Views || {};
 
     function statusBadgeHTML(status) {
         const cfg = STATUS_CFG[status] || STATUS_CFG.pendiente;
+        const icon = cfg.checks === 2 ? 'ph-checks' : 'ph-check';
         return `<span style="display:inline-flex; align-items:center; gap:4px; background:${cfg.bg}; color:${cfg.color}; border-radius:20px; padding:3px 10px; font-size:0.78rem; font-weight:700;">
-            ${cfg.label}
+            <i class="ph ${icon}" style="font-size:0.95rem;"></i> ${cfg.label}
         </span>`;
     }
 

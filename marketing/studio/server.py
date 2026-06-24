@@ -120,7 +120,9 @@ async def generate(req: Request):
     product = maybe_cut(src, rem_bg)
     slug = slugify(name) + (f"-{price}" if price else "")
 
-    drawer = T.STYLES.get(style, T.style_premium)
+    # nombres cortos del panel (dark/giant/split) -> claves de templates.py
+    STYLE_ALIAS = {"dark": "premium_dark", "giant": "premium_giant", "split": "premium_split"}
+    drawer = T.STYLES.get(STYLE_ALIAS.get(style, style), T.style_premium)
     # imagen feed 1:1 (lo que pide Instagram para foto) -> clave 'image'
     img_path = os.path.join(IMG_OUT, slug + ".png")
     try:
@@ -141,7 +143,7 @@ async def generate(req: Request):
     vid_path = os.path.join(VID_OUT, slug + ".mp4")
     args = argparse.Namespace(product=product, name=name, price=str(price),
                               out=vid_path, tag=tag, seconds=6.0, style=style)
-    (MV.build_premium if style == "premium" else MV.build)(args)
+    MV.render(args)
 
     d = load_data()
     d["posts"] = [p for p in d["posts"] if p.get("slug") != slug]
