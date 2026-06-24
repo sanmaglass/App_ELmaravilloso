@@ -80,8 +80,11 @@ window.Views = window.Views || {};
         const supabase = window.SyncV2?.client;
         if (!supabase || !path) return null;
         try {
-            const { data } = await supabase.storage.from('team-photos').createSignedUrl(path, 3600);
-            return data?.signedUrl || null;
+            // Bucket público: URL directa, sin firma ni dependencia de policies.
+            // Las signed URLs fallaban y las fotos no cargaban. Las fotos de
+            // reportes (mermas, vencidos, pedidos) no son datos sensibles.
+            const { data } = supabase.storage.from('team-photos').getPublicUrl(path);
+            return data?.publicUrl || null;
         } catch { return null; }
     }
 

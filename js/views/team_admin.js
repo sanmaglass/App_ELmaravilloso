@@ -60,8 +60,10 @@ window.Views = window.Views || {};
         try {
             const client = window.SyncV2?.client;
             if (!client || !path) return null;
-            const { data } = await client.storage.from('team-photos').createSignedUrl(path, 3600);
-            return data?.signedUrl || null;
+            // Bucket público: URL directa, sin firma ni policies (las signed URLs
+            // fallaban y las fotos no cargaban). Fotos de reportes no son sensibles.
+            const { data } = client.storage.from('team-photos').getPublicUrl(path);
+            return data?.publicUrl || null;
         } catch { return null; }
     }
 
