@@ -331,6 +331,7 @@ async function renderCajaView() {
         });
 
         // ── KPIs ─────────────────────────────────────────────────
+        let cajaInicial = 0;
         let totalEntradas = 0;
         let totalSalidas = 0;
         let totalProveedores = 0;
@@ -340,19 +341,30 @@ async function renderCajaView() {
         let arqueoCount = 0;
 
         filtered.forEach(m => {
+            // El arqueo y el cuadre son fotos de verificación, NO movimientos de plata.
             if (m.type === 'arqueo') { arqueoCount++; return; }
+            if (m.type === 'cuadre') return;
+            // Fondo de apertura = caja inicial (base del saldo), no es una entrada de ventas.
+            if (m.type === 'fondo_apertura') { cajaInicial += Math.abs(m.amount); return; }
             if (m.amount > 0) totalEntradas += m.amount;
             if (m.amount < 0) totalSalidas += Math.abs(m.amount);
             if (m.type === 'salida_proveedor') totalProveedores += Math.abs(m.amount);
-            if (m.type === 'salida_gasto') totalGastos += Math.abs(m.amount);
+            // gasto_caja = caja chica de la cajera (se suma a gastos)
+            if (m.type === 'salida_gasto' || m.type === 'gasto_caja') totalGastos += Math.abs(m.amount);
             if (m.type === 'salida_retiro') totalRetiros += Math.abs(m.amount);
             if (m.type === 'salida_sueldo') totalSueldos += Math.abs(m.amount);
         });
 
-        const saldoCaja = totalEntradas - totalSalidas;
+        // Saldo real esperado en el cajón = caja inicial + entradas − salidas
+        const saldoCaja = cajaInicial + totalEntradas - totalSalidas;
 
         if (kpiContainer) {
             kpiContainer.innerHTML = `
+                <div class="caja-kpi" style="background:linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02)); border:1px solid rgba(245,158,11,0.2);">
+                    <div class="caja-kpi-label" style="color:#d97706;">🏦 Caja Inicial</div>
+                    <div class="caja-kpi-value" style="color:#f59e0b;">${formatCurrency(cajaInicial)}</div>
+                    <div class="caja-kpi-sub" style="color:#fcd34d;">Fondo de apertura</div>
+                </div>
                 <div class="caja-kpi" style="background:linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02)); border:1px solid rgba(16,185,129,0.2);">
                     <div class="caja-kpi-label" style="color:#059669;">💵 Entradas Efectivo</div>
                     <div class="caja-kpi-value" style="color:#10b981;">${formatCurrency(totalEntradas)}</div>
@@ -366,7 +378,7 @@ async function renderCajaView() {
                 <div class="caja-kpi" style="background:linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.02)); border:1px solid rgba(59,130,246,0.2);">
                     <div class="caja-kpi-label" style="color:#2563eb;">🏦 Saldo en Caja</div>
                     <div class="caja-kpi-value" style="color:${saldoCaja >= 0 ? '#10b981' : '#ef4444'};">${formatCurrency(saldoCaja)}</div>
-                    <div class="caja-kpi-sub" style="color:#93c5fd;">Entradas − Salidas</div>
+                    <div class="caja-kpi-sub" style="color:#93c5fd;">Caja Inicial + Entradas − Salidas</div>
                 </div>
                 <div class="caja-kpi" style="background:linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02)); border:1px solid rgba(245,158,11,0.2);">
                     <div class="caja-kpi-label" style="color:#d97706;">📊 Desglose Salidas</div>
