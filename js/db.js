@@ -690,10 +690,26 @@ async function migrateCleanPersonal() {
     }
 }
 
+// Reset puntual one-time: limpia SOLO cash_register local + su cola en el outbox,
+// para empezar de cero la vista "Caja del Día" sin tocar el resto de los datos.
+// La nube se vacía aparte (server-side). Corre una sola vez por dispositivo.
+async function resetCashRegisterOnce() {
+    const FLAG = 'cash_register_reset_20260624';
+    if (localStorage.getItem(FLAG)) return;
+    try {
+        const items = await db.sync_outbox.where('tableName').equals('cash_register').toArray();
+        if (items.length) await db.sync_outbox.bulkDelete(items.map(i => i.id));
+        await db.cash_register.clear();
+        localStorage.setItem(FLAG, '1');
+        console.log('🧹 Caja del Día reseteada (cash_register local + outbox)');
+    } catch (e) { console.warn('resetCashRegisterOnce falló', e); }
+}
+
 window.seedDatabase = seedDatabase;
 window.seedSuppliersIfNeeded = seedSuppliersIfNeeded;
 window.migratePendienteToPagado = migratePendienteToPagado;
 window.migrateCleanPersonal = migrateCleanPersonal;
+window.resetCashRegisterOnce = resetCashRegisterOnce;
 
 // Inicializar queue processor al cargar el módulo
 window.DataManager.initQueueProcessor();
