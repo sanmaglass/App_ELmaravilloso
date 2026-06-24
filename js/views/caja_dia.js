@@ -49,6 +49,103 @@ window.Views = window.Views || {};
         return window.DataManager.deleteAndSync('cash_register', id);
     }
 
+    // ── Cruce Mercado Pago (async, fire-and-forget render) ──
+    async function fetchMPCuadre(dia) {
+        try {
+            const token = window.Auth?.session?.access_token || '';
+            const res = await fetch(`/api/mp-cuadre?date=${dia}`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!res.ok) return null;
+            return await res.json();
+        } catch { return null; }
+    }
+
+    function renderMPCard(data, isEmp) {
+        const wrap = (content) => `
+            <div style="background:var(--bg-card); border:1px solid var(--border); border-left:4px solid #6366f1; border-radius:14px; padding:16px; margin-bottom:20px;" id="mp-cruce-card">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                    <i class="ph-fill ph-credit-card" style="color:#6366f1; font-size:1.2rem;"></i>
+                    <span style="font-weight:700; font-size:0.95rem; color:var(--text-primary);">Cruce Mercado Pago</span>
+                </div>
+                ${content}
+            </div>`;
+
+        if (!data) {
+            return wrap(`<p style="color:var(--text-muted); font-size:0.82rem; margin:0;">Cruce MP no disponible</p>`);
+        }
+
+        if (isEmp) {
+            // Cajera: solo badges, sin montos
+            const badge = (label, status) => {
+                const ok = status === 'ok';
+                const col = ok ? '#16a34a' : '#d97706';
+                const bg = ok ? '#16a34a18' : '#d9770618';
+                const icon = ok ? 'ph-check-circle' : 'ph-warning';
+                const txt = ok ? `${label} ✓ cuadran` : `${label} ⚠ avísale al admin`;
+                return `<div style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:${bg}; border-radius:8px; margin:4px 4px 4px 0;">
+                    <i class="ph-fill ${icon}" style="color:${col}; font-size:1rem;"></i>
+                    <span style="font-size:0.82rem; font-weight:600; color:${col};">${txt}</span>
+                </div>`;
+            };
+            return wrap(`
+                <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                    ${badge('Tarjetas', data.status?.tarjeta)}
+                    ${badge('Transferencia', data.status?.transferencia)}
+                </div>`);
+        }
+
+        // Admin: montos completos
+        const { mp = {}, eleventa = {}, diff = {}, alerts = {} } = data;
+
+        const fila = (label, elMonto, mpMonto, diffVal, alerta, desglose) => {
+            const ok = !alerta;
+            const absDiff = Math.abs(diffVal || 0);
+            const badgeCol = ok ? '#16a34a' : (diffVal < 0 ? '#ef4444' : '#d97706');
+            const badgeBg = ok ? '#16a34a18' : (diffVal < 0 ? '#ef444418' : '#d9770618');
+            const badgeIcon = ok ? 'ph-check-circle' : 'ph-warning';
+            const badgeTxt = ok
+                ? '✓'
+                : (diffVal < 0 ? `faltan ${fmt(absDiff)}` : `sobran ${fmt(absDiff)}`);
+            return `
+                <div style="padding:10px 0; border-bottom:1px solid var(--border);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                        <span style="font-weight:600; font-size:0.88rem; color:var(--text-primary);">${label}</span>
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <span style="font-size:0.82rem; color:var(--text-muted);">Sistema <b style="color:var(--text-primary);">${fmt(elMonto)}</b></span>
+                            <span style="font-size:0.78rem; color:var(--text-muted);">vs MP</span>
+                            <span style="font-size:0.82rem; color:var(--text-muted);"><b style="color:var(--text-primary);">${fmt(mpMonto)}</b></span>
+                            <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; background:${badgeBg}; border-radius:6px; font-size:0.78rem; font-weight:700; color:${badgeCol};">
+                                <i class="ph-fill ${badgeIcon}" style="font-size:0.9rem;"></i> ${badgeTxt}
+                            </span>
+                        </div>
+                    </div>
+                    ${desglose ? `<div style="color:var(--text-muted); font-size:0.74rem; margin-top:4px;">${desglose}</div>` : ''}
+                </div>`;
+        };
+
+        const desgloseTarjeta = `Débito ${fmt(mp.debito || 0)} · Crédito ${fmt(mp.credito || 0)}`;
+
+        const notaCredito = (eleventa.credito || 0) > 0
+            ? `<div style="margin-top:8px; padding:7px 10px; background:#d9770610; border-radius:8px; font-size:0.76rem; color:#d97706;">
+                <i class="ph ph-notebook" style="vertical-align:-2px;"></i>
+                Crédito (fiado) <b>${fmt(eleventa.credito)}</b> — no es pago, no entra al cruce
+               </div>` : '';
+
+        const notaMixto = (eleventa.mixto || 0) > 0
+            ? `<div style="margin-top:6px; padding:7px 10px; background:#0891b210; border-radius:8px; font-size:0.76rem; color:#0891b2;">
+                <i class="ph ph-arrows-split" style="vertical-align:-2px;"></i>
+                Mixto <b>${fmt(eleventa.mixto)}</b> sin desglosar — revisar manualmente
+               </div>` : '';
+
+        return wrap(`
+            ${fila('TARJETAS', eleventa.tarjeta || 0, mp.totalTarjetas || 0, diff.tarjeta, alerts.tarjeta, desgloseTarjeta)}
+            ${fila('TRANSFERENCIA', eleventa.transferencia || 0, mp.transferencia || 0, diff.transferencia, alerts.transferencia, '')}
+            ${notaCredito}
+            ${notaMixto}
+        `);
+    }
+
     // ── Facturas (read-only, employee sin montos) ──
     async function renderFacturas() {
         const isEmp = !!window._isEmployee;
@@ -303,6 +400,39 @@ window.Views = window.Views || {};
                         </div>
                         <div id="caja-dif" style="font-weight:700; font-size:1.05rem; padding-bottom:10px;"></div>
                     </div>
+                    <!-- ── CONTADOR POR DENOMINACIÓN ── -->
+                    <div style="margin-top:14px;">
+                        <button id="btn-toggle-denom" style="background:none; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:5px; color:var(--text-muted); font-size:0.8rem; font-weight:600; padding:4px 0;">
+                            <i class="ph ph-caret-right" id="denom-caret" style="transition:transform 0.2s;"></i>
+                            Contar por denominación
+                        </button>
+                        <div id="denom-panel" style="display:none; margin-top:10px; padding:14px; background:var(--bg-secondary,var(--bg-card)); border:1px solid var(--border); border-radius:12px;">
+                            <div style="font-size:0.76rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">Billetes</div>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin-bottom:12px;">
+                                ${[20000,10000,5000,2000,1000].map(d => `
+                                <div style="display:flex; align-items:center; gap:7px; background:var(--bg-card); border:1px solid var(--border); border-radius:9px; padding:7px 10px;">
+                                    <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600; min-width:42px;">${d >= 1000 ? '$'+(d/1000)+'k' : '$'+d}</span>
+                                    <input type="number" class="denom-input" data-val="${d}" placeholder="0" min="0" inputmode="numeric"
+                                        style="width:50px; padding:5px 7px; background:var(--bg-input,var(--bg-secondary)); border:1px solid var(--border); border-radius:7px; color:var(--text-primary); font:inherit; font-size:0.88rem; box-sizing:border-box; text-align:right;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted);">uds</span>
+                                </div>`).join('')}
+                            </div>
+                            <div style="font-size:0.76rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">Monedas</div>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin-bottom:12px;">
+                                ${[500,100,50,10].map(d => `
+                                <div style="display:flex; align-items:center; gap:7px; background:var(--bg-card); border:1px solid var(--border); border-radius:9px; padding:7px 10px;">
+                                    <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600; min-width:42px;">$${d}</span>
+                                    <input type="number" class="denom-input" data-val="${d}" placeholder="0" min="0" inputmode="numeric"
+                                        style="width:50px; padding:5px 7px; background:var(--bg-input,var(--bg-secondary)); border:1px solid var(--border); border-radius:7px; color:var(--text-primary); font:inherit; font-size:0.88rem; box-sizing:border-box; text-align:right;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted);">uds</span>
+                                </div>`).join('')}
+                            </div>
+                            <div style="display:flex; align-items:center; justify-content:space-between; padding-top:10px; border-top:1px solid var(--border);">
+                                <span style="font-size:0.82rem; color:var(--text-muted);">Total calculado:</span>
+                                <span id="denom-total" style="font-size:1.1rem; font-weight:800; color:var(--text-primary);">$0</span>
+                            </div>
+                        </div>
+                    </div>
                     <div style="display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap;">
                         <button id="btn-guardar-cuadre" class="btn btn-primary" style="padding:10px 20px; display:inline-flex; align-items:center; gap:6px; font-weight:600;">
                             <i class="ph ph-floppy-disk"></i> Guardar Cuadre
@@ -317,6 +447,19 @@ window.Views = window.Views || {};
                            </div>`
                         : `<p style="color:var(--text-muted); font-size:0.82rem;">No se registró cuadre este día.</p>`}
                     <p style="color:var(--text-muted); font-size:0.72rem; margin:8px 0 0;">Solo puedes cuadrar el día de hoy.</p>`}
+                </div>
+
+                <!-- ── CRUCE MERCADO PAGO (se rellena async) ── -->
+                <div id="mp-cruce-placeholder">
+                    <div style="background:var(--bg-card); border:1px solid var(--border); border-left:4px solid #6366f1; border-radius:14px; padding:16px; margin-bottom:20px;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                            <i class="ph-fill ph-credit-card" style="color:#6366f1; font-size:1.2rem;"></i>
+                            <span style="font-weight:700; font-size:0.95rem; color:var(--text-primary);">Cruce Mercado Pago</span>
+                        </div>
+                        <p style="color:var(--text-muted); font-size:0.82rem; margin:0; display:flex; align-items:center; gap:6px;">
+                            <i class="ph ph-spinner ph-spin"></i> Cargando cruce…
+                        </p>
+                    </div>
                 </div>
 
                 ${!isEmp && nTickets > 0 ? `
@@ -382,6 +525,34 @@ window.Views = window.Views || {};
                 });
             });
 
+            // ── Contador por denominación ──
+            const btnToggleDenom = body.querySelector('#btn-toggle-denom');
+            const denomPanel = body.querySelector('#denom-panel');
+            const denomCaret = body.querySelector('#denom-caret');
+            const denomTotalEl = body.querySelector('#denom-total');
+            if (btnToggleDenom && denomPanel) {
+                btnToggleDenom.addEventListener('click', () => {
+                    const open = denomPanel.style.display !== 'none';
+                    denomPanel.style.display = open ? 'none' : 'block';
+                    if (denomCaret) denomCaret.style.transform = open ? '' : 'rotate(90deg)';
+                });
+                denomPanel.querySelectorAll('.denom-input').forEach(inp => {
+                    inp.addEventListener('input', () => {
+                        let total = 0;
+                        denomPanel.querySelectorAll('.denom-input').forEach(i => {
+                            const qty = parseInt(i.value, 10) || 0;
+                            total += qty * parseInt(i.dataset.val, 10);
+                        });
+                        if (denomTotalEl) denomTotalEl.textContent = fmt(total);
+                        const contadoInp = body.querySelector('#caja-contado');
+                        if (contadoInp) {
+                            contadoInp.value = total || '';
+                            contadoInp.dispatchEvent(new Event('input'));
+                        }
+                    });
+                });
+            }
+
             // ── Ver más ventas ──
             const btnVerMas = body.querySelector('#btn-ver-mas-ventas');
             if (btnVerMas) {
@@ -418,6 +589,13 @@ window.Views = window.Views || {};
                 if (cuadre) updateDif();
             }
 
+            // ── Cruce MP (async, rellena el placeholder) ──
+            fetchMPCuadre(dia).then(data => {
+                const placeholder = body.querySelector('#mp-cruce-placeholder');
+                if (!placeholder) return;
+                placeholder.outerHTML = renderMPCard(data, isEmp);
+            });
+
             if (btnCuadre) {
                 btnCuadre.addEventListener('click', async () => {
                     const v = parseFloat(contado?.value);
@@ -432,6 +610,8 @@ window.Views = window.Views || {};
                         btnCuadre.innerHTML = '<i class="ph-fill ph-check-circle"></i> Guardado';
                         btnCuadre.style.background = '#16a34a';
                         if (statusEl) { statusEl.textContent = 'El admin puede ver este cuadre'; statusEl.style.color = '#16a34a'; }
+                        // Notificación fire-and-forget — no bloquea UI
+                        fetch('/api/notify?job=cuadre', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (window.Auth?.session?.access_token || '') }, body: JSON.stringify({ date: dia }) }).catch(() => {});
                         setTimeout(() => { btnCuadre.disabled = false; btnCuadre.innerHTML = '<i class="ph ph-floppy-disk"></i> Actualizar'; btnCuadre.style.background = ''; }, 2000);
                     } else {
                         btnCuadre.disabled = false;

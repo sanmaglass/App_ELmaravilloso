@@ -6,10 +6,12 @@
 //       ?job=daily       → resumen de la mañana
 //       ?job=announcement → aviso nuevo (body: { title, tenant_id })
 //       ?job=invoice     → factura nueva (body: { supplier, amount, tenant_id })
+//       ?job=cuadre      → aviso de descuadre de caja (body: { date? }) — admin + cajera
 //       ?job=all         → pulse + daily (default)
 // ──────────────────────────────────────────────────────────────
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
+import { buildReconciliation } from './mp-cuadre.js';
 
 const {
     SUPABASE_URL,
@@ -64,8 +66,8 @@ export default async function handler(req, res) {
             if (!auth) return res.status(401).json({ error: 'no autorizado' });
             caller = await verifyJwt(auth, sb);
             if (!caller) return res.status(401).json({ error: 'token inválido' });
-            // admin/owner puede disparar cualquier push; employee solo 'report'
-            if (!['admin', 'owner'].includes(caller.role) && job !== 'report') {
+            // admin/owner puede disparar cualquier push; employee solo 'report' y 'cuadre'
+            if (!['admin', 'owner'].includes(caller.role) && !['report', 'cuadre'].includes(job)) {
                 return res.status(403).json({ error: 'sin permisos' });
             }
         }
@@ -202,6 +204,82 @@ export default async function handler(req, res) {
                 data: { url: '/', view: 'purchase_invoices' }
             }, caller?.userId);
             return res.status(200).json({ ok: true, ...out });
+        }
+
+        // ── CUADRE: descuadre de caja → push a admins/owner + cajera que disparó ──
+        if (job === 'cuadre') {
+            const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+            // Fecha del cuadre: viene en el body/query o se usa el día actual en Santiago
+            const date = body.date || (req.query && req.query.date) || dateCL();
+            const tenantId = caller?.tenantId;
+
+            const recon = await buildReconciliation(sb, date);
+
+            // Sin descuadre → responder sin mandar push
+            if (!recon.hayDescuadre) {
+                return res.status(200).json({ ok: true, descuadre: false });
+            }
+
+            // Armar cuerpo del push listando solo los medios con alerta y su diferencia.
+            // Convención de signo: diff.X = Eleventa − MercadoPago (tarjeta/transferencia)
+            //   o contado − esperado (efectivo).
+            // Negativo → "faltan $X", positivo → "sobran $X".
+            const partesCuadre = [];
+            if (recon.alerts.tarjeta && recon.diff.tarjeta != null) {
+                const d = recon.diff.tarjeta;
+                partesCuadre.push(`Tarjeta: ${d < 0 ? 'faltan' : 'sobran'} ${money(Math.abs(d))}`);
+            }
+            if (recon.alerts.transferencia && recon.diff.transferencia != null) {
+                const d = recon.diff.transferencia;
+                partesCuadre.push(`Transferencia: ${d < 0 ? 'faltan' : 'sobran'} ${money(Math.abs(d))}`);
+            }
+            if (recon.alerts.efectivo && recon.diff.efectivo != null) {
+                const d = recon.diff.efectivo;
+                partesCuadre.push(`Efectivo: ${d < 0 ? 'faltan' : 'sobran'} ${money(Math.abs(d))}`);
+            }
+            const bodyTextCuadre = partesCuadre.join(' · ') || 'Hay un descuadre en caja';
+            const payloadCuadre = {
+                title: '⚠️ Caja descuadrada',
+                body: bodyTextCuadre,
+                tag: 'cuadre-' + date,
+                data: { url: '/', view: 'mp_cuadre' }
+            };
+
+            // Obtener IDs de admins/owners del tenant
+            const { data: admins } = await sb.from('user_tenants')
+                .select('user_id')
+                .eq('tenant_id', tenantId)
+                .in('role', ['admin', 'owner'])
+                .eq('active', true);
+            const adminIds = new Set((admins || []).map(a => a.user_id));
+
+            // Nota: push_subscriptions no distingue rol; se filtra por adminIds + cajera.
+            // Si un employee no tiene suscripción registrada no recibirá el push (normal).
+            const callerUserId = caller?.userId;
+            const targets = subs.filter(s => {
+                if (s.tenant_id !== tenantId) return false;
+                // incluir admins/owners
+                if (adminIds.has(s.user_id)) return true;
+                // incluir a la cajera que disparó (aunque ya sea admin, no duplica si está en ambos sets)
+                if (callerUserId && s.user_id === callerUserId) return true;
+                return false;
+            });
+
+            let sent = 0;
+            for (const s of targets) {
+                try {
+                    await webpush.sendNotification(
+                        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+                        JSON.stringify(payloadCuadre)
+                    );
+                    sent++;
+                } catch (e) {
+                    if (e.statusCode === 404 || e.statusCode === 410) {
+                        await sb.from('push_subscriptions').delete().eq('id', s.id);
+                    }
+                }
+            }
+            return res.status(200).json({ ok: true, descuadre: true, alerts: recon.alerts, sent });
         }
 
         // ── PULSE: recordatorios vencidos ──
