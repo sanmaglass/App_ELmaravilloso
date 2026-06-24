@@ -75,10 +75,15 @@ window.SyncV2 = {
     }
   },
 
-  // Tablas que NO se sincronizan al dispositivo de un employee (finanzas/config sensible)
+  // Tablas que NO se sincronizan al dispositivo de un employee (finanzas/config sensible).
+  // OJO: cash_register NO va aquí. La cajera registra su fondo/cuadre/gastos del día
+  // y necesita verlos; sin sincronizar desde la nube, al limpiarse el IndexedDB local
+  // (recargas/logout/iOS) el fondo "desaparecía" (se veía $0) y se duplicaba al
+  // reponerlo. La RLS de cash_register ya limita por tenant y su contenido es
+  // operativo de caja, no datos sensibles del negocio.
   EMPLOYEE_SKIP_TABLES: new Set([
     'employees', 'worklogs', 'expenses', 'purchase_invoices', 'sales_invoices',
-    'electronic_invoices', 'loans', 'cash_register', 'advances', 'daily_sales',
+    'electronic_invoices', 'loans', 'advances', 'daily_sales',
     'suppliers', 'reminders', 'settings'
   ]),
 
