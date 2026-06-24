@@ -495,9 +495,20 @@ window.Views = window.Views || {};
                     const v = parseFloat(body.querySelector('#fondo-input')?.value);
                     if (isNaN(v) || v < 0) { window.showToast?.('Monto inválido'); return; }
                     btnFondo.disabled = true;
-                    await saveRecord(dia, 'fondo_apertura', 'apertura', v, `Fondo apertura: ${fmt(v)}`);
-                    window.showToast?.('Fondo guardado');
-                    render();
+                    try {
+                        const res = await saveRecord(dia, 'fondo_apertura', 'apertura', v, `Fondo apertura: ${fmt(v)}`);
+                        if (res && res.success === false) {
+                            window.showToast?.('No se pudo guardar el fondo, intenta de nuevo');
+                        } else {
+                            window.showToast?.('Fondo guardado');
+                        }
+                        await render();
+                    } catch (e) {
+                        console.error('[caja] Error guardando fondo:', e);
+                        window.showToast?.('No se pudo guardar el fondo, intenta de nuevo');
+                    } finally {
+                        btnFondo.disabled = false;
+                    }
                 });
             }
 
@@ -510,9 +521,20 @@ window.Views = window.Views || {};
                     if (!desc) { window.showToast?.('Describe el gasto'); return; }
                     if (isNaN(monto) || monto <= 0) { window.showToast?.('Monto inválido'); return; }
                     btnGasto.disabled = true;
-                    await saveGasto(dia, desc, monto);
-                    window.showToast?.('Gasto registrado');
-                    render();
+                    try {
+                        const res = await saveGasto(dia, desc, monto);
+                        if (res && res.success === false) {
+                            window.showToast?.('No se pudo registrar el gasto, intenta de nuevo');
+                        } else {
+                            window.showToast?.('Gasto registrado');
+                        }
+                        await render();
+                    } catch (e) {
+                        console.error('[caja] Error guardando gasto:', e);
+                        window.showToast?.('No se pudo registrar el gasto, intenta de nuevo');
+                    } finally {
+                        btnGasto.disabled = false;
+                    }
                 });
             }
 

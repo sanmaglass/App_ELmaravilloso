@@ -283,6 +283,12 @@ window.DataManager = {
     _cashRegisterCoreFields: ['id', 'date', 'type', 'category', 'amount', 'description', 'paymentMethod', 'reference', 'notes', 'deleted', 'tenant_id', 'updated_at_hlc', 'updated_by_device'],
     _advancesCoreFields: ['id', 'employee_id', 'amount', 'date', 'note', 'status', 'deducted_in_expense_id', 'deleted'],
 
+    // Tablas cuyo id es uuid en Supabase. Al crear un registro sin id hay que
+    // generar crypto.randomUUID(), NO un id numérico — un número en columna uuid
+    // aborta el insert con "invalid input syntax for type uuid" y el reporte de
+    // la cajera nunca sube. Son las tablas del módulo equipo.
+    _uuidIdTables: new Set(['announcements', 'announcement_reads', 'team_reports', 'team_checklists', 'checklist_templates']),
+
     /**
      * Guarda o actualiza una entidad, gestiona version para locking
      * optimista, e intenta sync con Supabase con retry exponencial.
@@ -303,11 +309,16 @@ window.DataManager = {
             }
 
             if (!data.id) {
-                // 53-bit safe random ID (Number.MAX_SAFE_INTEGER = 2^53-1)
-                // Combines timestamp prefix + random suffix for uniqueness
-                const ts = Date.now() % 8589934592; // 33 bits de timestamp (~272 años)
-                const rnd = crypto.getRandomValues(new Uint32Array(1))[0] % 1048576; // 20 bits random
-                data.id = ts * 1048576 + rnd;
+                if (this._uuidIdTables.has(tableName)) {
+                    // Columna uuid: generar un uuid real (no un id numérico).
+                    data.id = crypto.randomUUID();
+                } else {
+                    // 53-bit safe random ID (Number.MAX_SAFE_INTEGER = 2^53-1)
+                    // Combines timestamp prefix + random suffix for uniqueness
+                    const ts = Date.now() % 8589934592; // 33 bits de timestamp (~272 años)
+                    const rnd = crypto.getRandomValues(new Uint32Array(1))[0] % 1048576; // 20 bits random
+                    data.id = ts * 1048576 + rnd;
+                }
                 data.created_at = new Date().toISOString();
             }
 
