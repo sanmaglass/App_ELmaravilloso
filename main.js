@@ -42,7 +42,8 @@ const views = {
     announcements: () => window.Views.announcements(document.getElementById('view-container')),
     team_reports: () => window.Views.team_reports(document.getElementById('view-container')),
     team_scanner: () => window.Views.team_scanner(document.getElementById('view-container')),
-    team_admin: () => window.Views.team_admin(document.getElementById('view-container'))
+    team_admin: () => window.Views.team_admin(document.getElementById('view-container')),
+    factura_upload: () => window.Views.factura_upload(document.getElementById('view-container'))
 };
 
 // ── Tema neutro premium para Chart.js (gris-dominante, sin glow) ──
@@ -289,7 +290,7 @@ async function init() {
         // localStorage NO se usa aquí para evitar que el usuario manipule su propio rol.
         const _userRole = window.Auth.getRole();
         window._isEmployee = (_userRole === 'employee');
-        window._employeeAllowed = new Set(['team_home', 'caja_dia', 'announcements', 'team_reports']);
+        window._employeeAllowed = new Set(['team_home', 'caja_dia', 'announcements', 'team_reports', 'factura_upload']);
         if (window._isEmployee) {
             // Tema claro para cajeras
             document.body.classList.add('light-theme');

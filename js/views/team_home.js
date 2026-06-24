@@ -87,6 +87,12 @@ window.Views = window.Views || {};
     }
 
     function navTo(view) {
+        // Preferir el router directo (funciona para vistas sin nav-item, ej. factura_upload).
+        if (typeof window.navigateToView === 'function') {
+            const labels = { factura_upload: 'Subir factura', announcements: 'Avisos', team_reports: 'Mis Reportes', caja_dia: 'Caja del Día', team_home: 'Inicio' };
+            window.navigateToView(view, labels[view] || '');
+            return;
+        }
         const btn = document.querySelector(`.nav-item[data-view="${view}"]`);
         if (btn) btn.click();
     }
@@ -124,6 +130,25 @@ window.Views = window.Views || {};
                     <div id="th-checklist" style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
                         <div style="color:var(--text-muted); font-size:0.88rem; padding:16px;">Cargando...</div>
                     </div>
+                </div>
+
+                <!-- Subir factura de mercadería -->
+                <div style="margin-bottom:24px;">
+                    <button id="th-btn-factura"
+                        style="width:100%; padding:18px 20px; background:linear-gradient(135deg, var(--primary), #2f6fe0);
+                               color:#fff; border:none; border-radius:16px; cursor:pointer;
+                               display:flex; align-items:center; gap:14px;
+                               box-shadow:0 4px 16px rgba(76,141,255,0.28); transition:opacity 0.15s;">
+                        <div style="width:46px; height:46px; background:rgba(255,255,255,0.18); border-radius:12px;
+                                    display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                            <i class="ph-fill ph-receipt" style="font-size:1.5rem;"></i>
+                        </div>
+                        <div style="text-align:left; flex:1;">
+                            <div style="font-weight:800; font-size:1rem; margin-bottom:2px;">Subir factura</div>
+                            <div style="font-size:0.82rem; opacity:0.85;">Fotografía la factura cuando llega mercadería</div>
+                        </div>
+                        <i class="ph ph-caret-right" style="font-size:1.2rem; opacity:0.7;"></i>
+                    </button>
                 </div>
 
                 <!-- Promo del día -->
@@ -183,6 +208,12 @@ window.Views = window.Views || {};
 
             </div>
         `;
+
+        // Botón subir factura
+        const facturaBtn = container.querySelector('#th-btn-factura');
+        if (facturaBtn) {
+            facturaBtn.addEventListener('click', () => navTo('factura_upload'));
+        }
 
         // Cerrar sesión
         const logoutBtn = container.querySelector('#th-logout');
