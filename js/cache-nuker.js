@@ -1,25 +1,19 @@
 // Cache Nuker — corre UNA vez por usuario al cambiar NUKE_VERSION.
-// Desregistra SWs, borra Cache Storage e IndexedDB, luego recarga.
+// Fuerza al dispositivo a cargar el código nuevo SIN cerrar la sesión ni
+// borrar los datos locales: desregistra el Service Worker y borra solo las
+// cachés de código viejo, luego recarga. La sesión (token) y el IndexedDB
+// (caja, ventas, reportes pendientes de subir) quedan INTACTOS — el usuario
+// sigue adentro y no pierde nada. Solo se cierra sesión si la cierra él mismo.
 (function cacheNuker() {
-    var NUKE_VERSION = 'v1095';
+    var NUKE_VERSION = 'v1101';
     var FLAG = 'wm_cache_nuked_' + NUKE_VERSION;
     if (localStorage.getItem(FLAG)) return;
 
-    console.log('Cache Nuker: limpiando estado viejo para', NUKE_VERSION);
-
-    // Cerrar sesión al actualizar: borrar el token de Supabase Auth (clave sb-*-auth-token)
-    // y las claves de auth de la app. Tras la recarga, mostrará el login de nuevo.
-    try {
-        Object.keys(localStorage)
-            .filter(function (k) { return k.indexOf('sb-') === 0; })
-            .forEach(function (k) { localStorage.removeItem(k); });
-        ['wm_auth', 'wm_auth_token', 'wm_auth_email', 'wm_user',
-         'wm_session_version', 'wm_tenant_id', 'wm_user_role']
-            .forEach(function (k) { localStorage.removeItem(k); });
-    } catch (e) { /* ignore */ }
+    console.log('Cache Nuker: actualizando a', NUKE_VERSION, '(conserva sesión y datos)');
 
     var tasks = [];
 
+    // Desregistrar SWs viejos para que se reinstale el nuevo
     if ('serviceWorker' in navigator) {
         tasks.push(
             navigator.serviceWorker.getRegistrations().then(function(regs) {
@@ -28,6 +22,8 @@
         );
     }
 
+    // Borrar SOLO las cachés del Service Worker (archivos de código viejos).
+    // NO se toca IndexedDB ni el token de sesión.
     if (typeof caches !== 'undefined') {
         tasks.push(
             caches.keys().then(function(keys) {
@@ -36,18 +32,9 @@
         );
     }
 
-    if (typeof indexedDB !== 'undefined') {
-        tasks.push(new Promise(function(resolve) {
-            try {
-                var req = indexedDB.deleteDatabase('ElMaravillosoApp');
-                req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
-            } catch (e) { resolve(); }
-        }));
-    }
-
     Promise.all(tasks).then(function() {
         localStorage.setItem(FLAG, Date.now().toString());
-        console.log('Cache Nuker: listo, recargando con codigo fresco...');
+        console.log('Cache Nuker: listo, recargando con código fresco...');
         location.reload();
     });
 })();
