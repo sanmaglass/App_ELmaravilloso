@@ -850,6 +850,10 @@ window.Views = window.Views || {};
                 }
             } catch { /* Sin lista de empleados, solo mostrar quién leyó */ }
 
+            // Mapa user_id → email (para mostrar nombres en vez de UUID)
+            const empEmailMap = {};
+            employees.forEach(e => { empEmailMap[e.user_id] = e.email; });
+
             // Construir mapa de lecturas por aviso
             const readsByAnn = {};
             for (const r of allReads) {
@@ -862,7 +866,8 @@ window.Views = window.Views || {};
                 const readIds = new Set(reads.map(r => r.user_id));
 
                 const leidas = reads.sort((x, y) => (y.read_at || '').localeCompare(x.read_at || ''));
-                const noLeidas = employees.filter(e => !readIds.has(e.user_id));
+                // Solo cuentan las trabajadoras (employees), no el admin/owner que publica.
+                const noLeidas = employees.filter(e => e.role === 'employee' && !readIds.has(e.user_id));
 
                 const esUrgente = a.priority === 'urgente';
 
@@ -893,7 +898,7 @@ window.Views = window.Views || {};
                                                 border-bottom:1px solid var(--border); margin-left:16px;">
                                         <i class="ph ph-user-circle" style="color:#16a34a; font-size:1rem;"></i>
                                         <span style="font-size:0.85rem; color:var(--text-primary); flex:1;">
-                                            ${window.escapeHTML(r.user_email || r.user_id || 'Usuario')}
+                                            ${window.escapeHTML(nameFromEmail(empEmailMap[r.user_id] || r.user_email || ''))}
                                         </span>
                                         <span style="font-size:0.75rem; color:var(--text-muted);">
                                             ${tiempoRelativo(r.read_at)}
@@ -918,7 +923,7 @@ window.Views = window.Views || {};
                                                 border-bottom:1px solid var(--border); margin-left:16px;">
                                         <i class="ph ph-user-circle" style="color:#d97706; font-size:1rem;"></i>
                                         <span style="font-size:0.85rem; color:var(--text-muted);">
-                                            ${window.escapeHTML(e.email || e.user_id || 'Empleado')}
+                                            ${window.escapeHTML(nameFromEmail(e.email || ''))}
                                         </span>
                                     </div>
                                 `).join('')
