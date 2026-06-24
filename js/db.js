@@ -278,7 +278,9 @@ window.DataManager = {
     _loansCoreFields: ['id', 'item', 'quantity', 'total', 'date', 'notes', 'status', 'direction', 'type', 'deleted', 'version'],
     // Full fields list (used after running migration SQL in Supabase)
     _loansFullFields: ['id', 'supplier_id', 'borrower_name', 'item', 'quantity', 'unit_price', 'total', 'date', 'notes', 'status', 'direction', 'type', 'repayment_type', 'repayment_date', 'deleted', 'version'],
-    _cashRegisterCoreFields: ['id', 'date', 'type', 'category', 'amount', 'description', 'paymentMethod', 'reference', 'notes', 'deleted'],
+    // tenant_id es obligatorio: la policy RLS de INSERT exige (tenant_id = get_my_tenant_id()).
+    // Sin él el insert se rechaza y el cuadro de caja de la cajera nunca sincroniza.
+    _cashRegisterCoreFields: ['id', 'date', 'type', 'category', 'amount', 'description', 'paymentMethod', 'reference', 'notes', 'deleted', 'tenant_id', 'updated_at_hlc', 'updated_by_device'],
     _advancesCoreFields: ['id', 'employee_id', 'amount', 'date', 'note', 'status', 'deducted_in_expense_id', 'deleted'],
 
     /**
@@ -522,6 +524,15 @@ window.DataManager = {
         if (tableName === 'purchase_invoices') {
             delete syncData.imageData;
             delete syncData.created_at;
+        }
+
+        // cash_register: estampar tenant_id (RLS lo exige) y soltar created_at
+        // (la tabla no tiene esa columna). Así la ruta directa sincroniza al primer
+        // intento sin depender del outbox.
+        if (tableName === 'cash_register') {
+            delete syncData.created_at;
+            const tid = window.Auth?.getTenantId?.();
+            if (tid && !syncData.tenant_id) syncData.tenant_id = tid;
         }
 
         // Advances: convertir camelCase a snake_case para Supabase
