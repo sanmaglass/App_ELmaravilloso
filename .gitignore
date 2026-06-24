@@ -16,6 +16,7 @@ marketing/assets/entrada/*.jpg
 marketing/studio/.env
 marketing/.env
 marketing/studio/ig_auth.json
+marketing/studio/products_cache.json
 __pycache__/
 
 .vercel
