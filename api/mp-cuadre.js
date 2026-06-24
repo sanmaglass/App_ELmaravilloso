@@ -58,8 +58,18 @@ function bucket(paymentTypeId) {
     }
 }
 
+// Resuelve el Access Token de MP: primero env (Vercel), si no, tabla app_config
+// (blindada por RLS, solo la lee la service-role).
+async function getMpToken(sb) {
+    if (MP_ACCESS_TOKEN) return MP_ACCESS_TOKEN;
+    try {
+        const { data } = await sb.from('app_config').select('value').eq('key', 'mp_access_token').single();
+        return data?.value || null;
+    } catch { return null; }
+}
+
 // Trae y agrupa los pagos aprobados de MP del día.
-async function fetchMp(date) {
+async function fetchMp(date, token) {
     const off = offsetFor(date);
     const begin = `${date}T00:00:00.000${off}`;
     const end = `${date}T23:59:59.999${off}`;
@@ -74,7 +84,7 @@ async function fetchMp(date) {
             sort: 'date_approved', criteria: 'asc',
             limit: String(LIMIT), offset: String(offset),
         });
-        const r = await fetch(url, { headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` } });
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         if (!r.ok) {
             const txt = await r.text().catch(() => '');
             const err = new Error(`MP ${r.status}: ${txt.slice(0, 200)}`);
@@ -101,9 +111,11 @@ async function fetchMp(date) {
 
 // Construye la reconciliación completa (la usa el endpoint y notify.js).
 export async function buildReconciliation(sb, date) {
+    const token = await getMpToken(sb);
+    if (!token) { const e = new Error('falta MP_ACCESS_TOKEN'); e.noToken = true; throw e; }
     const [{ data: recon }, mp] = await Promise.all([
         sb.rpc('fn_caja_reconciliation', { p_date: date }),
-        fetchMp(date),
+        fetchMp(date, token),
     ]);
     const r = recon || {};
     const ev = r.eleventa || {};
@@ -143,9 +155,6 @@ export default async function handler(req, res) {
         if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
             return res.status(500).json({ error: 'faltan variables de entorno (Supabase)' });
         }
-        if (!MP_ACCESS_TOKEN) {
-            return res.status(500).json({ error: 'falta MP_ACCESS_TOKEN' });
-        }
         const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
         const auth = (req.headers.authorization || '').replace('Bearer ', '');
@@ -159,6 +168,7 @@ export default async function handler(req, res) {
         try {
             recon = await buildReconciliation(sb, date);
         } catch (e) {
+            if (e.noToken) return res.status(500).json({ error: 'falta MP_ACCESS_TOKEN' });
             if (e.mpStatus) return res.status(502).json({ error: 'Error consultando Mercado Pago', status: e.mpStatus });
             throw e;
         }
