@@ -711,11 +711,29 @@ async function resetCashRegisterOnce() {
     } catch (e) { console.warn('resetCashRegisterOnce falló', e); }
 }
 
+// Limpieza one-time: borra los avisos atascados del bug viejo (id NO-uuid, que
+// nunca sincronizaron y no se podían eliminar). La nube ya está limpia, así que
+// es seguro. Corre una sola vez por dispositivo.
+async function cleanStuckAnnouncementsOnce() {
+    const FLAG = 'ann_stuck_cleanup_20260624';
+    if (localStorage.getItem(FLAG)) return;
+    try {
+        const all = await db.announcements.toArray();
+        const stuck = all.filter(a => !String(a.id).includes('-')); // uuid tiene guiones; sin guiones = corrupto
+        for (const a of stuck) await db.announcements.delete(a.id);
+        const ob = await db.sync_outbox.where('tableName').equals('announcements').toArray();
+        if (ob.length) await db.sync_outbox.bulkDelete(ob.map(i => i.id));
+        localStorage.setItem(FLAG, '1');
+        if (stuck.length) console.log('🧹 Avisos atascados limpiados:', stuck.length);
+    } catch (e) { console.warn('cleanStuckAnnouncementsOnce', e); }
+}
+
 window.seedDatabase = seedDatabase;
 window.seedSuppliersIfNeeded = seedSuppliersIfNeeded;
 window.migratePendienteToPagado = migratePendienteToPagado;
 window.migrateCleanPersonal = migrateCleanPersonal;
 window.resetCashRegisterOnce = resetCashRegisterOnce;
+window.cleanStuckAnnouncementsOnce = cleanStuckAnnouncementsOnce;
 
 // Inicializar queue processor al cargar el módulo
 window.DataManager.initQueueProcessor();

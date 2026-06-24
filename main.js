@@ -364,6 +364,7 @@ async function init() {
         try {
             await window.seedDatabase();
             await window.resetCashRegisterOnce();
+            await window.cleanStuckAnnouncementsOnce();
             await window.migratePendienteToPagado();
         } catch (dbError) {
             console.error("Database initialization failed:", dbError);

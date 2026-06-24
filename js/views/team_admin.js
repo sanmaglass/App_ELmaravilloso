@@ -695,7 +695,7 @@ window.Views = window.Views || {};
             btn.addEventListener('click', async () => {
                 const id       = btn.dataset.id;
                 const isActive = btn.dataset.active === '1';
-                const idx      = announcements.findIndex(a => a.id === id);
+                const idx      = announcements.findIndex(a => String(a.id) === String(id));
                 if (idx === -1) return;
                 const updated = { ...announcements[idx], active: !isActive, updated_at_hlc: window.HLC?.now?.() || Date.now() };
                 announcements[idx] = updated;
@@ -718,7 +718,7 @@ window.Views = window.Views || {};
                 if (!zone) return;
                 if (zone.style.display !== 'none') { zone.style.display = 'none'; return; }
 
-                const a = announcements.find(x => x.id === id);
+                const a = announcements.find(x => String(x.id) === String(id));
                 if (!a) return;
 
                 // Construir mini-form dentro de la zona
@@ -769,7 +769,7 @@ window.Views = window.Views || {};
                     const title = zone.querySelector('.ta-edit-titulo').value.trim();
                     const body  = zone.querySelector('.ta-edit-body').value.trim();
                     if (!title) { window.showToast('El título es obligatorio.', 'error'); return; }
-                    const idx = announcements.findIndex(x => x.id === id);
+                    const idx = announcements.findIndex(x => String(x.id) === String(id));
                     if (idx === -1) return;
                     const updated = { ...announcements[idx], title, body, priority: editPrio, updated_at_hlc: window.HLC?.now?.() || Date.now() };
                     announcements[idx] = updated;
@@ -795,7 +795,7 @@ window.Views = window.Views || {};
                     if (!ok) return;
                 }
                 const id  = btn.dataset.id;
-                const idx = announcements.findIndex(a => a.id === id);
+                const idx = announcements.findIndex(a => String(a.id) === String(id));
                 if (idx === -1) return;
                 const updated = { ...announcements[idx], deleted: true, active: false, updated_at_hlc: window.HLC?.now?.() || Date.now() };
                 announcements[idx] = updated;
