@@ -116,11 +116,25 @@ window.SyncV2 = {
             }
             query = query.order('id', { ascending: true });
           } else {
-            // Sync incremental: cursor compuesto (hlc, id) para paginación estable
-            const orFilter = `updated_at_hlc.gt.${lastHlc},and(updated_at_hlc.eq.${lastHlc},id.gt.${lastId})`;
-            query = query.or(orFilter)
-              .order('updated_at_hlc', { ascending: true })
-              .order('id', { ascending: true });
+            // Sync incremental: cursor por HLC. Para ids numéricos se usa el
+            // desempate compuesto (hlc, id) para paginación estable. Para ids
+            // UUID (módulo equipo: announcements, *_reads, team_*, checklist_*)
+            // el desempate numérico no aplica — `id.gt.0` sobre columna uuid
+            // hacía FALLAR la query y los avisos nuevos nunca bajaban. En ese
+            // caso usamos cursor simple por HLC (gt); el HLC es prácticamente
+            // único por registro, así que no se pierden filas del delta.
+            const lastIdNum = Number(lastId);
+            const useSimpleCursor = !lastId || Number.isNaN(lastIdNum);
+            if (useSimpleCursor) {
+              query = query.gt('updated_at_hlc', lastHlc)
+                .order('updated_at_hlc', { ascending: true })
+                .order('id', { ascending: true });
+            } else {
+              const orFilter = `updated_at_hlc.gt.${lastHlc},and(updated_at_hlc.eq.${lastHlc},id.gt.${lastId})`;
+              query = query.or(orFilter)
+                .order('updated_at_hlc', { ascending: true })
+                .order('id', { ascending: true });
+            }
           }
 
           const { data, error } = await query.limit(limit);
@@ -152,9 +166,11 @@ window.SyncV2 = {
               });
             }
 
-            // Avanzar cursor compuesto al registro procesado
+            // Avanzar cursor compuesto al registro procesado.
+            // Preservar el id crudo (number o uuid) — convertirlo con Number()
+            // colapsaba los uuid a 0 y rompía la paginación.
             lastHlc = remoteHlc;
-            lastId = Number(remote_rec.id) || 0;
+            lastId = remote_rec.id;
           }
 
           totalFetched += data.length;
@@ -240,8 +256,14 @@ window.SyncV2 = {
 
       if (!rec) return;
 
-      rec.id = Number(rec.id || rec.key);
-      if (isNaN(rec.id)) return;
+      // Preservar UUIDs: coercionar a número solo los ids realmente numéricos.
+      // Number(uuid) = NaN descartaba (return) TODOS los cambios realtime de las
+      // tablas con id uuid (avisos, lecturas, checklists del módulo equipo) → el
+      // admin nunca veía los avisos en vivo aunque sí estuvieran en la nube.
+      const rawId = rec.id ?? rec.key;
+      if (rawId === undefined || rawId === null) return;
+      const nId = Number(rawId);
+      rec.id = Number.isNaN(nId) ? rawId : nId;
 
       if (eventType === 'INSERT' || eventType === 'UPDATE') {
         const localRec = await window.db[local].get(rec.id);
