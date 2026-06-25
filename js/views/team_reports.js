@@ -103,7 +103,7 @@ window.Views = window.Views || {};
         </div>` : '';
 
         const responseHTML = r.admin_response
-            ? `<div style="margin-top:10px; background:var(--bg-main); border-left:3px solid ${typeCfg.color}; border-radius:0 8px 8px 0; padding:10px 12px;">
+            ? `<div style="margin-top:10px; background:var(--bg-main); border-left:3px solid ${typeCfg.color}; border-radius:0 8px 8px 0; padding:10px 12px; word-break:break-word;">
                     <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px; display:flex; align-items:center; gap:5px;">
                         <i class="ph ph-arrow-bend-down-right"></i> Respuesta del administrador
                     </div>

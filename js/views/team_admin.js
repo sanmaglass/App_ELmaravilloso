@@ -105,10 +105,11 @@ window.Views = window.Views || {};
 
                 <!-- Tab bar -->
                 <div style="display:flex; gap:0; background:var(--bg-card); border:1px solid var(--border);
-                            border-radius:14px; padding:4px; margin-bottom:24px; width:fit-content;">
+                            border-radius:14px; padding:4px; margin-bottom:24px; overflow-x:auto;
+                            scrollbar-width:none; -webkit-overflow-scrolling:touch; max-width:100%;">
                     ${tabs.map(t => `
                         <button class="ta-tab-btn" data-tab="${t.id}"
-                                style="${tabBtnStyle(t.id === _tab)}">
+                                style="${tabBtnStyle(t.id === _tab)} white-space:nowrap; flex-shrink:0;">
                             <i class="${t.icon}" style="margin-right:5px;"></i>${t.label}
                         </button>
                     `).join('')}
@@ -274,7 +275,7 @@ window.Views = window.Views || {};
                     ${window.escapeHTML(r.title || typeCfg.label)}
                 </div>
                 ${r.description ? `
-                <div style="font-size:0.88rem; color:var(--text-muted); margin-bottom:10px; line-height:1.5;">
+                <div style="font-size:0.88rem; color:var(--text-muted); margin-bottom:10px; line-height:1.5; word-break:break-word;">
                     ${window.escapeHTML(r.description)}
                 </div>` : ''}
 
@@ -302,7 +303,7 @@ window.Views = window.Views || {};
                 <!-- Respuesta previa -->
                 ${hasResponse ? `
                 <div style="background:rgba(124,58,237,0.07); border-left:3px solid #7c3aed; border-radius:8px;
-                            padding:10px 12px; margin-bottom:10px; font-size:0.85rem; color:var(--text-primary);">
+                            padding:10px 12px; margin-bottom:10px; font-size:0.85rem; color:var(--text-primary); word-break:break-word;">
                     <div style="font-weight:700; font-size:0.75rem; color:#7c3aed; margin-bottom:4px; text-transform:uppercase;">
                         Respuesta — ${fechaCorta(r.admin_responded_at)}
                     </div>
@@ -314,15 +315,15 @@ window.Views = window.Views || {};
                     <textarea class="ta-reply-text" placeholder="Escribe tu respuesta…"
                               style="width:100%; box-sizing:border-box; min-height:80px; padding:10px;
                                      background:var(--bg-main); border:1px solid var(--border); border-radius:10px;
-                                     font-size:0.88rem; color:var(--text-primary); resize:vertical; margin-bottom:8px;"></textarea>
-                    <div style="display:flex; gap:8px; justify-content:flex-end;">
+                                     font-size:16px; color:var(--text-primary); resize:vertical; margin-bottom:8px;"></textarea>
+                    <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
                         <button class="ta-reply-cancel" data-id="${r.id}"
-                                style="padding:7px 16px; border:1px solid var(--border); border-radius:8px;
+                                style="padding:9px 16px; border:1px solid var(--border); border-radius:8px;
                                        background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.85rem;">
                             Cancelar
                         </button>
                         <button class="ta-reply-submit" data-id="${r.id}"
-                                style="padding:7px 16px; background:var(--primary); color:#fff; border:none;
+                                style="padding:9px 16px; background:var(--primary); color:#fff; border:none;
                                        border-radius:8px; cursor:pointer; font-size:0.85rem; font-weight:700;">
                             Enviar respuesta
                         </button>
@@ -330,23 +331,26 @@ window.Views = window.Views || {};
                 </div>
 
                 <!-- Botones de acción -->
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
                     ${r.status === 'pendiente' ? `
                     <button class="ta-action-btn ta-marcar-visto" data-id="${r.id}"
-                            style="padding:7px 14px; border:1px solid #2563eb; border-radius:8px; background:transparent;
-                                   color:#2563eb; cursor:pointer; font-size:0.82rem; font-weight:600; transition:all 0.15s;">
+                            style="padding:8px 12px; border:1px solid #2563eb; border-radius:8px; background:transparent;
+                                   color:#2563eb; cursor:pointer; font-size:0.78rem; font-weight:600; transition:all 0.15s;
+                                   flex:1; min-width:0; white-space:nowrap;">
                         <i class="ph ph-check"></i> Recibido
                     </button>` : ''}
                     ${r.status !== 'respondido' && r.status !== 'resuelto' ? `
                     <button class="ta-action-btn ta-responder" data-id="${r.id}"
-                            style="padding:7px 14px; border:1px solid #7c3aed; border-radius:8px; background:transparent;
-                                   color:#7c3aed; cursor:pointer; font-size:0.82rem; font-weight:600; transition:all 0.15s;">
+                            style="padding:8px 12px; border:1px solid #7c3aed; border-radius:8px; background:transparent;
+                                   color:#7c3aed; cursor:pointer; font-size:0.78rem; font-weight:600; transition:all 0.15s;
+                                   flex:1; min-width:0; white-space:nowrap;">
                         <i class="ph ph-chat-text"></i> Responder
                     </button>` : ''}
                     ${r.status !== 'resuelto' ? `
                     <button class="ta-action-btn ta-resolver" data-id="${r.id}"
-                            style="padding:7px 14px; border:1px solid #16a34a; border-radius:8px; background:transparent;
-                                   color:#16a34a; cursor:pointer; font-size:0.82rem; font-weight:600; transition:all 0.15s;">
+                            style="padding:8px 12px; border:1px solid #16a34a; border-radius:8px; background:transparent;
+                                   color:#16a34a; cursor:pointer; font-size:0.78rem; font-weight:600; transition:all 0.15s;
+                                   flex:1; min-width:0; white-space:nowrap;">
                         <i class="ph ph-check-circle"></i> Resuelto
                     </button>` : ''}
                 </div>
@@ -1128,7 +1132,8 @@ window.Views = window.Views || {};
                 </span>
             </div>
             <!-- Tabla -->
-            <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
+            <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow-x:auto;
+                        -webkit-overflow-scrolling:touch;">
                 <table style="width:100%; border-collapse:collapse;">
                     <thead>
                         <tr style="background:var(--bg-main);">

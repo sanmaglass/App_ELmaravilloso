@@ -161,7 +161,7 @@ window.Views = window.Views || {};
             </div>
             <!-- Cuerpo -->
             <div class="ann-body-text"
-                style="font-size:0.88rem; color:var(--text-muted); line-height:1.6;
+                style="font-size:0.88rem; color:var(--text-muted); line-height:1.6; word-break:break-word;
                        display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden;">
                 ${window.escapeHTML(bodyText)}
             </div>
@@ -465,7 +465,7 @@ window.Views = window.Views || {};
                 ${window.escapeHTML(a.title || 'Sin título')}
             </div>
             <!-- Cuerpo -->
-            <div style="font-size:0.88rem; color:var(--text-muted); line-height:1.6; margin-bottom:12px;">
+            <div style="font-size:0.88rem; color:var(--text-muted); line-height:1.6; margin-bottom:12px; word-break:break-word;">
                 ${window.escapeHTML(a.body || '')}
             </div>
             <!-- Pie: lecturas + acciones -->
