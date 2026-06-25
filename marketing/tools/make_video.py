@@ -985,21 +985,21 @@ def build_amigable(args):
 
     # monedas (imagen + posición base en px + fase de bob)
     coin_specs = [
-        (T.coin_pct(int(Wf*0.30), P), Wf*0.88, Hf*0.10, 0.0),
-        (T.coin_pct(int(Wf*0.27), P), Wf*0.05, Hf*0.55, 1.1),
-        (T.coin_pct(int(Wf*0.19), P), Wf*0.90, Hf*0.90, 2.2),
+        (T.coin_pct(int(Wf*0.30), P), Wf*0.86, Hf*0.065, 0.0),
+        (T.coin_pct(int(Wf*0.26), P), Wf*0.02, Hf*0.52, 1.1),
+        (T.coin_pct(int(Wf*0.17), P), Wf*0.88, Hf*0.91, 2.2),
     ]
 
     # productos: fila centrada, solapados, en banda inferior
-    maxh = int(Hf*0.40)
-    prods  = [T.load_product(p, int(Wf*0.50), maxh) for p in paths]
+    maxh = int(Hf*0.42)
+    prods  = [T.load_product(p, int(Wf*0.53), maxh) for p in paths]
     floors = [T.shadow_of(p, blur=30, op=0.28) for p in prods]
     n = len(prods); ov = int(Wf*0.06)
     total = sum(p.width for p in prods) - ov*(n-1)
     xs = []; x = Wf/2 - total/2
     for p in prods:
         xs.append(x + p.width/2); x += p.width - ov
-    prod_cy = Hf*0.72
+    prod_cy = Hf*0.695
     front_order = sorted(range(n), key=lambda i: abs(i-(n-1)/2), reverse=True)
 
     # textos / fuentes
@@ -1022,8 +1022,10 @@ def build_amigable(args):
     dur = float(getattr(args, "seconds", 6.0) or 6.0)
     nframes = int(dur*FPS)
     p_start = [0.5 + i*0.18 for i in range(n)]
-    title_cy = Hf*0.225
-    pill_cy  = title_cy + len(title_lines)*Wf*0.11 + Wf*0.02
+    lineH    = int(Wf*0.118)
+    title_cy = Hf*0.25
+    title_bottom = title_cy + (len(title_lines)-1)*lineH
+    pill_cy  = title_bottom + Wf*0.16
     pill_t   = 0.35 + len(title_lines)*0.12 + 0.15
     beats = {"whoosh_tag": 0.30, "whoosh_prod": round(p_start[0], 2),
              "price": round(pill_t, 2), "footer": max(0.5, dur-0.5)}
@@ -1059,7 +1061,7 @@ def build_amigable(args):
             ta = ease_out(clamp01((t-0.25-li*0.12)/0.5))
             if ta > 0.01:
                 paste_center(frame, text_img(ln, fname, tuple(P["ink"])), Wf/2, ty+(1-ta)*-18, 1.0, ta)
-            ty += Wf*0.11
+            ty += lineH
 
         # precio en píldora (pop)
         pa = clamp01((t-pill_t)/0.5)
