@@ -391,6 +391,7 @@
 
     <h2><span class="dot"></span>Listo para publicar <small>imagen · video · descripción</small>
       <span class="act" style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" id="edit-textos" style="width:auto" onclick="openTextos()">✏️ Textos del video</button>
         <button class="btn btn-ghost btn-sm" id="autosch" style="width:auto">🗓️ Auto-agendar</button>
         <button class="btn btn-ghost btn-sm" id="export" style="width:auto">⬇ Exportar CSV</button>
       </span>
@@ -408,6 +409,27 @@
     <div id="inbox-root"></div>
   </div>
 </div>
+
+<!-- MODAL: editar textos del video -->
+<div id="textos-modal" style="display:none;position:fixed;inset:0;background:rgba(20,15,12,.55);z-index:90;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:18px;max-width:560px;width:92%;padding:26px 26px 22px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <h3 style="margin:0;font-size:1.15rem">✏️ Textos del video</h3>
+      <button onclick="closeTextos()" style="border:none;background:none;font-size:1.4rem;cursor:pointer;color:#999">×</button>
+    </div>
+    <p style="color:#85838c;font-size:.86rem;margin:0 0 16px">Estos textos aparecen en los videos del estilo premium. Se aplican a los videos que generes de aquí en adelante.</p>
+    <label style="font-weight:700;font-size:.8rem;display:block;margin-bottom:4px">Pie de página</label>
+    <input id="tx-footer" type="text" maxlength="80" style="width:100%;padding:11px;border:1px solid #ece6db;border-radius:10px;font-size:.95rem;margin-bottom:14px">
+    <label style="font-weight:700;font-size:.8rem;display:block;margin-bottom:4px">Llamado a la acción</label>
+    <input id="tx-cta" type="text" maxlength="80" style="width:100%;padding:11px;border:1px solid #ece6db;border-radius:10px;font-size:.95rem;margin-bottom:14px">
+    <label style="font-weight:700;font-size:.8rem;display:block;margin-bottom:4px">Sello (esquina)</label>
+    <input id="tx-tag" type="text" maxlength="24" style="width:100%;padding:11px;border:1px solid #ece6db;border-radius:10px;font-size:.95rem;margin-bottom:18px">
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost btn-sm" style="width:auto" onclick="closeTextos()">Cancelar</button>
+      <button class="btn btn-red btn-sm" style="width:auto" onclick="saveTextos()">Guardar</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
@@ -416,6 +438,22 @@ const $=s=>document.querySelector(s);
 const api=(u,d)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 function copy(txt){navigator.clipboard.writeText(txt);toast('Copiado ✓');}
+
+/* ─── TEXTOS DEL VIDEO (editor) ───────────────────────── */
+async function openTextos(){
+  try{
+    const t=await fetch('/api/textos').then(r=>r.json());
+    $('#tx-footer').value=t.footer||''; $('#tx-cta').value=t.cta||''; $('#tx-tag').value=t.tag||'';
+  }catch(e){}
+  $('#textos-modal').style.display='flex';
+}
+function closeTextos(){$('#textos-modal').style.display='none';}
+async function saveTextos(){
+  const body={footer:$('#tx-footer').value,cta:$('#tx-cta').value,tag:$('#tx-tag').value};
+  await api('/api/textos',body);
+  toast('Textos guardados ✓ (se aplican a los próximos videos)');
+  closeTextos();
+}
 
 /* ─── HELPERS MÉTRICAS ────────────────────────────────── */
 function fmtN(n){if(n==null||n===undefined)return'—';return Number(n).toLocaleString('es-CL');}

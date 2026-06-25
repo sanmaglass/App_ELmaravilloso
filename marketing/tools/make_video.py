@@ -30,6 +30,10 @@ CREAM    = (245, 242, 236)
 INK      = (28, 28, 30)
 W, H, FPS = 1080, 1920, 30
 
+# Textos editables del video (se pueden sobreescribir por args / panel)
+DEFAULT_FOOTER = "HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO"
+DEFAULT_CTA    = "APROVECHA HOY  ·  PIDE POR WHATSAPP"
+
 FONTS = "C:/Windows/Fonts/"
 FONTS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "fonts")
 def font(name, size):
@@ -237,7 +241,7 @@ def build(args):
     price_im = text_img(fmt_price(args.price), f_impact(240), RED, 0)
     burst    = starburst(600, YELLOW)
     foot1_im = text_img("DISTRIBUIDORA EL MARAVILLOSO", f_bold(40), WHITE)
-    foot2_im = text_img("HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO", f_bold(34), YELLOW)
+    foot2_im = text_img(getattr(args, "footer", None) or DEFAULT_FOOTER, f_bold(34), YELLOW)
 
     dur = args.seconds
     nframes = int(dur * FPS)
@@ -444,7 +448,8 @@ def _build_look(args, look="premium"):
     dollar_sz = 118 if look != "giant" else 136
     dollar_im = text_img("$", f_price(dollar_sz), cfg["price_color"])
 
-    foot_im = text_img("HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO", f_ui(34), cfg["footer_color"])
+    foot_txt = getattr(args, "footer", None) or DEFAULT_FOOTER
+    foot_im = text_img(foot_txt, f_ui(34), cfg["footer_color"])
     unit_im = text_img(" ".join(unit.upper()), f_ui(30), INK_SOFT if look not in ("dark", "split") else CREAM_HI)
 
     # Para giant: pill de unidad sobre el fondo (se dibuja en frame)
@@ -456,7 +461,8 @@ def _build_look(args, look="premium"):
         old_im = text_img("Normal " + fmt_price(price_old), f_strike(42), old_color)
         pct = round((1 - args.price / price_old) * 100)
         badge = _make_badge(pct)
-    cta_im = text_img("APROVECHA HOY  ·  PIDE POR WHATSAPP", f_ui(36), WHITE)
+    cta_txt = getattr(args, "cta_text", None) or DEFAULT_CTA
+    cta_im = text_img(cta_txt, f_ui(36), WHITE)
 
     # ---- Efectos de variedad: leer de args (ya elegidos en render()) ----
     entry_style    = getattr(args, "entry_style", "zoom_bounce")
@@ -920,12 +926,17 @@ def _build_price_digits_slot(price_str, font_obj, color, t_reveal, dur_slot=0.8)
     for i, ch in enumerate(digits):
         ch_im = text_img(ch, font_obj, color)
         cw = ch_im.width
+        # Separador (".") NO gira y va siempre a la BASE (si no, queda flotando arriba)
+        if not ch.isdigit():
+            out.alpha_composite(ch_im, (x, dh - ch_im.height))
+            x += cw + pad
+            continue
         # Los dígitos de izquierda frenan antes que los de la derecha
         frac = (i + 1) / n  # fracción: el último frena en dur_slot completo
         stop_t = frac * dur_slot
         if t_reveal >= stop_t:
-            # Ya frenado: pegar el dígito final en posición
-            out.alpha_composite(ch_im, (x, 0))
+            # Ya frenado: pegar el dígito final alineado a la base
+            out.alpha_composite(ch_im, (x, dh - ch_im.height))
         else:
             # Girando: deslizar varios dígitos en Y
             spin_speed = 12  # dígitos por segundo
@@ -1183,6 +1194,8 @@ if __name__ == "__main__":
     ap.add_argument("--unit", default="c/u")
     ap.add_argument("--audio", default="on", choices=["on", "off"])
     ap.add_argument("--cta", default="on")
+    ap.add_argument("--footer", default=None, help="Texto del pie (premium). Por defecto: zona/público.")
+    ap.add_argument("--cta-text", dest="cta_text", default=None, help="Texto del llamado a la acción.")
     ap.add_argument("--seconds", type=float, default=6.0)
     ap.add_argument("--style", default=None,
                     choices=["clasica", "premium", "dark", "giant", "split", "amigable"])

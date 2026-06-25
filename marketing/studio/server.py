@@ -39,6 +39,24 @@ def load_estilo():
     except Exception:
         return {}
 
+TEXTOS_PATH = os.path.join(HERE, "textos.json")
+def load_textos():
+    """Textos editables del video (footer, cta, tag por defecto). Defaults desde el motor."""
+    base = {"footer": MV.DEFAULT_FOOTER, "cta": MV.DEFAULT_CTA, "tag": "OFERTA"}
+    try:
+        d = json.load(open(TEXTOS_PATH, encoding="utf-8"))
+        base.update({k: v for k, v in d.items() if isinstance(v, str) and v.strip()})
+    except Exception:
+        pass
+    return base
+def save_textos(d):
+    cur = load_textos()
+    for k in ("footer", "cta", "tag"):
+        if isinstance(d.get(k), str) and d[k].strip():
+            cur[k] = d[k].strip()
+    json.dump(cur, open(TEXTOS_PATH, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    return cur
+
 ENTRADA = os.path.join(MKT, "assets", "entrada")
 CUTS    = os.path.join(MKT, "assets", "_cuts")
 IMG_OUT = os.path.join(MKT, "content", "instagram")
@@ -119,9 +137,11 @@ def _gen_video_thread(slug, fname, name, price, style, tag, product,
     """Corre en un thread: renderiza el video y actualiza GEN_PROGRESS."""
     try:
         GEN_PROGRESS[slug] = {"pct": 0, "done": False, "error": None, "post": None}
+        tx = load_textos()
         args = argparse.Namespace(
             product=product, name=name, price=str(price),
             out=vid_path, tag=tag, seconds=6.0, style=style,
+            footer=tx.get("footer") or None, cta_text=tx.get("cta") or None,
             on_progress=lambda p: GEN_PROGRESS[slug].update(pct=p),
         )
         MV.render(args)
@@ -191,6 +211,15 @@ async def generate(req: Request):
 @app.get("/api/progress")
 def api_progress(slug: str = ""):
     return JSONResponse(GEN_PROGRESS.get(slug, {"pct": 0, "done": False}))
+
+@app.get("/api/textos")
+def api_get_textos():
+    return JSONResponse(load_textos())
+
+@app.post("/api/textos")
+async def api_set_textos(req: Request):
+    b = await req.json()
+    return JSONResponse(save_textos(b))
 
 
 @app.post("/api/delete")
