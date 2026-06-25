@@ -192,12 +192,14 @@ def pick_headline(i):
     return HEADLINES[int(i)%len(HEADLINES)]
 
 def brand_icon():
-    """Esfera M de la marca, recortada del logo (sin el texto), nítida y transparente."""
+    """Solo la ESFERA M (sin el texto blanco 'EL MARAVILLOSO' que trae logo_v2 abajo)."""
     lg=Image.open(os.path.join(ASSETS,"logo_v2.png")).convert("RGBA")
     bb=lg.getbbox()
     if bb: lg=lg.crop(bb)
-    # la esfera ocupa la parte superior cuadrada; el nombre va debajo -> recortar a cuadrado superior
-    return lg.crop((0,0,lg.width,min(lg.height,lg.width)))
+    sph=lg.crop((0,0,lg.width,int(lg.height*0.66)))  # el nombre blanco va en el ~28% inferior
+    bb2=sph.getbbox()
+    if bb2: sph=sph.crop(bb2)
+    return sph
 
 def bg_friendly(pal,Wf,Hf):
     """Fondo suave con degradé vertical sutil + grilla fina + blobs de profundidad."""
@@ -225,51 +227,92 @@ def coin_pct(size,pal):
     d.text((S*0.5,S*0.43),"%",font=f_price(int(S*0.5)),fill=(255,255,255,235),anchor="mm")
     return im.resize((size,size),Image.LANCZOS)
 
-def wordmark(im,pal,cx,cy_top):
-    """Header limpio: esfera M (nítida) + 'DISTRIBUIDORA' + 'El Maravilloso'. Devuelve y inferior."""
-    d=ImageDraw.Draw(im); W=im.width; y=cy_top
+def wordmark(im,pal,cx,cy_top,style="banner"):
+    """Header. style='banner' = lockup header_clean.png (legible sobre cualquier fondo);
+    style='minimal' = esfera grande + 'El Maravilloso' en rojo de marca. Devuelve y inferior."""
+    W=im.width; d=ImageDraw.Draw(im)
+    if style=="banner":
+        try:
+            hb=Image.open(os.path.join(ASSETS,"header_clean.png")).convert("RGBA")
+            bb=hb.getbbox()
+            if bb: hb=hb.crop(bb)
+            w=int(W*0.72); h=int(hb.height*w/hb.width); hb=hb.resize((w,h),Image.LANCZOS)
+            im.alpha_composite(hb,(int(cx-w/2),int(cy_top)))
+            return cy_top+h+int(W*0.015)
+        except Exception: pass
+    # minimal: esfera grande (sin texto blanco) + nombre en rojo
+    y=cy_top
     try:
-        ic=brand_icon(); s=int(W*0.15); ic=ic.resize((s,s),Image.LANCZOS)
-        im.alpha_composite(ic,(int(cx-s/2),int(y)))
-        y+=s*0.96
+        ic=brand_icon(); s=int(W*0.20); h=int(ic.height*s/ic.width); ic=ic.resize((s,h),Image.LANCZOS)
+        im.alpha_composite(ic,(int(cx-s/2),int(y))); y+=h
     except Exception: pass
-    d.text((cx,y),"D I S T R I B U I D O R A",font=f_ui(int(W*0.023)),
+    d.text((cx,y+W*0.006),"D I S T R I B U I D O R A",font=f_ui(int(W*0.024)),
            fill=pal["muted"]+(255,),anchor="mm")
-    d.text((cx,y+W*0.05),"El Maravilloso",font=f_name(int(W*0.068)),
+    d.text((cx,y+W*0.058),"El Maravilloso",font=f_name(int(W*0.072)),
            fill=pal["ink"]+(255,),anchor="mm")
-    return y+W*0.085
+    return y+int(W*0.10)
 
-def place_products(im,paths,pal,cy,maxh):
-    """Coloca 1..3 productos en fila, ligeramente solapados, con sombra suave."""
-    paths=[p for p in paths if p][:3]
-    if not paths: return
-    n=len(paths); ov=int(im.width*0.06)  # solape
-    # ancho por producto según cantidad (que la fila no exceda ~94% del ancho)
+def price_tag(price,pal,fsz):
+    """Etiqueta de precio (píldora roja) para poner bajo cada producto."""
+    f=f_price(fsz); txt=fmt(price)
+    tmp=ImageDraw.Draw(Image.new("RGBA",(10,10)))
+    bb=tmp.textbbox((0,0),txt,font=f); w=bb[2]-bb[0]; h=bb[3]-bb[1]
+    padx,pady=int(fsz*0.55),int(fsz*0.42)
+    W2,H2=w+padx*2,h+pady*2
+    im=Image.new("RGBA",(W2,H2),(0,0,0,0)); d=ImageDraw.Draw(im)
+    # sombra de contacto
+    sh=Image.new("RGBA",(W2,H2),(0,0,0,0)); ImageDraw.Draw(sh).rounded_rectangle([0,4,W2-1,H2-1+4],radius=H2//2,fill=(0,0,0,70))
+    base=Image.new("RGBA",(W2,H2+6),(0,0,0,0)); base.alpha_composite(sh.filter(ImageFilter.GaussianBlur(5)),(0,2))
+    d2=ImageDraw.Draw(base)
+    d2.rounded_rectangle([0,0,W2-1,H2-1],radius=H2//2,fill=tuple(pal["pill"])+(255,))
+    d2.text((W2/2,H2/2),txt,font=f,fill=tuple(pal["pill_txt"])+(255,),anchor="mm")
+    return base
+
+def _norm_items(products,default_price):
+    """Normaliza products a [{path,price,name}]. Acepta rutas (str) o dicts."""
+    out=[]
+    for p in (products or []):
+        if isinstance(p,dict):
+            if p.get("path"): out.append({"path":p["path"],"price":p.get("price"),"name":p.get("name","")})
+        elif p:
+            out.append({"path":p,"price":default_price,"name":""})
+    return out[:3]
+
+def place_products(im,items,pal,cy,maxh,show_prices=False):
+    """Coloca 1..3 productos en fila, solapados, con sombra. Si show_prices: etiqueta por producto."""
+    items=_norm_items(items,None)
+    if not items: return
+    n=len(items); ov=int(im.width*0.06)  # solape
     per_w=min(int(im.width*0.55),int((im.width*0.94+ov*(n-1))/n))
-    prods=[load_product(p,per_w,maxh) for p in paths]
-    widths=[p.width for p in prods]
-    total=sum(widths)-ov*(n-1)
+    prods=[load_product(it["path"],per_w,maxh) for it in items]
+    total=sum(p.width for p in prods)-ov*(n-1)
     xs=[]; x=im.width/2-total/2
-    for i,p in enumerate(prods):
+    for p in prods:
         xs.append(x+p.width/2); x+=p.width-ov
-    # sombras primero
     for i,p in enumerate(prods):
         sh=shadow_of(p,blur=30,op=0.28)
         im.alpha_composite(sh,(int(xs[i]-p.width/2+10),int(cy-p.height/2+24)))
-    # centro al frente
     for i in sorted(range(n),key=lambda i:abs(i-(n-1)/2),reverse=True):
         paste_c(im,prods[i],xs[i],cy)
+    if show_prices:
+        tsz=int(im.width*(0.058 if n<=2 else 0.046))
+        for i,p in enumerate(prods):
+            pr=items[i].get("price")
+            if not pr: continue
+            tag=price_tag(pr,pal,tsz)
+            paste_c(im,tag,xs[i],cy+p.height*0.5-tag.height*0.30)
 
-def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",headline=None):
+def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",headline=None,header_style="banner"):
     """Pieza amigable multi-producto. products: lista de rutas de recortes PNG.
-    headline = titular llamativo (si None, rota uno del banco según el nombre)."""
+    headline = titular llamativo (si None, rota uno del banco según el nombre).
+    header_style = 'banner' (lockup header_clean) o 'minimal' (esfera + nombre rojo)."""
     P=PALETTES.get(pal,PAL_MARCA)
     Wf,Hf=dims(fmt2)
     im=bg_friendly(P,Wf,Hf); d=ImageDraw.Draw(im); cx=Wf/2
     im.alpha_composite(coin_pct(int(Wf*0.30),P),(int(Wf*0.73),int(Hf*0.015)))
     im.alpha_composite(coin_pct(int(Wf*0.27),P),(int(-Wf*0.09),int(Hf*0.48)))
     im.alpha_composite(coin_pct(int(Wf*0.19),P),(int(Wf*0.80),int(Hf*0.86)))
-    y0=wordmark(im,P,cx,int(Hf*0.05))
+    y0=wordmark(im,P,cx,int(Hf*0.045),style=header_style)
     # titular llamativo (display condensado) — rota para variar
     hl=headline or pick_headline(abs(hash(name or ""))%len(HEADLINES))
     hfnt,hlines,hsz=fit_title(hl,Wf*0.88,Wf*0.150,Wf*0.09,2,font_fn=f_display)
@@ -283,17 +326,23 @@ def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",he
         d.text((cx,yy+ssz*0.55),ln,font=sfnt,fill=P["ink"]+(255,),anchor="mm")
         yy+=ssz*1.12
     block_bottom=yy
-    # precio en píldora, bajo el bloque con holgura
-    ps=fmt_str or fmt(price)
-    pf=f_price(int(Wf*0.135))
-    bb=d.textbbox((0,0),ps,font=pf); pw=bb[2]-bb[0]; ph=bb[3]-bb[1]
-    pad_x,pad_y=int(Wf*0.075),int(Wf*0.05)
-    py=int(block_bottom+pad_y+ph/2+Wf*0.012)
-    _rrect(d,[cx-pw/2-pad_x,py-ph/2-pad_y,cx+pw/2+pad_x,py+ph/2+pad_y],int(Wf*0.07),P["pill"]+(255,))
-    d.text((cx,py),ps,font=pf,fill=P["pill_txt"]+(255,),anchor="mm")
-    # productos: bajo la píldora con holgura garantizada
-    prod_cy=max(int(Hf*0.72),py+int(ph/2)+pad_y+int(Hf*0.20))
-    place_products(im,products,P,prod_cy,int(Hf*0.40))
+    items=_norm_items(products,price)
+    per_product=len(items)>1   # 2+ productos = precio por producto (sin píldora central)
+    if per_product:
+        # cada producto con su etiqueta; sin píldora hero. Productos más grandes y centrados abajo.
+        prod_cy=int(block_bottom+Hf*0.27)
+        place_products(im,items,P,prod_cy,int(Hf*0.36),show_prices=True)
+    else:
+        # 1 producto: píldora hero central
+        ps=fmt_str or fmt(items[0]["price"] if items and items[0].get("price") else price)
+        pf=f_price(int(Wf*0.135))
+        bb=d.textbbox((0,0),ps,font=pf); pw=bb[2]-bb[0]; ph=bb[3]-bb[1]
+        pad_x,pad_y=int(Wf*0.075),int(Wf*0.05)
+        py=int(block_bottom+pad_y+ph/2+Wf*0.012)
+        _rrect(d,[cx-pw/2-pad_x,py-ph/2-pad_y,cx+pw/2+pad_x,py+ph/2+pad_y],int(Wf*0.07),P["pill"]+(255,))
+        d.text((cx,py),ps,font=pf,fill=P["pill_txt"]+(255,),anchor="mm")
+        prod_cy=max(int(Hf*0.72),py+int(ph/2)+pad_y+int(Hf*0.20))
+        place_products(im,items,P,prod_cy,int(Hf*0.40))
     return im
 
 # ---------------- ESTILO A: CLASICA ----------------
