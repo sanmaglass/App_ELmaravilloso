@@ -70,7 +70,19 @@ from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, Redirect
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Estudio El Maravilloso")
-app.mount("/files", StaticFiles(directory=MKT), name="files")
+
+class NoCacheStatic(StaticFiles):
+    """Sirve los archivos forzando al navegador a revalidar SIEMPRE.
+    Sin esto, al regenerar una pieza (mismo nombre/URL) el navegador mostraba
+    la versión vieja en caché -> parecía que el logo/diseño no cambiaba."""
+    def file_response(self, *args, **kwargs):
+        resp = super().file_response(*args, **kwargs)
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
+
+app.mount("/files", NoCacheStatic(directory=MKT), name="files")
 
 IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")
 
@@ -206,6 +218,39 @@ async def generate(req: Request):
     )
     th.start()
     return JSONResponse({"slug": slug, "generating": True})
+
+
+@app.post("/api/preview-styles")
+async def preview_styles(req: Request):
+    """Renderiza una MINIATURA estática (feed 1:1) de cada estilo para elegir antes de generar."""
+    b = await req.json()
+    fname  = b["filename"]
+    name   = b.get("name") or os.path.splitext(fname)[0]
+    price  = int(re.sub(r"[^0-9]", "", str(b.get("price", "0"))) or 0)
+    rem_bg = bool(b.get("remove_bg", False))
+    src = os.path.join(ENTRADA, fname)
+    if not os.path.exists(src):
+        return JSONResponse({"error": "foto no encontrada"}, status_code=404)
+    product = maybe_cut(src, rem_bg)
+    slug = (slugify(name) + (f"-{price}" if price else "") + "-prev")[:60]
+    STYLE_ALIAS = {"dark": "premium_dark", "giant": "premium_giant", "split": "premium_split"}
+    LABELS = [("premium", "Premium"), ("dark", "Dark"), ("giant", "Gigante"),
+              ("split", "Split"), ("clasica", "Clásica")]
+    prevdir = os.path.join(MKT, "content", "_previews")
+    os.makedirs(prevdir, exist_ok=True)
+    out = []
+    for st, label in LABELS:
+        drawer = T.STYLES.get(STYLE_ALIAS.get(st, st), T.style_premium)
+        tag = "OFERTA" if st == "premium" else "OFERTA DE LA SEMANA"
+        try:
+            im = drawer(name, price, product, tag=tag, fmt="feed").convert("RGB")
+        except TypeError:
+            im = drawer(name, price, product, tag=tag).convert("RGB")
+        im.thumbnail((440, 440))
+        rel = f"content/_previews/{slug}-{st}.jpg"
+        im.save(os.path.join(MKT, rel), quality=82, optimize=True)
+        out.append({"style": st, "label": label, "url": "/files/" + rel})
+    return JSONResponse({"styles": out})
 
 
 def _gen_amigable_thread(slug, name, headline, pal, items, post_base, img_path, cover_path, vid_path):

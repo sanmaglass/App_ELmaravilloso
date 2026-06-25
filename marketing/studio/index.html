@@ -341,6 +341,20 @@
     .conv-messages{max-height:180px}
     .bubble{max-width:88%}
   }
+  /* galería de estilos (vista previa antes de generar) */
+  .style-gallery{margin:10px 0 4px}
+  .gal-title{font-size:.78rem;color:var(--muted);margin-bottom:7px}
+  .gal-row{display:flex;gap:9px;overflow-x:auto;padding:2px 2px 6px}
+  .gal-item{flex:0 0 auto;width:104px;cursor:pointer;border:2px solid transparent;border-radius:11px;overflow:hidden;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08);transition:transform .15s,border-color .15s,box-shadow .15s}
+  .gal-item:hover{transform:translateY(-3px);box-shadow:0 8px 18px rgba(0,0,0,.16)}
+  .gal-item.sel{border-color:var(--red);box-shadow:0 6px 16px rgba(200,16,24,.28)}
+  .gal-item img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}
+  .gal-item span{display:block;text-align:center;font-size:.72rem;padding:4px 2px;color:var(--ink);font-weight:700}
+  /* toggle foto/video en el resultado */
+  .media{position:relative}
+  .media-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;z-index:2}
+  .media-toggle{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.62);color:#fff;border:none;border-radius:9px;padding:6px 10px;font-size:.74rem;font-weight:600;cursor:pointer;z-index:4;backdrop-filter:blur(2px)}
+  .media-toggle:hover{background:rgba(0,0,0,.8)}
 </style>
 </head>
 <body>
@@ -788,9 +802,12 @@ function renderPending(files){
         </div>
         <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:.86rem;color:var(--ink)">
           <input type="checkbox" data-k="bg" style="width:auto" checked> ✂️ Quitar fondo a la foto</label>
-        <button class="btn btn-red" data-gen>✨ Generar pieza (individual)</button>
+        <button class="btn btn-ghost btn-sm" data-prev style="width:auto;margin-top:8px">👁️ Ver todos los estilos</button>
+        <div class="style-gallery" style="display:none"></div>
+        <button class="btn btn-red" data-gen>✨ Generar pieza (foto + video)</button>
       </div>`;
     el.querySelector('[data-gen]').onclick=()=>genOne(el);
+    el.querySelector('[data-prev]').onclick=()=>previewStyles(el);
     g.appendChild(el);
     /* pre-llenar precio desde BD de forma asíncrona (no bloquea render) */
     fetchMatchPrice(f).then(m=>applyPriceHint(el,m));
@@ -825,6 +842,27 @@ async function genAmigable(btn){
       else{toast('¡Pieza amigable lista! ✓');load();}
     }
   },1500);
+}
+async function previewStyles(el){
+  const get=k=>el.querySelector(`[data-k="${k}"]`).value;
+  const f=el.dataset.file, price=get('price'), bg=el.querySelector('[data-k="bg"]').checked;
+  const gal=el.querySelector('.style-gallery'), btn=el.querySelector('[data-prev]');
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> Renderizando estilos…';
+  try{
+    const r=await api('/api/preview-styles',{filename:f,name:get('name'),price:price||'0',remove_bg:bg});
+    if(!r||r.error){toast((r&&r.error)||'No se pudieron renderizar');return;}
+    const t=Date.now();
+    gal.innerHTML='<div class="gal-title">Toca el estilo que quieras → genera foto + video</div>'+
+      '<div class="gal-row">'+r.styles.map(s=>
+        `<div class="gal-item" data-st="${s.style}"><img src="${s.url}?t=${t}" loading="lazy"><span>${s.label}</span></div>`).join('')+'</div>';
+    gal.style.display='block';
+    gal.querySelectorAll('.gal-item').forEach(it=>it.onclick=()=>{
+      el.querySelector('[data-k="style"]').value=it.dataset.st;
+      gal.querySelectorAll('.gal-item').forEach(x=>x.classList.remove('sel')); it.classList.add('sel');
+      genOne(el);
+    });
+  }catch(e){toast('No se pudieron renderizar los estilos');}
+  finally{btn.disabled=false; btn.innerHTML='👁️ Ver todos los estilos';}
 }
 async function genOne(el){
   const get=k=>el.querySelector(`[data-k="${k}"]`).value;
@@ -916,13 +954,16 @@ function renderPosts(posts){
   const g=$('#post-grid');
   if(!posts.length){g.innerHTML='<div class="empty">Aún no generas piezas. Procesa una foto y aparecerá aquí.</div>';return;}
   g.innerHTML='';
+  const _v=Date.now();  // cache-buster: fuerza al navegador a cargar la versión recién generada, no la vieja en caché
   posts.forEach((p,i)=>{
     const el=document.createElement('div');el.className='card post';el.style.animationDelay=(i*50)+'ms';
     const cls=p.status==='programado'?'prog':p.status==='publicado'?'pub':'listo';
     el.innerHTML=`
-      <div class="media">
-        <video src="/files/${p.video}" muted loop playsinline></video>
+      <div class="media" data-mode="video">
+        <video src="/files/${p.video}?v=${_v}" muted loop playsinline></video>
+        <img class="media-photo" src="/files/${p.image}?v=${_v}" alt="foto feed">
         <span class="tag">🎬 ${p.style}</span><span class="play">▶</span>
+        <button class="media-toggle" data-mt>🖼️ Ver foto</button>
         <button class="btn-delete" data-del title="Eliminar pieza">🗑️</button>
       </div>
       <div class="body">
@@ -954,13 +995,19 @@ function renderPosts(posts){
         <hr class="post-sep">
         <div class="post-dl">
           <div class="links">
-            <a href="/files/${p.image}" download>⬇ Imagen</a>
-            <a href="/files/${p.video}" download>⬇ Video</a>
+            <a href="/files/${p.image}?v=${_v}" download>⬇ Imagen</a>
+            <a href="/files/${p.video}?v=${_v}" download>⬇ Video</a>
           </div>
         </div>
       </div>`;
     const v=el.querySelector('video'), media=el.querySelector('.media');
-    media.onmouseenter=()=>v.play(); media.onmouseleave=()=>{v.pause();v.currentTime=0;};
+    media.onmouseenter=()=>{if(media.dataset.mode==='video')v.play();}; media.onmouseleave=()=>{v.pause();v.currentTime=0;};
+    const mt=el.querySelector('[data-mt]');
+    if(mt) mt.onclick=(ev)=>{ev.stopPropagation();
+      const ph=media.querySelector('.media-photo');
+      if(media.dataset.mode==='video'){media.dataset.mode='photo';v.pause();v.style.display='none';ph.style.display='block';mt.innerHTML='🎬 Ver video';}
+      else{media.dataset.mode='video';ph.style.display='none';v.style.display='block';mt.innerHTML='🖼️ Ver foto';}
+    };
     const curAngle=()=>{const s=el.querySelector('[data-angle]');return s?s.value:(p.angle||'oferta');};
     const angleSel=el.querySelector('[data-angle]');
     if(angleSel) angleSel.onchange=async()=>{
