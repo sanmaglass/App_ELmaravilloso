@@ -937,10 +937,18 @@ function renderPosts(posts){
             <div><label>Fecha</label><input type="date" value="${p.date||''}" data-d></div>
             <div><label>Hora</label><input type="time" value="${p.time||'13:00'}" data-t></div>
           </div>
+          <div class="row" style="margin-bottom:8px">
+            <div style="flex:1"><label>Qué publicar</label>
+              <select data-pubfmt class="angle-sel" style="width:100%">
+                <option value="reel">🎬 Reel / Story — video vertical 9:16</option>
+                <option value="photo">🖼️ Foto del feed — cuadrada 1:1</option>
+              </select>
+            </div>
+          </div>
           <div class="row">
             <button class="btn btn-ghost btn-sm" data-sch>📅 Programar</button>
-            <button class="btn btn-red btn-sm" data-pub style="margin-top:0">📤 Publicar en IG</button>
-            <button class="btn btn-ghost btn-sm" data-pub-fb style="margin-top:0">📘 Publicar en FB</button>
+            <button class="btn btn-red btn-sm" data-pub style="margin-top:0">📤 Publicar IG</button>
+            <button class="btn btn-ghost btn-sm" data-pub-fb style="margin-top:0">📘 Publicar FB</button>
           </div>
         </div>
         <hr class="post-sep">
@@ -994,23 +1002,24 @@ function renderPosts(posts){
       else toast('Programado ✓');
       load();
     };
+    const pubFmt=()=>{const s=el.querySelector('[data-pubfmt]');return s?s.value:'reel';};
     el.querySelector('[data-pub]').onclick=async(ev)=>{
       const btn=ev.currentTarget;btn.disabled=true;btn.innerHTML='<span class="spin"></span> Publicando…';
-      const r=await api('/api/publish',{slug:p.slug,kind:'reel'});
+      const kind=pubFmt()==='photo'?'photo':'reel';   // IG: foto 1:1 o reel 9:16
+      const r=await api('/api/publish',{slug:p.slug,kind});
       if(r.error==='no_token'){toast('Falta IG_TOKEN / IG_USER_ID en el .env');}
-      else if(r.error==='no_hosting'){toast('Falta PUBLIC_BASE_URL (hosting de las piezas)');}
       else if(r.error){toast('IG: '+r.error);}
-      else{toast('¡Publicado en Instagram! 🎉');}
-      btn.disabled=false;btn.innerHTML='📤 Publicar en IG';load();
+      else{toast('¡Publicado en Instagram! 🎉 ('+(kind==='photo'?'foto':'reel')+')');}
+      btn.disabled=false;btn.innerHTML='📤 Publicar IG';load();
     };
     el.querySelector('[data-pub-fb]').onclick=async(ev)=>{
       const btn=ev.currentTarget;btn.disabled=true;btn.innerHTML='<span class="spin"></span> Publicando…';
-      const r=await api('/api/publish-fb',{slug:p.slug,kind:'video'});
+      const kind=pubFmt()==='photo'?'photo':'video';   // FB: foto 1:1 o video 9:16
+      const r=await api('/api/publish-fb',{slug:p.slug,kind});
       if(r.error==='no_page'){toast('Falta conectar Facebook (reconecta con el permiso pages_manage_posts)');}
-      else if(r.error==='no_hosting'){toast('Falta PUBLIC_BASE_URL (hosting de las piezas)');}
       else if(r.error){toast('FB: '+r.error);}
-      else{toast('¡Publicado en Facebook! 📘');}
-      btn.disabled=false;btn.innerHTML='📘 Publicar en FB';load();
+      else{toast('¡Publicado en Facebook! 📘 ('+(kind==='photo'?'foto':'video')+')');}
+      btn.disabled=false;btn.innerHTML='📘 Publicar FB';load();
     };
     el.querySelector('[data-del]').onclick=async()=>{
       if(!confirm('¿Eliminar esta pieza?'))return;
