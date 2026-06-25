@@ -977,14 +977,14 @@ def _pill_image(ps, fprice, P, Wf):
     return im
 
 def build_amigable(args):
-    """Video del estilo amigable: usa el POSTER estático YA VERIFICADO (style_amigable, con
-    logo limpio nuevo + precio por producto) y le agrega movimiento (Ken Burns + fade-in) +
-    audio variado. Así el video se ve EXACTAMENTE como la imagen verificada (sin errores nuevos)."""
+    """Video del estilo amigable ANIMADO: usa la BASE verificada (style_amigable sin productos)
+    + anima los productos que ENTRAN desde abajo y la etiqueta de precio que APARECE (pop),
+    sincronizado con el sonido (whoosh + kaching). Layout = una sola fuente de verdad (no se
+    rompe). El fondo/logo/titular/pie son la base estática; solo productos y precios se animan."""
     import json as _json
     cb = getattr(args, "on_progress", None)
     pal = getattr(args, "pal", "marca") or "marca"
 
-    # items por producto: args.items = JSON [{"path","price","name"}], o fallback products+precio único
     items = getattr(args, "items", None)
     if isinstance(items, str):
         try: items = _json.loads(items)
@@ -996,37 +996,56 @@ def build_amigable(args):
         items = [{"path": p, "price": pr} for p in paths if p]
     headline = getattr(args, "headline", None) or random.choice(T.HEADLINES)
 
-    # Poster estático verificado (mismo render que la imagen). price=0: usa el precio de cada item.
-    poster = T.style_amigable(args.name, 0, items, pal=pal, headline=headline, fmt2="story").convert("RGB")
-    Wf, Hf = poster.size
+    # BASE verificada (todo menos los productos) + geometría exacta de los productos
+    base, geom = T.style_amigable(args.name, 0, items, pal=pal, headline=headline,
+                                  fmt2="story", skip_products=True, return_geom=True)
+    base = base.convert("RGBA")
+    Wf, Hf = base.size
     bgcol = tuple(T.PALETTES.get(pal, T.PALETTES["marca"])["bg2"])
 
     dur = float(getattr(args, "seconds", 6.0) or 6.0)
     nframes = int(dur*FPS)
+    n = len(geom)
+    p_start   = [0.35 + i*0.16 for i in range(n)]          # productos entran escalonados
+    tag_start = [p_start[i] + 0.45 for i in range(n)]      # el precio aparece tras asentar
+    front_order = sorted(range(n), key=lambda i: abs(i-(n-1)/2), reverse=True)
+
     silent = os.path.splitext(args.out)[0] + ".silent.mp4"
     ff = imageio_writer(silent)
 
     for fi in range(nframes):
         t = fi/FPS
         if cb and (fi % 5 == 0 or fi == nframes-1): cb(int(fi/nframes*100))
-        # Ken Burns: zoom suave 1.00 -> 1.05 (centrado)
-        z = 1.0 + 0.05*ease_out(clamp01(t/dur))
-        zw, zh = int(Wf*z), int(Hf*z)
-        zoomed = poster.resize((zw, zh), Image.LANCZOS)
-        ox, oy = (zw-Wf)//2, (zh-Hf)//2
-        frame = zoomed.crop((ox, oy, ox+Wf, oy+Hf))
-        # fade-in desde el color del fondo (primeros 0.5s)
-        fa = ease_out(clamp01(t/0.5))
+        frame = base.copy()
+        # Productos: entran desde abajo con overshoot + fade, luego flotan suave
+        for i in front_order:
+            g = geom[i]; te = clamp01((t-p_start[i])/0.6)
+            if te <= 0: continue
+            sl = ease_out_back(te); a = ease_out(clamp01((t-p_start[i])/0.4))
+            oy = (1-sl)*(Hf*0.16) + math.sin(t*1.4+i)*6*te
+            paste_center(frame, g["floor"], g["cx"]+10, g["cy"]+oy+24, 1.0, 0.8*a)
+            paste_center(frame, g["img"],   g["cx"],    g["cy"]+oy,    1.0, a)
+        # Etiquetas de precio: pop (aparecen) tras asentar el producto
+        for i in range(n):
+            g = geom[i]
+            if g.get("tag") is None: continue
+            pa = clamp01((t-tag_start[i])/0.4)
+            if pa <= 0: continue
+            sc = lerp(0.5, 1.0, ease_out_back(pa))
+            paste_center(frame, g["tag"], g["tcx"], g["tcy"], sc, clamp01(pa*1.5))
+        # Fade-in general de la base al inicio (0.3s)
+        fa = ease_out(clamp01(t/0.3))
         if fa < 1.0:
-            frame = Image.blend(Image.new("RGB", (Wf, Hf), bgcol), frame, fa)
-        ff.append_data(np.asarray(frame))
+            frame = Image.blend(Image.new("RGBA", (Wf, Hf), bgcol+(255,)), frame, fa)
+        ff.append_data(np.asarray(frame.convert("RGB")))
     ff.close()
     if cb: cb(100)
-    # Estático + Ken Burns: UN solo whoosh de entrada sincronizado al fade-in (la pieza
-    # aparece como un todo). Sin SFX de precio/footer (sonaban a "algo aparece" y nada se movía).
-    beats = {"whoosh_tag": 0.18}
+    # Sonido SINCRONIZADO con lo que pasa: whoosh cuando entran los productos, kaching cuando
+    # aparece el precio, cierre al final.
+    beats = {"whoosh_tag": 0.15, "whoosh_prod": round(p_start[0], 2),
+             "price": round(tag_start[0], 2), "footer": max(0.5, dur-0.5)}
     _finalize(args, silent, beats)
-    print("OK ->", args.out, f"(amigable, {nframes} frames, {dur}s)")
+    print("OK ->", args.out, f"(amigable animado, {nframes} frames, {dur}s)")
 
 
 def render(args):

@@ -288,32 +288,45 @@ def _norm_items(products,default_price):
             out.append({"path":p,"price":default_price,"name":"","gram":None})
     return out[:3]
 
-def place_products(im,items,pal,cy,maxh,show_prices=False,top_y=None):
-    """Coloca 1..3 productos en fila, solapados, con sombra. Si show_prices: etiqueta por producto.
-    top_y: si se da, ancla el BORDE SUPERIOR del producto más alto ahí (evita hueco arriba)."""
+def products_geom(W,items,pal,maxh,top_y=None,cy=None,show_prices=False):
+    """Calcula la geometría (imágenes + posiciones) de los productos y sus etiquetas.
+    Devuelve lista de dicts: {img,cx,cy,floor, tag?,tcx?,tcy?}. Una sola fuente de verdad
+    de posiciones, usada por la imagen estática Y por la animación del video."""
     items=_norm_items(items,None)
-    if not items: return
-    n=len(items); ov=int(im.width*0.055)  # solape
-    per_w=min(int(im.width*0.62),int((im.width*0.98+ov*(n-1))/n))  # productos más grandes
+    if not items: return []
+    n=len(items); ov=int(W*0.055)
+    per_w=min(int(W*0.62),int((W*0.98+ov*(n-1))/n))
     prods=[load_product(it["path"],per_w,maxh) for it in items]
     if top_y is not None:
-        cy=top_y+max(p.height for p in prods)/2   # posicionar por borde superior real
+        cy=top_y+max(p.height for p in prods)/2
     total=sum(p.width for p in prods)-ov*(n-1)
-    xs=[]; x=im.width/2-total/2
+    xs=[]; x=W/2-total/2
     for p in prods:
         xs.append(x+p.width/2); x+=p.width-ov
+    tsz=int(W*(0.058 if n<=2 else 0.046))
+    out=[]
     for i,p in enumerate(prods):
-        sh=shadow_of(p,blur=30,op=0.28)
-        im.alpha_composite(sh,(int(xs[i]-p.width/2+10),int(cy-p.height/2+24)))
+        g={"img":p,"cx":xs[i],"cy":cy,"floor":shadow_of(p,blur=30,op=0.28)}
+        if show_prices and items[i].get("price"):
+            tag=price_tag(items[i]["price"],pal,tsz,gram=items[i].get("gram"))
+            g["tag"]=tag; g["tcx"]=xs[i]; g["tcy"]=cy+p.height*0.5-tag.height*0.26
+        out.append(g)
+    return out
+
+def draw_products_geom(im,geom):
+    """Dibuja la geometría calculada (sombras, productos con centro al frente, etiquetas)."""
+    n=len(geom)
+    for g in geom:
+        im.alpha_composite(g["floor"],(int(g["cx"]-g["img"].width/2+10),int(g["cy"]-g["img"].height/2+24)))
     for i in sorted(range(n),key=lambda i:abs(i-(n-1)/2),reverse=True):
-        paste_c(im,prods[i],xs[i],cy)
-    if show_prices:
-        tsz=int(im.width*(0.058 if n<=2 else 0.046))
-        for i,p in enumerate(prods):
-            pr=items[i].get("price")
-            if not pr: continue
-            tag=price_tag(pr,pal,tsz,gram=items[i].get("gram"))
-            paste_c(im,tag,xs[i],cy+p.height*0.5-tag.height*0.26)
+        paste_c(im,geom[i]["img"],geom[i]["cx"],geom[i]["cy"])
+    for g in geom:
+        if g.get("tag") is not None: paste_c(im,g["tag"],g["tcx"],g["tcy"])
+
+def place_products(im,items,pal,cy,maxh,show_prices=False,top_y=None):
+    """Coloca 1..3 productos (fachada estática que usa products_geom + draw_products_geom)."""
+    geom=products_geom(im.width,items,pal,maxh,top_y=top_y,cy=cy,show_prices=show_prices)
+    draw_products_geom(im,geom)
 
 def _amigable_footer(im,pal,cx,Wf,Hf,text,y):
     """Pie con la dirección + filete, ancla la parte baja del 9:16."""
@@ -322,10 +335,11 @@ def _amigable_footer(im,pal,cx,Wf,Hf,text,y):
            fill=tuple(pal["pill"])+(150,),width=3)
     d.text((cx,y),text,font=f_ui(int(Wf*0.030)),fill=tuple(pal["ink"])+(255,),anchor="mm")
 
-def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",headline=None,header_style="banner"):
-    """Pieza amigable multi-producto. products: lista de rutas de recortes PNG.
-    headline = titular llamativo (si None, rota uno del banco según el nombre).
-    header_style = 'banner' (lockup header_clean) o 'minimal' (esfera + nombre rojo)."""
+def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",headline=None,
+                   header_style="banner",skip_products=False,return_geom=False):
+    """Pieza amigable multi-producto. products: rutas o dicts {path,price,name,gram}.
+    skip_products: no dibuja los productos/etiquetas (para la BASE del video animado).
+    return_geom: devuelve (imagen, geom_productos) para que el video los anime en sus posiciones."""
     P=PALETTES.get(pal,PAL_MARCA)
     Wf,Hf=dims(fmt2)
     im=bg_friendly(P,Wf,Hf); d=ImageDraw.Draw(im); cx=Wf/2
@@ -352,7 +366,7 @@ def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",he
     if per_product:
         # productos GRANDES anclados por su borde superior justo bajo el subtítulo (sin hueco)
         maxh=int(Hf*0.45)
-        place_products(im,items,P,None,maxh,show_prices=True,top_y=int(block_bottom+Hf*0.04))
+        geom=products_geom(Wf,items,P,maxh,top_y=int(block_bottom+Hf*0.04),show_prices=True)
     else:
         # 1 producto: píldora hero central + producto grande abajo
         ps=fmt_str or fmt(items[0]["price"] if items and items[0].get("price") else price)
@@ -365,10 +379,12 @@ def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",he
         zone_top=py+ph/2+pad_y
         prod_cy=int((zone_top+(foot_y-Hf*0.05))/2)
         maxh=int((foot_y-Hf*0.05-zone_top)*0.84)
-        place_products(im,items,P,prod_cy,maxh)
+        geom=products_geom(Wf,items,P,maxh,cy=prod_cy)
+    if not skip_products:
+        draw_products_geom(im,geom)
     # pie con la dirección (ancla la parte baja, llena el vacío)
     _amigable_footer(im,P,cx,Wf,Hf,"GRECIA 1841, HUALPÉN   ·   DESPACHO",foot_y)
-    return im
+    return (im,geom) if return_geom else im
 
 # ---------------- ESTILO A: CLASICA ----------------
 def style_clasica(name,price,product,tag="OFERTA DE LA SEMANA"):
