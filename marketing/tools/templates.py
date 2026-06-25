@@ -195,8 +195,8 @@ def brand_header(W, text_color=(160,22,28), text="EL MARAVILLOSO"):
     """Lockup horizontal LIMPIO compuesto por código: esfera + nombre bien espaciados,
     centrados verticalmente, sin cruces. Fondo transparente. Devuelve imagen RGBA."""
     ic=brand_icon()
-    s=int(W*0.135); ich=int(ic.height*s/ic.width); ic=ic.resize((s,ich),Image.LANCZOS)
-    f=f_name(int(W*0.050))
+    s=int(W*0.165); ich=int(ic.height*s/ic.width); ic=ic.resize((s,ich),Image.LANCZOS)
+    f=f_name(int(W*0.052))
     tmp=ImageDraw.Draw(Image.new("RGBA",(10,10)))
     bb=tmp.textbbox((0,0),text,font=f); tw=bb[2]-bb[0]; asc=-bb[1]; th=bb[3]-bb[1]
     gap=int(W*0.022)
