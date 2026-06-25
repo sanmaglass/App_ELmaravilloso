@@ -998,14 +998,14 @@ async def schedule(req: Request):
             p["status"] = b.get("status", p["status"])
             post = p
     save_data(d)
-    # Encolar en la nube para que el VPS publique a la hora (IG + FB). TikTok queda manual (música).
+    # Encolar en la nube para que el VPS publique a la hora (IG + FB automático; TikTok = aviso Telegram).
     cloud = {"queued": False}
     if post and post.get("date") and post.get("video"):
         try:
             media_url = storage_upload(os.path.join(MKT, post["video"]), os.path.basename(post["video"]))
             cap = post.get("caption") or {}
             text = (cap.get("ig_caption", "") + ("\n\n" + cap.get("hashtags", "") if cap.get("hashtags") else "")).strip()
-            nets = b.get("networks") or ["instagram", "facebook"]
+            nets = b.get("networks") or ["instagram", "facebook", "tiktok"]
             sched = _santiago_iso(post["date"], post["time"])
             if post.get("cloud_id"):
                 supabase_update_post(post["cloud_id"], {"scheduled_for": sched, "status": "pending",
