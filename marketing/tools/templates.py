@@ -608,12 +608,12 @@ def soft_panel(im,box,fill=CREAM_HI,radius=40,shadow=True):
 def style_premium(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt="story"):
     Wf,Hf=dims(fmt)
     im=bg_cream(Wf,Hf); cx=Wf/2
-    bar=int(Hf*0.068)   # barra superior más slim (menos pesada)
+    bar=int(Hf*0.084)   # barra superior con más cuerpo para que el logo tenga presencia
     bar_red(im,0,bar,"bottom")
     bar_red(im,Hf-bar,Hf,"top")
     d=ImageDraw.Draw(im)
-    # logo NUEVO (esfera glossy + EL MARAVILLOSO) en blanco sobre la barra roja
-    place_brand_header(im,cx,bar*0.5,int(bar*0.80),(255,255,255))
+    # logo NUEVO (esfera glossy + EL MARAVILLOSO) en blanco, GRANDE sobre la barra roja
+    place_brand_header(im,cx,bar*0.5,int(bar*0.82),(255,255,255))
     # gancho: badge % si hay precio anterior; si no, sello OFERTA tipo ticket (no choca el logo)
     if price_old:
         pct=round((1-price/price_old)*100)
@@ -633,9 +633,9 @@ def style_premium(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt=
     d.line([(cx-lw,ny+58),(cx+lw,ny+58)],fill=RED,width=6)
     d.line([(cx-lw,ny+66),(cx+lw,ny+66)],fill=GOLD,width=3)
     d.line([(cx-70,ny+74),(cx+70,ny+74)],fill=BLUE,width=3)
-    # precio
-    sc=(Wf/1080.0)*(0.72 if feed else 1.0)
-    price_block(im,cx,int(Hf*(0.80 if feed else 0.815)),price,price_old,unit,color=RED,scale=sc)
+    # precio (más contenido en feed cuadrado para que no domine toda la imagen)
+    sc=(Wf/1080.0)*(0.58 if feed else 1.0)
+    price_block(im,cx,int(Hf*(0.81 if feed else 0.815)),price,price_old,unit,color=RED,scale=sc)
     # footer
     txt(d,(cx,Hf-bar*0.5),"HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO",f_ui(int(28 if feed else 34)),CREAM_HI)
     return im
