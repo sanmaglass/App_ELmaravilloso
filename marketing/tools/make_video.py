@@ -219,6 +219,7 @@ def _finalize(args, silent, beats):
     print("  audio:", "OK (con sonido)" if ok else "mudo (fallback)")
 
 def build(args):
+    cb = getattr(args, "on_progress", None)
     bg = make_background()
     # producto
     prod = Image.open(args.product).convert("RGBA")
@@ -246,6 +247,8 @@ def build(args):
     for fi in range(nframes):
         t = fi / FPS
         frame = bg.copy()
+        if cb and (fi % 5 == 0 or fi == nframes - 1):
+            cb(int(fi / nframes * 100))
 
         # --- tag superior (entra desde arriba) ---
         a = ease_out(clamp01(t / 0.6))
@@ -302,6 +305,7 @@ def _build_look(args, look="premium"):
     El timeline de animación es idéntico en todos; solo cambia la estética (fondo,
     colores, posiciones de producto/precio, filetes).
     """
+    cb = getattr(args, "on_progress", None)
     cx = W / 2
     args.price = int(re.sub(r"[^0-9]", "", str(args.price)) or 0)
     price_old = getattr(args, "price_old", None)
@@ -420,7 +424,17 @@ def _build_look(args, look="premium"):
     # ---- Assets comunes ----
     # Logo: SIEMPRE logo.png (lockup horizontal transparente con texto), como premium.
     # NO usar logo-dark.png (esfera 3D sobre fondo negro opaco) — se ve mal sobre la barra.
-    lg = T.logo(int(W * (0.28 if look == "split" else 0.30)))
+    # Se escala por ALTURA para que CALCE dentro de la barra roja sin cortarse arriba.
+    _logo_src = Image.open(os.path.join(T.ASSETS, "logo.png")).convert("RGBA")
+    _bb = _logo_src.getbbox()          # recorta el aire transparente para que el logo no quede chico
+    if _bb:
+        _logo_src = _logo_src.crop(_bb)
+    _logo_h = int(H * 0.060) if look == "split" else int(cfg["bar"] * 0.82)
+    _logo_sc = _logo_h / _logo_src.height
+    if _logo_src.width * _logo_sc > W * 0.50:      # tope de ancho por si el lockup es muy largo
+        _logo_sc = (W * 0.50) / _logo_src.width
+    lg = _logo_src.resize((max(1, int(_logo_src.width * _logo_sc)),
+                           max(1, int(_logo_src.height * _logo_sc))), Image.LANCZOS)
 
     # Producto
     prod = Image.open(args.product).convert("RGBA")
@@ -462,6 +476,8 @@ def _build_look(args, look="premium"):
     for fi in range(nframes):
         t = fi / FPS
         frame = base.copy()
+        if cb and (fi % 5 == 0 or fi == nframes - 1):
+            cb(int(fi / nframes * 100))
 
         # Glow de marca (opcional según look)
         if cfg.get("glow") is not None:

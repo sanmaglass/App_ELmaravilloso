@@ -1,0 +1,29 @@
+{
+  "negocio": {
+    "nombre": "Distribuidora El Maravilloso",
+    "direccion": "Grecia 1841, Hualpén",
+    "instagram": "@elmaravilloso_comercializadora",
+    "tiktok": "@elmaravilloso.hualpen",
+    "despacho": true,
+    "referencia": "A metros del colegio Montaner",
+    "horario_colacion": "13:00 a 14:00 hrs"
+  },
+  "reglas": [
+    "Puedes arrancar con una pregunta-gancho corta y 1-2 emojis (ej: '¿Frío? ☕❄️'), cuando calce.",
+    "Conecta con una situación cotidiana y cálida (la hora de once, la casa, el negocio).",
+    "Destaca el precio en su propia línea, claro y directo. NO uses asteriscos de markdown (**) porque Instagram los muestra literales.",
+    "Cierra con la ubicación usando 📍 y la dirección (Grecia 1841, Hualpén), ofreciendo también escribir por DM.",
+    "Usa un cierre con urgencia suave cuando encaje ('reserva el tuyo antes de que se acaben', 'esta semana').",
+    "Tono cercano pero profesional, español chileno neutro. Sin jerga exagerada (nada de bacán, al tiro, los cabros, harto).",
+    "Nunca menciones fiado ni crédito. Emojis con moderación (0-3).",
+    "DE VEZ EN CUANDO (no en todos los posts) puedes mencionar como referencia que estamos a metros del colegio Montaner.",
+    "SOLO OCASIONALMENTE (no siempre) recuerda el horario de colación de 13:00 a 14:00 hrs. No lo pongas en cada publicación."
+  ],
+  "ejemplos_de_oro": [
+    {
+      "producto": "Milo 1 kg",
+      "precio": 7190,
+      "ig_caption": "¿Frío? ☕❄️\nNo hay nada mejor que una buena once con un vaso de Milo bien calentito.\nEsta semana tenemos Milo 1 kg a solo $7.190.\n📍 Te esperamos en Grecia 1841, Hualpén o, si prefieres, escríbenos por DM y reserva el tuyo antes de que se acaben."
+    }
+  ]
+}

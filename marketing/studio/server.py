@@ -31,6 +31,14 @@ try:
 except Exception:
     pass
 
+def load_estilo():
+    """Lee studio/estilo.json en caliente (sin caché) para que cambios del dueño se reflejen sin reiniciar.
+    Devuelve {} si el archivo no existe o tiene errores — degradación elegante."""
+    try:
+        return json.load(open(os.path.join(HERE, "estilo.json"), encoding="utf-8"))
+    except Exception:
+        return {}
+
 ENTRADA = os.path.join(MKT, "assets", "entrada")
 CUTS    = os.path.join(MKT, "assets", "_cuts")
 IMG_OUT = os.path.join(MKT, "content", "instagram")
@@ -104,6 +112,35 @@ def maybe_cut(src_path, remove_bg):
     except Exception:
         return src_path  # rembg no instalado → seguir sin recorte
 
+GEN_PROGRESS = {}  # slug -> {"pct":int,"done":bool,"error":str|None,"post":dict|None}
+
+def _gen_video_thread(slug, fname, name, price, style, tag, product,
+                      img_path, cover_path, vid_path):
+    """Corre en un thread: renderiza el video y actualiza GEN_PROGRESS."""
+    try:
+        GEN_PROGRESS[slug] = {"pct": 0, "done": False, "error": None, "post": None}
+        args = argparse.Namespace(
+            product=product, name=name, price=str(price),
+            out=vid_path, tag=tag, seconds=6.0, style=style,
+            on_progress=lambda p: GEN_PROGRESS[slug].update(pct=p),
+        )
+        MV.render(args)
+        post = {
+            "slug": slug, "filename": fname, "name": name, "price": price,
+            "style": style, "tag": tag,
+            "image": rel(img_path), "cover": rel(cover_path), "video": rel(vid_path),
+            "status": "listo", "date": "", "time": "",
+            "created": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        }
+        d = load_data()
+        d["posts"] = [p for p in d["posts"] if p.get("slug") != slug]
+        d["posts"].insert(0, post)
+        save_data(d)
+        GEN_PROGRESS[slug].update(done=True, post=post, pct=100)
+    except Exception as e:
+        GEN_PROGRESS[slug].update(done=True, error=str(e), pct=100)
+
+
 @app.post("/api/generate")
 async def generate(req: Request):
     b = await req.json()
@@ -139,22 +176,48 @@ async def generate(req: Request):
     except TypeError:
         cover_path = img_path
 
-    # video (reel / tiktok)
+    # video en thread: no bloquea la respuesta
     vid_path = os.path.join(VID_OUT, slug + ".mp4")
-    args = argparse.Namespace(product=product, name=name, price=str(price),
-                              out=vid_path, tag=tag, seconds=6.0, style=style)
-    MV.render(args)
+    th = threading.Thread(
+        target=_gen_video_thread,
+        args=(slug, fname, name, price, style, tag, product,
+              img_path, cover_path, vid_path),
+        daemon=True,
+    )
+    th.start()
+    return JSONResponse({"slug": slug, "generating": True})
 
+
+@app.get("/api/progress")
+def api_progress(slug: str = ""):
+    return JSONResponse(GEN_PROGRESS.get(slug, {"pct": 0, "done": False}))
+
+
+@app.post("/api/delete")
+async def delete_post(req: Request):
+    b = await req.json()
+    slug = b.get("slug", "")
+    if not slug:
+        return JSONResponse({"ok": False}, status_code=400)
     d = load_data()
+    post = next((p for p in d["posts"] if p.get("slug") == slug), None)
+    if not post:
+        return JSONResponse({"ok": False}, status_code=404)
+    # Borrar archivos solo si están dentro de marketing/content/ (seguridad path traversal)
+    content_dir = os.path.abspath(os.path.join(MKT, "content"))
+    for key in ("image", "cover", "video"):
+        rel_path = post.get(key, "")
+        if not rel_path:
+            continue
+        abs_path = os.path.abspath(os.path.join(MKT, rel_path))
+        if abs_path.startswith(content_dir) and os.path.exists(abs_path):
+            try:
+                os.remove(abs_path)
+            except Exception:
+                pass
     d["posts"] = [p for p in d["posts"] if p.get("slug") != slug]
-    post = {"slug": slug, "filename": fname, "name": name, "price": price,
-            "style": style, "tag": tag,
-            "image": rel(img_path), "cover": rel(cover_path), "video": rel(vid_path),
-            "status": "listo", "date": "", "time": "",
-            "created": datetime.now().strftime("%Y-%m-%d %H:%M")}
-    d["posts"].insert(0, post)
     save_data(d)
-    return post
+    return {"ok": True, "deleted": slug}
 
 CAPTION_SCHEMA = {
     "type": "object",
@@ -170,99 +233,554 @@ CAPTION_SCHEMA = {
 def _money(price):
     return "$" + format(int(price), ",d").replace(",", ".") if price else ""
 
-# --- Motor de captions GRATIS (plantillas) — texto limpio y ordenado, casa+negocio, sin gritar ni emoji-spam ---
-HOOKS = [
-    "Te dejamos el dato 👇",
+# --- Motor de captions GRATIS (plantillas) — 6 estructuras distintas, voz de marca chilena ---
+
+# Bancos de hashtags (minúscula, estratégicos, máx 5 según tendencia IG 2026)
+_TAGS_LOCAL      = ["#hualpén", "#concepción", "#granconcepción", "#biobío", "#talcahuano"]
+_TAGS_RUBRO      = ["#distribuidora", "#abarrotes", "#mayorista", "#almacén", "#supermercado"]
+_TAGS_COMUNIDAD  = ["#ofertas", "#ofertaschile", "#compralocal", "#preciobajo", "#pyme"]
+
+
+def _build_hashtags(name, v):
+    """Arma exactamente 5 hashtags: 2 LOCAL + 1 RUBRO + 1 COMUNIDAD + 1 PRODUCTO.
+    Elige dentro de cada banco según v (hash del nombre + variant) para variedad."""
+    local1 = _TAGS_LOCAL[v % len(_TAGS_LOCAL)]
+    local2 = _TAGS_LOCAL[(v + 2) % len(_TAGS_LOCAL)]
+    if local2 == local1:
+        local2 = _TAGS_LOCAL[(v + 1) % len(_TAGS_LOCAL)]
+    rubro    = _TAGS_RUBRO[v % len(_TAGS_RUBRO)]
+    comunidad = _TAGS_COMUNIDAD[v % len(_TAGS_COMUNIDAD)]
+    # hashtag de producto: primera(s) palabra(s) significativas, minúscula, sin acentos ni espacios
+    words = name.lower().split()
+    # descarta unidades/números solos para el tag de producto
+    stopwords = {"la", "el", "de", "en", "a", "y", "kg", "g", "ml", "lt", "l", "cc", "un", "x", "con", "sin", "1", "2", "3"}
+    sig = [re.sub(r"[^a-z0-9]", "", w) for w in words if w not in stopwords and re.sub(r"[^a-z0-9]", "", w)]
+    prod_tag = "#" + (sig[0] if sig else re.sub(r"[^a-z0-9]", "", words[0]) if words else "maravilloso")
+    return f"{local1} {local2} {rubro} {comunidad} {prod_tag}"
+
+
+def nice_name(name):
+    """Convierte nombre gritado a sentence case natural. 'MILO BOLSA 1 KG' → 'Milo bolsa 1 kg'."""
+    if not name:
+        return name
+    return name.strip().lower().capitalize()
+
+# ── Bancos de frases ────────────────────────────────────────────────────────
+
+HOOKS_OFERTA = [
+    "Buen precio hoy 👇",
+    "Llegó stock y lo dejamos bien:",
     "Precio del día:",
-    "Llegó stock y lo dejamos a buen precio:",
-    "Ojo con este precio:",
     "Para anotar y stockear:",
-    "Lo dejamos a precio conveniente:",
-    "Buena oportunidad:",
+    "Te dejamos el dato:",
+    "Una oportunidad que vale la pena considerar:",
+    "Lo que pedías ya está disponible:",
+    "Disponible ahora a buen precio:",
+    "Un precio que conviene tener en el radar:",
 ]
-BODIES = [
-    "{name}: {price}.",
-    "{name} a {price}.",
-    "{name} — {price} la unidad.",
-    "{name}, {price}.",
+
+HOOKS_PREGUNTA = [
+    "¿Cuánto pagaste la última vez?",
+    "¿Ya tienes stock de esto?",
+    "¿Buscando buen precio en {name_short}?",
+    "¿Necesitas surtir el almacén?",
+    "¿Cuándo fue la última vez que surtiste {name_short}?",
+    "¿Cuánto te costó la última vez?",
+    "¿Tienes tu {name_short} para esta semana?",
+    "¿Con el stock bajo?",
+    "¿Estás evaluando precios para tu negocio?",
 ]
-# Por qué conviene (habla a casa Y negocio, sin clichés)
-WHY = [
-    "Conviene igual para la casa o para surtir el negocio.",
-    "Buen precio para consumo o para revender.",
-    "Rinde en el hogar y sale a cuenta para el comercio.",
-    "Sirve para tu casa o para tu local.",
-    "A ese precio conviene, lo lleves para la casa o para el negocio.",
+
+ANTOJOS = [
+    "La hora de once no es la misma sin {name_short} 😋",
+    "En casa siempre lo piden — y tú ya sabes dónde encontrarlo.",
+    "Para la mesa de la semana: nada falla.",
+    "El desayuno se vuelve mejor con esto 🙌",
+    "Hay cosas que no pueden faltar en la despensa.",
+    "Ideal para la semana, sin gastar de más.",
+    "{name_short} para el desayuno: lo clásico que nunca falla.",
+    "La despensa bien surtida siempre es buena idea.",
+    "Ese sabor del desayuno que siempre vuelve 😄",
+    "Para que no falte nada en casa esta semana.",
 ]
-# Dónde y cómo
-WHERE = [
+
+TIPS = [
+    "Si compras en cantidad, el precio por unidad baja considerablemente.",
+    "Buen producto para stockear cuando el precio acompaña.",
+    "Consejo: compra cuando el precio está así — no esperes.",
+    "A este precio conviene llevar más de una unidad.",
+    "Para negocios: a este valor el margen es conveniente.",
+    "Cuando hay stock y el precio está bien, aprovechar es lo inteligente.",
+    "El truco para no quedarse sin stock: comprar antes de que suba.",
+    "Producto de alta rotación — conviene tenerlo siempre disponible.",
+    "Para los que revisan el precio antes de comprar: este vale la pena.",
+    "Buen precio para empezar la semana con la despensa completa.",
+]
+
+NEGOCIO_HOOKS = [
+    "¿Tienes almacén o botillería?",
+    "Para los que revenden — atento a este precio:",
+    "Para comercializadoras y locales:",
+    "¿Surtiendo el negocio esta semana?",
+    "Si tienes local, este precio te interesa:",
+    "Precio mayorista disponible — escríbenos por DM.",
+    "Para minimarkets, almacenes y botillerías:",
+    "¿Tienes negocio en Concepción o alrededores?",
+    "Para el que compra en cantidad — aquí el precio:",
+]
+
+NEGOCIO_CUERPO = [
+    "{name} a {price} — buen margen para revender.",
+    "{name} disponible a {price}. Despacho en Concepción.",
+    "{name} a {price} por unidad. Trabajamos con negocios.",
+    "{name}: {price}. Precio directo de distribuidora.",
+    "Tenemos {name} a {price}. Consulta por volumen.",
+    "{name} a {price} — atendemos negocios y comercializadoras.",
+    "{name}: {price} la unidad. Despacho disponible.",
+    "{name} a {price}. Haz tu pedido por DM.",
+]
+
+CTAS_NEGOCIO = [
+    "Escríbenos por DM para coordinar tu pedido.",
+    "Contáctanos por DM — despacho en Concepción.",
+    "Pide por DM o pasa directo por Hualpén.",
+    "DM para precio por volumen y despacho.",
+    "Escríbenos y coordinamos la entrega.",
+    "Disponible para negocios — DM o visítanos en Hualpén.",
+    "Tu pedido por DM, lo despachamos rápido.",
+    "Consulta disponibilidad y cantidad por DM.",
+]
+
+CTAS_CORTOS = [
+    "Pasa por Hualpén o escríbenos 📦",
+    "Te esperamos en Hualpén.",
+    "DM para pedidos y despacho.",
+    "Hualpén — público y negocios.",
     "Estamos en Hualpén. Despacho disponible.",
-    "Pasa por Hualpén o escríbenos por DM.",
+    "Escríbenos por DM o visítanos.",
+    "Pedidos al DM, despacho en Concepción.",
+    "Te esperamos o escríbenos para coordinar despacho.",
+    "Hualpén · también despachamos.",
+    "Simple — pide por DM y coordinamos.",
+]
+
+WHERE_FULL = [
+    "Estamos en Hualpén. Despacho disponible en Gran Concepción.",
+    "Pasa por Hualpén o escríbenos por DM para tu pedido.",
     "En Hualpén — atendemos público y comercializadoras.",
     "Hualpén · escríbenos por DM para pedidos y despacho.",
+    "Visítanos en Hualpén o coordina tu despacho por DM.",
+    "Estamos en Hualpén, atendemos a público y negocios.",
+    "Pídenos por DM o pasa directo por Hualpén — rápido y sin complicaciones.",
+    "Hualpén, Gran Concepción. Despacho para negocios y público.",
 ]
-TIKTOKS = [
-    "{name} a {price}. Para la casa o el negocio — El Maravilloso, Hualpén.",
-    "Precio del día: {name} {price}. El Maravilloso, Hualpén.",
-    "{name} {price}. Pasa por El Maravilloso, Hualpén — público y negocios.",
-    "Anota: {name} {price}. Hualpén, con despacho.",
+
+TIKTOK_OFERTA = [
+    "{name} a {price} 📌 El Maravilloso, Hualpén.",
+    "Precio del día: {name} {price} — Hualpén, con despacho.",
+    "{name} {price}. Público y negocios. El Maravilloso.",
+    "Anota: {name} a {price}. El Maravilloso, Hualpén 📦",
+    "{name}: {price}. Distribuidora El Maravilloso, Hualpén.",
 ]
-BASE_TAGS = "#ElMaravilloso #Hualpén #Concepción #Ofertas #Distribuidora #Abarrotes"
+
+TIKTOK_ANTOJO = [
+    "{name} para el desayuno ☕ {price}. El Maravilloso, Hualpén.",
+    "En casa siempre lo piden: {name} a {price}. El Maravilloso.",
+    "¿Despensa vacía? {name} {price}. Hualpén.",
+    "{name} {price} para que el desayuno no falle 😄 Hualpén.",
+    "La semana empieza bien: {name} a {price}. El Maravilloso.",
+]
+
+TIKTOK_NEGOCIO = [
+    "{name} {price} para revender. El Maravilloso, Hualpén 🏪",
+    "¿Tienes almacén? {name} a {price} — El Maravilloso.",
+    "Precio distribuidora: {name} {price}. Despacho Concepción.",
+    "{name} a {price} — buen margen. El Maravilloso, Hualpén.",
+    "Surtiendo el negocio: {name} {price}. Escríbenos por DM.",
+]
+
+TIKTOK_PREGUNTA = [
+    "¿Cuánto pagaste por {name}? Acá {price}. El Maravilloso 👀",
+    "{name} a {price} — ¿lo tenías en la despensa? Hualpén.",
+    "¿Stock bajo de {name}? {price} en El Maravilloso, Hualpén.",
+    "¿Buscando {name} barato? {price}. Hualpén, con despacho 📦",
+    "{name}: {price}. El Maravilloso tiene el precio. 🙌",
+]
+
+TIKTOK_CORTO = [
+    "{name} {price} 📌",
+    "{name} a {price} — El Maravilloso.",
+    "{price}. {name}. Hualpén.",
+    "{name}: {price} hoy.",
+    "{name} {price} disponible ya.",
+]
 
 def templated_caption(name, price, variant=0):
+    """6 estructuras de caption claramente distintas según el variant."""
     p = _money(price)
     v = abs(hash(name)) + int(variant or 0)
-    pick = lambda lst, off: lst[(v + off) % len(lst)]
-    ig = (pick(HOOKS, 0) + "\n\n"
-          + pick(BODIES, 1).format(name=name, price=p) + " " + pick(WHY, 2) + "\n\n"
-          + pick(WHERE, 3))
-    tk = pick(TIKTOKS, 4).format(name=name, price=p) + " #fyp #parati"
-    kw = re.sub(r"[^a-zA-Z0-9áéíóúñ]", "", name.split()[0]) if name.split() else ""
-    tags = BASE_TAGS + (f" #{kw.capitalize()}" if kw else "")
-    return {"ig_caption": ig, "tiktok_text": tk, "hashtags": tags}
+    # pick dentro de un banco dado, desplazado por v para variedad entre productos
+    def pick(lst, off=0):
+        return lst[(v + off) % len(lst)]
 
-def generate_caption(name, price):
-    """Genera caption IG + texto TikTok en la voz de marca con Claude."""
-    import anthropic
-    client = anthropic.Anthropic()  # lee ANTHROPIC_API_KEY del entorno
+    nn = nice_name(name)  # nombre en sentence case, nunca gritado
+    name_short = nn.split()[0] if nn.split() else nn
+
+    tags = _build_hashtags(name, v)
+
+    structure = int(variant or 0) % 6
+
+    # ── Estructura 0: Oferta directa (gancho → precio → dónde) ──────────────
+    if structure == 0:
+        hook = pick(HOOKS_OFERTA, 0)
+        body = f"{nn} a {p}."
+        why = pick(["Ideal para el consumo en casa o para surtir tu negocio.",
+                    "Buen precio para consumo o para revender.",
+                    "Conviene lo lleves a donde lo lleves.",
+                    "A ese valor conviene tener stock.",
+                    "Para la casa o el local — el precio acompaña.",
+                    "Rinde en el hogar y conviene en el comercio.",
+                    "A ese precio conviene llevar más de uno.",
+                    "Buena compra para la semana."], 1)
+        where = pick(WHERE_FULL, 2)
+        ig = f"{hook}\n\n{body} {why}\n\n{where}"
+        tk = pick(TIKTOK_OFERTA, 3).format(name=nn, price=p)
+
+    # ── Estructura 1: Pregunta-gancho ────────────────────────────────────────
+    elif structure == 1:
+        pregunta = pick(HOOKS_PREGUNTA, 0).format(name_short=name_short)
+        respuesta = f"El Maravilloso tiene {nn} a {p}."
+        cta = pick(CTAS_CORTOS, 2)
+        ig = f"{pregunta}\n\n{respuesta}\n\n{cta}"
+        tk = pick(TIKTOK_PREGUNTA, 1).format(name=nn, price=p, name_short=name_short)
+
+    # ── Estructura 2: Antojo / once / casa ───────────────────────────────────
+    elif structure == 2:
+        antojo = pick(ANTOJOS, 0).format(name_short=name_short)
+        precio_line = f"{nn} a {p} en El Maravilloso 😋"
+        where = pick(CTAS_CORTOS, 3)
+        ig = f"{antojo}\n\n{precio_line}\n\n{where}"
+        tk = pick(TIKTOK_ANTOJO, 2).format(name=nn, price=p)
+
+    # ── Estructura 3: Dato / tip útil ────────────────────────────────────────
+    elif structure == 3:
+        tip = pick(TIPS, 0)
+        precio_line = f"{nn}: {p}."
+        where = pick(WHERE_FULL, 1)
+        ig = f"{tip}\n\n{precio_line}\n\n{where}"
+        tk = pick(TIKTOK_OFERTA, 4).format(name=nn, price=p)
+
+    # ── Estructura 4: Enfoque negocio / reventa ──────────────────────────────
+    elif structure == 4:
+        neg_hook = pick(NEGOCIO_HOOKS, 0)
+        neg_body = pick(NEGOCIO_CUERPO, 1).format(name=nn, price=p)
+        cta_neg = pick(CTAS_NEGOCIO, 2)
+        ig = f"{neg_hook}\n\n{neg_body}\n\n{cta_neg}"
+        tk = pick(TIKTOK_NEGOCIO, 3).format(name=nn, price=p)
+
+    # ── Estructura 5: Frase corta y seca ────────────────────────────────────
+    else:
+        ig = f"{nn} a {p}.\n\n{pick(CTAS_CORTOS, 0)}"
+        tk = pick(TIKTOK_CORTO, 1).format(name=nn, price=p)
+
+    tk_full = tk + " #fyp #parati"
+    return {"ig_caption": ig, "tiktok_text": tk_full, "hashtags": tags}
+
+def momento_context():
+    """Devuelve un string corto en español describiendo el momento actual (día, quincena, temporada, eventos chilenos)."""
+    import calendar
+    hoy = datetime.now()
+    dia_semana = hoy.weekday()  # 0=lun … 6=dom
+    dia_mes = hoy.day
+    mes = hoy.month
+
+    nombres_dia = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+    nombre_dia = nombres_dia[dia_semana]
+    es_finde = dia_semana >= 4  # vie, sáb, dom
+
+    # Temporada (hemisferio sur)
+    if mes in (12, 1, 2):
+        temporada = "verano (calor, bebidas, helados, cosas frías)"
+    elif mes in (3, 4, 5):
+        temporada = "otoño"
+    elif mes in (6, 7, 8):
+        temporada = "invierno (frío, época de once, sopas, cosas calientes)"
+    else:
+        temporada = "primavera"
+
+    # Quincena
+    if 14 <= dia_mes <= 16 or dia_mes >= 29:
+        quincena_str = " Es quincena (la gente tiene plata fresca, momento de surtir)."
+    else:
+        quincena_str = ""
+
+    # Calcular N-ésimo domingo de un mes dado
+    def n_domingo(year, month, n):
+        primer_dia = datetime(year, month, 1)
+        # weekday del primer día (0=lun)
+        primer_dom = (6 - primer_dia.weekday()) % 7  # días hasta primer domingo
+        dia_domingo = 1 + primer_dom + (n - 1) * 7
+        try:
+            return datetime(year, month, dia_domingo).date()
+        except ValueError:
+            return None
+
+    # Eventos chilenos con fechas variables
+    year = hoy.year
+    eventos = [
+        # (fecha_inicio, fecha_fin, descripción)
+        (datetime(year, 9, 18).date(), datetime(year, 9, 19).date(), "Fiestas Patrias (asados, carne, bebidas, completos)"),
+        (datetime(year, 12, 25).date(), datetime(year, 12, 25).date(), "Navidad"),
+        (datetime(year, 12, 31).date(), datetime(year + 1, 1, 1).date(), "Año Nuevo"),
+        (datetime(year, 2, 14).date(), datetime(year, 2, 14).date(), "San Valentín"),
+        (datetime(year, 10, 31).date(), datetime(year, 10, 31).date(), "Halloween"),
+    ]
+    # Día de la Madre: 2do domingo de mayo
+    dom_madre = n_domingo(year, 5, 2)
+    if dom_madre:
+        eventos.append((dom_madre, dom_madre, "Día de la Madre"))
+    # Día del Padre: 3er domingo de junio
+    dom_padre = n_domingo(year, 6, 3)
+    if dom_padre:
+        eventos.append((dom_padre, dom_padre, "Día del Padre"))
+    # Día del Niño: 1er domingo de agosto
+    dom_nino = n_domingo(year, 8, 1)
+    if dom_nino:
+        eventos.append((dom_nino, dom_nino, "Día del Niño"))
+    # Vuelta a clases: todo marzo
+    eventos.append((datetime(year, 3, 1).date(), datetime(year, 3, 31).date(), "vuelta a clases"))
+    # Vacaciones de invierno: segunda quincena junio + todo julio
+    eventos.append((datetime(year, 6, 20).date(), datetime(year, 7, 31).date(), "vacaciones de invierno"))
+    # CyberDay / Black Friday: noviembre
+    eventos.append((datetime(year, 11, 1).date(), datetime(year, 11, 30).date(), "CyberDay / Black Friday"))
+
+    hoy_date = hoy.date()
+    evento_str = ""
+    for inicio, fin, desc in eventos:
+        delta_inicio = (inicio - hoy_date).days
+        delta_fin = (fin - hoy_date).days
+        if delta_fin < 0:
+            continue  # ya pasó
+        if delta_inicio <= 14 or delta_fin >= 0 and delta_inicio <= 0:
+            if delta_inicio <= 0 <= delta_fin:
+                evento_str = f" Estamos en {desc}."
+            elif delta_inicio <= 14:
+                evento_str = f" Se acerca {desc} ({delta_inicio} día{'s' if delta_inicio != 1 else ''})."
+            break  # solo el más próximo
+
+    # Armar texto final
+    finde_str = " (finde)" if es_finde else ""
+    partes = [f"Hoy es {nombre_dia}{finde_str}, {temporada}."]
+    if quincena_str:
+        partes.append(quincena_str.strip())
+    if evento_str:
+        partes.append(evento_str.strip())
+    return " ".join(partes)
+
+
+def _groq_caption(system, user):
+    """Llama a Groq (compatible OpenAI) con urllib. Devuelve dict con ig_caption/tiktok_text/hashtags."""
+    import urllib.request
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    payload = json.dumps({
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "response_format": {"type": "json_object"},
+        "max_tokens": 1200,
+        "temperature": 0.8,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.groq.com/openai/v1/chat/completions",
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {groq_key}",
+            "User-Agent": "Mozilla/5.0",  # Groq/Cloudflare bloquea el UA por defecto de urllib (403)
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    raw = data["choices"][0]["message"]["content"]
+    # Intento directo
+    try:
+        result = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        # Extrae primer bloque {...} si la respuesta tiene texto extra
+        m = re.search(r'\{.*\}', raw, re.DOTALL)
+        if m:
+            result = json.loads(m.group(0))
+        else:
+            raise ValueError(f"Groq no devolvió JSON válido: {raw[:200]}")
+    # Parseo defensivo: garantizar las 3 claves esperadas
+    return {
+        "ig_caption":  str(result.get("ig_caption", "")),
+        "tiktok_text": str(result.get("tiktok_text", "")),
+        "hashtags":    str(result.get("hashtags", "")),
+    }
+
+
+def generate_caption(name, price, angle=None):
+    """Genera caption IG + texto TikTok en la voz de marca.
+    Proveedor: Groq (gratis, preferido) → Anthropic (de pago) → excepción no_key.
+    angle: 'oferta' | 'antojo' | 'negocio' | 'corto' | 'pregunta' | None (libre)
+    """
+    name = nice_name(name)  # sentence case; nunca gritado
     precio = "$" + format(int(price), ",d").replace(",", ".") if price else ""
+
+    angulos = {
+        "oferta":   "oferta directa — arranca con el precio, explica por qué conviene y cierra con ubicación o DM.",
+        "antojo":   "antojo / consumo en casa — evoca la hora de once o el desayuno, la despensa bien surtida; el precio aparece natural.",
+        "negocio":  "enfocado en negocios o reventa — habla de margen, surtir el almacén o botillería, despacho mayorista.",
+        "corto":    "caption cortísimo, una o dos líneas máximo, sin adornos — precio y dónde comprar, nada más.",
+        "pregunta": "empieza con una pregunta que enganche ('¿Cuánto pagaste…?', '¿Ya tienes stock?') y luego revela el precio.",
+    }
+    angle_instruccion = (
+        f"\nÁngulo requerido para esta versión: {angulos[angle]}"
+        if angle and angle in angulos else ""
+    )
+
+    momento = momento_context()
+    estilo = load_estilo()
+
+    # ── Sección de manual de estilo (inyectada si estilo.json existe) ──────────
+    estilo_block = ""
+    if estilo:
+        negocio = estilo.get("negocio", {})
+        reglas  = estilo.get("reglas", [])
+        ejemplos = estilo.get("ejemplos_de_oro", [])
+
+        negocio_lines = []
+        if negocio.get("nombre"):
+            negocio_lines.append(f"  Nombre: {negocio['nombre']}")
+        if negocio.get("direccion"):
+            negocio_lines.append(f"  Dirección: {negocio['direccion']} (úsala con 📍 en el cierre)")
+        if negocio.get("instagram"):
+            negocio_lines.append(f"  Instagram: {negocio['instagram']}")
+        if negocio.get("tiktok"):
+            negocio_lines.append(f"  TikTok: {negocio['tiktok']}")
+        if negocio.get("despacho"):
+            negocio_lines.append("  Ofrece despacho")
+
+        reglas_lines = "\n".join(f"  - {r}" for r in reglas) if reglas else ""
+
+        ejemplos_lines = ""
+        if ejemplos:
+            ej_parts = []
+            for ej in ejemplos:
+                prod  = ej.get("producto", "")
+                prec  = ej.get("precio", "")
+                cap   = ej.get("ig_caption", "")
+                ej_parts.append(f'  Producto: {prod} | Precio: ${prec}\n  Caption:\n  """\n{cap}\n  """')
+            ejemplos_lines = "\n\n".join(ej_parts)
+
+        estilo_block = (
+            "\n\n── MANUAL DE ESTILO (fuente de verdad editada por el dueño) ──\n"
+            "DATOS DEL NEGOCIO:\n" + "\n".join(negocio_lines) + "\n"
+        )
+        if reglas_lines:
+            estilo_block += (
+                "\nREGLAS DE COPY (aplícalas siempre):\n" + reglas_lines + "\n"
+                "\nIMPORTANTE: NUNCA uses asteriscos de markdown (**texto**) — Instagram los muestra como caracteres literales.\n"
+            )
+        if ejemplos_lines:
+            estilo_block += (
+                "\nEJEMPLOS DE ORO — IMÍTALOS en tono, estructura y calidez "
+                "(NO copies el texto literal, adapta al producto nuevo):\n" + ejemplos_lines + "\n"
+            )
+        estilo_block += "── FIN DEL MANUAL ──"
+
     system = (
         "Eres el community manager de Distribuidora El Maravilloso (Hualpén, Chile). "
         "Escribes copy para Instagram y TikTok en español chileno informal, cercano y en tono de oferta. "
-        "Reglas: nunca menciones fiado ni crédito; usa emojis con moderación; cierra invitando a pasar o escribir por DM. "
-        "Usa esta ficha de marca como fuente de verdad de voz, público y hashtags:\n\n" + BRAND_MD
+        "REGLAS ESTRICTAS:\n"
+        "- Nunca menciones fiado, crédito ni pago diferido.\n"
+        "- Emojis con moderación: 0 a 2 por caption, nunca spam.\n"
+        "- Tono cercano pero PROFESIONAL, trato de tú, español chileno neutro. NADA de jerga ni modismos caricaturescos (prohibido: bacán, al tiro, los cabros, harto, pa'). Cálido y confiable, no acartonado.\n"
+        "- Varía el arranque: no empieces siempre con el nombre del producto; usa ganchos, preguntas o situaciones.\n"
+        "- Nada de sonar a plantilla o robot — el copy tiene que sentirse humano y espontáneo.\n"
+        "- Cierra siempre invitando a pasar por Hualpén o escribir por DM.\n"
+        "- Público doble: consumo en casa Y negocios que revenden.\n"
+        "- NUNCA escribas el nombre del producto en mayúsculas sostenidas (ej: 'MILO' → 'Milo').\n"
+        "- NUNCA uses asteriscos de markdown (**) — Instagram los renderiza como texto literal, no como negrita.\n"
+        "- Incluye en el texto palabras que la gente busca naturalmente: el producto, la ciudad (Hualpén/Concepción), 'oferta' o 'precio' — esto sube el alcance orgánico.\n"
+        f"Momento actual (aprovéchalo con naturalidad si calza, sin forzar): {momento}\n"
+        "Usa esta ficha de marca como fuente de verdad:\n\n" + BRAND_MD
+        + estilo_block
     )
     user = (
-        f"Genera el contenido para este producto en oferta:\n"
+        f"Genera el contenido para este producto en oferta:"
+        f"{angle_instruccion}\n\n"
         f"Producto: {name}\nPrecio: {precio}\n\n"
-        f"Devuelve: ig_caption (3-5 líneas con gancho, beneficio y llamado a la acción), "
-        f"tiktok_text (1-2 líneas estilo POV/viral, más corto), "
-        f"y hashtags (6-9 relevantes, mezcla locales y de producto, separados por espacio)."
+        f"Devuelve ÚNICAMENTE un JSON con exactamente estas 3 claves (nada más, sin texto extra):\n"
+        f"- ig_caption: 3-5 líneas, con gancho o situación, el precio, beneficio claro y llamado a la acción.\n"
+        f"- tiktok_text: 1-2 líneas, más punchy y directo, estilo para video corto.\n"
+        f"- hashtags: EXACTAMENTE 4-5 hashtags, todos en MINÚSCULA, separados por espacio. "
+        f"Mix obligatorio: 2 locales (de: #hualpén #concepción #granconcepción #biobío #talcahuano) + "
+        f"1 rubro (de: #distribuidora #abarrotes #mayorista #almacén) + "
+        f"1 comunidad/oferta (de: #ofertas #ofertaschile #compralocal #preciobajo) + "
+        f"1 producto (primera palabra clave del producto en minúscula, sin espacios). "
+        f"CERO hashtags genéricos de relleno. NUNCA más de 5 hashtags.\n\n"
+        f"Formato exacto: {{\"ig_caption\": \"...\", \"tiktok_text\": \"...\", \"hashtags\": \"...\"}}"
     )
-    msg = client.messages.create(
-        model="claude-opus-4-8",
-        max_tokens=1200,
-        system=system,
-        messages=[{"role": "user", "content": user}],
-        output_config={"format": {"type": "json_schema", "schema": CAPTION_SCHEMA}},
-    )
-    text = next(b.text for b in msg.content if b.type == "text")
-    return json.loads(text)
+
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+
+    if groq_key:
+        cap = _groq_caption(system, user)
+    elif anthropic_key:
+        import anthropic as _anthropic
+        client = _anthropic.Anthropic(api_key=anthropic_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1200,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+            output_config={"format": {"type": "json_schema", "schema": CAPTION_SCHEMA}},
+        )
+        text = next(b.text for b in msg.content if b.type == "text")
+        cap = json.loads(text)
+    else:
+        raise ValueError("no_key: configura GROQ_API_KEY (gratis) o ANTHROPIC_API_KEY en el .env")
+    # Normaliza hashtags pase lo que pase la IA: cada uno con #, minúscula, máx 5, sin duplicados
+    cap["hashtags"] = _normalize_hashtags(cap.get("hashtags", ""))
+    return cap
+
+
+def _normalize_hashtags(s, maxn=5):
+    """Garantiza hashtags válidos: # al inicio, minúscula, sin símbolos raros, máx N, sin repetir."""
+    out = []
+    for t in re.split(r"[\s,]+", str(s).strip()):
+        t = re.sub(r"[^0-9a-zA-Záéíóúüñ]", "", t.lstrip("#")).lower()
+        if t and ("#" + t) not in out:
+            out.append("#" + t)
+        if len(out) >= maxn:
+            break
+    return " ".join(out)
 
 @app.post("/api/caption")
 async def caption(req: Request):
     b = await req.json()
     name = b.get("name", "")
     price = int(b.get("price", 0) or 0)
-    if b.get("ai"):  # IA de pago (opcional, requiere ANTHROPIC_API_KEY)
+    # DEFAULT = IA (Groq gratis/Anthropic) si hay key configurada; si no hay key o falla, cae a plantillas.
+    want_ai = b.get("ai")  # True=forzar IA, False=forzar plantilla, None=automático (IA si hay key)
+    has_key = bool(os.environ.get("GROQ_API_KEY") or os.environ.get("ANTHROPIC_API_KEY"))
+    use_ai = has_key if want_ai is None else bool(want_ai)
+    if use_ai:
         try:
-            cap = generate_caption(name, price)
+            cap = generate_caption(name, price, angle=b.get("angle"))
         except Exception as e:
             m = str(e).lower()
-            if "api_key" in m or "authentication" in m or "x-api-key" in m:
+            es_no_key = ("api_key" in m or "authentication" in m or "x-api-key" in m or "no_key" in m or "401" in m)
+            if want_ai and es_no_key:   # el usuario pidió IA explícita y no hay key -> avisar
                 return JSONResponse({"error": "no_key"}, status_code=400)
-            return JSONResponse({"error": "fallo al generar"}, status_code=500)
-    else:            # GRATIS por defecto (plantillas, sin llave)
+            cap = templated_caption(name, price, b.get("variant", 0))  # fallback silencioso
+    else:
         cap = templated_caption(name, price, b.get("variant", 0))
     # guarda en el post si existe
     if b.get("slug"):
@@ -491,7 +1009,9 @@ def public_url(local_rel):
 
 # ---------- OAuth con Facebook: conectar Instagram con 1 clic ----------
 FB_REDIRECT = os.environ.get("FB_REDIRECT_URI", "http://localhost:8000/api/fb-callback")
-FB_SCOPES = "instagram_basic,instagram_content_publish,instagram_manage_insights,pages_show_list,pages_read_engagement,business_management,instagram_manage_comments,instagram_manage_messages,pages_manage_metadata,pages_messaging"
+# Scopes ACTIVOS hoy (publicar + DMs). Para métricas/comentarios agregar luego en la app:
+#   instagram_manage_insights, instagram_manage_comments (+ pages_messaging para webhooks)
+FB_SCOPES = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,business_management,instagram_manage_messages"
 IG_AUTH_FILE = os.path.join(HERE, "ig_auth.json")
 
 def load_ig_auth():
@@ -522,9 +1042,21 @@ def _get_json(url):
         return json.loads(r.read())
 
 @app.get("/api/fb-callback")
-def fb_callback(code: str = "", error: str = "", error_description: str = ""):
+def fb_callback(code: str = "", error: str = "", error_reason: str = "",
+                error_code: str = "", error_description: str = ""):
     if error or not code:
-        return HTMLResponse(f"<h2 style='font-family:sans-serif'>Conexión cancelada</h2><p>{error_description or 'Intenta de nuevo desde el Estudio.'}</p>")
+        detalle = (f"<b>error:</b> {error or '(vacío)'}<br>"
+                   f"<b>error_reason:</b> {error_reason or '(vacío)'}<br>"
+                   f"<b>error_code:</b> {error_code or '(vacío)'}<br>"
+                   f"<b>error_description:</b> {error_description or '(vacío)'}")
+        hint = ("<p style='color:#555;max-width:520px;margin:18px auto'>Si dice <code>access_denied</code> sin más, "
+                "casi siempre es que tu usuario de Facebook <b>no es Administrador de la app</b> en developers.facebook.com "
+                "(Configuración → Roles), o que la app aún no tiene activada la <b>API de Instagram con inicio de sesión de Facebook</b> "
+                "con los permisos instagram_basic / instagram_content_publish.</p>")
+        return HTMLResponse(f"<div style='font-family:sans-serif;text-align:center;padding:50px'>"
+                            f"<h2>Conexión no completada</h2><p style='font-family:monospace;text-align:left;"
+                            f"display:inline-block;background:#f5f5f5;padding:16px 20px;border-radius:10px'>{detalle}</p>"
+                            f"{hint}</div>")
     app_id = os.environ.get("FB_APP_ID"); secret = os.environ.get("FB_APP_SECRET")
     if not app_id or not secret:
         return HTMLResponse("<h2 style='font-family:sans-serif'>Falta FB_APP_ID o FB_APP_SECRET en el .env</h2>")
@@ -1077,15 +1609,6 @@ async def inbox_ai_reply(req: Request):
         return JSONResponse({"error": "fallo"}, status_code=500)
     except Exception:
         return JSONResponse({"error": "fallo"}, status_code=500)
-
-# ---------- Eliminar post ----------
-@app.post("/api/delete")
-async def delete(req: Request):
-    b = await req.json()
-    d = load_data()
-    d["posts"] = [p for p in d["posts"] if p["slug"] != b["slug"]]
-    save_data(d)
-    return {"ok": True}
 
 def open_browser():
     webbrowser.open("http://127.0.0.1:8000")

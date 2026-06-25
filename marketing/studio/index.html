@@ -63,19 +63,19 @@
   .drop span{color:var(--muted);font-size:.86rem}
   .drop input{display:none}
 
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px}
   .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
         box-shadow:var(--shadow-sm);animation:rise .45s cubic-bezier(.2,.7,.3,1) both;transition:.2s}
   .card:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
   @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
   .thumb{aspect-ratio:1/1;background:#f0ebe1 center/cover no-repeat}
-  .card .body{padding:15px}
-  .card label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin:10px 0 4px}
-  .card input,.card select,.card textarea{width:100%;padding:10px 12px;border:1px solid var(--line);
+  .card .body{padding:18px}
+  .card label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;display:block;margin:12px 0 5px}
+  .card input,.card select,.card textarea{width:100%;padding:10px 13px;border:1px solid var(--line);
         border-radius:11px;font:inherit;font-size:.92rem;background:#fff;transition:.15s;color:var(--ink)}
-  .card textarea{resize:vertical;min-height:64px;line-height:1.45}
+  .card textarea{resize:vertical;min-height:80px;line-height:1.5;overflow:hidden}
   .card input:focus,.card select:focus,.card textarea:focus{outline:none;border-color:var(--red);
-        box-shadow:0 0 0 3px rgba(237,28,36,.12)}
+        box-shadow:0 0 0 3px rgba(237,28,36,.10)}
   .row{display:flex;gap:8px}.row>*{flex:1}
   .btn{border:none;border-radius:12px;padding:11px 15px;font:inherit;font-weight:600;cursor:pointer;
        transition:.16s;display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%}
@@ -87,7 +87,7 @@
            box-shadow:0 8px 22px -6px rgba(237,28,36,.5);margin-top:13px}
   .btn-red:hover{filter:brightness(1.04);transform:translateY(-1px);box-shadow:0 12px 26px -6px rgba(237,28,36,.6)}
   .btn-red:disabled{opacity:.6;cursor:wait;transform:none;filter:none}
-  .btn-ghost{background:#f3efe7;color:var(--ink)}.btn-ghost:hover{background:#ece6db}
+  .btn-ghost{background:#f3efe7;color:var(--ink)}.btn-ghost:hover{background:#ece6db;transform:translateY(-1px)}
   .btn-sm{padding:8px 12px;font-size:.85rem;border-radius:10px}
 
   .post .media{position:relative;aspect-ratio:9/16;background:#000;max-height:340px;overflow:hidden;
@@ -106,15 +106,49 @@
   .pill.pub{background:#e8eefc;color:var(--blue)}
   .meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
   .meta .price{font-weight:800;color:var(--red);font-size:1.7rem;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1}
-  .cap{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
-  .cap .lab{display:flex;align-items:center;justify-content:space-between}
-  .cap .copy{background:none;border:none;color:var(--muted);cursor:pointer;font:inherit;font-size:.74rem;padding:2px 6px;border-radius:7px}
+  /* ── BLOQUE CAP (Instagram/TikTok + botones IA) ──────── */
+  .cap{margin-top:12px;border-top:1px dashed var(--line);padding-top:14px;display:flex;flex-direction:column;gap:10px}
+  .cap .lab{display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
+  .cap .lab-title{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;font-weight:600}
+  .cap .copy{background:none;border:none;color:var(--muted);cursor:pointer;font:inherit;font-size:.74rem;padding:3px 8px;border-radius:7px;transition:.14s}
   .cap .copy:hover{background:#f3efe7;color:var(--ink)}
+  /* textarea IG: alta mínima para 5 líneas ≈ 120px; TikTok: 3 líneas ≈ 74px */
+  .cap textarea[data-ig]{min-height:120px;font-size:13px;line-height:1.5;padding:10px 12px;
+        border:1px solid var(--line);border-radius:10px;overflow-y:hidden;resize:none;
+        background:#fafaf8;transition:border-color .15s,box-shadow .15s;width:100%;display:block;box-sizing:border-box}
+  .cap textarea[data-tk]{min-height:74px;font-size:13px;line-height:1.5;padding:10px 12px;
+        border:1px solid var(--line);border-radius:10px;overflow-y:hidden;resize:none;
+        background:#fafaf8;transition:border-color .15s,box-shadow .15s;width:100%;display:block;box-sizing:border-box}
+  .cap textarea[data-ig]:focus,.cap textarea[data-tk]:focus{outline:none;border-color:var(--red);
+        box-shadow:0 0 0 3px rgba(237,28,36,.10);background:#fff}
+  /* grupo de botones de generación (Regenerar + IA) */
+  .cap-actions{display:flex;gap:7px;padding-top:2px}
+  .cap-actions .btn{flex:1}
   .empty{grid-column:1/-1;text-align:center;padding:48px;color:var(--muted);border:2px dashed var(--line);border-radius:var(--r);
         background:linear-gradient(180deg,#fffdf8,#fbf8f1)}
-  .links{display:flex;gap:8px;margin-top:10px}
-  .links a{flex:1;text-align:center;font-size:.8rem;text-decoration:none;color:var(--ink);background:#f3efe7;
-        padding:8px;border-radius:10px;transition:.15s}.links a:hover{background:#ece6db}
+  .links{display:flex;gap:8px;margin-top:0}
+  .links a{flex:1;text-align:center;font-size:.79rem;text-decoration:none;color:var(--muted);background:transparent;
+        border:1px solid var(--line);padding:7px 8px;border-radius:10px;transition:.15s;font-weight:500}
+  .links a:hover{background:#f3efe7;color:var(--ink);border-color:#d9d0c4}
+  /* ── separadores de bloque dentro de .body ──────────── */
+  .post-sep{border:none;border-top:1px solid var(--line);margin:14px 0 0;opacity:.6}
+  /* ── bloque agenda (fecha/hora + programar/publicar) ── */
+  .post-sched{display:flex;flex-direction:column;gap:10px;padding-top:2px}
+  .post-sched .row{margin-top:0!important}
+  /* ── bloque descargas (ghost discreto) ─────────────── */
+  .post-dl{padding-top:2px;padding-bottom:4px}
+
+  /* ── Botón eliminar pieza ──────────────────────────── */
+  .btn-delete{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.45);color:#fff;
+    border:none;border-radius:8px;padding:5px 8px;font-size:.82rem;cursor:pointer;
+    backdrop-filter:blur(4px);transition:.15s;z-index:3;line-height:1}
+  .btn-delete:hover{background:var(--red);transform:scale(1.08)}
+
+  /* ── Barra de progreso de generación ──────────────── */
+  .progress-wrap{padding:14px 0 4px;display:flex;flex-direction:column;gap:6px}
+  .progress-label{font-size:.82rem;color:var(--muted);font-weight:500}
+  .progress-bar{height:8px;background:#ece6db;border-radius:99px;overflow:hidden;width:100%}
+  .progress-fill{height:100%;background:var(--red);border-radius:99px;width:0%;transition:width .3s ease}
 
   .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);
         background:linear-gradient(135deg,#26211f,#1b1b1f);color:#fff;padding:13px 22px;border-radius:13px;font-weight:600;opacity:0;
@@ -714,12 +748,47 @@ async function genOne(el){
   if(!price){toast('Pon el precio primero');el.querySelector('[data-k="price"]').focus();return false;}
   const bg=el.querySelector('[data-k="bg"]').checked;
   const btn=el.querySelector('[data-gen]');btn.disabled=true;
-  btn.innerHTML='<span class="spin"></span> '+(bg?'Quitando fondo…':'Generando…');
+  btn.innerHTML='<span class="spin"></span> '+(bg?'Quitando fondo…':'Generando imagen…');
   try{
-    const post=await api('/api/generate',{filename:f,name:get('name'),price,style:get('style'),remove_bg:bg});
-    // genera descripción IA en seguida (si hay key)
-    await api('/api/caption',{slug:post.slug,name:post.name,price:post.price}).catch(()=>{});
-    return true;
+    const resp=await api('/api/generate',{filename:f,name:get('name'),price,style:get('style'),remove_bg:bg});
+    // Modo antiguo (sin thread): post devuelto directo
+    if(!resp.generating){
+      await api('/api/caption',{slug:resp.slug,name:resp.name,price:resp.price}).catch(()=>{});
+      return true;
+    }
+    // Modo nuevo: generación en background — mostrar barra de progreso
+    const slug=resp.slug;
+    btn.innerHTML='<span class="spin"></span> Generando video…';
+    // Inyectar barra en la card
+    let progWrap=el.querySelector('.progress-wrap');
+    if(!progWrap){
+      progWrap=document.createElement('div');progWrap.className='progress-wrap';
+      progWrap.innerHTML='<div class="progress-label">Generando video… <span class="pct-txt">0%</span></div>'
+        +'<div class="progress-bar"><div class="progress-fill"></div></div>';
+      el.querySelector('.body').insertBefore(progWrap,el.querySelector('[data-gen]'));
+    }
+    const fill=progWrap.querySelector('.progress-fill');
+    const pctTxt=progWrap.querySelector('.pct-txt');
+    return await new Promise(resolve=>{
+      const iv=setInterval(async()=>{
+        try{
+          const s=await fetch('/api/progress?slug='+encodeURIComponent(slug)).then(r=>r.json());
+          const pct=Math.min(100,s.pct||0);
+          fill.style.width=pct+'%';
+          pctTxt.textContent=pct+'%';
+          if(s.done){
+            clearInterval(iv);
+            progWrap.remove();
+            btn.disabled=false;btn.innerHTML='✨ Generar pieza';
+            if(s.error){toast('Error al generar: '+s.error.slice(0,80));resolve(false);return;}
+            // genera caption y refresca
+            const post=s.post||{};
+            await api('/api/caption',{slug:post.slug,name:post.name,price:post.price}).catch(()=>{});
+            load();resolve(true);
+          }
+        }catch(err){/* red fluctuante, seguir polling */}
+      },1000);
+    });
   }catch(e){toast('Error al generar');btn.disabled=false;btn.innerHTML='✨ Generar pieza';return false;}
 }
 
@@ -736,11 +805,14 @@ function capBlock(p){
   if(!c) return `<button class="btn btn-ghost btn-sm" data-cap style="margin-top:10px">✍️ Generar descripción</button>`;
   const ig=(c.ig_caption||'')+'\n\n'+(c.hashtags||'');
   return `<div class="cap">
-      <div class="lab"><label style="margin:0">Instagram</label><button class="copy" data-copy>📋 copiar</button></div>
+      <div class="lab"><span class="lab-title">Instagram</span><button class="copy" data-copy>📋 Copiar</button></div>
       <textarea data-ig>${ig}</textarea>
-      <div class="lab"><label>TikTok</label><button class="copy" data-copytk>📋 copiar</button></div>
+      <div class="lab"><span class="lab-title">TikTok</span><button class="copy" data-copytk>📋 Copiar</button></div>
       <textarea data-tk>${c.tiktok_text||''}</textarea>
-      <button class="btn btn-ghost btn-sm" data-cap style="margin-top:8px">🔁 Regenerar texto</button>
+      <div class="cap-actions">
+        <button class="btn btn-ghost btn-sm" data-cap>🔁 Regenerar</button>
+        <button class="btn btn-ghost btn-sm" data-cap-ai>✨ IA</button>
+      </div>
     </div>`;
 }
 
@@ -755,23 +827,30 @@ function renderPosts(posts){
       <div class="media">
         <video src="/files/${p.video}" muted loop playsinline></video>
         <span class="tag">🎬 ${p.style}</span><span class="play">▶</span>
+        <button class="btn-delete" data-del title="Eliminar pieza">🗑️</button>
       </div>
       <div class="body">
         <div class="meta"><span class="price">$${Number(p.price).toLocaleString('es-CL')}</span>
           <span class="pill ${cls}">${p.status}</span></div>
-        <div style="font-weight:600;margin-bottom:4px">${p.name}</div>
+        <div style="font-weight:600;margin-bottom:6px;font-size:.97rem">${p.name}</div>
         ${capBlock(p)}
-        <div class="row" style="margin-top:10px">
-          <div><label>Fecha</label><input type="date" value="${p.date||''}" data-d></div>
-          <div><label>Hora</label><input type="time" value="${p.time||'13:00'}" data-t></div>
+        <hr class="post-sep">
+        <div class="post-sched">
+          <div class="row">
+            <div><label>Fecha</label><input type="date" value="${p.date||''}" data-d></div>
+            <div><label>Hora</label><input type="time" value="${p.time||'13:00'}" data-t></div>
+          </div>
+          <div class="row">
+            <button class="btn btn-ghost btn-sm" data-sch>📅 Programar</button>
+            <button class="btn btn-red btn-sm" data-pub style="margin-top:0">📤 Publicar en IG</button>
+          </div>
         </div>
-        <div class="row" style="margin-top:10px">
-          <button class="btn btn-ghost btn-sm" data-sch>📅 Programar</button>
-          <button class="btn btn-red btn-sm" data-pub style="margin-top:0">📤 Publicar en IG</button>
-        </div>
-        <div class="links">
-          <a href="/files/${p.image}" download>⬇ Imagen</a>
-          <a href="/files/${p.video}" download>⬇ Video</a>
+        <hr class="post-sep">
+        <div class="post-dl">
+          <div class="links">
+            <a href="/files/${p.image}" download>⬇ Imagen</a>
+            <a href="/files/${p.video}" download>⬇ Video</a>
+          </div>
         </div>
       </div>`;
     const v=el.querySelector('video'), media=el.querySelector('.media');
@@ -783,9 +862,21 @@ function renderPosts(posts){
       if(r.error){toast('No se pudo generar');capBtn.disabled=false;capBtn.innerHTML='✍️ Generar descripción';return;}
       load();
     };
+    const capAiBtn=el.querySelector('[data-cap-ai]');
+    if(capAiBtn) capAiBtn.onclick=async()=>{
+      capAiBtn.disabled=true;capAiBtn.innerHTML='<span class="spin dark"></span>';
+      const r=await api('/api/caption',{slug:p.slug,name:p.name,price:p.price,ai:true,variant:Date.now()%100000});
+      if(r.error==='no_key'){toast('Falta API key de Anthropic en el .env (captions IA)');capAiBtn.disabled=false;capAiBtn.innerHTML='✨ IA';return;}
+      if(r.error){toast('No se pudo generar con IA');capAiBtn.disabled=false;capAiBtn.innerHTML='✨ IA';return;}
+      load();
+    };
     const ig=el.querySelector('[data-ig]'), tk=el.querySelector('[data-tk]');
     const cp=el.querySelector('[data-copy]'); if(cp) cp.onclick=()=>copy(ig.value);
     const cpt=el.querySelector('[data-copytk]'); if(cpt) cpt.onclick=()=>copy(tk.value);
+    /* auto-resize: listener para cuando el usuario escribe */
+    function autoResize(ta){if(!ta)return;ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
+    if(ig) ig.addEventListener('input',()=>autoResize(ig));
+    if(tk) tk.addEventListener('input',()=>autoResize(tk));
     el.querySelector('[data-sch]').onclick=async()=>{
       await api('/api/schedule',{slug:p.slug,date:el.querySelector('[data-d]').value,
         time:el.querySelector('[data-t]').value,status:'programado'});
@@ -800,7 +891,15 @@ function renderPosts(posts){
       else{toast('¡Publicado en Instagram! 🎉');}
       btn.disabled=false;btn.innerHTML='📤 Publicar en IG';load();
     };
+    el.querySelector('[data-del]').onclick=async()=>{
+      if(!confirm('¿Eliminar esta pieza?'))return;
+      const r=await api('/api/delete',{slug:p.slug});
+      if(r.ok){toast('Pieza eliminada');load();}
+      else{toast('No se pudo eliminar');}
+    };
     g.appendChild(el);
+    /* auto-resize inicial: después del append para que scrollHeight sea correcto */
+    requestAnimationFrame(()=>{autoResize(ig);autoResize(tk);});
   });
 }
 

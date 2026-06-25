@@ -5,7 +5,7 @@
 
 ## Negocio
 - **Nombre:** Distribuidora El Maravilloso
-- **País:** Chile — Hualpén, Gran Concepción
+- **País:** Chile — Grecia 1841, Hualpén, Gran Concepción
 - **Rubro:** Distribuidora / comercializadora general
 - **Qué vende:** De todo (abarrotes, bebidas, golosinas, limpieza, etc. — surtido amplio)
 - **Público objetivo:** Cliente final **y** comercializadoras / negocios
