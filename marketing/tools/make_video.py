@@ -423,11 +423,10 @@ def _build_look(args, look="premium"):
             "logo_asset": "normal",
         }
 
-    # ---- Assets comunes ----
-    # Header: header_pro.png (lower-third 2560x1440, fondo transparente, esfera M + banda marca).
-    # Se escala a ancho = 52% del frame, manteniendo ratio.
-    _hdr = Image.open(os.path.join(T.ASSETS, "header_clean.png")).convert("RGBA")
-    _hsc = (W * 0.52) / _hdr.width
+    # ---- Header limpio compuesto (esfera + EL MARAVILLOSO), color según contraste del look ----
+    _hdr_color = (255, 255, 255) if look == "dark" else (176, 16, 24)  # solo dark tiene tope oscuro
+    _hdr = T.brand_header(W, text_color=_hdr_color)
+    _hsc = (W * 0.50) / _hdr.width
     _hdr = _hdr.resize((int(_hdr.width * _hsc), int(_hdr.height * _hsc)), Image.LANCZOS)
 
     # Producto

@@ -191,12 +191,31 @@ HEADLINES=["¡OFERTÓN!","PRECIAZO","¡APROVECHA!","SÚPER PRECIO","¡IMPERDIBLE
 def pick_headline(i):
     return HEADLINES[int(i)%len(HEADLINES)]
 
+def brand_header(W, text_color=(160,22,28), text="EL MARAVILLOSO"):
+    """Lockup horizontal LIMPIO compuesto por código: esfera + nombre bien espaciados,
+    centrados verticalmente, sin cruces. Fondo transparente. Devuelve imagen RGBA."""
+    ic=brand_icon()
+    s=int(W*0.135); ich=int(ic.height*s/ic.width); ic=ic.resize((s,ich),Image.LANCZOS)
+    f=f_name(int(W*0.050))
+    tmp=ImageDraw.Draw(Image.new("RGBA",(10,10)))
+    bb=tmp.textbbox((0,0),text,font=f); tw=bb[2]-bb[0]; asc=-bb[1]; th=bb[3]-bb[1]
+    gap=int(W*0.022)
+    Wt=s+gap+tw; Ht=max(ich,th)
+    im=Image.new("RGBA",(Wt,Ht),(0,0,0,0)); d=ImageDraw.Draw(im)
+    im.alpha_composite(ic,(0,(Ht-ich)//2))
+    d.text((s+gap, Ht//2), text, font=f, fill=tuple(text_color)+(255,), anchor="lm")
+    return im
+
 def brand_icon():
-    """Solo la ESFERA M (sin el texto blanco 'EL MARAVILLOSO' que trae logo_v2 abajo)."""
+    """Solo la ESFERA M, sin el texto blanco de abajo NI el lavado gris semi-transparente
+    de fondo (logo_v2 trae alpha ~51 en todo el fondo -> se ve un recuadro gris)."""
     lg=Image.open(os.path.join(ASSETS,"logo_v2.png")).convert("RGBA")
+    r,g,b,a=lg.split()
+    a=a.point(lambda v: 0 if v<140 else v)   # matar el lavado gris (alpha bajo) -> transparente
+    lg=Image.merge("RGBA",(r,g,b,a))
     bb=lg.getbbox()
     if bb: lg=lg.crop(bb)
-    sph=lg.crop((0,0,lg.width,int(lg.height*0.66)))  # el nombre blanco va en el ~28% inferior
+    sph=lg.crop((0,0,lg.width,int(lg.height*0.62)))  # el nombre blanco va en el ~30% inferior
     bb2=sph.getbbox()
     if bb2: sph=sph.crop(bb2)
     return sph
@@ -228,29 +247,13 @@ def coin_pct(size,pal):
     return im.resize((size,size),Image.LANCZOS)
 
 def wordmark(im,pal,cx,cy_top,style="banner"):
-    """Header. style='banner' = lockup header_clean.png (legible sobre cualquier fondo);
-    style='minimal' = esfera grande + 'El Maravilloso' en rojo de marca. Devuelve y inferior."""
-    W=im.width; d=ImageDraw.Draw(im)
-    if style=="banner":
-        try:
-            hb=Image.open(os.path.join(ASSETS,"header_clean.png")).convert("RGBA")
-            bb=hb.getbbox()
-            if bb: hb=hb.crop(bb)
-            w=int(W*0.72); h=int(hb.height*w/hb.width); hb=hb.resize((w,h),Image.LANCZOS)
-            im.alpha_composite(hb,(int(cx-w/2),int(cy_top)))
-            return cy_top+h+int(W*0.015)
-        except Exception: pass
-    # minimal: esfera grande (sin texto blanco) + nombre en rojo
-    y=cy_top
-    try:
-        ic=brand_icon(); s=int(W*0.20); h=int(ic.height*s/ic.width); ic=ic.resize((s,h),Image.LANCZOS)
-        im.alpha_composite(ic,(int(cx-s/2),int(y))); y+=h
-    except Exception: pass
-    d.text((cx,y+W*0.006),"D I S T R I B U I D O R A",font=f_ui(int(W*0.024)),
-           fill=pal["muted"]+(255,),anchor="mm")
-    d.text((cx,y+W*0.058),"El Maravilloso",font=f_name(int(W*0.072)),
-           fill=pal["ink"]+(255,),anchor="mm")
-    return y+int(W*0.10)
+    """Header limpio (esfera + EL MARAVILLOSO) alineado a la IZQUIERDA, para que la
+    moneda % del top-right no lo tape. Devuelve y inferior."""
+    W=im.width
+    hdr=brand_header(W, text_color=pal["ink"])
+    tw=int(W*0.58); th=int(hdr.height*tw/hdr.width); hdr=hdr.resize((tw,th),Image.LANCZOS)
+    im.alpha_composite(hdr,(int(W*0.06),int(cy_top)))
+    return cy_top+th+int(W*0.025)
 
 def price_tag(price,pal,fsz):
     """Etiqueta de precio (píldora roja) para poner bajo cada producto."""

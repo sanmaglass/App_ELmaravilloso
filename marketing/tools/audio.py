@@ -200,7 +200,11 @@ def load_audio_mono(path, dur):
     if len(arr) < n:
         reps = int(math.ceil(n / len(arr)))
         arr = np.tile(arr, reps)
-    return arr[:n].copy()
+        return arr[:n].copy()
+    # segmento ALEATORIO del track -> el fondo musical suena distinto en cada edición
+    maxoff = len(arr) - n
+    off = int(np.random.randint(0, maxoff + 1)) if maxoff > 0 else 0
+    return arr[off:off + n].copy()
 
 def write_wav(path, x):
     """Escribe WAV. Acepta mono (1D) o estéreo (Nx2). Estéreo = nivel agencia."""
