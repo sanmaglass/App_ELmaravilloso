@@ -128,6 +128,120 @@ def pill(d,cx,cy,w,h,fill,radius=None):
     radius=radius or h//2
     d.rounded_rectangle([cx-w/2,cy-h/2,cx+w/2,cy+h/2],radius=radius,fill=fill)
 
+# ================= ESTILO AMIGABLE (multi-producto, fondo suave) =================
+# Inspirado en catálogos tipo "distribuidora": fondo claro con grilla, monedas %,
+# wordmark limpio (sin recuadro), título grande, precio en píldora y 2+ productos.
+PAL_TEAL = dict(
+    bg=(150,210,214), bg2=(184,228,229), grid=(255,255,255), grid_a=44,
+    blob=(120,196,201), coin=(70,165,172), coin_rim=(120,200,205),
+    ink=(18,52,58), muted=(36,86,92), pill=(16,48,54), pill_txt=(255,255,255),
+)
+PAL_WARM = dict(
+    bg=(250,236,222), bg2=(252,246,238), grid=(220,150,120), grid_a=26,
+    blob=(248,214,188), coin=(228,92,70), coin_rim=(244,150,130),
+    ink=(86,30,26), muted=(150,86,66), pill=(200,30,40), pill_txt=(255,255,255),
+)
+PAL_MINT = dict(
+    bg=(204,228,200), bg2=(224,240,220), grid=(255,255,255), grid_a=40,
+    blob=(176,212,170), coin=(120,176,108), coin_rim=(168,210,156),
+    ink=(38,66,38), muted=(70,104,66), pill=(46,86,46), pill_txt=(255,255,255),
+)
+PALETTES={"teal":PAL_TEAL,"warm":PAL_WARM,"mint":PAL_MINT}
+
+def _rrect(d,box,r,fill):
+    d.rounded_rectangle(box,radius=r,fill=fill)
+
+def _wrap(s,maxc):
+    words=s.split(); lines=[]; cur=""
+    for w in words:
+        if len(cur)+len(w)+1<=maxc: cur=(cur+" "+w).strip()
+        else: lines.append(cur); cur=w
+    if cur: lines.append(cur)
+    return lines or [s]
+
+def bg_friendly(pal,Wf,Hf):
+    """Fondo suave con degradé vertical sutil + grilla fina + blobs de profundidad."""
+    yy=np.linspace(0,1,Hf,dtype=np.float32)[:,None]
+    a=np.zeros((Hf,Wf,3),np.float32)
+    for i in range(3): a[...,i]=pal["bg2"][i]*(1-yy)+pal["bg"][i]*yy
+    base=Image.fromarray(a.astype(np.uint8),"RGB").convert("RGBA")
+    blob=Image.new("RGBA",(Wf,Hf),(0,0,0,0)); bd=ImageDraw.Draw(blob)
+    bd.ellipse([Wf*0.55,-Hf*0.10,Wf*1.25,Hf*0.30],fill=pal["blob"]+(120,))
+    bd.ellipse([-Wf*0.25,Hf*0.62,Wf*0.30,Hf*1.05],fill=pal["blob"]+(90,))
+    base.alpha_composite(blob.filter(ImageFilter.GaussianBlur(80)))
+    grid=Image.new("RGBA",(Wf,Hf),(0,0,0,0)); gd=ImageDraw.Draw(grid)
+    step=int(Wf/12); col=pal["grid"]+(pal["grid_a"],)
+    for x in range(0,Wf+1,step): gd.line([(x,0),(x,Hf)],fill=col,width=2)
+    for y in range(0,Hf+1,step): gd.line([(0,y),(Wf,y)],fill=col,width=2)
+    base.alpha_composite(grid)
+    return base
+
+def coin_pct(size,pal):
+    """Moneda decorativa con '%' (disco 3D plano)."""
+    S=size*3
+    im=Image.new("RGBA",(S,S),(0,0,0,0)); d=ImageDraw.Draw(im)
+    d.ellipse([S*0.06,S*0.12,S*0.94,S],fill=pal["coin_rim"]+(255,))
+    d.ellipse([S*0.06,0,S*0.94,S*0.88],fill=pal["coin"]+(255,))
+    d.text((S*0.5,S*0.43),"%",font=f_price(int(S*0.5)),fill=(255,255,255,235),anchor="mm")
+    return im.resize((size,size),Image.LANCZOS)
+
+def wordmark(im,pal,cx,cy):
+    """Wordmark limpio tipo catálogo (sin recuadro): logo M transparente + texto."""
+    d=ImageDraw.Draw(im)
+    try:
+        lg=Image.open(os.path.join(ASSETS,"logo_v2.png")).convert("RGBA")
+        lg=defringe(lg,erode=2)
+        s=int(im.width*0.10); lg=lg.resize((s,s),Image.LANCZOS)
+        im.alpha_composite(lg,(int(cx-s/2),int(cy-s*0.60)))
+        cy+=s*0.50
+    except Exception: pass
+    d.text((cx,cy),"D I S T R I B U I D O R A",font=f_ui(int(im.width*0.026)),
+           fill=pal["muted"]+(255,),anchor="mm")
+    d.text((cx,cy+im.width*0.052),"El Maravilloso",font=f_name(int(im.width*0.072)),
+           fill=pal["ink"]+(255,),anchor="mm")
+
+def place_products(im,paths,pal,cy,maxh):
+    """Coloca 1..3 productos en fila, ligeramente solapados, con sombra suave."""
+    paths=[p for p in paths if p][:3]
+    if not paths: return
+    prods=[load_product(p,int(im.width*0.50),maxh) for p in paths]
+    n=len(prods); ov=int(im.width*0.06)  # solape
+    widths=[p.width for p in prods]
+    total=sum(widths)-ov*(n-1)
+    xs=[]; x=im.width/2-total/2
+    for i,p in enumerate(prods):
+        xs.append(x+p.width/2); x+=p.width-ov
+    # sombras primero
+    for i,p in enumerate(prods):
+        sh=shadow_of(p,blur=30,op=0.28)
+        im.alpha_composite(sh,(int(xs[i]-p.width/2+10),int(cy-p.height/2+24)))
+    # centro al frente
+    for i in sorted(range(n),key=lambda i:abs(i-(n-1)/2),reverse=True):
+        paste_c(im,prods[i],xs[i],cy)
+
+def style_amigable(name,price,products,pal="teal",fmt_str=None,fmt2="feed45"):
+    """Pieza amigable multi-producto. products: lista de rutas de recortes PNG."""
+    P=PALETTES.get(pal,PAL_TEAL)
+    Wf,Hf=dims(fmt2)
+    im=bg_friendly(P,Wf,Hf); d=ImageDraw.Draw(im); cx=Wf/2
+    im.alpha_composite(coin_pct(int(Wf*0.30),P),(int(Wf*0.73),int(Hf*0.015)))
+    im.alpha_composite(coin_pct(int(Wf*0.27),P),(int(-Wf*0.09),int(Hf*0.48)))
+    im.alpha_composite(coin_pct(int(Wf*0.19),P),(int(Wf*0.80),int(Hf*0.86)))
+    wordmark(im,P,cx,int(Hf*0.085))
+    lines=_wrap((name or "").strip(),14)[:2]
+    ty=Hf*0.225
+    for ln in lines:
+        d.text((cx,ty),ln,font=f_name(int(Wf*0.10)),fill=P["ink"]+(255,),anchor="mm")
+        ty+=Wf*0.11
+    ps=fmt_str or fmt(price)
+    pf=f_price(int(Wf*0.135))
+    bb=d.textbbox((0,0),ps,font=pf); pw=bb[2]-bb[0]; ph=bb[3]-bb[1]
+    pad_x,pad_y=int(Wf*0.075),int(Wf*0.05); py=ty+Wf*0.04
+    _rrect(d,[cx-pw/2-pad_x,py-ph/2-pad_y,cx+pw/2+pad_x,py+ph/2+pad_y],int(Wf*0.07),P["pill"]+(255,))
+    d.text((cx,py),ps,font=pf,fill=P["pill_txt"]+(255,),anchor="mm")
+    place_products(im,products,P,int(Hf*0.715),int(Hf*0.44))
+    return im
+
 # ---------------- ESTILO A: CLASICA ----------------
 def style_clasica(name,price,product,tag="OFERTA DE LA SEMANA"):
     im=bg_red(); d=ImageDraw.Draw(im); cx=W/2
