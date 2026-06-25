@@ -992,9 +992,11 @@ def build_amigable(args):
 
     # productos: fila centrada, solapados, en banda inferior
     maxh = int(Hf*0.42)
-    prods  = [T.load_product(p, int(Wf*0.53), maxh) for p in paths]
+    n = len(paths); ov = int(Wf*0.06)
+    # ancho por producto según cantidad (que la fila no exceda ~94% del ancho)
+    per_w = min(int(Wf*0.55), int((Wf*0.94 + ov*(n-1))/n))
+    prods  = [T.load_product(p, per_w, maxh) for p in paths]
     floors = [T.shadow_of(p, blur=30, op=0.28) for p in prods]
-    n = len(prods); ov = int(Wf*0.06)
     total = sum(p.width for p in prods) - ov*(n-1)
     xs = []; x = Wf/2 - total/2
     for p in prods:
@@ -1002,10 +1004,9 @@ def build_amigable(args):
     prod_cy = Hf*0.695
     front_order = sorted(range(n), key=lambda i: abs(i-(n-1)/2), reverse=True)
 
-    # textos / fuentes
-    title_lines = T._wrap((args.name or "").strip(), 14)[:2]
+    # textos / fuentes — título auto-ajustado (nunca pierde palabras)
+    fname, title_lines, fsz = T.fit_title(args.name, Wf*0.84, Wf*0.105, Wf*0.062, 3)
     ps = T.fmt(args.price)
-    fname  = T.f_name(int(Wf*0.10))
     fui    = T.f_ui(int(Wf*0.026))
     fwm    = T.f_name(int(Wf*0.072))
     fprice = T.f_price(int(Wf*0.135))
@@ -1022,10 +1023,11 @@ def build_amigable(args):
     dur = float(getattr(args, "seconds", 6.0) or 6.0)
     nframes = int(dur*FPS)
     p_start = [0.5 + i*0.18 for i in range(n)]
-    lineH    = int(Wf*0.118)
-    title_cy = Hf*0.25
+    lineH    = int(fsz*1.12)
+    title_cy = Hf*0.235
     title_bottom = title_cy + (len(title_lines)-1)*lineH
-    pill_cy  = title_bottom + Wf*0.16
+    pill_cy  = title_bottom + fsz*0.6 + Wf*0.10
+    prod_cy  = max(prod_cy, pill_cy + Wf*0.115 + Hf*0.15)  # productos siempre bajo la píldora
     pill_t   = 0.35 + len(title_lines)*0.12 + 0.15
     beats = {"whoosh_tag": 0.30, "whoosh_prod": round(p_start[0], 2),
              "price": round(pill_t, 2), "footer": max(0.5, dur-0.5)}

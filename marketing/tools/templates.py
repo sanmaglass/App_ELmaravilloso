@@ -166,6 +166,23 @@ def _wrap(s,maxc):
     if cur: lines.append(cur)
     return lines or [s]
 
+def fit_title(name,maxw_px,size_hi,size_lo,max_lines=3):
+    """Ajusta la fuente del título para que TODO el texto entre en ancho y nº de líneas,
+    sin perder palabras. Devuelve (font, lines, size). Achica de size_hi a size_lo."""
+    name=(name or "").strip(); words=name.split()
+    tmp=ImageDraw.Draw(Image.new("RGBA",(10,10)))
+    for size in range(int(size_hi),int(size_lo)-1,-4):
+        f=f_name(size); lines=[]; cur=""
+        for w in words:
+            test=(cur+" "+w).strip()
+            if not cur or tmp.textlength(test,font=f)<=maxw_px: cur=test
+            else: lines.append(cur); cur=w
+        if cur: lines.append(cur)
+        if lines and len(lines)<=max_lines and all(tmp.textlength(l,font=f)<=maxw_px for l in lines):
+            return f,lines,size
+    f=f_name(int(size_lo))
+    return f,(_wrap(name,16)[:max_lines] or [name or " "]),int(size_lo)
+
 def bg_friendly(pal,Wf,Hf):
     """Fondo suave con degradé vertical sutil + grilla fina + blobs de profundidad."""
     yy=np.linspace(0,1,Hf,dtype=np.float32)[:,None]
@@ -211,8 +228,10 @@ def place_products(im,paths,pal,cy,maxh):
     """Coloca 1..3 productos en fila, ligeramente solapados, con sombra suave."""
     paths=[p for p in paths if p][:3]
     if not paths: return
-    prods=[load_product(p,int(im.width*0.50),maxh) for p in paths]
-    n=len(prods); ov=int(im.width*0.06)  # solape
+    n=len(paths); ov=int(im.width*0.06)  # solape
+    # ancho por producto según cantidad (que la fila no exceda ~94% del ancho)
+    per_w=min(int(im.width*0.55),int((im.width*0.94+ov*(n-1))/n))
+    prods=[load_product(p,per_w,maxh) for p in paths]
     widths=[p.width for p in prods]
     total=sum(widths)-ov*(n-1)
     xs=[]; x=im.width/2-total/2
@@ -235,18 +254,25 @@ def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45"):
     im.alpha_composite(coin_pct(int(Wf*0.27),P),(int(-Wf*0.09),int(Hf*0.48)))
     im.alpha_composite(coin_pct(int(Wf*0.19),P),(int(Wf*0.80),int(Hf*0.86)))
     wordmark(im,P,cx,int(Hf*0.085))
-    lines=_wrap((name or "").strip(),14)[:2]
-    ty=Hf*0.225
+    # título auto-ajustado (nunca pierde palabras)
+    fnt,lines,fsz=fit_title(name,Wf*0.84,Wf*0.105,Wf*0.062,3)
+    lineH=int(fsz*1.12)
+    ty=int(Hf*0.215)
     for ln in lines:
-        d.text((cx,ty),ln,font=f_name(int(Wf*0.10)),fill=P["ink"]+(255,),anchor="mm")
-        ty+=Wf*0.11
+        d.text((cx,ty),ln,font=fnt,fill=P["ink"]+(255,),anchor="mm")
+        ty+=lineH
+    title_bottom=ty-lineH
+    # precio en píldora, bajo el título con holgura
     ps=fmt_str or fmt(price)
     pf=f_price(int(Wf*0.135))
     bb=d.textbbox((0,0),ps,font=pf); pw=bb[2]-bb[0]; ph=bb[3]-bb[1]
-    pad_x,pad_y=int(Wf*0.075),int(Wf*0.05); py=ty+Wf*0.04
+    pad_x,pad_y=int(Wf*0.075),int(Wf*0.05)
+    py=int(title_bottom+fsz*0.6+ph/2+Wf*0.045)
     _rrect(d,[cx-pw/2-pad_x,py-ph/2-pad_y,cx+pw/2+pad_x,py+ph/2+pad_y],int(Wf*0.07),P["pill"]+(255,))
     d.text((cx,py),ps,font=pf,fill=P["pill_txt"]+(255,),anchor="mm")
-    place_products(im,products,P,int(Hf*0.715),int(Hf*0.44))
+    # productos: bajo la píldora con holgura garantizada
+    prod_cy=max(int(Hf*0.715),py+int(ph/2)+pad_y+int(Hf*0.21))
+    place_products(im,products,P,prod_cy,int(Hf*0.42))
     return im
 
 # ---------------- ESTILO A: CLASICA ----------------
