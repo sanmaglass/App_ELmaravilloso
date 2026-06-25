@@ -304,12 +304,14 @@ def products_geom(W,items,pal,maxh,top_y=None,cy=None,show_prices=False):
     for p in prods:
         xs.append(x+p.width/2); x+=p.width-ov
     tsz=int(W*(0.058 if n<=2 else 0.046))
+    base_y=cy+max(p.height for p in prods)/2   # línea común = base del producto más alto
     out=[]
     for i,p in enumerate(prods):
         g={"img":p,"cx":xs[i],"cy":cy,"floor":shadow_of(p,blur=30,op=0.28)}
         if show_prices and items[i].get("price"):
             tag=price_tag(items[i]["price"],pal,tsz,gram=items[i].get("gram"))
-            g["tag"]=tag; g["tcx"]=xs[i]; g["tcy"]=cy+p.height*0.5-tag.height*0.26
+            # TODAS las etiquetas a la MISMA altura (acorde), apenas bajo el producto
+            g["tag"]=tag; g["tcx"]=xs[i]; g["tcy"]=base_y+tag.height*0.12
         out.append(g)
     return out
 
