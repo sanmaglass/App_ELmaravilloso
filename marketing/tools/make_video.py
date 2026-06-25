@@ -955,6 +955,133 @@ def _count_up_value(price, t_reveal, dur_count=0.55):
 # ---------------------------------------------------------------------------
 # render: punto de entrada unificado
 # ---------------------------------------------------------------------------
+def _pill_image(ps, fprice, P, Wf):
+    """Píldora de precio (rounded rect de marca + precio) como imagen, para animar el pop."""
+    tmp = text_img(ps, fprice, P["pill_txt"])
+    pad_x, pad_y = int(Wf*0.075), int(Wf*0.05)
+    pw, ph = tmp.size
+    W2, H2 = pw+pad_x*2, ph+pad_y*2
+    im = Image.new("RGBA", (W2, H2), (0,0,0,0))
+    ImageDraw.Draw(im).rounded_rectangle([0,0,W2-1,H2-1], radius=int(Wf*0.07), fill=tuple(P["pill"])+(255,))
+    im.alpha_composite(tmp, (pad_x, pad_y))
+    return im
+
+def build_amigable(args):
+    """Video del estilo amigable multi-producto: fondo suave + monedas % + 2-3 productos
+    que entran con stagger, título y precio en píldora animados. Reutiliza templates.py."""
+    cb = getattr(args, "on_progress", None)
+    pal = getattr(args, "pal", "marca") or "marca"
+    P = T.PALETTES.get(pal, T.PALETTES["marca"])
+    Wf, Hf = T.dims("story")  # 1080x1920 (reel/tiktok)
+
+    # productos (acepta lista o string "a.png,b.png")
+    paths = getattr(args, "products", None) or [args.product]
+    if isinstance(paths, str): paths = [p.strip() for p in paths.split(",") if p.strip()]
+    paths = [p for p in paths if p][:3]
+    args.price = int(re.sub(r"[^0-9]", "", str(args.price)) or 0)
+
+    # ---- capa estática: fondo suave con grilla ----
+    bg = T.bg_friendly(P, Wf, Hf)
+
+    # monedas (imagen + posición base en px + fase de bob)
+    coin_specs = [
+        (T.coin_pct(int(Wf*0.30), P), Wf*0.88, Hf*0.10, 0.0),
+        (T.coin_pct(int(Wf*0.27), P), Wf*0.05, Hf*0.55, 1.1),
+        (T.coin_pct(int(Wf*0.19), P), Wf*0.90, Hf*0.90, 2.2),
+    ]
+
+    # productos: fila centrada, solapados, en banda inferior
+    maxh = int(Hf*0.40)
+    prods  = [T.load_product(p, int(Wf*0.50), maxh) for p in paths]
+    floors = [T.shadow_of(p, blur=30, op=0.28) for p in prods]
+    n = len(prods); ov = int(Wf*0.06)
+    total = sum(p.width for p in prods) - ov*(n-1)
+    xs = []; x = Wf/2 - total/2
+    for p in prods:
+        xs.append(x + p.width/2); x += p.width - ov
+    prod_cy = Hf*0.72
+    front_order = sorted(range(n), key=lambda i: abs(i-(n-1)/2), reverse=True)
+
+    # textos / fuentes
+    title_lines = T._wrap((args.name or "").strip(), 14)[:2]
+    ps = T.fmt(args.price)
+    fname  = T.f_name(int(Wf*0.10))
+    fui    = T.f_ui(int(Wf*0.026))
+    fwm    = T.f_name(int(Wf*0.072))
+    fprice = T.f_price(int(Wf*0.135))
+    pill_im = _pill_image(ps, fprice, P, Wf)
+
+    # logo M transparente
+    try:
+        lg = T.defringe(Image.open(os.path.join(T.ASSETS, "logo_v2.png")).convert("RGBA"), erode=2)
+        s = int(Wf*0.10); lg = lg.resize((s, s), Image.LANCZOS)
+    except Exception:
+        lg = None
+
+    # tiempos
+    dur = float(getattr(args, "seconds", 6.0) or 6.0)
+    nframes = int(dur*FPS)
+    p_start = [0.5 + i*0.18 for i in range(n)]
+    title_cy = Hf*0.225
+    pill_cy  = title_cy + len(title_lines)*Wf*0.11 + Wf*0.02
+    pill_t   = 0.35 + len(title_lines)*0.12 + 0.15
+    beats = {"whoosh_tag": 0.30, "whoosh_prod": round(p_start[0], 2),
+             "price": round(pill_t, 2), "footer": max(0.5, dur-0.5)}
+
+    silent = os.path.splitext(args.out)[0] + ".silent.mp4"
+    ff = imageio_writer(silent)
+
+    for fi in range(nframes):
+        t = fi/FPS
+        frame = bg.copy()
+        if cb and (fi % 5 == 0 or fi == nframes-1): cb(int(fi/nframes*100))
+
+        # monedas flotando + fade-in
+        for img, bx, by, ph in coin_specs:
+            ca = ease_out(clamp01((t-0.1)/0.5))
+            paste_center(frame, img, bx, by + math.sin(t*1.4+ph)*10, 1.0, ca)
+
+        # wordmark (logo + DISTRIBUIDORA + El Maravilloso) con fade+slide
+        wa = ease_out(clamp01(t/0.6))
+        wy = Hf*0.085 + (1-wa)*-24
+        if lg is not None:
+            paste_center(frame, lg, Wf/2, wy - lg.height*0.05, 1.0, wa)
+            wy2 = wy + lg.height*0.50
+        else:
+            wy2 = wy
+        if wa > 0.01:
+            paste_center(frame, text_img("D I S T R I B U I D O R A", fui, tuple(P["muted"])), Wf/2, wy2, 1.0, wa)
+            paste_center(frame, text_img("El Maravilloso", fwm, tuple(P["ink"])), Wf/2, wy2+Wf*0.052, 1.0, wa)
+
+        # título (líneas con stagger)
+        ty = title_cy
+        for li, ln in enumerate(title_lines):
+            ta = ease_out(clamp01((t-0.25-li*0.12)/0.5))
+            if ta > 0.01:
+                paste_center(frame, text_img(ln, fname, tuple(P["ink"])), Wf/2, ty+(1-ta)*-18, 1.0, ta)
+            ty += Wf*0.11
+
+        # precio en píldora (pop)
+        pa = clamp01((t-pill_t)/0.5)
+        if pa > 0.01:
+            paste_center(frame, pill_im, Wf/2, pill_cy, lerp(0.55, 1.0, ease_out_back(pa)), clamp01(pa*1.4))
+
+        # productos: entran desde abajo con stagger + overshoot, luego flotan
+        for i in front_order:
+            p = prods[i]; te = clamp01((t-p_start[i])/0.6)
+            if te <= 0: continue
+            sl = ease_out_back(te); a = ease_out(clamp01((t-p_start[i])/0.4))
+            oy = (1-sl)*(Hf*0.22) + math.sin(t*1.5+i)*8*te
+            paste_center(frame, floors[i], xs[i]+10, prod_cy+oy+p.height*0.42, 1.0, 0.8*a)
+            paste_center(frame, p, xs[i], prod_cy+oy, 1.0, a)
+
+        ff.append_data(np.asarray(frame.convert("RGB")))
+    ff.close()
+    if cb: cb(100)
+    _finalize(args, silent, beats)
+    print("OK ->", args.out, f"(amigable, {nframes} frames, {dur}s)")
+
+
 def render(args):
     """
     Despacha al look correcto según args.style.
@@ -978,7 +1105,9 @@ def render(args):
     print(f"  [variedad] look={style} | entrada={args.entry_style} | "
           f"ambiente={args.ambient_effects} | precio={args.price_style} | seed={seed_val}")
 
-    if style in ("premium", "dark", "giant", "split"):
+    if style == "amigable":
+        build_amigable(args)
+    elif style in ("premium", "dark", "giant", "split"):
         _build_look(args, style)
     elif style == "clasica":
         build(args)
@@ -1028,6 +1157,11 @@ def imageio_writer(out):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--product", required=True)
+    ap.add_argument("--products", default=None,
+                    help="Estilo amigable: lista de recortes separados por coma (2-3 productos).")
+    ap.add_argument("--pal", default="marca",
+                    choices=["marca", "teal", "warm", "mint"],
+                    help="Paleta del estilo amigable.")
     ap.add_argument("--name", required=True)
     ap.add_argument("--price", required=True)
     ap.add_argument("--out", required=True)
@@ -1038,7 +1172,7 @@ if __name__ == "__main__":
     ap.add_argument("--cta", default="on")
     ap.add_argument("--seconds", type=float, default=6.0)
     ap.add_argument("--style", default=None,
-                    choices=["clasica", "premium", "dark", "giant", "split"])
+                    choices=["clasica", "premium", "dark", "giant", "split", "amigable"])
     ap.add_argument("--seed", type=int, default=None,
                     help="Semilla RNG para reproducir la combinación de efectos. "
                          "Sin --seed = combinación totalmente aleatoria.")
