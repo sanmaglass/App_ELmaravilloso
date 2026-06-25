@@ -937,17 +937,88 @@ async def caption(req: Request):
         save_data(d)
     return cap
 
+# ---------- Cola en la nube para el publicador del VPS ----------
+def _sb_env():
+    return os.environ.get("SUPABASE_URL", "").rstrip("/"), os.environ.get("SUPABASE_SERVICE_KEY", "")
+
+def storage_upload(local_abs, dest):
+    """Sube un archivo al bucket público social-media. Devuelve la URL pública."""
+    import urllib.request
+    base, key = _sb_env()
+    if not base or not key:
+        raise RuntimeError("faltan SUPABASE_URL / SUPABASE_SERVICE_KEY en .env")
+    ct = ("video/mp4" if dest.lower().endswith(".mp4")
+          else "image/png" if dest.lower().endswith(".png") else "image/jpeg")
+    data = open(local_abs, "rb").read()
+    req = urllib.request.Request(
+        f"{base}/storage/v1/object/social-media/{dest}", data=data, method="POST",
+        headers={"Authorization": f"Bearer {key}", "apikey": key,
+                 "Content-Type": ct, "x-upsert": "true"})
+    urllib.request.urlopen(req, timeout=120)
+    return f"{base}/storage/v1/object/public/social-media/{dest}"
+
+def supabase_insert_post(title, text, media_url, media_type, networks, scheduled_iso):
+    import urllib.request
+    base, key = _sb_env()
+    body = json.dumps({"title": title or "", "text": text or "", "media_url": media_url,
+                       "media_type": media_type, "networks": networks,
+                       "scheduled_for": scheduled_iso, "status": "pending"}).encode("utf-8")
+    req = urllib.request.Request(f"{base}/rest/v1/social_posts", data=body, method="POST",
+        headers={"Authorization": f"Bearer {key}", "apikey": key,
+                 "Content-Type": "application/json", "Prefer": "return=representation"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read().decode())
+
+def supabase_update_post(post_id, fields):
+    import urllib.request
+    base, key = _sb_env()
+    req = urllib.request.Request(f"{base}/rest/v1/social_posts?id=eq.{post_id}",
+        data=json.dumps(fields).encode("utf-8"), method="PATCH",
+        headers={"Authorization": f"Bearer {key}", "apikey": key, "Content-Type": "application/json"})
+    urllib.request.urlopen(req, timeout=30)
+
+def _santiago_iso(date_str, time_str):
+    """date 'YYYY-MM-DD' + time 'HH:MM' (hora de Chile) -> ISO con offset correcto."""
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.fromisoformat(f"{date_str}T{(time_str or '13:00')}:00").replace(
+            tzinfo=ZoneInfo("America/Santiago")).isoformat()
+    except Exception:
+        return f"{date_str}T{(time_str or '13:00')}:00-04:00"
+
 @app.post("/api/schedule")
 async def schedule(req: Request):
     b = await req.json()
     d = load_data()
+    post = None
     for p in d["posts"]:
         if p["slug"] == b["slug"]:
             p["date"] = b.get("date", "")
             p["time"] = b.get("time", "")
             p["status"] = b.get("status", p["status"])
+            post = p
     save_data(d)
-    return {"ok": True}
+    # Encolar en la nube para que el VPS publique a la hora (IG + FB). TikTok queda manual (música).
+    cloud = {"queued": False}
+    if post and post.get("date") and post.get("video"):
+        try:
+            media_url = storage_upload(os.path.join(MKT, post["video"]), os.path.basename(post["video"]))
+            cap = post.get("caption") or {}
+            text = (cap.get("ig_caption", "") + ("\n\n" + cap.get("hashtags", "") if cap.get("hashtags") else "")).strip()
+            nets = b.get("networks") or ["instagram", "facebook"]
+            sched = _santiago_iso(post["date"], post["time"])
+            if post.get("cloud_id"):
+                supabase_update_post(post["cloud_id"], {"scheduled_for": sched, "status": "pending",
+                                                        "error": None, "media_url": media_url, "text": text})
+                cloud = {"queued": True, "id": post["cloud_id"]}
+            else:
+                row = supabase_insert_post(post.get("name", ""), text, media_url, "video", nets, sched)
+                post["cloud_id"] = row[0]["id"] if isinstance(row, list) and row else None
+                save_data(d)
+                cloud = {"queued": True, "id": post.get("cloud_id")}
+        except Exception as e:
+            cloud = {"queued": False, "error": str(e)[:200]}
+    return {"ok": True, "cloud": cloud}
 
 # Ritmo semanal (weekday 0=lunes): hora del slot
 WEEKLY_SLOTS = {0: "13:00", 1: "19:30", 2: "10:00", 3: "13:00", 4: "19:00", 5: "11:00"}

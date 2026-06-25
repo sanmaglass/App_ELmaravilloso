@@ -938,9 +938,12 @@ function renderPosts(posts){
     if(ig) ig.addEventListener('input',()=>autoResize(ig));
     if(tk) tk.addEventListener('input',()=>autoResize(tk));
     el.querySelector('[data-sch]').onclick=async()=>{
-      await api('/api/schedule',{slug:p.slug,date:el.querySelector('[data-d]').value,
+      const r=await api('/api/schedule',{slug:p.slug,date:el.querySelector('[data-d]').value,
         time:el.querySelector('[data-t]').value,status:'programado'});
-      toast('Programado ✓');load();
+      if(r.cloud&&r.cloud.queued) toast('Programado ✓ — se publicará solo en IG+FB a esa hora ☁️');
+      else if(r.cloud&&r.cloud.error) toast('Programado local, pero la nube falló: '+r.cloud.error);
+      else toast('Programado ✓');
+      load();
     };
     el.querySelector('[data-pub]').onclick=async(ev)=>{
       const btn=ev.currentTarget;btn.disabled=true;btn.innerHTML='<span class="spin"></span> Publicando…';
