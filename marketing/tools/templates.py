@@ -334,12 +334,32 @@ def place_products(im,items,pal,cy,maxh,show_prices=False,top_y=None):
     geom=products_geom(im.width,items,pal,maxh,top_y=top_y,cy=cy,show_prices=show_prices)
     draw_products_geom(im,geom)
 
-def _amigable_footer(im,pal,cx,Wf,Hf,text,y):
-    """Pie con la dirección + filete, ancla la parte baja del 9:16."""
-    d=ImageDraw.Draw(im)
-    d.line([(int(Wf*0.14),int(y-Hf*0.028)),(int(Wf*0.86),int(y-Hf*0.028))],
-           fill=tuple(pal["pill"])+(150,),width=3)
-    d.text((cx,y),text,font=f_ui(int(Wf*0.030)),fill=tuple(pal["ink"])+(255,),anchor="mm")
+def _pin(d,x,y,r,fill):
+    """Dibuja un pin de ubicación simple (gota + punto)."""
+    d.ellipse([x-r,y-r*1.4,x+r,y+r*0.2],fill=fill)
+    d.polygon([(x-r*0.7,y-r*0.2),(x+r*0.7,y-r*0.2),(x,y+r*0.9)],fill=fill)
+    d.ellipse([x-r*0.42,y-r*0.95,x+r*0.42,y-r*0.11],fill=(255,255,255,255))
+
+def amigable_bars(im,pal,Wf,Hf,tagline="OFERTAS DE LA SEMANA",sub="Solo por unos días",
+                  addr="GRECIA 1841, HUALPÉN",hours="Lun a Sáb 10–20   ·   Dom 10–17"):
+    """Banner superior (logo blanco + urgencia) y barra inferior (dirección + horario),
+    estilo flyer. Devuelve (alto_top, alto_bottom). Inspirado en flyers de bodega."""
+    d=ImageDraw.Draw(im); red=tuple(pal["pill"]); gold=(212,170,90)
+    th=int(Hf*0.108); bh=int(Hf*0.092)
+    # ---- TOP banner ----
+    d.rectangle([0,0,Wf,th],fill=red+(255,)); d.rectangle([0,th,Wf,th+6],fill=gold+(255,))
+    hdr=brand_header(Wf,text_color=(255,255,255))
+    hw=int(Wf*0.42); hh=int(hdr.height*hw/hdr.width); hdr=hdr.resize((hw,hh),Image.LANCZOS)
+    im.alpha_composite(hdr,(int(Wf*0.035),(th-hh)//2))
+    d.text((Wf*0.965,th*0.40),tagline,font=f_name(int(Wf*0.030)),fill=(255,255,255,255),anchor="rm")
+    d.text((Wf*0.965,th*0.68),sub,font=f_ui(int(Wf*0.024)),fill=(255,232,180,255),anchor="rm")
+    # ---- BOTTOM bar ----
+    d.rectangle([0,Hf-bh,Wf,Hf],fill=red+(255,)); d.rectangle([0,Hf-bh,Wf,Hf-bh+6],fill=gold+(255,))
+    af=f_name(int(Wf*0.036)); aw=d.textlength(addr,font=af)
+    _pin(d,int(Wf/2-aw/2-Wf*0.035),int(Hf-bh*0.62),int(Wf*0.022),(255,232,180,255))
+    d.text((Wf/2+Wf*0.012,Hf-bh*0.62),addr,font=af,fill=(255,255,255,255),anchor="mm")
+    d.text((Wf/2,Hf-bh*0.26),hours,font=f_ui(int(Wf*0.026)),fill=(255,235,200,255),anchor="mm")
+    return th,bh
 
 def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",headline=None,
                    header_style="banner",skip_products=False,return_geom=False):
@@ -349,10 +369,10 @@ def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",he
     P=PALETTES.get(pal,PAL_MARCA)
     Wf,Hf=dims(fmt2)
     im=bg_friendly(P,Wf,Hf); d=ImageDraw.Draw(im); cx=Wf/2
-    im.alpha_composite(coin_pct(int(Wf*0.30),P),(int(Wf*0.73),int(Hf*0.015)))
-    im.alpha_composite(coin_pct(int(Wf*0.27),P),(int(-Wf*0.09),int(Hf*0.48)))
-    im.alpha_composite(coin_pct(int(Wf*0.19),P),(int(Wf*0.80),int(Hf*0.86)))
-    y0=wordmark(im,P,cx,int(Hf*0.045),style=header_style)
+    im.alpha_composite(coin_pct(int(Wf*0.20),P),(int(Wf*0.83),int(Hf*0.155)))
+    im.alpha_composite(coin_pct(int(Wf*0.16),P),(int(-Wf*0.05),int(Hf*0.58)))
+    top_h,bot_h=amigable_bars(im,P,Wf,Hf)   # banner superior (logo) + barra inferior (dirección/horario)
+    y0=top_h
     # titular llamativo (display condensado) — rota para variar
     hl=headline or pick_headline(abs(hash(name or ""))%len(HEADLINES))
     hfnt,hlines,hsz=fit_title(hl,Wf*0.88,Wf*0.150,Wf*0.09,2,font_fn=f_display)
@@ -368,7 +388,7 @@ def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",he
     block_bottom=yy
     items=_norm_items(products,price)
     per_product=len(items)>1   # 2+ productos = precio por producto (sin píldora central)
-    foot_y=int(Hf*0.92)
+    foot_y=int(Hf-bot_h)       # los productos quedan por encima de la barra inferior
     if per_product:
         # productos GRANDES anclados por su borde superior justo bajo el subtítulo (sin hueco)
         maxh=int(Hf*0.45)
@@ -388,8 +408,6 @@ def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",he
         geom=products_geom(Wf,items,P,maxh,cy=prod_cy)
     if not skip_products:
         draw_products_geom(im,geom)
-    # pie con la dirección (ancla la parte baja, llena el vacío)
-    _amigable_footer(im,P,cx,Wf,Hf,"GRECIA 1841, HUALPÉN   ·   DESPACHO",foot_y)
     return (im,geom) if return_geom else im
 
 # ---------------- ESTILO A: CLASICA ----------------
