@@ -1371,9 +1371,11 @@ async def publish(req: Request):
     cap = post.get("caption") or {}
     caption = (cap.get("ig_caption", "") + "\n\n" + cap.get("hashtags", "")).strip() or post["name"]
     kind = b.get("kind", "reel")  # 'reel' (video) o 'photo' (imagen)
-    media = public_url(post["video"] if kind == "reel" else post["image"])
-    if not media:
-        return JSONResponse({"error": "no_hosting"}, status_code=400)
+    rel = post["video"] if kind == "reel" else post["image"]
+    try:
+        media = storage_upload(os.path.join(MKT, rel), os.path.basename(rel))  # Supabase (Vercel /marketing está 404)
+    except Exception as e:
+        return JSONResponse({"error": "no se pudo hospedar el media: " + str(e)[:120]}, status_code=500)
     try:
         if kind == "reel":
             cont = _ig_api("POST", f"{ig_id}/media",
@@ -1412,9 +1414,11 @@ async def publish_fb(req: Request):
     cap = post.get("caption") or {}
     msg = (cap.get("ig_caption", "") + "\n\n" + cap.get("hashtags", "")).strip() or post["name"]
     kind = b.get("kind", "photo")  # 'video' o 'photo'
-    media = public_url(post["video"] if kind == "video" else post["image"])
-    if not media:
-        return JSONResponse({"error": "no_hosting"}, status_code=400)
+    rel = post["video"] if kind == "video" else post["image"]
+    try:
+        media = storage_upload(os.path.join(MKT, rel), os.path.basename(rel))  # Supabase (Vercel /marketing está 404)
+    except Exception as e:
+        return JSONResponse({"error": "no se pudo hospedar el media: " + str(e)[:120]}, status_code=500)
     try:
         if kind == "video":
             res = _ig_api("POST", f"{page_id}/videos",
