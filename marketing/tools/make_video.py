@@ -325,11 +325,9 @@ def _build_look(args, look="premium"):
         L_halo = Image.fromarray(((1 - dd) * 120).astype(np.uint8), "L")
         halo.putalpha(L_halo)
         base.alpha_composite(halo)
-        # Barras RED_DEEP con filete GOLD
+        # Solo barra inferior RED_DEEP con filete GOLD (superior quitada — header_pro la reemplaza)
         bar = int(H * 0.078)
-        ImageDraw.Draw(base).rectangle([0, 0, W, bar], fill=RED_DEEP)
         ImageDraw.Draw(base).rectangle([0, H - bar, W, H], fill=RED_DEEP)
-        ImageDraw.Draw(base).rectangle([0, bar - 2, W, bar], fill=GOLD)
         ImageDraw.Draw(base).rectangle([0, H - bar, W, H - bar + 2], fill=GOLD)
         cfg = {
             "bar": bar,
@@ -348,9 +346,9 @@ def _build_look(args, look="premium"):
         }
     elif look == "giant":
         # Fondo crema estándar, precio gigante en tercio inferior
+        # Solo barra inferior (superior quitada — header_pro la reemplaza)
         base = T.bg_cream(W, H)
         bar = int(H * 0.078)
-        T.bar_red(base, 0, bar, "bottom")
         T.bar_red(base, H - bar, H, "top")
         cfg = {
             "bar": bar,
@@ -369,9 +367,9 @@ def _build_look(args, look="premium"):
         }
     elif look == "split":
         # Fondo crema + banda roja diagonal inferior
+        # Solo barra inferior implícita en la banda diagonal (superior quitada — header_pro la reemplaza)
         base = T.bg_cream(W, H)
         bar = int(H * 0.078)
-        T.bar_red(base, 0, bar, "bottom")
         # Banda diagonal inferior (replica premium_split de templates.py)
         split_band = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         ImageDraw.Draw(split_band).polygon(
@@ -401,9 +399,9 @@ def _build_look(args, look="premium"):
         }
     else:
         # PREMIUM (default): exactamente como el build_premium original
+        # Solo barra inferior (superior quitada — header_pro la reemplaza)
         base = T.bg_cream(W, H)
         bar = int(H * 0.068)
-        T.bar_red(base, 0, bar, "bottom")
         T.bar_red(base, H - bar, H, "top")
         cfg = {
             "bar": bar,
@@ -422,19 +420,11 @@ def _build_look(args, look="premium"):
         }
 
     # ---- Assets comunes ----
-    # Logo: SIEMPRE logo.png (lockup horizontal transparente con texto), como premium.
-    # NO usar logo-dark.png (esfera 3D sobre fondo negro opaco) — se ve mal sobre la barra.
-    # Se escala por ALTURA para que CALCE dentro de la barra roja sin cortarse arriba.
-    _logo_src = Image.open(os.path.join(T.ASSETS, "logo.png")).convert("RGBA")
-    _bb = _logo_src.getbbox()          # recorta el aire transparente para que el logo no quede chico
-    if _bb:
-        _logo_src = _logo_src.crop(_bb)
-    _logo_h = int(H * 0.060) if look == "split" else int(cfg["bar"] * 0.82)
-    _logo_sc = _logo_h / _logo_src.height
-    if _logo_src.width * _logo_sc > W * 0.50:      # tope de ancho por si el lockup es muy largo
-        _logo_sc = (W * 0.50) / _logo_src.width
-    lg = _logo_src.resize((max(1, int(_logo_src.width * _logo_sc)),
-                           max(1, int(_logo_src.height * _logo_sc))), Image.LANCZOS)
+    # Header: header_pro.png (lower-third 2560x1440, fondo transparente, esfera M + banda marca).
+    # Se escala a ancho = 52% del frame, manteniendo ratio.
+    _hdr = Image.open(os.path.join(T.ASSETS, "header_clean.png")).convert("RGBA")
+    _hsc = (W * 0.52) / _hdr.width
+    _hdr = _hdr.resize((int(_hdr.width * _hsc), int(_hdr.height * _hsc)), Image.LANCZOS)
 
     # Producto
     prod = Image.open(args.product).convert("RGBA")
@@ -483,24 +473,20 @@ def _build_look(args, look="premium"):
         if cfg.get("glow") is not None:
             frame.alpha_composite(cfg["glow"])
 
-        # ---- Logo ----
+        # ---- Header (header_pro.png) — arriba-izquierda en todos los looks ----
         la = ease_out(clamp01(t / 0.6))
-        if look == "split":
-            logo_cx = cfg.get("logo_cx", W * 0.26)
-            logo_cy = H * cfg.get("logo_cy_factor", 0.07)
-            paste_center(frame, lg, logo_cx, logo_cy + (1 - la) * -30, 1.0, la)
-        else:
-            bar = cfg["bar"]
-            paste_center(frame, lg, cx, bar * 0.5 + (1 - la) * -30, 1.0, la)
+        _hdr_cx = 30 + _hdr.width / 2
+        _hdr_cy = 24 + _hdr.height / 2 + (1 - la) * -30
+        paste_center(frame, _hdr, _hdr_cx, _hdr_cy, 1.0, la)
 
         # ---- Sello OFERTA o badge % ----
         if badge is None:
             ta = ease_out_back_soft(clamp01((t - 0.15) / 0.5))
-            if ta > 0.02 and look not in ("split",):
-                paste_center(frame, tag_im, W * 0.155, cfg["bar"] + H * 0.052, ta, clamp01(ta * 1.3))
-            elif ta > 0.02 and look == "split":
-                # en split, el sello va arriba derecha (ribbon en static pero pill animada aquí)
-                paste_center(frame, tag_im, W * 0.82, H * 0.16, ta, clamp01(ta * 1.3))
+            if ta > 0.02:
+                # Sello arriba-derecha en todos los looks (evita chocar con header_pro arriba-izquierda)
+                _tag_cx = W - tag_im.width * ta / 2 - 40
+                _tag_cy = cfg["bar"] + H * 0.052
+                paste_center(frame, tag_im, _tag_cx, _tag_cy, ta, clamp01(ta * 1.3))
         else:
             ba = ease_out_back_soft(clamp01((t - 0.4) / 0.6))
             if ba > 0.02:
