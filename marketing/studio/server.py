@@ -208,6 +208,68 @@ async def generate(req: Request):
     return JSONResponse({"slug": slug, "generating": True})
 
 
+def _gen_amigable_thread(slug, name, headline, pal, items, post_base, img_path, cover_path, vid_path):
+    """Genera el estilo AMIGABLE multi-producto: imagen feed (1:1) + story (9:16) + video 9:16."""
+    try:
+        GEN_PROGRESS[slug] = {"pct": 0, "done": False, "error": None, "post": None}
+        prods = [{"path": it["path"], "price": it["price"], "name": it["name"], "gram": it.get("gram")} for it in items]
+        # imágenes en sus dos tamaños
+        T.style_amigable(name, 0, prods, pal=pal, headline=headline, fmt2="feed").convert("RGB").save(img_path, quality=92, optimize=True)
+        T.style_amigable(name, 0, prods, pal=pal, headline=headline, fmt2="story").convert("RGB").save(cover_path, quality=92, optimize=True)
+        GEN_PROGRESS[slug].update(pct=20)
+        # video 9:16 (reel/story/tiktok)
+        tx = load_textos()
+        args = argparse.Namespace(
+            product=items[0]["path"], name=name, price="0", out=vid_path, tag="OFERTA", seconds=6.0,
+            style="amigable", footer=tx.get("footer") or None, cta_text=tx.get("cta") or None,
+            pal=pal, headline=headline, items=json.dumps(prods), products=None,
+            price_old=None, unit="c/u", seed=None, _auto_look=False, audio="on", cta="on",
+            on_progress=lambda p: GEN_PROGRESS[slug].update(pct=20 + int(p * 0.8)))
+        MV.render(args)
+        post = dict(post_base)
+        post.update({"image": rel(img_path), "cover": rel(cover_path), "video": rel(vid_path), "status": "listo"})
+        d = load_data()
+        d["posts"] = [p for p in d["posts"] if p.get("slug") != slug]
+        d["posts"].insert(0, post)
+        save_data(d)
+        GEN_PROGRESS[slug].update(done=True, post=post, pct=100)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        GEN_PROGRESS[slug].update(done=True, error=str(e)[:300], pct=100)
+
+
+@app.post("/api/generate-amigable")
+async def generate_amigable(req: Request):
+    """Pieza AMIGABLE con 1..3 productos, cada uno con su precio y gramaje."""
+    b = await req.json()
+    items_in = b.get("items") or []
+    rem_bg = bool(b.get("remove_bg", True))
+    pal = b.get("pal", "marca")
+    headline = b.get("headline") or None
+    items = []
+    for it in items_in[:3]:
+        src = os.path.join(ENTRADA, it.get("filename", ""))
+        if not os.path.exists(src):
+            continue
+        items.append({"path": maybe_cut(src, rem_bg),
+                      "name": (it.get("name") or os.path.splitext(it["filename"])[0]),
+                      "price": int(re.sub(r"[^0-9]", "", str(it.get("price", "0"))) or 0),
+                      "gram": (it.get("gram") or None)})
+    if not items:
+        return JSONResponse({"error": "fotos no encontradas"}, status_code=404)
+    name = b.get("name") or ("Ofertas de la semana" if len(items) > 1 else items[0]["name"])
+    slug = slugify(name) + "-" + datetime.now().strftime("%H%M%S")
+    img_path = os.path.join(IMG_OUT, slug + ".png")
+    cover_path = os.path.join(IMG_OUT, slug + "-story.png")
+    vid_path = os.path.join(VID_OUT, slug + ".mp4")
+    post_base = {"slug": slug, "name": name, "price": items[0]["price"], "style": "amigable", "tag": "OFERTA",
+                 "date": "", "time": "", "created": datetime.now().strftime("%Y-%m-%d %H:%M")}
+    threading.Thread(target=_gen_amigable_thread,
+                     args=(slug, name, headline, pal, items, post_base, img_path, cover_path, vid_path),
+                     daemon=True).start()
+    return JSONResponse({"slug": slug, "generating": True})
+
+
 @app.get("/api/progress")
 def api_progress(slug: str = ""):
     return JSONResponse(GEN_PROGRESS.get(slug, {"pct": 0, "done": False}))

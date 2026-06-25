@@ -387,6 +387,12 @@
         <button class="btn btn-ghost btn-sm" id="gen-all" style="width:auto;display:none">⚡ Generar todas</button>
       </span>
     </h2>
+    <div id="combine-bar" style="display:none;align-items:center;gap:12px;background:linear-gradient(90deg,#fff,#fbf4ec);border:1px solid var(--line);border-left:5px solid var(--red);border-radius:14px;padding:14px 18px;margin-bottom:16px;flex-wrap:wrap">
+      <b style="color:var(--red);font-size:1rem">🎨 Pieza amigable (varios productos en una)</b>
+      <span style="color:var(--muted);font-size:.84rem;flex-basis:100%">Marca con <b>🎨 Combinar</b> las fotos que van juntas (2-3), pon precio y gramaje a cada una, y se arma UNA sola pieza con banner y barra. Genera imagen (feed + story) + video.</span>
+      <input id="combine-headline" placeholder="Titular (opcional, ej: ¡OFERTÓN!)" style="flex:1;min-width:200px;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:.92rem">
+      <button class="btn btn-red btn-sm" style="width:auto" id="combine-btn" onclick="genAmigable(this)">✨ Generar pieza amigable (<span id="combine-n">0</span>)</button>
+    </div>
     <div class="grid" id="pend-grid"></div>
 
     <h2><span class="dot"></span>Listo para publicar <small>imagen · video · descripción</small>
@@ -765,6 +771,9 @@ function renderPending(files){
             <input type="number" placeholder="7190" data-k="price">
             <div class="price-hint"><span class="hint-name"></span></div>
           </div>
+          <div><label>Gramaje</label><input value="" placeholder="1 kg" data-k="gram"></div>
+        </div>
+        <div class="row">
           <div><label>Estilo</label><select data-k="style">
             <option value="premium">Premium (crema)</option>
             <option value="dark">Dark (elegante)</option>
@@ -772,10 +781,14 @@ function renderPending(files){
             <option value="split">Split (diagonal)</option>
             <option value="clasica">Clásica</option>
           </select></div>
+          <div style="display:flex;align-items:flex-end;padding-bottom:6px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.86rem;color:var(--red);font-weight:600">
+              <input type="checkbox" data-k="combine" style="width:auto" onchange="updateCombineBar()"> 🎨 Combinar</label>
+          </div>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;font-size:.86rem;color:var(--ink)">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:.86rem;color:var(--ink)">
           <input type="checkbox" data-k="bg" style="width:auto" checked> ✂️ Quitar fondo a la foto</label>
-        <button class="btn btn-red" data-gen>✨ Generar pieza</button>
+        <button class="btn btn-red" data-gen>✨ Generar pieza (individual)</button>
       </div>`;
     el.querySelector('[data-gen]').onclick=()=>genOne(el);
     g.appendChild(el);
@@ -784,6 +797,35 @@ function renderPending(files){
   });
 }
 
+function updateCombineBar(){
+  const n=document.querySelectorAll('#pend-grid [data-k="combine"]:checked').length;
+  const bar=$('#combine-bar'); if(!bar)return;
+  const cn=$('#combine-n'); if(cn)cn.textContent=n;
+  bar.style.display=n>=1?'flex':'none';
+}
+async function genAmigable(btn){
+  const cards=[...document.querySelectorAll('#pend-grid .card')].filter(c=>{const cb=c.querySelector('[data-k="combine"]');return cb&&cb.checked;});
+  if(!cards.length){toast('Marca al menos una foto con 🎨 Combinar');return;}
+  if(cards.length>3){toast('Máximo 3 productos por pieza');return;}
+  const items=cards.map(c=>({filename:c.dataset.file,name:c.querySelector('[data-k="name"]').value,price:c.querySelector('[data-k="price"]').value,gram:c.querySelector('[data-k="gram"]').value}));
+  if(items.some(it=>!it.price)){toast('Pon el precio de cada producto combinado');return;}
+  const headline=($('#combine-headline').value||'').trim();
+  const bg=cards[0].querySelector('[data-k="bg"]')?cards[0].querySelector('[data-k="bg"]').checked:true;
+  btn.disabled=true;const txt=btn.innerHTML;btn.innerHTML='<span class="spin"></span> Generando…';
+  const resp=await api('/api/generate-amigable',{items,headline,remove_bg:bg}).catch(()=>({error:'red'}));
+  if(resp.error||!resp.slug){toast('Error: '+(resp.error||'sin slug'));btn.disabled=false;btn.innerHTML=txt;return;}
+  toast('Generando pieza amigable… ~20s ☁️');
+  const slug=resp.slug;let tries=0;
+  const iv=setInterval(async()=>{
+    tries++;
+    const s=await fetch('/api/progress?slug='+encodeURIComponent(slug)).then(r=>r.json()).catch(()=>({}));
+    if(s.done||tries>120){
+      clearInterval(iv);btn.disabled=false;btn.innerHTML=txt;
+      if(s.error){toast('Error al generar: '+String(s.error).slice(0,90));}
+      else{toast('¡Pieza amigable lista! ✓');load();}
+    }
+  },1500);
+}
 async function genOne(el){
   const get=k=>el.querySelector(`[data-k="${k}"]`).value;
   const f=el.dataset.file, price=get('price');
