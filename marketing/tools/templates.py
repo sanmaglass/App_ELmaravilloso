@@ -166,13 +166,14 @@ def _wrap(s,maxc):
     if cur: lines.append(cur)
     return lines or [s]
 
-def fit_title(name,maxw_px,size_hi,size_lo,max_lines=3):
-    """Ajusta la fuente del título para que TODO el texto entre en ancho y nº de líneas,
-    sin perder palabras. Devuelve (font, lines, size). Achica de size_hi a size_lo."""
+def fit_title(name,maxw_px,size_hi,size_lo,max_lines=3,font_fn=None):
+    """Ajusta la fuente para que TODO el texto entre en ancho y nº de líneas, sin perder
+    palabras. Devuelve (font, lines, size). Achica de size_hi a size_lo. font_fn = rol tipográfico."""
+    ff=font_fn or f_name
     name=(name or "").strip(); words=name.split()
     tmp=ImageDraw.Draw(Image.new("RGBA",(10,10)))
     for size in range(int(size_hi),int(size_lo)-1,-4):
-        f=f_name(size); lines=[]; cur=""
+        f=ff(size); lines=[]; cur=""
         for w in words:
             test=(cur+" "+w).strip()
             if not cur or tmp.textlength(test,font=f)<=maxw_px: cur=test
@@ -180,8 +181,23 @@ def fit_title(name,maxw_px,size_hi,size_lo,max_lines=3):
         if cur: lines.append(cur)
         if lines and len(lines)<=max_lines and all(tmp.textlength(l,font=f)<=maxw_px for l in lines):
             return f,lines,size
-    f=f_name(int(size_lo))
+    f=ff(int(size_lo))
     return f,(_wrap(name,16)[:max_lines] or [name or " "]),int(size_lo)
+
+# Titulares llamativos (rotan en cada generación para dar variedad)
+HEADLINES=["¡OFERTÓN!","PRECIAZO","¡APROVECHA!","SÚPER PRECIO","¡IMPERDIBLE!",
+           "LLÉVATELO HOY","OJO ESTE PRECIO","¡REBAJADO!","SOLO POR HOY","PRECIO INCREÍBLE",
+           "¡NO TE LO PIERDAS!","OFERTA DE LA SEMANA","PRECIO BOMBA","¡ÚLTIMOS DÍAS!","DIRECTO DE FÁBRICA"]
+def pick_headline(i):
+    return HEADLINES[int(i)%len(HEADLINES)]
+
+def brand_icon():
+    """Esfera M de la marca, recortada del logo (sin el texto), nítida y transparente."""
+    lg=Image.open(os.path.join(ASSETS,"logo_v2.png")).convert("RGBA")
+    bb=lg.getbbox()
+    if bb: lg=lg.crop(bb)
+    # la esfera ocupa la parte superior cuadrada; el nombre va debajo -> recortar a cuadrado superior
+    return lg.crop((0,0,lg.width,min(lg.height,lg.width)))
 
 def bg_friendly(pal,Wf,Hf):
     """Fondo suave con degradé vertical sutil + grilla fina + blobs de profundidad."""
@@ -209,20 +225,19 @@ def coin_pct(size,pal):
     d.text((S*0.5,S*0.43),"%",font=f_price(int(S*0.5)),fill=(255,255,255,235),anchor="mm")
     return im.resize((size,size),Image.LANCZOS)
 
-def wordmark(im,pal,cx,cy):
-    """Wordmark limpio tipo catálogo (sin recuadro): logo M transparente + texto."""
-    d=ImageDraw.Draw(im)
+def wordmark(im,pal,cx,cy_top):
+    """Header limpio: esfera M (nítida) + 'DISTRIBUIDORA' + 'El Maravilloso'. Devuelve y inferior."""
+    d=ImageDraw.Draw(im); W=im.width; y=cy_top
     try:
-        lg=Image.open(os.path.join(ASSETS,"logo_v2.png")).convert("RGBA")
-        lg=defringe(lg,erode=2)
-        s=int(im.width*0.10); lg=lg.resize((s,s),Image.LANCZOS)
-        im.alpha_composite(lg,(int(cx-s/2),int(cy-s*0.60)))
-        cy+=s*0.50
+        ic=brand_icon(); s=int(W*0.15); ic=ic.resize((s,s),Image.LANCZOS)
+        im.alpha_composite(ic,(int(cx-s/2),int(y)))
+        y+=s*0.96
     except Exception: pass
-    d.text((cx,cy),"D I S T R I B U I D O R A",font=f_ui(int(im.width*0.026)),
+    d.text((cx,y),"D I S T R I B U I D O R A",font=f_ui(int(W*0.023)),
            fill=pal["muted"]+(255,),anchor="mm")
-    d.text((cx,cy+im.width*0.052),"El Maravilloso",font=f_name(int(im.width*0.072)),
+    d.text((cx,y+W*0.05),"El Maravilloso",font=f_name(int(W*0.068)),
            fill=pal["ink"]+(255,),anchor="mm")
+    return y+W*0.085
 
 def place_products(im,paths,pal,cy,maxh):
     """Coloca 1..3 productos en fila, ligeramente solapados, con sombra suave."""
@@ -245,34 +260,40 @@ def place_products(im,paths,pal,cy,maxh):
     for i in sorted(range(n),key=lambda i:abs(i-(n-1)/2),reverse=True):
         paste_c(im,prods[i],xs[i],cy)
 
-def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45"):
-    """Pieza amigable multi-producto. products: lista de rutas de recortes PNG."""
+def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",headline=None):
+    """Pieza amigable multi-producto. products: lista de rutas de recortes PNG.
+    headline = titular llamativo (si None, rota uno del banco según el nombre)."""
     P=PALETTES.get(pal,PAL_MARCA)
     Wf,Hf=dims(fmt2)
     im=bg_friendly(P,Wf,Hf); d=ImageDraw.Draw(im); cx=Wf/2
     im.alpha_composite(coin_pct(int(Wf*0.30),P),(int(Wf*0.73),int(Hf*0.015)))
     im.alpha_composite(coin_pct(int(Wf*0.27),P),(int(-Wf*0.09),int(Hf*0.48)))
     im.alpha_composite(coin_pct(int(Wf*0.19),P),(int(Wf*0.80),int(Hf*0.86)))
-    wordmark(im,P,cx,int(Hf*0.085))
-    # título auto-ajustado (nunca pierde palabras)
-    fnt,lines,fsz=fit_title(name,Wf*0.84,Wf*0.105,Wf*0.062,3)
-    lineH=int(fsz*1.12)
-    ty=int(Hf*0.215)
-    for ln in lines:
-        d.text((cx,ty),ln,font=fnt,fill=P["ink"]+(255,),anchor="mm")
-        ty+=lineH
-    title_bottom=ty-lineH
-    # precio en píldora, bajo el título con holgura
+    y0=wordmark(im,P,cx,int(Hf*0.05))
+    # titular llamativo (display condensado) — rota para variar
+    hl=headline or pick_headline(abs(hash(name or ""))%len(HEADLINES))
+    hfnt,hlines,hsz=fit_title(hl,Wf*0.88,Wf*0.150,Wf*0.09,2,font_fn=f_display)
+    sfnt,slines,ssz=fit_title(name,Wf*0.80,Wf*0.070,Wf*0.05,2,font_fn=f_name)
+    yy=y0+Hf*0.022  # posicionado por BORDE SUPERIOR para no chocar con el header
+    for ln in hlines:
+        d.text((cx,yy+hsz*0.5),ln,font=hfnt,fill=P["pill"]+(255,),anchor="mm")  # rojo de marca = pega
+        yy+=hsz*1.0
+    yy+=Hf*0.008
+    for ln in slines:
+        d.text((cx,yy+ssz*0.55),ln,font=sfnt,fill=P["ink"]+(255,),anchor="mm")
+        yy+=ssz*1.12
+    block_bottom=yy
+    # precio en píldora, bajo el bloque con holgura
     ps=fmt_str or fmt(price)
     pf=f_price(int(Wf*0.135))
     bb=d.textbbox((0,0),ps,font=pf); pw=bb[2]-bb[0]; ph=bb[3]-bb[1]
     pad_x,pad_y=int(Wf*0.075),int(Wf*0.05)
-    py=int(title_bottom+fsz*0.6+ph/2+Wf*0.045)
+    py=int(block_bottom+pad_y+ph/2+Wf*0.012)
     _rrect(d,[cx-pw/2-pad_x,py-ph/2-pad_y,cx+pw/2+pad_x,py+ph/2+pad_y],int(Wf*0.07),P["pill"]+(255,))
     d.text((cx,py),ps,font=pf,fill=P["pill_txt"]+(255,),anchor="mm")
     # productos: bajo la píldora con holgura garantizada
-    prod_cy=max(int(Hf*0.715),py+int(ph/2)+pad_y+int(Hf*0.21))
-    place_products(im,products,P,prod_cy,int(Hf*0.42))
+    prod_cy=max(int(Hf*0.72),py+int(ph/2)+pad_y+int(Hf*0.20))
+    place_products(im,products,P,prod_cy,int(Hf*0.40))
     return im
 
 # ---------------- ESTILO A: CLASICA ----------------

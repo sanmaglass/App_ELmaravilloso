@@ -1004,31 +1004,44 @@ def build_amigable(args):
     prod_cy = Hf*0.695
     front_order = sorted(range(n), key=lambda i: abs(i-(n-1)/2), reverse=True)
 
-    # textos / fuentes — título auto-ajustado (nunca pierde palabras)
-    fname, title_lines, fsz = T.fit_title(args.name, Wf*0.84, Wf*0.105, Wf*0.062, 3)
+    # textos / fuentes
     ps = T.fmt(args.price)
-    fui    = T.f_ui(int(Wf*0.026))
-    fwm    = T.f_name(int(Wf*0.072))
     fprice = T.f_price(int(Wf*0.135))
-    pill_im = _pill_image(ps, fprice, P, Wf)
+    pill_im = _pill_image(ps, fprice, P, Wf); ph = pill_im.height
 
-    # logo M transparente
+    # header: esfera M nítida (recortada del logo) + DISTRIBUIDORA + El Maravilloso
     try:
-        lg = T.defringe(Image.open(os.path.join(T.ASSETS, "logo_v2.png")).convert("RGBA"), erode=2)
-        s = int(Wf*0.10); lg = lg.resize((s, s), Image.LANCZOS)
+        ic = T.brand_icon(); ics = int(Wf*0.15); ic = ic.resize((ics, ics), Image.LANCZOS)
     except Exception:
-        lg = None
+        ic, ics = None, 0
+    dist_im = text_img("D I S T R I B U I D O R A", T.f_ui(int(Wf*0.023)), tuple(P["muted"]))
+    name_im = text_img("El Maravilloso", T.f_name(int(Wf*0.068)), tuple(P["ink"]))
+
+    # titular llamativo (rota para variar) + subtítulo (nombre/tema)
+    headline = getattr(args, "headline", None) or random.choice(T.HEADLINES)
+    hfnt, hlines, hsz = T.fit_title(headline, Wf*0.88, Wf*0.150, Wf*0.09, 2, font_fn=T.f_display)
+    sfnt, slines, ssz = T.fit_title(args.name, Wf*0.80, Wf*0.070, Wf*0.05, 2, font_fn=T.f_name)
+    hl_ims = [text_img(l, hfnt, tuple(P["pill"])) for l in hlines]   # rojo de marca = pega
+    sb_ims = [text_img(l, sfnt, tuple(P["ink"]))  for l in slines]
+
+    # posiciones verticales fijas (en el loop solo se anima alpha/slide)
+    icon_top = Hf*0.045
+    yh = icon_top + (ics*0.96 if ic is not None else 0)
+    dist_cy = yh; name_cy = yh + Wf*0.05; header_bottom = name_cy + Wf*0.05
+    yy = header_bottom + Hf*0.022
+    hl_cys = []
+    for _ in hlines: hl_cys.append(yy + hsz*0.5); yy += hsz*1.0
+    yy += Hf*0.008
+    sb_cys = []
+    for _ in slines: sb_cys.append(yy + ssz*0.55); yy += ssz*1.12
+    pill_cy = yy + ph/2 + Wf*0.02
+    prod_cy = max(prod_cy, pill_cy + ph/2 + Hf*0.13)  # productos siempre bajo la píldora
 
     # tiempos
     dur = float(getattr(args, "seconds", 6.0) or 6.0)
     nframes = int(dur*FPS)
     p_start = [0.5 + i*0.18 for i in range(n)]
-    lineH    = int(fsz*1.12)
-    title_cy = Hf*0.235
-    title_bottom = title_cy + (len(title_lines)-1)*lineH
-    pill_cy  = title_bottom + fsz*0.6 + Wf*0.10
-    prod_cy  = max(prod_cy, pill_cy + Wf*0.115 + Hf*0.15)  # productos siempre bajo la píldora
-    pill_t   = 0.35 + len(title_lines)*0.12 + 0.15
+    pill_t = 0.75
     beats = {"whoosh_tag": 0.30, "whoosh_prod": round(p_start[0], 2),
              "price": round(pill_t, 2), "footer": max(0.5, dur-0.5)}
 
@@ -1041,29 +1054,25 @@ def build_amigable(args):
         if cb and (fi % 5 == 0 or fi == nframes-1): cb(int(fi/nframes*100))
 
         # monedas flotando + fade-in
-        for img, bx, by, ph in coin_specs:
+        for img, bx, by, cph in coin_specs:
             ca = ease_out(clamp01((t-0.1)/0.5))
-            paste_center(frame, img, bx, by + math.sin(t*1.4+ph)*10, 1.0, ca)
+            paste_center(frame, img, bx, by + math.sin(t*1.4+cph)*10, 1.0, ca)
 
-        # wordmark (logo + DISTRIBUIDORA + El Maravilloso) con fade+slide
-        wa = ease_out(clamp01(t/0.6))
-        wy = Hf*0.085 + (1-wa)*-24
-        if lg is not None:
-            paste_center(frame, lg, Wf/2, wy - lg.height*0.05, 1.0, wa)
-            wy2 = wy + lg.height*0.50
-        else:
-            wy2 = wy
+        # header (esfera + textos) con fade+slide
+        wa = ease_out(clamp01(t/0.6)); dy = (1-wa)*-22
+        if ic is not None: paste_center(frame, ic, Wf/2, icon_top+ics/2+dy, 1.0, wa)
         if wa > 0.01:
-            paste_center(frame, text_img("D I S T R I B U I D O R A", fui, tuple(P["muted"])), Wf/2, wy2, 1.0, wa)
-            paste_center(frame, text_img("El Maravilloso", fwm, tuple(P["ink"])), Wf/2, wy2+Wf*0.052, 1.0, wa)
+            paste_center(frame, dist_im, Wf/2, dist_cy+dy, 1.0, wa)
+            paste_center(frame, name_im, Wf/2, name_cy+dy, 1.0, wa)
 
-        # título (líneas con stagger)
-        ty = title_cy
-        for li, ln in enumerate(title_lines):
-            ta = ease_out(clamp01((t-0.25-li*0.12)/0.5))
-            if ta > 0.01:
-                paste_center(frame, text_img(ln, fname, tuple(P["ink"])), Wf/2, ty+(1-ta)*-18, 1.0, ta)
-            ty += lineH
+        # titular llamativo (stagger, slide)
+        for li, im in enumerate(hl_ims):
+            ha = ease_out(clamp01((t-0.25-li*0.10)/0.5))
+            if ha > 0.01: paste_center(frame, im, Wf/2, hl_cys[li]+(1-ha)*-20, 1.0, ha)
+        # subtítulo
+        for li, im in enumerate(sb_ims):
+            sa = ease_out(clamp01((t-0.45-li*0.08)/0.5))
+            if sa > 0.01: paste_center(frame, im, Wf/2, sb_cys[li]+(1-sa)*-14, 1.0, sa)
 
         # precio en píldora (pop)
         pa = clamp01((t-pill_t)/0.5)
