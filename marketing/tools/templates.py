@@ -513,7 +513,7 @@ def price_block(im,cx,cy,price,price_old=None,unit="c/u",color=RED,scale=1.0):
     unidad discreta en texto fino gris (no pill cuadrada chillona)."""
     d=ImageDraw.Draw(im)
     num=fmt(price)[1:]  # sin el $
-    fp=f_price(int(310*scale)); fd=f_price(int(118*scale))
+    fp=f_price(int(288*scale)); fd=f_price(int(112*scale))
     bb=d.textbbox((0,0),num,font=fp); nw=bb[2]-bb[0]; nh=bb[3]-bb[1]; ntop=bb[1]
     bd=d.textbbox((0,0),"$",font=fd); dw=bd[2]-bd[0]; dh=bd[3]-bd[1]
     gap=int(8*scale)
@@ -622,8 +622,8 @@ def style_premium(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt=
         tag_pill(im,int(Wf*0.135),int(bar+Hf*0.052),tag)
     # producto con sombra de contacto elíptica bajo el producto
     feed=(Hf<=Wf*1.05)
-    prod=load_product(product,int(Wf*0.72),int(Hf*(0.34 if feed else 0.40)))
-    py=Hf*(0.32 if feed else 0.42)
+    prod=load_product(product,int(Wf*0.80),int(Hf*(0.39 if feed else 0.45)))
+    py=Hf*(0.31 if feed else 0.41)
     contact_shadow(im,cx,py+prod.height*0.52,prod.width*0.82,op=0.22)
     paste_c(im,prod,cx,py)
     # nombre + línea roja + filete oro + guiño azul
@@ -656,7 +656,7 @@ def premium_dark(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt="
     place_brand_header(im,cx,bar*0.5,int(bar*0.78),(255,255,255))
     if price_old: badge_pct(im,Wf-185,int(Hf*0.245),round((1-price/price_old)*100))
     else: ribbon_oferta(im,tag,"tl")
-    prod=load_product(product,int(Wf*0.72),int(Hf*0.40)); py=Hf*0.44
+    prod=load_product(product,int(Wf*0.80),int(Hf*0.45)); py=Hf*0.44
     contact_shadow(im,cx,py+prod.height*0.50,prod.width*0.82,op=0.35)
     paste_c(im,prod,cx,py)
     ny=Hf*0.665
@@ -672,10 +672,10 @@ def premium_giant(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt=
     im=bg_cream(Wf,Hf); d=ImageDraw.Draw(im)
     bar=int(Hf*0.078); bar_red(im,0,bar,"bottom"); bar_red(im,Hf-bar,Hf,"top")
     place_brand_header(im,cx,bar*0.5,int(bar*0.78),(255,255,255))
-    prod=load_product(product,int(Wf*0.56),int(Hf*0.30)); py=Hf*0.30
+    prod=load_product(product,int(Wf*0.66),int(Hf*0.35)); py=Hf*0.285
     contact_shadow(im,cx,py+prod.height*0.50,prod.width*0.8,op=0.22)
     paste_c(im,prod,cx,py)
-    ny=Hf*0.475
+    ny=Hf*0.49
     txt(d,(cx,ny),name.upper(),f_display(64),INK)
     if price_old:
         old="Normal "+fmt_money(price_old)
@@ -684,8 +684,8 @@ def premium_giant(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt=
         d.line([(cx-ow/2-6,oy),(cx+ow/2+6,oy)],fill=RED,width=5)
     # precio gigante ocupa el tercio inferior
     sc=Wf/1080.0
-    txt(d,(cx,int(Hf*0.72)),fmt_money(price),f_price(int(360*sc)),RED)
-    pill(d,cx,int(Hf*0.83),260*sc,56*sc,GOLD); txt(d,(cx,int(Hf*0.83)),unit.upper(),f_ui(int(34*sc)),RED_INK)
+    txt(d,(cx,int(Hf*0.725)),fmt_money(price),f_price(int(292*sc)),RED)
+    pill(d,cx,int(Hf*0.83),250*sc,54*sc,GOLD); txt(d,(cx,int(Hf*0.83)),unit.upper(),f_ui(int(33*sc)),RED_INK)
     txt(d,(cx,Hf-bar*0.5),"HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO",f_ui(int(34*sc)),CREAM_HI)
     return im
 
@@ -698,7 +698,7 @@ def premium_split(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt=
     place_brand_header(im,Wf*0.32,Hf*0.07,int(Hf*0.052),(176,16,24))
     if price_old: badge_pct(im,Wf-180,int(Hf*0.16),round((1-price/price_old)*100))
     else: ribbon_oferta(im,tag,"tl")
-    prod=load_product(product,int(Wf*0.66),int(Hf*0.36)); py=Hf*0.40
+    prod=load_product(product,int(Wf*0.74),int(Hf*0.42)); py=Hf*0.385
     contact_shadow(im,cx,py+prod.height*0.50,prod.width*0.8,op=0.20)
     paste_c(im,prod,cx,py)
     sc=Wf/1080.0
@@ -710,7 +710,7 @@ def premium_split(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt=
         txt(d,(cx,oy),old,f_strike(42),CREAM_HI)
         ob=d.textbbox((0,0),old,font=f_strike(42)); ow=ob[2]-ob[0]
         d.line([(cx-ow/2-6,oy),(cx+ow/2+6,oy)],fill=YELLOW,width=5)
-    txt(d,(cx,int(Hf*0.84)),fmt_money(price),f_price(int(260*sc)),CREAM_HI)
+    txt(d,(cx,int(Hf*0.84)),fmt_money(price),f_price(int(248*sc)),CREAM_HI)
     txt(d,(cx,int(Hf*0.93)),unit.upper()+"  ·  HUALPEN  ·  DESPACHO",f_ui(int(30*sc)),YELLOW)
     return im
 

@@ -341,8 +341,8 @@ def _build_look(args, look="premium"):
             "glow": brand_glow(cx, H * 0.44, W * 0.55, (80, 40, 30), 0.10),  # glow cálido tenue
             "vign": radial_vignette_dark(0.28),
             "prod_cy": H * 0.44,
-            "prod_maxw": W * 0.72,
-            "prod_maxh": H * 0.40,
+            "prod_maxw": W * 0.80,
+            "prod_maxh": H * 0.45,
             "name_y": H * 0.665,
             "price_y": int(H * 0.815),
             "filetes": "gold_only",    # un solo filete GOLD
@@ -361,11 +361,11 @@ def _build_look(args, look="premium"):
             "footer_color": CREAM_HI,
             "glow": brand_glow(cx, H * 0.44, W * 0.55, BLUE, 0.10),
             "vign": radial_vignette(0.14),
-            "prod_cy": H * 0.30,       # producto más arriba
-            "prod_maxw": W * 0.56,     # producto más chico
-            "prod_maxh": H * 0.30,
-            "name_y": H * 0.475,       # nombre en H*0.475
-            "price_y": int(H * 0.72),  # precio gigante en tercio inferior
+            "prod_cy": H * 0.285,      # producto más arriba
+            "prod_maxw": W * 0.66,     # producto con más presencia
+            "prod_maxh": H * 0.35,
+            "name_y": H * 0.49,        # nombre bajo el producto más grande
+            "price_y": int(H * 0.725), # precio gigante en tercio inferior
             "filetes": "none",
             "logo_asset": "normal",
         }
@@ -391,9 +391,9 @@ def _build_look(args, look="premium"):
             "footer_color": YELLOW,
             "glow": None,               # sin glow en split
             "vign": radial_vignette(0.12),
-            "prod_cy": H * 0.40,        # producto centrado sobre la banda
-            "prod_maxw": W * 0.66,
-            "prod_maxh": H * 0.36,
+            "prod_cy": H * 0.385,       # producto centrado sobre la banda
+            "prod_maxw": W * 0.74,
+            "prod_maxh": H * 0.42,
             "name_y": H * 0.685,        # nombre sobre la banda roja
             "price_y": int(H * 0.84),   # precio sobre rojo
             "filetes": "none",
@@ -441,7 +441,7 @@ def _build_look(args, look="premium"):
 
     # Bloque precio: número + símbolo separados para el pop animado
     num_str = fmt_price(args.price)[1:]  # sin el $
-    price_sz = 310 if look != "giant" else 360   # giant usa tamaño más grande
+    price_sz = 288 if look != "giant" else 292   # precio más contenido para que el producto comparta foco
     price_im = text_img(num_str, f_price(price_sz), cfg["price_color"])
     price_sh = text_img(num_str, f_price(price_sz), (30, 12, 14, 150)).filter(ImageFilter.GaussianBlur(6))
     dollar_sz = 118 if look != "giant" else 136
@@ -498,7 +498,7 @@ def _build_look(args, look="premium"):
     price_settled_at = PRICE_SETTLE.get(price_style, PRICE_START + 0.55)
 
     # Para slot: preparar fuente de dígitos (misma que price_im pero necesitamos el objeto)
-    slot_font = f_price(310 if look != "giant" else 360)
+    slot_font = f_price(288 if look != "giant" else 292)
 
     silent = os.path.splitext(args.out)[0] + ".silent.mp4"
     ff = imageio_writer(silent, _bitrate_for(dur))
