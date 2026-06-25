@@ -305,6 +305,13 @@ def place_products(im,items,pal,cy,maxh,show_prices=False):
             tag=price_tag(pr,pal,tsz)
             paste_c(im,tag,xs[i],cy+p.height*0.5-tag.height*0.30)
 
+def _amigable_footer(im,pal,cx,Wf,Hf,text,y):
+    """Pie con la dirección + filete, ancla la parte baja del 9:16."""
+    d=ImageDraw.Draw(im)
+    d.line([(int(Wf*0.14),int(y-Hf*0.028)),(int(Wf*0.86),int(y-Hf*0.028))],
+           fill=tuple(pal["pill"])+(150,),width=3)
+    d.text((cx,y),text,font=f_ui(int(Wf*0.030)),fill=tuple(pal["ink"])+(255,),anchor="mm")
+
 def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",headline=None,header_style="banner"):
     """Pieza amigable multi-producto. products: lista de rutas de recortes PNG.
     headline = titular llamativo (si None, rota uno del banco según el nombre).
@@ -331,12 +338,14 @@ def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",he
     block_bottom=yy
     items=_norm_items(products,price)
     per_product=len(items)>1   # 2+ productos = precio por producto (sin píldora central)
+    foot_y=int(Hf*0.92)
     if per_product:
-        # cada producto con su etiqueta; sin píldora hero. Productos más grandes y centrados abajo.
-        prod_cy=int(block_bottom+Hf*0.27)
-        place_products(im,items,P,prod_cy,int(Hf*0.36),show_prices=True)
+        # productos GRANDES justo bajo el subtítulo (el aire queda abajo, anclado por el pie)
+        maxh=int(Hf*0.40)
+        prod_cy=int(block_bottom+Hf*0.045+maxh*0.5)
+        place_products(im,items,P,prod_cy,maxh,show_prices=True)
     else:
-        # 1 producto: píldora hero central
+        # 1 producto: píldora hero central + producto grande abajo
         ps=fmt_str or fmt(items[0]["price"] if items and items[0].get("price") else price)
         pf=f_price(int(Wf*0.135))
         bb=d.textbbox((0,0),ps,font=pf); pw=bb[2]-bb[0]; ph=bb[3]-bb[1]
@@ -344,8 +353,12 @@ def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",he
         py=int(block_bottom+pad_y+ph/2+Wf*0.012)
         _rrect(d,[cx-pw/2-pad_x,py-ph/2-pad_y,cx+pw/2+pad_x,py+ph/2+pad_y],int(Wf*0.07),P["pill"]+(255,))
         d.text((cx,py),ps,font=pf,fill=P["pill_txt"]+(255,),anchor="mm")
-        prod_cy=max(int(Hf*0.72),py+int(ph/2)+pad_y+int(Hf*0.20))
-        place_products(im,items,P,prod_cy,int(Hf*0.40))
+        zone_top=py+ph/2+pad_y
+        prod_cy=int((zone_top+(foot_y-Hf*0.05))/2)
+        maxh=int((foot_y-Hf*0.05-zone_top)*0.84)
+        place_products(im,items,P,prod_cy,maxh)
+    # pie con la dirección (ancla la parte baja, llena el vacío)
+    _amigable_footer(im,P,cx,Wf,Hf,"GRECIA 1841, HUALPÉN   ·   DESPACHO",foot_y)
     return im
 
 # ---------------- ESTILO A: CLASICA ----------------
