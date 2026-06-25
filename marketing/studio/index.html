@@ -732,7 +732,7 @@ function renderPending(files){
           </select></div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;font-size:.86rem;color:var(--ink)">
-          <input type="checkbox" data-k="bg" style="width:auto"> ✂️ Quitar fondo a la foto</label>
+          <input type="checkbox" data-k="bg" style="width:auto" checked> ✂️ Quitar fondo a la foto</label>
         <button class="btn btn-red" data-gen>✨ Generar pieza</button>
       </div>`;
     el.querySelector('[data-gen]').onclick=()=>genOne(el);
@@ -843,6 +843,7 @@ function renderPosts(posts){
           <div class="row">
             <button class="btn btn-ghost btn-sm" data-sch>📅 Programar</button>
             <button class="btn btn-red btn-sm" data-pub style="margin-top:0">📤 Publicar en IG</button>
+            <button class="btn btn-ghost btn-sm" data-pub-fb style="margin-top:0">📘 Publicar en FB</button>
           </div>
         </div>
         <hr class="post-sep">
@@ -890,6 +891,15 @@ function renderPosts(posts){
       else if(r.error){toast('IG: '+r.error);}
       else{toast('¡Publicado en Instagram! 🎉');}
       btn.disabled=false;btn.innerHTML='📤 Publicar en IG';load();
+    };
+    el.querySelector('[data-pub-fb]').onclick=async(ev)=>{
+      const btn=ev.currentTarget;btn.disabled=true;btn.innerHTML='<span class="spin"></span> Publicando…';
+      const r=await api('/api/publish-fb',{slug:p.slug,kind:'video'});
+      if(r.error==='no_page'){toast('Falta conectar Facebook (reconecta con el permiso pages_manage_posts)');}
+      else if(r.error==='no_hosting'){toast('Falta PUBLIC_BASE_URL (hosting de las piezas)');}
+      else if(r.error){toast('FB: '+r.error);}
+      else{toast('¡Publicado en Facebook! 📘');}
+      btn.disabled=false;btn.innerHTML='📘 Publicar en FB';load();
     };
     el.querySelector('[data-del]').onclick=async()=>{
       if(!confirm('¿Eliminar esta pieza?'))return;

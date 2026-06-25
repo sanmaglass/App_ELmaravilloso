@@ -1009,9 +1009,9 @@ def public_url(local_rel):
 
 # ---------- OAuth con Facebook: conectar Instagram con 1 clic ----------
 FB_REDIRECT = os.environ.get("FB_REDIRECT_URI", "http://localhost:8000/api/fb-callback")
-# Scopes ACTIVOS hoy (publicar + DMs). Para métricas/comentarios agregar luego en la app:
+# Scopes ACTIVOS hoy (publicar IG+FB + DMs). Para métricas/comentarios agregar luego en la app:
 #   instagram_manage_insights, instagram_manage_comments (+ pages_messaging para webhooks)
-FB_SCOPES = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,business_management,instagram_manage_messages"
+FB_SCOPES = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,pages_manage_posts,read_insights,instagram_manage_insights,instagram_manage_comments,business_management,instagram_manage_messages"
 IG_AUTH_FILE = os.path.join(HERE, "ig_auth.json")
 
 def load_ig_auth():
@@ -1027,6 +1027,33 @@ def get_ig_auth():
     ig_id = a.get("ig_user_id") or os.environ.get("IG_USER_ID")
     return token, ig_id
 
+def get_page_auth():
+    """Page id + page access token para publicar en Facebook.
+    Usa lo guardado en ig_auth.json; si falta el page token, lo deriva del user
+    token vía me/accounts (requiere que el token tenga pages_show_list)."""
+    a = load_ig_auth()
+    page_id = a.get("page_id") or os.environ.get("FB_PAGE_ID")
+    page_token = a.get("page_token")
+    if page_id and page_token:
+        return page_id, page_token
+    user_token = a.get("access_token") or os.environ.get("IG_TOKEN")
+    if not user_token:
+        return None, None
+    try:
+        pages = _ig_api("GET", "me/accounts",
+                        {"fields": "name,access_token,instagram_business_account", "access_token": user_token})
+        for pg in pages.get("data", []):
+            if pg.get("instagram_business_account") or page_id is None:
+                page_id = pg.get("id")
+                page_token = pg.get("access_token")
+        # cachear en ig_auth.json para próximas veces
+        if page_id and page_token:
+            a["page_id"] = page_id; a["page_token"] = page_token
+            json.dump(a, open(IG_AUTH_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    except Exception:
+        return None, None
+    return page_id, page_token
+
 @app.get("/api/fb-connect")
 def fb_connect():
     app_id = os.environ.get("FB_APP_ID")
@@ -1034,7 +1061,10 @@ def fb_connect():
         return JSONResponse({"error": "Falta FB_APP_ID en el .env"}, status_code=400)
     url = ("https://www.facebook.com/v21.0/dialog/oauth?"
            + urllib.parse.urlencode({"client_id": app_id, "redirect_uri": FB_REDIRECT,
-                                     "scope": FB_SCOPES, "response_type": "code"}))
+                                     "scope": FB_SCOPES, "response_type": "code",
+                                     # fuerza a FB a re-pedir TODOS los permisos (incluidos los nuevos)
+                                     # aunque la app ya estuviera autorizada antes
+                                     "auth_type": "rerequest"}))
     return RedirectResponse(url)
 
 def _get_json(url):
@@ -1068,14 +1098,21 @@ def fb_callback(code: str = "", error: str = "", error_reason: str = "",
         lon = _get_json(f"{GRAPH}/oauth/access_token?" + urllib.parse.urlencode(
             {"grant_type": "fb_exchange_token", "client_id": app_id, "client_secret": secret, "fb_exchange_token": short}))
         token = lon["access_token"]
-        # 3) IG user id desde la página vinculada
+        # 3) IG user id + página FB (id + page token) desde la página vinculada
         pages = _get_json(f"{GRAPH}/me/accounts?" + urllib.parse.urlencode(
-            {"fields": "name,instagram_business_account", "access_token": token}))
-        ig_id = None
+            {"fields": "name,access_token,instagram_business_account", "access_token": token}))
+        ig_id = page_id = page_token = page_name = None
         for pg in pages.get("data", []):
-            if pg.get("instagram_business_account"):
-                ig_id = pg["instagram_business_account"]["id"]
-        json.dump({"access_token": token, "ig_user_id": ig_id, "expires_in": lon.get("expires_in"),
+            # Preferir la página que tiene Instagram vinculado; si no, la primera
+            if pg.get("instagram_business_account") or page_id is None:
+                page_id = pg.get("id")
+                page_token = pg.get("access_token")
+                page_name = pg.get("name")
+                if pg.get("instagram_business_account"):
+                    ig_id = pg["instagram_business_account"]["id"]
+        json.dump({"access_token": token, "ig_user_id": ig_id,
+                   "page_id": page_id, "page_token": page_token, "page_name": page_name,
+                   "expires_in": lon.get("expires_in"),
                    "connected_at": datetime.now().strftime("%Y-%m-%d %H:%M")},
                   open(IG_AUTH_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
         ok = "✅ Instagram conectado" if ig_id else "⚠️ Conectado, pero no se encontró cuenta de Instagram en la página"
@@ -1090,7 +1127,9 @@ def fb_callback(code: str = "", error: str = "", error_reason: str = "",
 def ig_status():
     token, ig_id = get_ig_auth()
     a = load_ig_auth()
-    return {"connected": bool(token and ig_id), "ig_user_id": ig_id, "connected_at": a.get("connected_at")}
+    return {"connected": bool(token and ig_id), "ig_user_id": ig_id, "connected_at": a.get("connected_at"),
+            "fb_connected": bool(a.get("page_id") and a.get("page_token")),
+            "page_name": a.get("page_name")}
 
 @app.post("/api/publish")
 async def publish(req: Request):
@@ -1129,6 +1168,36 @@ async def publish(req: Request):
         post["status"] = "publicado"
         save_data(d)
         return {"ok": True, "id": pub.get("id")}
+    except Exception as e:
+        return JSONResponse({"error": str(e)[:180]}, status_code=500)
+
+@app.post("/api/publish-fb")
+async def publish_fb(req: Request):
+    """Publica en la página de Facebook (foto o video) con el page token."""
+    b = await req.json()
+    page_id, page_token = get_page_auth()
+    if not page_id or not page_token:
+        return JSONResponse({"error": "no_page"}, status_code=400)
+    d = load_data()
+    post = next((p for p in d["posts"] if p["slug"] == b.get("slug")), None)
+    if not post:
+        return JSONResponse({"error": "post no encontrado"}, status_code=404)
+    cap = post.get("caption") or {}
+    msg = (cap.get("ig_caption", "") + "\n\n" + cap.get("hashtags", "")).strip() or post["name"]
+    kind = b.get("kind", "photo")  # 'video' o 'photo'
+    media = public_url(post["video"] if kind == "video" else post["image"])
+    if not media:
+        return JSONResponse({"error": "no_hosting"}, status_code=400)
+    try:
+        if kind == "video":
+            res = _ig_api("POST", f"{page_id}/videos",
+                          {"file_url": media, "description": msg, "access_token": page_token})
+        else:
+            res = _ig_api("POST", f"{page_id}/photos",
+                          {"url": media, "caption": msg, "access_token": page_token})
+        post["status_fb"] = "publicado"
+        save_data(d)
+        return {"ok": True, "id": res.get("id") or res.get("post_id")}
     except Exception as e:
         return JSONResponse({"error": str(e)[:180]}, status_code=500)
 
