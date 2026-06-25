@@ -146,7 +146,14 @@ PAL_MINT = dict(
     blob=(176,212,170), coin=(120,176,108), coin_rim=(168,210,156),
     ink=(38,66,38), muted=(70,104,66), pill=(46,86,46), pill_txt=(255,255,255),
 )
-PALETTES={"teal":PAL_TEAL,"warm":PAL_WARM,"mint":PAL_MINT}
+# Paleta El Maravilloso: crema cálida + ROJO de marca + monedas DORADAS (plata/ahorro).
+# Layout amigable pero identidad propia (no el teal de la referencia).
+PAL_MARCA = dict(
+    bg=(247,238,224), bg2=(252,246,236), grid=(198,128,76), grid_a=18,
+    blob=(248,222,188), coin=(208,166,86), coin_rim=(232,198,132),
+    ink=(160,22,28), muted=(150,104,72), pill=(214,28,36), pill_txt=(255,255,255),
+)
+PALETTES={"marca":PAL_MARCA,"teal":PAL_TEAL,"warm":PAL_WARM,"mint":PAL_MINT}
 
 def _rrect(d,box,r,fill):
     d.rounded_rectangle(box,radius=r,fill=fill)
@@ -219,9 +226,9 @@ def place_products(im,paths,pal,cy,maxh):
     for i in sorted(range(n),key=lambda i:abs(i-(n-1)/2),reverse=True):
         paste_c(im,prods[i],xs[i],cy)
 
-def style_amigable(name,price,products,pal="teal",fmt_str=None,fmt2="feed45"):
+def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45"):
     """Pieza amigable multi-producto. products: lista de rutas de recortes PNG."""
-    P=PALETTES.get(pal,PAL_TEAL)
+    P=PALETTES.get(pal,PAL_MARCA)
     Wf,Hf=dims(fmt2)
     im=bg_friendly(P,Wf,Hf); d=ImageDraw.Draw(im); cx=Wf/2
     im.alpha_composite(coin_pct(int(Wf*0.30),P),(int(Wf*0.73),int(Hf*0.015)))
