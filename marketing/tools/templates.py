@@ -198,12 +198,16 @@ def brand_header(W, text_color=(160,22,28), text="EL MARAVILLOSO"):
     s=int(W*0.165); ich=int(ic.height*s/ic.width); ic=ic.resize((s,ich),Image.LANCZOS)
     f=f_name(int(W*0.052))
     tmp=ImageDraw.Draw(Image.new("RGBA",(10,10)))
-    bb=tmp.textbbox((0,0),text,font=f); tw=bb[2]-bb[0]; asc=-bb[1]; th=bb[3]-bb[1]
-    gap=int(W*0.022)
-    Wt=s+gap+tw; Ht=max(ich,th)
-    im=Image.new("RGBA",(Wt,Ht),(0,0,0,0)); d=ImageDraw.Draw(im)
-    im.alpha_composite(ic,(0,(Ht-ich)//2))
-    d.text((s+gap, Ht//2), text, font=f, fill=tuple(text_color)+(255,), anchor="lm")
+    bb=tmp.textbbox((0,0),text,font=f); tw=bb[2]-bb[0]; th=bb[3]-bb[1]
+    gap=int(W*0.022); pad=int(s*0.12)  # margen para la sombra
+    Wt=pad+s+gap+tw+pad; Ht=max(ich,th)+pad*2
+    im=Image.new("RGBA",(Wt,Ht),(0,0,0,0))
+    icy=(Ht-ich)//2
+    # sombra suave de la esfera (para que RESALTE sobre fondos claros, no se vea pálida)
+    sh=Image.new("RGBA",(s,ich),(0,0,0,0)); sh.putalpha(ic.split()[3].point(lambda v:int(v*0.42)))
+    im.alpha_composite(sh.filter(ImageFilter.GaussianBlur(max(2,int(s*0.05)))),(pad+int(s*0.02),icy+int(s*0.04)))
+    im.alpha_composite(ic,(pad,icy))
+    ImageDraw.Draw(im).text((pad+s+gap, Ht//2), text, font=f, fill=tuple(text_color)+(255,), anchor="lm")
     return im
 
 def brand_icon():

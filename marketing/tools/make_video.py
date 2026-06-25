@@ -246,7 +246,7 @@ def build(args):
     dur = args.seconds
     nframes = int(dur * FPS)
     silent = os.path.splitext(args.out)[0] + ".silent.mp4"
-    ff = imageio_writer(silent)
+    ff = imageio_writer(silent, _bitrate_for(dur))
     cx = W / 2
     for fi in range(nframes):
         t = fi / FPS
@@ -414,11 +414,11 @@ def _build_look(args, look="premium"):
             "footer_color": (250, 248, 243),
             "glow": brand_glow(cx, H * 0.44, W * 0.55, BLUE, 0.16),
             "vign": radial_vignette(0.16),
-            "prod_cy": H * 0.44,
-            "prod_maxw": W * 0.72,
-            "prod_maxh": H * 0.40,
+            "prod_cy": H * 0.42,
+            "prod_maxw": W * 0.82,
+            "prod_maxh": H * 0.46,
             "name_y": H * 0.665,
-            "price_y": int(H * 0.815),
+            "price_y": int(H * 0.785),
             "filetes": "red_gold_blue",
             "logo_asset": "normal",
         }
@@ -426,7 +426,7 @@ def _build_look(args, look="premium"):
     # ---- Header limpio compuesto (esfera + EL MARAVILLOSO), color según contraste del look ----
     _hdr_color = (255, 255, 255) if look == "dark" else (176, 16, 24)  # solo dark tiene tope oscuro
     _hdr = T.brand_header(W, text_color=_hdr_color)
-    _hsc = (W * 0.50) / _hdr.width
+    _hsc = (W * 0.60) / _hdr.width
     _hdr = _hdr.resize((int(_hdr.width * _hsc), int(_hdr.height * _hsc)), Image.LANCZOS)
 
     # Producto
@@ -501,7 +501,7 @@ def _build_look(args, look="premium"):
     slot_font = f_price(310 if look != "giant" else 360)
 
     silent = os.path.splitext(args.out)[0] + ".silent.mp4"
-    ff = imageio_writer(silent)
+    ff = imageio_writer(silent, _bitrate_for(dur))
 
     for fi in range(nframes):
         t = fi / FPS
@@ -716,7 +716,8 @@ def _build_look(args, look="premium"):
         # ---- CTA de cierre ----
         if t >= dur - 1.6:
             ca = ease_out(clamp01((t - (dur - 1.6)) / 0.5))
-            cy_band = H - cfg["bar"] - 70
+            # SIEMPRE debajo del precio (no taparlo), pero sin pisar la barra inferior
+            cy_band = min(H - cfg["bar"] - 56, max(H - cfg["bar"] - 70, int(num_bottom + 58)))
             band = Image.new("RGBA", (W, 88), (237, 28, 36, int(235 * ca)))
             frame.alpha_composite(band, (0, int(cy_band - 44)))
             ImageDraw.Draw(frame).rectangle([0, int(cy_band - 44), W, int(cy_band - 41)], fill=GOLD)
@@ -1011,7 +1012,7 @@ def build_amigable(args):
     front_order = sorted(range(n), key=lambda i: abs(i-(n-1)/2), reverse=True)
 
     silent = os.path.splitext(args.out)[0] + ".silent.mp4"
-    ff = imageio_writer(silent)
+    ff = imageio_writer(silent, _bitrate_for(dur))
 
     for fi in range(nframes):
         t = fi/FPS
@@ -1111,10 +1112,15 @@ def _make_badge(pct):
     d.text((size / 2, size / 2 + 44), "DCTO", font=f_name(36), fill=WHITE, anchor="mm")
     return star
 
-def imageio_writer(out):
+def _bitrate_for(dur, target_mb=4.3):
+    """Bitrate que mantiene el archivo de video bajo ~5MB (deja margen para el audio)."""
+    mbps = max(3.0, min(9.0, target_mb * 8.0 / max(1.0, float(dur))))
+    return f"{mbps:.1f}M"
+
+def imageio_writer(out, bitrate="9M"):
     import imageio
     return imageio.get_writer(
-        out, fps=FPS, codec="libx264", bitrate="9M",
+        out, fps=FPS, codec="libx264", bitrate=bitrate,
         macro_block_size=8, pixelformat="yuv420p",
         ffmpeg_params=["-profile:v", "high", "-level", "4.0",
                        "-movflags", "+faststart",
