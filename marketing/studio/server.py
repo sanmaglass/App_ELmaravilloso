@@ -954,6 +954,28 @@ async def caption(req: Request):
         save_data(d)
     return cap
 
+@app.post("/api/save-caption")
+async def save_caption(req: Request):
+    """Persiste una caption EDITADA A MANO por el usuario (antes los edits se perdían)."""
+    b = await req.json()
+    if not b.get("slug"):
+        return JSONResponse({"error": "sin slug"}, status_code=400)
+    d = load_data()
+    ok = False
+    for p in d["posts"]:
+        if p["slug"] == b["slug"]:
+            cap = p.get("caption") or {}
+            if "ig_caption" in b:
+                cap["ig_caption"] = str(b.get("ig_caption", ""))
+                if "hashtags" in b:   # el textarea de IG ya trae los hashtags; no duplicar al publicar
+                    cap["hashtags"] = str(b.get("hashtags", ""))
+            if "tiktok_text" in b:
+                cap["tiktok_text"] = str(b.get("tiktok_text", ""))
+            p["caption"] = cap
+            ok = True
+    save_data(d)
+    return {"ok": ok}
+
 # ---------- Cola en la nube para el publicador del VPS ----------
 def _sb_env():
     return os.environ.get("SUPABASE_URL", "").rstrip("/"), os.environ.get("SUPABASE_SERVICE_KEY", "")
