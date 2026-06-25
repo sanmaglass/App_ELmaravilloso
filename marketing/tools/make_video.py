@@ -1022,7 +1022,9 @@ def build_amigable(args):
         ff.append_data(np.asarray(frame))
     ff.close()
     if cb: cb(100)
-    beats = {"whoosh_tag": 0.25, "price": 0.7, "footer": max(0.5, dur-0.5)}
+    # Estático + Ken Burns: UN solo whoosh de entrada sincronizado al fade-in (la pieza
+    # aparece como un todo). Sin SFX de precio/footer (sonaban a "algo aparece" y nada se movía).
+    beats = {"whoosh_tag": 0.18}
     _finalize(args, silent, beats)
     print("OK ->", args.out, f"(amigable, {nframes} frames, {dur}s)")
 

@@ -288,13 +288,16 @@ def _norm_items(products,default_price):
             out.append({"path":p,"price":default_price,"name":"","gram":None})
     return out[:3]
 
-def place_products(im,items,pal,cy,maxh,show_prices=False):
-    """Coloca 1..3 productos en fila, solapados, con sombra. Si show_prices: etiqueta por producto."""
+def place_products(im,items,pal,cy,maxh,show_prices=False,top_y=None):
+    """Coloca 1..3 productos en fila, solapados, con sombra. Si show_prices: etiqueta por producto.
+    top_y: si se da, ancla el BORDE SUPERIOR del producto más alto ahí (evita hueco arriba)."""
     items=_norm_items(items,None)
     if not items: return
     n=len(items); ov=int(im.width*0.055)  # solape
     per_w=min(int(im.width*0.62),int((im.width*0.98+ov*(n-1))/n))  # productos más grandes
     prods=[load_product(it["path"],per_w,maxh) for it in items]
+    if top_y is not None:
+        cy=top_y+max(p.height for p in prods)/2   # posicionar por borde superior real
     total=sum(p.width for p in prods)-ov*(n-1)
     xs=[]; x=im.width/2-total/2
     for p in prods:
@@ -347,10 +350,9 @@ def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",he
     per_product=len(items)>1   # 2+ productos = precio por producto (sin píldora central)
     foot_y=int(Hf*0.92)
     if per_product:
-        # productos GRANDES justo bajo el subtítulo (el aire queda abajo, anclado por el pie)
+        # productos GRANDES anclados por su borde superior justo bajo el subtítulo (sin hueco)
         maxh=int(Hf*0.45)
-        prod_cy=int(block_bottom+Hf*0.04+maxh*0.5)
-        place_products(im,items,P,prod_cy,maxh,show_prices=True)
+        place_products(im,items,P,None,maxh,show_prices=True,top_y=int(block_bottom+Hf*0.04))
     else:
         # 1 producto: píldora hero central + producto grande abajo
         ps=fmt_str or fmt(items[0]["price"] if items and items[0].get("price") else price)
