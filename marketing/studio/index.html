@@ -104,6 +104,10 @@
   .pill{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;font-weight:600;padding:4px 11px;border-radius:999px}
   .pill.listo{background:#e7f6ec;color:var(--ok)}.pill.prog{background:#fff2e0;color:var(--amber)}
   .pill.pub{background:#e8eefc;color:var(--blue)}
+  .angle-row{display:flex;align-items:center;gap:8px;margin:2px 0 8px}
+  .angle-row .lab-mini{font-size:.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  .angle-sel{flex:1;font-size:.84rem;font-weight:600;color:var(--ink);padding:6px 8px;border:1px solid var(--line);border-radius:9px;background:#fff;cursor:pointer;transition:border-color .15s}
+  .angle-sel:hover{border-color:var(--red)}.angle-sel:focus{outline:none;border-color:var(--red)}
   .meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
   .meta .price{font-weight:800;color:var(--red);font-size:1.7rem;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1}
   /* ── BLOQUE CAP (Instagram/TikTok + botones IA) ──────── */
@@ -800,6 +804,14 @@ $('#gen-all').onclick=async()=>{
   toast(`${n} piezas generadas 🎬`); btn.disabled=false; btn.innerHTML='⚡ Generar todas'; load();
 };
 
+// Tipos de contenido (mezcla — frente 2 del plan de crecimiento)
+const TYPES=[['oferta','🏷️ Oferta'],['combo','🛒 Combo'],['once','☕ Once / antojo'],['tip','💡 Tip ahorro'],['cercania','🧡 Cercanía'],['recordatorio','🔔 Recordatorio'],['negocio','🏪 Negocio'],['pregunta','❓ Pregunta'],['corto','✂️ Corto']];
+function typeSelect(p){
+  const cur=p.angle||'oferta';
+  const opts=TYPES.map(([v,l])=>`<option value="${v}" ${cur===v?'selected':''}>${l}</option>`).join('');
+  return `<div class="angle-row"><span class="lab-mini">Tipo</span><select data-angle class="angle-sel">${opts}</select></div>`;
+}
+
 function capBlock(p){
   const c=p.caption;
   if(!c) return `<button class="btn btn-ghost btn-sm" data-cap style="margin-top:10px">✍️ Generar descripción</button>`;
@@ -833,6 +845,7 @@ function renderPosts(posts){
         <div class="meta"><span class="price">$${Number(p.price).toLocaleString('es-CL')}</span>
           <span class="pill ${cls}">${p.status}</span></div>
         <div style="font-weight:600;margin-bottom:6px;font-size:.97rem">${p.name}</div>
+        ${typeSelect(p)}
         ${capBlock(p)}
         <hr class="post-sep">
         <div class="post-sched">
@@ -856,17 +869,25 @@ function renderPosts(posts){
       </div>`;
     const v=el.querySelector('video'), media=el.querySelector('.media');
     media.onmouseenter=()=>v.play(); media.onmouseleave=()=>{v.pause();v.currentTime=0;};
+    const curAngle=()=>{const s=el.querySelector('[data-angle]');return s?s.value:(p.angle||'oferta');};
+    const angleSel=el.querySelector('[data-angle]');
+    if(angleSel) angleSel.onchange=async()=>{
+      angleSel.disabled=true;
+      const r=await api('/api/caption',{slug:p.slug,name:p.name,price:p.price,angle:angleSel.value,variant:Date.now()%100000});
+      if(r.error){toast('No se pudo cambiar el tipo');angleSel.disabled=false;return;}
+      toast('Tipo: '+angleSel.options[angleSel.selectedIndex].text);load();
+    };
     const capBtn=el.querySelector('[data-cap]');
     if(capBtn) capBtn.onclick=async()=>{
       capBtn.disabled=true;capBtn.innerHTML='<span class="spin dark"></span> Escribiendo…';
-      const r=await api('/api/caption',{slug:p.slug,name:p.name,price:p.price,variant:Date.now()%100000});
+      const r=await api('/api/caption',{slug:p.slug,name:p.name,price:p.price,angle:curAngle(),variant:Date.now()%100000});
       if(r.error){toast('No se pudo generar');capBtn.disabled=false;capBtn.innerHTML='✍️ Generar descripción';return;}
       load();
     };
     const capAiBtn=el.querySelector('[data-cap-ai]');
     if(capAiBtn) capAiBtn.onclick=async()=>{
       capAiBtn.disabled=true;capAiBtn.innerHTML='<span class="spin dark"></span>';
-      const r=await api('/api/caption',{slug:p.slug,name:p.name,price:p.price,ai:true,variant:Date.now()%100000});
+      const r=await api('/api/caption',{slug:p.slug,name:p.name,price:p.price,angle:curAngle(),ai:true,variant:Date.now()%100000});
       if(r.error==='no_key'){toast('Falta API key de Anthropic en el .env (captions IA)');capAiBtn.disabled=false;capAiBtn.innerHTML='✨ IA';return;}
       if(r.error){toast('No se pudo generar con IA');capAiBtn.disabled=false;capAiBtn.innerHTML='✨ IA';return;}
       load();
@@ -915,7 +936,7 @@ function renderPosts(posts){
 
 $('#autosch').onclick=async()=>{
   const r=await api('/api/autoschedule',{});
-  toast(r.assigned?`${r.assigned} piezas agendadas 🗓️`:'No hay piezas sin fecha');load();
+  toast(r.assigned?`${r.assigned} piezas agendadas con mezcla de tipos 🗓️`:'No hay piezas sin fecha');load();
 };
 $('#export').onclick=()=>{ window.location='/api/export.csv'; toast('Descargando CSV ⬇'); };
 

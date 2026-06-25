@@ -415,8 +415,69 @@ TIKTOK_CORTO = [
     "{name} {price} disponible ya.",
 ]
 
-def templated_caption(name, price, variant=0):
-    """6 estructuras de caption claramente distintas según el variant."""
+# ── Bancos para la MEZCLA DE CONTENIDO (frente 2: combo / cercanía / recordatorio) ──
+COMBO_HOOKS = [
+    "Arma tu combo en una sola pasada 🛒",
+    "Lo de la once, junto:",
+    "Combo listo para la semana:",
+    "Para no comprar a medias — llévalo en combo:",
+    "La compra completa de una vez:",
+    "Combínalo y rinde más:",
+]
+COMBO_BODY = [
+    "{name} a {price} + lo que te falte para completar la mesa. Arma tu combo en la distribuidora.",
+    "Suma {name} ({price}) a tu pan, té o bebidas y deja la despensa lista.",
+    "Con {name} a {price} y un par de complementos tienes la semana resuelta.",
+    "{name} a {price} es la base — agrégale el resto y llévatelo todo junto.",
+    "Empieza el combo con {name} a {price} y completa con lo que más sale en casa.",
+]
+CERCANIA = [
+    "Somos tu distribuidora de barrio en Hualpén, a metros del colegio Montaner. Atención cercana y precios de verdad.",
+    "Acá te atendemos como vecino, no como número. Pasa a vernos a Grecia 1841, Hualpén.",
+    "El Maravilloso es de Hualpén para Hualpén — público y negocios, siempre con buena atención.",
+    "Llevamos el precio de distribuidora a tu barrio. Te esperamos en Grecia 1841, Hualpén.",
+    "Detrás del mostrador hay gente de acá que te conoce. Esa es la diferencia de comprar en el barrio.",
+]
+RECORDATORIO = [
+    "¡Llegó stock! {name} disponible a {price}. Pasa hoy antes que se acabe.",
+    "Recuerda que estamos de Lunes a Sábado 10 a 20 y Domingo 10 a 17. Te esperamos en Hualpén.",
+    "Disponible ahora: {name} a {price}. Hualpén, público y negocios.",
+    "Hoy tenemos {name} a {price}. Pasa o escríbenos para coordinar.",
+    "Reponemos seguido: {name} a {price} otra vez en góndola. Aprovecha.",
+]
+TIKTOK_COMBO = [
+    "Arma tu combo: {name} {price} + lo que falte. El Maravilloso, Hualpén 🛒",
+    "El combo arranca con {name} a {price}. Completa en Hualpén.",
+    "{name} {price} y completa la despensa de una. El Maravilloso.",
+]
+TIKTOK_CERCANIA = [
+    "Tu distribuidora de barrio en Hualpén 🧡 Grecia 1841, a metros del Montaner.",
+    "Precios de distribuidora con atención de barrio. El Maravilloso, Hualpén.",
+    "De Hualpén para Hualpén. Público y negocios. Te esperamos 📦",
+]
+TIKTOK_RECORDATORIO = [
+    "¡Llegó {name}! {price}. Pasa hoy. El Maravilloso, Hualpén.",
+    "Abierto Lun a Sáb 10-20 · Dom 10-17. Te esperamos 📍 Hualpén.",
+    "Stock fresco: {name} {price}. El Maravilloso, Hualpén.",
+]
+
+# Tipos de contenido para la mezcla (frente 2 del plan de crecimiento)
+ANGLE_TO_STRUCT = {
+    "oferta": 0, "pregunta": 1, "once": 2, "antojo": 2, "tip": 3,
+    "negocio": 4, "corto": 5, "combo": 6, "cercania": 7, "recordatorio": 8,
+}
+NUM_STRUCT = 9
+CONTENT_LABELS = {
+    "oferta": "Oferta", "combo": "Combo", "once": "Once/Antojo", "tip": "Tip ahorro",
+    "cercania": "Cercanía", "recordatorio": "Recordatorio", "negocio": "Negocio",
+    "pregunta": "Pregunta", "corto": "Corto",
+}
+# Patrón semanal de mezcla: variado, con peso en oferta pero sin repetir el tipo en días seguidos
+CONTENT_MIX = ["oferta", "combo", "once", "tip", "oferta", "cercania", "recordatorio"]
+
+def templated_caption(name, price, variant=0, angle=None):
+    """9 estructuras de caption claramente distintas. Si se pasa `angle`, fija la estructura
+    correspondiente (mezcla de contenido); si no, rota según el variant para dar variedad."""
     p = _money(price)
     v = abs(hash(name)) + int(variant or 0)
     # pick dentro de un banco dado, desplazado por v para variedad entre productos
@@ -428,7 +489,10 @@ def templated_caption(name, price, variant=0):
 
     tags = _build_hashtags(name, v)
 
-    structure = int(variant or 0) % 6
+    if angle and angle in ANGLE_TO_STRUCT:
+        structure = ANGLE_TO_STRUCT[angle]
+    else:
+        structure = int(variant or 0) % NUM_STRUCT
 
     # ── Estructura 0: Oferta directa (gancho → precio → dónde) ──────────────
     if structure == 0:
@@ -479,6 +543,33 @@ def templated_caption(name, price, variant=0):
         tk = pick(TIKTOK_NEGOCIO, 3).format(name=nn, price=p)
 
     # ── Estructura 5: Frase corta y seca ────────────────────────────────────
+    elif structure == 5:
+        ig = f"{nn} a {p}.\n\n{pick(CTAS_CORTOS, 0)}"
+        tk = pick(TIKTOK_CORTO, 1).format(name=nn, price=p)
+
+    # ── Estructura 6: Combo / canasta ────────────────────────────────────────
+    elif structure == 6:
+        hook = pick(COMBO_HOOKS, 0)
+        body = pick(COMBO_BODY, 1).format(name=nn, price=p)
+        where = pick(CTAS_CORTOS, 2)
+        ig = f"{hook}\n\n{body}\n\n{where}"
+        tk = pick(TIKTOK_COMBO, 3).format(name=nn, price=p)
+
+    # ── Estructura 7: Cercanía / comunidad (el precio es secundario) ─────────
+    elif structure == 7:
+        cuerpo = pick(CERCANIA, 0)
+        precio_line = f"Hoy de paso: {nn} a {p}."
+        ig = f"{cuerpo}\n\n{precio_line}"
+        tk = pick(TIKTOK_CERCANIA, 1)
+
+    # ── Estructura 8: Recordatorio / llegó stock / horario ──────────────────
+    elif structure == 8:
+        rec = pick(RECORDATORIO, 0).format(name=nn, price=p)
+        where = pick(CTAS_CORTOS, 1)
+        ig = f"{rec}\n\n{where}"
+        tk = pick(TIKTOK_RECORDATORIO, 2).format(name=nn, price=p)
+
+    # ── Fallback seguro ──────────────────────────────────────────────────────
     else:
         ig = f"{nn} a {p}.\n\n{pick(CTAS_CORTOS, 0)}"
         tk = pick(TIKTOK_CORTO, 1).format(name=nn, price=p)
@@ -634,6 +725,11 @@ def generate_caption(name, price, angle=None):
     angulos = {
         "oferta":   "oferta directa — arranca con el precio, explica por qué conviene y cierra con ubicación o DM.",
         "antojo":   "antojo / consumo en casa — evoca la hora de once o el desayuno, la despensa bien surtida; el precio aparece natural.",
+        "once":     "la once / antojo en casa — evoca la hora de once chilena (pan, té, algo rico), la mesa surtida; el precio aparece natural, no es lo central.",
+        "combo":    "combo o canasta — propón una combinación útil de este producto con 1 o 2 complementos típicos (para la once, el desayuno o el asado) e invita a armar el combo en la distribuidora. NO inventes precios de los complementos, solo del producto principal.",
+        "tip":      "tip de ahorro / dato útil — entrega un consejo real (comprar por mayor baja el precio por unidad, stockear lo de alta rotación, comprar antes que suba) y desde ahí enlaza al producto y su precio.",
+        "cercania": "cercanía y comunidad — humaniza la marca: distribuidora de barrio en Hualpén, Grecia 1841 a metros del colegio Montaner, atención cercana de vecino. El precio es secundario o puede ni aparecer.",
+        "recordatorio": "recordatorio / servicio — avisa que llegó o hay stock del producto, o recuerda el horario (Lun a Sáb 10 a 20, Dom 10 a 17) y que pueden pasar hoy. Tono breve y útil.",
         "negocio":  "enfocado en negocios o reventa — habla de margen, surtir el almacén o botillería, despacho mayorista.",
         "corto":    "caption cortísimo, una o dos líneas máximo, sin adornos — precio y dónde comprar, nada más.",
         "pregunta": "empieza con una pregunta que enganche ('¿Cuánto pagaste…?', '¿Ya tienes stock?') y luego revela el precio.",
@@ -762,32 +858,53 @@ def _normalize_hashtags(s, maxn=5):
             break
     return " ".join(out)
 
+def _caption_for(name, price, angle=None, variant=0):
+    """Genera un caption con el ángulo dado: IA (Groq gratis/Anthropic) si hay key, si no plantillas.
+    Usado por la auto-agenda para refrescar el texto según el tipo asignado en la mezcla."""
+    has_key = bool(os.environ.get("GROQ_API_KEY") or os.environ.get("ANTHROPIC_API_KEY"))
+    if has_key:
+        try:
+            return generate_caption(name, price, angle=angle)
+        except Exception:
+            pass
+    return templated_caption(name, price, variant, angle=angle)
+
 @app.post("/api/caption")
 async def caption(req: Request):
     b = await req.json()
     name = b.get("name", "")
     price = int(b.get("price", 0) or 0)
+    # Ángulo: explícito del request, o el guardado en el post (mezcla de contenido)
+    angle = b.get("angle")
+    if not angle and b.get("slug"):
+        d0 = load_data()
+        for p in d0["posts"]:
+            if p["slug"] == b["slug"]:
+                angle = p.get("angle")
+                break
     # DEFAULT = IA (Groq gratis/Anthropic) si hay key configurada; si no hay key o falla, cae a plantillas.
     want_ai = b.get("ai")  # True=forzar IA, False=forzar plantilla, None=automático (IA si hay key)
     has_key = bool(os.environ.get("GROQ_API_KEY") or os.environ.get("ANTHROPIC_API_KEY"))
     use_ai = has_key if want_ai is None else bool(want_ai)
     if use_ai:
         try:
-            cap = generate_caption(name, price, angle=b.get("angle"))
+            cap = generate_caption(name, price, angle=angle)
         except Exception as e:
             m = str(e).lower()
             es_no_key = ("api_key" in m or "authentication" in m or "x-api-key" in m or "no_key" in m or "401" in m)
             if want_ai and es_no_key:   # el usuario pidió IA explícita y no hay key -> avisar
                 return JSONResponse({"error": "no_key"}, status_code=400)
-            cap = templated_caption(name, price, b.get("variant", 0))  # fallback silencioso
+            cap = templated_caption(name, price, b.get("variant", 0), angle=angle)  # fallback silencioso
     else:
-        cap = templated_caption(name, price, b.get("variant", 0))
-    # guarda en el post si existe
+        cap = templated_caption(name, price, b.get("variant", 0), angle=angle)
+    # guarda en el post si existe (caption + ángulo elegido)
     if b.get("slug"):
         d = load_data()
         for p in d["posts"]:
             if p["slug"] == b["slug"]:
                 p["caption"] = cap
+                if angle:
+                    p["angle"] = angle
         save_data(d)
     return cap
 
@@ -821,6 +938,16 @@ async def autoschedule(req: Request):
             if slot and (ds, slot) not in taken:
                 p["date"], p["time"], p["status"] = ds, slot, "programado"
                 taken.add((ds, slot))
+                # MEZCLA DE CONTENIDO: asigna un tipo variado y refresca el caption a ese tipo.
+                # Respeta el tipo si el usuario ya eligió uno a mano.
+                if not p.get("angle"):
+                    angle = CONTENT_MIX[assigned % len(CONTENT_MIX)]
+                    p["angle"] = angle
+                    try:
+                        p["caption"] = _caption_for(p.get("name", ""), p.get("price", 0),
+                                                    angle=angle, variant=assigned)
+                    except Exception:
+                        pass
                 assigned += 1
                 day += timedelta(days=1)
                 break
