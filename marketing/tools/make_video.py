@@ -977,130 +977,52 @@ def _pill_image(ps, fprice, P, Wf):
     return im
 
 def build_amigable(args):
-    """Video del estilo amigable multi-producto: fondo suave + monedas % + 2-3 productos
-    que entran con stagger, título y precio en píldora animados. Reutiliza templates.py."""
+    """Video del estilo amigable: usa el POSTER estático YA VERIFICADO (style_amigable, con
+    logo limpio nuevo + precio por producto) y le agrega movimiento (Ken Burns + fade-in) +
+    audio variado. Así el video se ve EXACTAMENTE como la imagen verificada (sin errores nuevos)."""
+    import json as _json
     cb = getattr(args, "on_progress", None)
     pal = getattr(args, "pal", "marca") or "marca"
-    P = T.PALETTES.get(pal, T.PALETTES["marca"])
-    Wf, Hf = T.dims("story")  # 1080x1920 (reel/tiktok)
 
-    # productos (acepta lista o string "a.png,b.png")
-    paths = getattr(args, "products", None) or [args.product]
-    if isinstance(paths, str): paths = [p.strip() for p in paths.split(",") if p.strip()]
-    paths = [p for p in paths if p][:3]
-    args.price = int(re.sub(r"[^0-9]", "", str(args.price)) or 0)
-
-    # ---- capa estática: fondo suave con grilla ----
-    bg = T.bg_friendly(P, Wf, Hf)
-
-    # monedas (imagen + posición base en px + fase de bob)
-    coin_specs = [
-        (T.coin_pct(int(Wf*0.30), P), Wf*0.86, Hf*0.065, 0.0),
-        (T.coin_pct(int(Wf*0.26), P), Wf*0.02, Hf*0.52, 1.1),
-        (T.coin_pct(int(Wf*0.17), P), Wf*0.88, Hf*0.91, 2.2),
-    ]
-
-    # productos: fila centrada, solapados, en banda inferior
-    maxh = int(Hf*0.42)
-    n = len(paths); ov = int(Wf*0.06)
-    # ancho por producto según cantidad (que la fila no exceda ~94% del ancho)
-    per_w = min(int(Wf*0.55), int((Wf*0.94 + ov*(n-1))/n))
-    prods  = [T.load_product(p, per_w, maxh) for p in paths]
-    floors = [T.shadow_of(p, blur=30, op=0.28) for p in prods]
-    total = sum(p.width for p in prods) - ov*(n-1)
-    xs = []; x = Wf/2 - total/2
-    for p in prods:
-        xs.append(x + p.width/2); x += p.width - ov
-    prod_cy = Hf*0.695
-    front_order = sorted(range(n), key=lambda i: abs(i-(n-1)/2), reverse=True)
-
-    # textos / fuentes
-    ps = T.fmt(args.price)
-    fprice = T.f_price(int(Wf*0.135))
-    pill_im = _pill_image(ps, fprice, P, Wf); ph = pill_im.height
-
-    # header: esfera M nítida (recortada del logo) + DISTRIBUIDORA + El Maravilloso
-    try:
-        ic = T.brand_icon(); ics = int(Wf*0.15); ic = ic.resize((ics, ics), Image.LANCZOS)
-    except Exception:
-        ic, ics = None, 0
-    dist_im = text_img("D I S T R I B U I D O R A", T.f_ui(int(Wf*0.023)), tuple(P["muted"]))
-    name_im = text_img("El Maravilloso", T.f_name(int(Wf*0.068)), tuple(P["ink"]))
-
-    # titular llamativo (rota para variar) + subtítulo (nombre/tema)
+    # items por producto: args.items = JSON [{"path","price","name"}], o fallback products+precio único
+    items = getattr(args, "items", None)
+    if isinstance(items, str):
+        try: items = _json.loads(items)
+        except Exception: items = None
+    if not items:
+        paths = getattr(args, "products", None) or [args.product]
+        if isinstance(paths, str): paths = [p.strip() for p in paths.split(",") if p.strip()]
+        pr = int(re.sub(r"[^0-9]", "", str(args.price)) or 0)
+        items = [{"path": p, "price": pr} for p in paths if p]
     headline = getattr(args, "headline", None) or random.choice(T.HEADLINES)
-    hfnt, hlines, hsz = T.fit_title(headline, Wf*0.88, Wf*0.150, Wf*0.09, 2, font_fn=T.f_display)
-    sfnt, slines, ssz = T.fit_title(args.name, Wf*0.80, Wf*0.070, Wf*0.05, 2, font_fn=T.f_name)
-    hl_ims = [text_img(l, hfnt, tuple(P["pill"])) for l in hlines]   # rojo de marca = pega
-    sb_ims = [text_img(l, sfnt, tuple(P["ink"]))  for l in slines]
 
-    # posiciones verticales fijas (en el loop solo se anima alpha/slide)
-    icon_top = Hf*0.045
-    yh = icon_top + (ics*0.96 if ic is not None else 0)
-    dist_cy = yh; name_cy = yh + Wf*0.05; header_bottom = name_cy + Wf*0.05
-    yy = header_bottom + Hf*0.022
-    hl_cys = []
-    for _ in hlines: hl_cys.append(yy + hsz*0.5); yy += hsz*1.0
-    yy += Hf*0.008
-    sb_cys = []
-    for _ in slines: sb_cys.append(yy + ssz*0.55); yy += ssz*1.12
-    pill_cy = yy + ph/2 + Wf*0.02
-    prod_cy = max(prod_cy, pill_cy + ph/2 + Hf*0.13)  # productos siempre bajo la píldora
+    # Poster estático verificado (mismo render que la imagen). price=0: usa el precio de cada item.
+    poster = T.style_amigable(args.name, 0, items, pal=pal, headline=headline, fmt2="story").convert("RGB")
+    Wf, Hf = poster.size
+    bgcol = tuple(T.PALETTES.get(pal, T.PALETTES["marca"])["bg2"])
 
-    # tiempos
     dur = float(getattr(args, "seconds", 6.0) or 6.0)
     nframes = int(dur*FPS)
-    p_start = [0.5 + i*0.18 for i in range(n)]
-    pill_t = 0.75
-    beats = {"whoosh_tag": 0.30, "whoosh_prod": round(p_start[0], 2),
-             "price": round(pill_t, 2), "footer": max(0.5, dur-0.5)}
-
     silent = os.path.splitext(args.out)[0] + ".silent.mp4"
     ff = imageio_writer(silent)
 
     for fi in range(nframes):
         t = fi/FPS
-        frame = bg.copy()
         if cb and (fi % 5 == 0 or fi == nframes-1): cb(int(fi/nframes*100))
-
-        # monedas flotando + fade-in
-        for img, bx, by, cph in coin_specs:
-            ca = ease_out(clamp01((t-0.1)/0.5))
-            paste_center(frame, img, bx, by + math.sin(t*1.4+cph)*10, 1.0, ca)
-
-        # header (esfera + textos) con fade+slide
-        wa = ease_out(clamp01(t/0.6)); dy = (1-wa)*-22
-        if ic is not None: paste_center(frame, ic, Wf/2, icon_top+ics/2+dy, 1.0, wa)
-        if wa > 0.01:
-            paste_center(frame, dist_im, Wf/2, dist_cy+dy, 1.0, wa)
-            paste_center(frame, name_im, Wf/2, name_cy+dy, 1.0, wa)
-
-        # titular llamativo (stagger, slide)
-        for li, im in enumerate(hl_ims):
-            ha = ease_out(clamp01((t-0.25-li*0.10)/0.5))
-            if ha > 0.01: paste_center(frame, im, Wf/2, hl_cys[li]+(1-ha)*-20, 1.0, ha)
-        # subtítulo
-        for li, im in enumerate(sb_ims):
-            sa = ease_out(clamp01((t-0.45-li*0.08)/0.5))
-            if sa > 0.01: paste_center(frame, im, Wf/2, sb_cys[li]+(1-sa)*-14, 1.0, sa)
-
-        # precio en píldora (pop)
-        pa = clamp01((t-pill_t)/0.5)
-        if pa > 0.01:
-            paste_center(frame, pill_im, Wf/2, pill_cy, lerp(0.55, 1.0, ease_out_back(pa)), clamp01(pa*1.4))
-
-        # productos: entran desde abajo con stagger + overshoot, luego flotan
-        for i in front_order:
-            p = prods[i]; te = clamp01((t-p_start[i])/0.6)
-            if te <= 0: continue
-            sl = ease_out_back(te); a = ease_out(clamp01((t-p_start[i])/0.4))
-            oy = (1-sl)*(Hf*0.22) + math.sin(t*1.5+i)*8*te
-            paste_center(frame, floors[i], xs[i]+10, prod_cy+oy+p.height*0.42, 1.0, 0.8*a)
-            paste_center(frame, p, xs[i], prod_cy+oy, 1.0, a)
-
-        ff.append_data(np.asarray(frame.convert("RGB")))
+        # Ken Burns: zoom suave 1.00 -> 1.05 (centrado)
+        z = 1.0 + 0.05*ease_out(clamp01(t/dur))
+        zw, zh = int(Wf*z), int(Hf*z)
+        zoomed = poster.resize((zw, zh), Image.LANCZOS)
+        ox, oy = (zw-Wf)//2, (zh-Hf)//2
+        frame = zoomed.crop((ox, oy, ox+Wf, oy+Hf))
+        # fade-in desde el color del fondo (primeros 0.5s)
+        fa = ease_out(clamp01(t/0.5))
+        if fa < 1.0:
+            frame = Image.blend(Image.new("RGB", (Wf, Hf), bgcol), frame, fa)
+        ff.append_data(np.asarray(frame))
     ff.close()
     if cb: cb(100)
+    beats = {"whoosh_tag": 0.25, "price": 0.7, "footer": max(0.5, dur-0.5)}
     _finalize(args, silent, beats)
     print("OK ->", args.out, f"(amigable, {nframes} frames, {dur}s)")
 
