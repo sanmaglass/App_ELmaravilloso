@@ -210,6 +210,13 @@ def brand_header(W, text_color=(160,22,28), text="EL MARAVILLOSO"):
     ImageDraw.Draw(im).text((pad+s+gap, Ht//2), text, font=f, fill=tuple(text_color)+(255,), anchor="lm")
     return im
 
+def place_brand_header(im,cx,cy,target_h,text_color):
+    """Coloca el header de marca (esfera glossy + EL MARAVILLOSO) escalado a una altura, centrado en (cx,cy)."""
+    h=brand_header(im.width,text_color=text_color)
+    sc=target_h/h.height
+    h=h.resize((max(1,int(h.width*sc)),max(1,int(h.height*sc))),Image.LANCZOS)
+    paste_c(im,h,cx,cy)
+
 def brand_icon():
     """Solo la ESFERA M, sin el texto blanco de abajo NI el lavado gris semi-transparente
     de fondo (logo_v2 trae alpha ~51 en todo el fondo -> se ve un recuadro gris)."""
@@ -605,8 +612,8 @@ def style_premium(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt=
     bar_red(im,0,bar,"bottom")
     bar_red(im,Hf-bar,Hf,"top")
     d=ImageDraw.Draw(im)
-    # logo centrado sobre la barra roja, tamaño equilibrado
-    lg=logo(int(Wf*0.30)); paste_c(im,lg,cx,bar*0.5)
+    # logo NUEVO (esfera glossy + EL MARAVILLOSO) en blanco sobre la barra roja
+    place_brand_header(im,cx,bar*0.5,int(bar*0.80),(255,255,255))
     # gancho: badge % si hay precio anterior; si no, sello OFERTA tipo ticket (no choca el logo)
     if price_old:
         pct=round((1-price/price_old)*100)
@@ -646,7 +653,7 @@ def premium_dark(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt="
     d=ImageDraw.Draw(im)
     bar=int(Hf*0.078); d.rectangle([0,0,Wf,bar],fill=RED_DEEP); d.rectangle([0,Hf-bar,Wf,Hf],fill=RED_DEEP)
     d.rectangle([0,bar-2,Wf,bar],fill=GOLD); d.rectangle([0,Hf-bar,Wf,Hf-bar+2],fill=GOLD)
-    paste_c(im,logo(int(Wf*0.28)),cx,bar*0.5)
+    place_brand_header(im,cx,bar*0.5,int(bar*0.78),(255,255,255))
     if price_old: badge_pct(im,Wf-185,int(Hf*0.245),round((1-price/price_old)*100))
     else: ribbon_oferta(im,tag,"tl")
     prod=load_product(product,int(Wf*0.72),int(Hf*0.40)); py=Hf*0.44
@@ -664,7 +671,7 @@ def premium_giant(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt=
     Wf,Hf=dims(fmt); cx=Wf/2
     im=bg_cream(Wf,Hf); d=ImageDraw.Draw(im)
     bar=int(Hf*0.078); bar_red(im,0,bar,"bottom"); bar_red(im,Hf-bar,Hf,"top")
-    paste_c(im,logo(int(Wf*0.26)),cx,bar*0.5)
+    place_brand_header(im,cx,bar*0.5,int(bar*0.78),(255,255,255))
     prod=load_product(product,int(Wf*0.56),int(Hf*0.30)); py=Hf*0.30
     contact_shadow(im,cx,py+prod.height*0.50,prod.width*0.8,op=0.22)
     paste_c(im,prod,cx,py)
@@ -688,7 +695,7 @@ def premium_split(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt=
     # banda roja diagonal inferior
     d.polygon([(0,Hf*0.62),(Wf,Hf*0.52),(Wf,Hf),(0,Hf)],fill=RED)
     d.line([(0,Hf*0.62),(Wf,Hf*0.52)],fill=GOLD,width=4)
-    paste_c(im,logo(int(Wf*0.26)),Wf*0.26,Hf*0.07)
+    place_brand_header(im,Wf*0.32,Hf*0.07,int(Hf*0.052),(176,16,24))
     if price_old: badge_pct(im,Wf-180,int(Hf*0.16),round((1-price/price_old)*100))
     else: ribbon_oferta(im,tag,"tl")
     prod=load_product(product,int(Wf*0.66),int(Hf*0.36)); py=Hf*0.40
