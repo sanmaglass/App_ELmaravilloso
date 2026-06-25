@@ -255,38 +255,45 @@ def wordmark(im,pal,cx,cy_top,style="banner"):
     im.alpha_composite(hdr,(int(W*0.06),int(cy_top)))
     return cy_top+th+int(W*0.025)
 
-def price_tag(price,pal,fsz):
-    """Etiqueta de precio (píldora roja) para poner bajo cada producto."""
+def price_tag(price,pal,fsz,gram=None):
+    """Etiqueta de precio (píldora roja). Si hay gramaje, va arriba en chico + precio abajo."""
     f=f_price(fsz); txt=fmt(price)
     tmp=ImageDraw.Draw(Image.new("RGBA",(10,10)))
-    bb=tmp.textbbox((0,0),txt,font=f); w=bb[2]-bb[0]; h=bb[3]-bb[1]
-    padx,pady=int(fsz*0.55),int(fsz*0.42)
-    W2,H2=w+padx*2,h+pady*2
-    im=Image.new("RGBA",(W2,H2),(0,0,0,0)); d=ImageDraw.Draw(im)
-    # sombra de contacto
-    sh=Image.new("RGBA",(W2,H2),(0,0,0,0)); ImageDraw.Draw(sh).rounded_rectangle([0,4,W2-1,H2-1+4],radius=H2//2,fill=(0,0,0,70))
+    bb=tmp.textbbox((0,0),txt,font=f); pw=bb[2]-bb[0]; ph=bb[3]-bb[1]
+    gw=gh=0; gtxt=""; gf=None
+    if gram:
+        gtxt=str(gram).upper(); gf=f_ui(int(fsz*0.46))
+        gb=tmp.textbbox((0,0),gtxt,font=gf); gw=gb[2]-gb[0]; gh=gb[3]-gb[1]
+    padx,pady,gap=int(fsz*0.55),int(fsz*0.40),int(fsz*0.14)
+    contentw=max(pw,gw); contenth=ph+((gh+gap) if gram else 0)
+    W2,H2=contentw+padx*2,contenth+pady*2
+    rad=int(min(W2,H2)*0.34)
+    sh=Image.new("RGBA",(W2,H2),(0,0,0,0)); ImageDraw.Draw(sh).rounded_rectangle([0,4,W2-1,H2-1+4],radius=rad,fill=(0,0,0,70))
     base=Image.new("RGBA",(W2,H2+6),(0,0,0,0)); base.alpha_composite(sh.filter(ImageFilter.GaussianBlur(5)),(0,2))
     d2=ImageDraw.Draw(base)
-    d2.rounded_rectangle([0,0,W2-1,H2-1],radius=H2//2,fill=tuple(pal["pill"])+(255,))
-    d2.text((W2/2,H2/2),txt,font=f,fill=tuple(pal["pill_txt"])+(255,),anchor="mm")
+    d2.rounded_rectangle([0,0,W2-1,H2-1],radius=rad,fill=tuple(pal["pill"])+(255,))
+    y=pady
+    if gram:
+        d2.text((W2/2,y-gb[1]),gtxt,font=gf,fill=(255,255,255,215),anchor="ma"); y+=gh+gap
+    d2.text((W2/2,y-bb[1]),txt,font=f,fill=tuple(pal["pill_txt"])+(255,),anchor="ma")
     return base
 
 def _norm_items(products,default_price):
-    """Normaliza products a [{path,price,name}]. Acepta rutas (str) o dicts."""
+    """Normaliza products a [{path,price,name,gram}]. Acepta rutas (str) o dicts."""
     out=[]
     for p in (products or []):
         if isinstance(p,dict):
-            if p.get("path"): out.append({"path":p["path"],"price":p.get("price"),"name":p.get("name","")})
+            if p.get("path"): out.append({"path":p["path"],"price":p.get("price"),"name":p.get("name",""),"gram":p.get("gram")})
         elif p:
-            out.append({"path":p,"price":default_price,"name":""})
+            out.append({"path":p,"price":default_price,"name":"","gram":None})
     return out[:3]
 
 def place_products(im,items,pal,cy,maxh,show_prices=False):
     """Coloca 1..3 productos en fila, solapados, con sombra. Si show_prices: etiqueta por producto."""
     items=_norm_items(items,None)
     if not items: return
-    n=len(items); ov=int(im.width*0.06)  # solape
-    per_w=min(int(im.width*0.55),int((im.width*0.94+ov*(n-1))/n))
+    n=len(items); ov=int(im.width*0.055)  # solape
+    per_w=min(int(im.width*0.62),int((im.width*0.98+ov*(n-1))/n))  # productos más grandes
     prods=[load_product(it["path"],per_w,maxh) for it in items]
     total=sum(p.width for p in prods)-ov*(n-1)
     xs=[]; x=im.width/2-total/2
@@ -302,8 +309,8 @@ def place_products(im,items,pal,cy,maxh,show_prices=False):
         for i,p in enumerate(prods):
             pr=items[i].get("price")
             if not pr: continue
-            tag=price_tag(pr,pal,tsz)
-            paste_c(im,tag,xs[i],cy+p.height*0.5-tag.height*0.30)
+            tag=price_tag(pr,pal,tsz,gram=items[i].get("gram"))
+            paste_c(im,tag,xs[i],cy+p.height*0.5-tag.height*0.26)
 
 def _amigable_footer(im,pal,cx,Wf,Hf,text,y):
     """Pie con la dirección + filete, ancla la parte baja del 9:16."""
@@ -341,8 +348,8 @@ def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",he
     foot_y=int(Hf*0.92)
     if per_product:
         # productos GRANDES justo bajo el subtítulo (el aire queda abajo, anclado por el pie)
-        maxh=int(Hf*0.40)
-        prod_cy=int(block_bottom+Hf*0.045+maxh*0.5)
+        maxh=int(Hf*0.45)
+        prod_cy=int(block_bottom+Hf*0.04+maxh*0.5)
         place_products(im,items,P,prod_cy,maxh,show_prices=True)
     else:
         # 1 producto: píldora hero central + producto grande abajo
