@@ -9,21 +9,34 @@
     "horario_colacion": "13:00 a 14:00 hrs"
   },
   "reglas": [
-    "Puedes arrancar con una pregunta-gancho corta y 1-2 emojis (ej: '¿Frío? ☕❄️'), cuando calce.",
-    "Conecta con una situación cotidiana y cálida (la hora de once, la casa, el negocio).",
-    "Destaca el precio en su propia línea, claro y directo. NO uses asteriscos de markdown (**) porque Instagram los muestra literales.",
-    "Cierra con la ubicación usando 📍 y la dirección (Grecia 1841, Hualpén), ofreciendo también escribir por DM.",
-    "Usa un cierre con urgencia suave cuando encaje ('reserva el tuyo antes de que se acaben', 'esta semana').",
-    "Tono cercano pero profesional, español chileno neutro. Sin jerga exagerada (nada de bacán, al tiro, los cabros, harto).",
-    "Nunca menciones fiado ni crédito. Emojis con moderación (0-3).",
-    "DE VEZ EN CUANDO (no en todos los posts) puedes mencionar como referencia que estamos a metros del colegio Montaner.",
-    "SOLO OCASIONALMENTE (no siempre) recuerda el horario de colación de 13:00 a 14:00 hrs. No lo pongas en cada publicación."
+    "Copy HUMANO, que NO suene a IA. Frases cortas y naturales, con saltos de línea. Como le hablas a un vecino, no como un anuncio.",
+    "NO abras con pregunta retórica ('¿Frío?', '¿Buscas…?', '¿Sabías que…?'). Arranca con una situación o una frase natural.",
+    "EVITA muletillas de IA: 'no hay nada mejor que', 'el aliado perfecto', 'no te lo pierdas', 'a solo', 'imperdible'.",
+    "EMOJIS: casi siempre NINGUNO. Como mucho 1, y solo de vez en cuando. Muchos emojis delatan que es IA, así que por defecto cero.",
+    "Aperturas naturales que puedes variar (no uses siempre la misma): 'Hoy llegaron…', 'Lo que más se llevó la gente esta semana…', 'Nos quedan pocas unidades…', 'Dato para la once…', '¿Team Milo o café?', 'Un cliente nos pidió que avisáramos cuando llegara…', 'Si tienes niños en la casa, esto siempre vuela.'",
+    "Menciona el precio UNA sola vez, claro y directo. NO uses asteriscos de markdown (**), Instagram los muestra literales.",
+    "El CIERRE debe VARIAR y sonar natural: a veces 'escríbenos y te lo dejamos reservado', a veces 'pasa a buscarlo', a veces por la zona ('si eres de Hualpén o Concepción…'). NO cierres siempre con '📍 Te esperamos en Grecia 1841'.",
+    "Mete con naturalidad el producto y la zona (Hualpén/Concepción) para alcance, sin forzar.",
+    "El nombre del producto en minúscula normal (Milo, no MILO).",
+    "Tono chileno cercano y natural, trato de tú. Sin jerga caricaturesca (nada de bacán, al tiro, los cabros, harto, pa').",
+    "Nunca menciones fiado ni crédito.",
+    "DE VEZ EN CUANDO (no en todos los posts) puedes mencionar que estamos a metros del colegio Montaner, o el horario de colación 13:00 a 14:00. No en cada publicación."
   ],
   "ejemplos_de_oro": [
     {
       "producto": "Milo 1 kg",
       "precio": 7190,
-      "ig_caption": "¿Frío? ☕❄️\nNo hay nada mejor que una buena once con un vaso de Milo bien calentito.\nEsta semana tenemos Milo 1 kg a solo $7.190.\n📍 Te esperamos en Grecia 1841, Hualpén o, si prefieres, escríbenos por DM y reserva el tuyo antes de que se acaben."
+      "ig_caption": "Con este frío un Milo caliente siempre salva la once.\nTenemos la bolsa de 1 kg a $7.190.\nSi eres de Hualpén o Concepción, escríbenos y te lo dejamos reservado antes de que se acabe."
+    },
+    {
+      "producto": "Aceite 1 litro",
+      "precio": 1990,
+      "ig_caption": "El aceite que se acaba siempre en mal momento.\nTenemos el litro a $1.990, para que no te falte.\nPasa por Hualpén o escríbenos y lo dejamos listo."
+    },
+    {
+      "producto": "Arroz 1 kg",
+      "precio": 1290,
+      "ig_caption": "Para el almuerzo de toda la semana.\nArroz de 1 kg a $1.290.\nSi tienes negocio o cocinas en casa, llévate varios — escríbenos y coordinamos."
     }
   ]
 }
