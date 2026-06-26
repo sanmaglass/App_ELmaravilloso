@@ -120,10 +120,6 @@ def bg_red():
     glow=Image.new("RGBA",(W,H),RED_HI+(0,)); glow.putalpha(rays); base.alpha_composite(glow)
     return base
 
-def logo(maxw):
-    im=Image.open(os.path.join(ASSETS,"logo.png")).convert("RGBA")
-    sc=maxw/im.width; return im.resize((int(im.width*sc),int(im.height*sc)),Image.LANCZOS)
-
 def pill(d,cx,cy,w,h,fill,radius=None):
     radius=radius or h//2
     d.rounded_rectangle([cx-w/2,cy-h/2,cx+w/2,cy+h/2],radius=radius,fill=fill)
@@ -420,7 +416,7 @@ def style_amigable(name,price,products,pal="marca",fmt_str=None,fmt2="feed45",he
 # ---------------- ESTILO A: CLASICA ----------------
 def style_clasica(name,price,product,tag="OFERTA DE LA SEMANA"):
     im=bg_red(); d=ImageDraw.Draw(im); cx=W/2
-    lg=logo(360); paste_c(im,lg,cx,180)
+    place_brand_header(im,cx,170,128,(255,255,255))  # logo NUEVO en blanco sobre rojo
     pill(d,cx,360,560,84,YELLOW); txt(d,(cx,360),tag.upper(),f_impact(52),RED,stroke=0)
     prod=load_product(product,int(W*0.70),int(H*0.32))
     paste_c(im,shadow_of(prod),cx+10,H*0.43+prod.height*0.45+16)
@@ -454,7 +450,7 @@ def style_descuento(name,price,product,price_old=None,tag="¡OFERTÓN!"):
         sd=ImageDraw.Draw(im)
         txt(sd,(W-180,H*0.40-26),f"-{pct}%",f_impact(86),RED)
         txt(sd,(W-180,H*0.40+44),"DCTO",f_black(34),RED)
-    lg=logo(300); paste_c(im,lg,cx,H-120)
+    place_brand_header(im,cx,H-118,98,(255,255,255))  # logo NUEVO en blanco sobre rojo
     return im
 
 # ================= HELPERS PREMIUM (nivel agencia) =================
