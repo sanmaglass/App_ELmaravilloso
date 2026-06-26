@@ -714,8 +714,69 @@ def premium_split(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt=
     txt(d,(cx,int(Hf*0.93)),unit.upper()+"  ·  HUALPEN  ·  DESPACHO",f_ui(int(30*sc)),YELLOW)
     return im
 
+# ---------------- ESTILO ESCENA (lifestyle: producto en contexto, con profundidad) ----------------
+SCENE_MOODS = {
+    "calido": dict(top=(78,40,28), bot=(24,13,10), glow=(255,188,122), ink=(252,246,238), accent=(255,198,128), price=(255,255,255)),
+    "rojo":   dict(top=(140,22,28), bot=(44,8,11),  glow=(255,156,142), ink=(255,246,241), accent=(255,214,156), price=(255,255,255)),
+    "limpio": dict(top=(240,242,246),bot=(198,205,215),glow=(255,255,255),ink=(26,28,34), accent=(196,22,28), price=(214,26,33)),
+}
+def _radial_mask(W,H,cx,cy,rad,strength):
+    yy,xx=np.mgrid[0:H,0:W].astype(np.float32)
+    dd=np.sqrt((xx-cx)**2+(yy-cy)**2)/max(1.0,rad)
+    return Image.fromarray((np.clip(1-dd,0,1)**2*strength*255).astype(np.uint8),"L")
+
+def style_escena(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt="story",mood="calido"):
+    Wf,Hf=dims(fmt); cx=Wf/2; feed=(Hf<=Wf*1.05)
+    M=SCENE_MOODS.get(mood,SCENE_MOODS["calido"])
+    # 1) backdrop: gradiente vertical
+    yy=np.linspace(0,1,Hf,dtype=np.float32)[:,None]
+    arr=np.zeros((Hf,Wf,3),np.float32)
+    for i in range(3): arr[...,i]=M["top"][i]+(M["bot"][i]-M["top"][i])*yy
+    im=Image.fromarray(arr.astype(np.uint8),"RGB").convert("RGBA")
+    floor_y=Hf*(0.585 if feed else 0.62)
+    # 2) glow detrás del producto
+    gm=_radial_mask(Wf,Hf,cx,Hf*(0.36 if feed else 0.40),Wf*0.62,0.5)
+    gl=Image.new("RGBA",(Wf,Hf),M["glow"]+(0,)); gl.putalpha(gm); im.alpha_composite(gl)
+    # 3) bokeh (luces desenfocadas) — profundidad
+    import random; rnd=random.Random(7)
+    for _ in range(7):
+        bx=rnd.randint(0,Wf); by=rnd.randint(0,int(Hf*0.55)); br=rnd.randint(24,80)
+        bk=Image.new("RGBA",(Wf,Hf),(0,0,0,0))
+        ImageDraw.Draw(bk).ellipse([bx-br,by-br,bx+br,by+br],fill=M["glow"]+(46,))
+        im.alpha_composite(bk.filter(ImageFilter.GaussianBlur(20)))
+    # 4) pool de luz en el piso (donde se apoya el producto)
+    pool=Image.new("L",(Wf,Hf),0)
+    ImageDraw.Draw(pool).ellipse([cx-Wf*0.40,floor_y-Hf*0.04,cx+Wf*0.40,floor_y+Hf*0.085],fill=110)
+    pl=Image.new("RGBA",(Wf,Hf),M["glow"]+(0,)); pl.putalpha(pool.filter(ImageFilter.GaussianBlur(38))); im.alpha_composite(pl)
+    # 5) producto sobre el piso + reflejo + sombra de contacto
+    prod=load_product(product,int(Wf*0.62),int(Hf*(0.36 if feed else 0.42)))
+    py=floor_y-prod.height/2
+    refl=prod.transpose(Image.FLIP_TOP_BOTTOM)
+    a=np.asarray(refl.split()[3]).astype(np.float32)
+    fade=np.linspace(0.32,0.0,refl.height,dtype=np.float32)[:,None]
+    refl.putalpha(Image.fromarray((a*fade).astype(np.uint8),"L"))
+    paste_c(im,refl,cx,floor_y+prod.height/2)
+    contact_shadow(im,cx,floor_y+6,prod.width*0.82,op=0.40)
+    paste_c(im,prod,cx,py)
+    # 6) marca + tag
+    place_brand_header(im,cx,Hf*0.072,int(Hf*0.052),M["ink"])
+    d=ImageDraw.Draw(im)
+    if price_old: badge_pct(im,Wf-180,int(Hf*0.20),round((1-price/price_old)*100))
+    else: tag_pill(im,int(Wf*0.16),int(Hf*0.16),tag)
+    # 7) nombre (editorial) + precio hero
+    ny=Hf*(0.72 if feed else 0.745)
+    txt(d,(cx,ny),name.upper(),f_display(74 if feed else 80),M["ink"])
+    d.line([(cx-150,ny+int(Hf*0.028)),(cx+150,ny+int(Hf*0.028))],fill=M["accent"],width=5)
+    sc=(Wf/1080.0)*(0.62 if feed else 0.92)
+    price_block(im,cx,int(Hf*(0.86 if feed else 0.875)),price,price_old,unit,color=M["price"],scale=sc)
+    return im
+
+def escena_rojo(*a,**k):   k.setdefault("mood","rojo");   return style_escena(*a,**k)
+def escena_limpio(*a,**k): k.setdefault("mood","limpio"); return style_escena(*a,**k)
+
 STYLES={"clasica":style_clasica,"descuento":style_descuento,"premium":style_premium,
-        "premium_dark":premium_dark,"premium_giant":premium_giant,"premium_split":premium_split}
+        "premium_dark":premium_dark,"premium_giant":premium_giant,"premium_split":premium_split,
+        "escena":style_escena,"escena_rojo":escena_rojo,"escena_limpio":escena_limpio}
 
 if __name__=="__main__":
     import sys

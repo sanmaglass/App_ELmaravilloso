@@ -62,6 +62,13 @@ for nm, fn in prem:
 disc.append(("descuento", th(render_story(T.style_descuento, "NESCAFE 400G", 8990, P1, price_old=12990))))
 rows.append(("VARIANTE DESCUENTO (precio normal tachado + % ahorro)", disc))
 
+# --- Fila ESCENA (lifestyle) en 3 moods, story + feed ---
+import templates as _T
+esc = [("escena calido", _T.style_escena), ("escena rojo", _T.escena_rojo), ("escena limpio", _T.escena_limpio)]
+rows.append(("ESCENA / LIFESTYLE · STORY (calido · rojo · limpio) + FEED",
+             [(nm, th(fn("NESCAFE 400G", 11990, P1, fmt="story"))) for nm, fn in esc]
+             + [("escena FEED", th(_T.style_escena("NESCAFE 400G", 11990, P1, fmt="feed"), TH_W))]))
+
 # --- Fila 5: AMIGABLE 1 / 2 / 3 productos (story) ---
 def amig(n, headline):
     items = [{"path": P2, "price": 6990, "gram": "1 kg"},
