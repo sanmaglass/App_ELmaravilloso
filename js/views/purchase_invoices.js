@@ -1992,7 +1992,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
     }
 
     const modal = document.getElementById('modal-container');
-    const today = new Date().toISOString().split('T')[0];
+    const today = window.Utils.todayChile();
 
     modal.innerHTML = `
         <div class="modal" style="max-width:600px;">
@@ -2541,7 +2541,7 @@ async function exportInvoicesToExcel() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Facturas Compra");
-        XLSX.writeFile(wb, `Facturas_Compra_${new Date().toISOString().split('T')[0]}.xlsx`);
+        XLSX.writeFile(wb, `Facturas_Compra_${window.Utils.todayChile()}.xlsx`);
 
     } catch (e) {
         console.error(e);

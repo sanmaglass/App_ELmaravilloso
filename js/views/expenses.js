@@ -141,11 +141,11 @@ async function renderExpenses() {
 
         // Filter
         let filtered = activeExpenses.filter(e => {
-            const matchesSearch = e.title.toLowerCase().includes(search);
+            const matchesSearch = (e.title || '').toLowerCase().includes(search);
 
             let matchesDate = true;
             if (dateFilter !== 'all') {
-                matchesDate = e.date.startsWith(dateFilter);
+                matchesDate = (e.date || '').startsWith(dateFilter);
             }
 
             let matchesCategory = true;
@@ -261,7 +261,7 @@ async function handleEditExpense(id) {
 function showExpenseModal(expenseToEdit = null) {
     const isEdit = !!expenseToEdit;
     const modal = document.getElementById('modal-container');
-    const today = new Date().toISOString().split('T')[0];
+    const today = window.Utils.todayChile();
 
     modal.innerHTML = `
         <div class="modal" style="max-width:500px;">

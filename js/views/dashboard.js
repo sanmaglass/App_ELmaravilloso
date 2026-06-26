@@ -2099,7 +2099,7 @@ window.Views.dashboard = async (container, selectedMonth = null) => {
             const val = prompt('Ingresa el monto pagado a la contadora:', '0');
             const amount = parseFloat(val);
             if (!isNaN(amount) && amount > 0) {
-                const today = new Date().toISOString().split('T')[0];
+                const today = window.Utils.todayChile();
                 window.DataManager.saveAndSync('expenses', {
                     title: 'Pago Contadora - ' + new Date().toLocaleDateString('es-ES', { month: 'long' }),
                     amount: amount,

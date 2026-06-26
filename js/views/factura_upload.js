@@ -278,8 +278,13 @@ window.Views = window.Views || {};
 
             try {
                 // 1. Subir foto a Storage
+                const client = window.SyncV2?.client;
+                if (!client) {
+                    window.showToast?.('Sin conexión al servidor. Intenta de nuevo en unos segundos.');
+                    return;
+                }
                 const path = `${tenantId}/${Date.now()}-factura.jpg`;
-                const { error: storageError } = await window.SyncV2.client
+                const { error: storageError } = await client
                     .storage.from('facturas').upload(path, _blob, { contentType: 'image/jpeg' });
 
                 if (storageError) throw storageError;

@@ -420,7 +420,7 @@ async function handleEditDailySale(id) {
 function showDailySaleModal(saleToEdit = null) {
     const isEdit = !!saleToEdit;
     const modal = document.getElementById('modal-container');
-    const today = new Date().toISOString().split('T')[0];
+    const today = window.Utils.todayChile();
 
     modal.innerHTML = `
         <div class="modal" style="max-width:500px;">
@@ -634,7 +634,7 @@ async function exportDailySalesToExcel() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Ventas Diarias");
-        XLSX.writeFile(wb, `Ventas_Diarias_${new Date().toISOString().split('T')[0]}.xlsx`);
+        XLSX.writeFile(wb, `Ventas_Diarias_${window.Utils.todayChile()}.xlsx`);
 
     } catch (e) {
         console.error(e);

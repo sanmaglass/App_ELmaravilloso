@@ -370,7 +370,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
 
                     <div class="form-group mb-4">
                         <label class="form-label">Fecha</label>
-                        <input type="date" id="loan-date" class="form-input" value="${isEdit ? loanToEdit.date : new Date().toISOString().split('T')[0]}">
+                        <input type="date" id="loan-date" class="form-input" value="${isEdit ? loanToEdit.date : window.Utils.todayChile()}">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Notas / Observaciones</label>
@@ -519,7 +519,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                     ...loan,
                     status: 'Pagado',
                     repaymentType: type,
-                    repaymentDate: new Date().toISOString().split('T')[0]
+                    repaymentDate: window.Utils.todayChile()
                 });
                 modal.classList.add('hidden');
                 renderLoans();

@@ -51,7 +51,7 @@ async function renderSuppliers(filterText = '') {
         let filtered = activeSuppliers;
         if (filterText) {
             const lowerFilter = filterText.toLowerCase();
-            filtered = activeSuppliers.filter(s => s.name.toLowerCase().includes(lowerFilter));
+            filtered = activeSuppliers.filter(s => (s.name || '').toLowerCase().includes(lowerFilter));
         }
 
         if (filtered.length === 0) {
@@ -68,13 +68,13 @@ async function renderSuppliers(filterText = '') {
         }
 
         // Sort alphabetically
-        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
         list.innerHTML = filtered.map(s => `
             <div class="card flex justify-between items-center p-4">
                 <div class="flex items-center gap-3">
                     <div class="flex items-center justify-center font-bold text-primary" style="width:40px; height:40px; background:var(--bg-input); border-radius:50%;">
-                        ${Utils.escapeHTML(s.name.charAt(0).toUpperCase())}
+                        ${Utils.escapeHTML((s.name || '?').charAt(0).toUpperCase())}
                     </div>
                     <div>
                         <div class="font-bold text-primary" style="font-size:1.05rem;">${Utils.escapeHTML(s.name)}</div>

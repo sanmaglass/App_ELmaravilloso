@@ -158,7 +158,7 @@ async function showSaleModal() {
     const nextNum = lastNum + 1;
 
     const modal = document.getElementById('modal-container');
-    const today = new Date().toISOString().split('T')[0];
+    const today = window.Utils.todayChile();
 
     modal.innerHTML = `
         <div class="modal" style="max-width:800px;">
@@ -398,7 +398,7 @@ async function exportSalesToExcel() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Ventas");
-        XLSX.writeFile(wb, `Ventas_${new Date().toISOString().split('T')[0]}.xlsx`);
+        XLSX.writeFile(wb, `Ventas_${window.Utils.todayChile()}.xlsx`);
 
     } catch (e) {
         window.showToast('Error: ' + e.message, 'error');

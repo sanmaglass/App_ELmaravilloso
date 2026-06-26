@@ -95,7 +95,7 @@ async function showDTEModal() {
     const activeSuppliers = suppliers.filter(s => !s.deleted);
 
     const modal = document.getElementById('modal-container');
-    const today = new Date().toISOString().split('T')[0];
+    const today = window.Utils.todayChile();
 
     modal.innerHTML = `
         <div class="modal" style="max-width:700px;">

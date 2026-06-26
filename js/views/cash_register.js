@@ -523,7 +523,7 @@ async function renderCajaView() {
 // ── EXTRACTION MODAL ───────────────────────────────────────────
 async function showExtractionModal() {
     const modal = document.getElementById('modal-container');
-    const today = new Date().toISOString().split('T')[0];
+    const today = window.Utils.todayChile();
     const formatCurrency = window.Utils.formatCurrency;
 
     // Load suppliers for dropdown
@@ -813,7 +813,7 @@ async function showExtractionModal() {
 // ── ARQUEO MODAL ───────────────────────────────────────────────
 async function showArqueoModal() {
     const modal = document.getElementById('modal-container');
-    const today = new Date().toISOString().split('T')[0];
+    const today = window.Utils.todayChile();
     const formatCurrency = window.Utils.formatCurrency;
 
     // Buscar el último arqueo registrado

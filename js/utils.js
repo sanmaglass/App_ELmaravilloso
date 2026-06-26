@@ -1,6 +1,13 @@
 // Utility Functions (Global Scope)
 
 window.Utils = {
+    // Fecha de hoy en Chile (YYYY-MM-DD) — evita desfase UTC de madrugada
+    todayChile: () => {
+        const now = new Date();
+        const chile = new Date(now.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+        return `${chile.getFullYear()}-${String(chile.getMonth() + 1).padStart(2, '0')}-${String(chile.getDate()).padStart(2, '0')}`;
+    },
+
     // Escape HTML to prevent XSS attacks
     escapeHTML: (str) => {
         if (!str) return '';

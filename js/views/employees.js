@@ -1,40 +1,11 @@
 // Employees View — Semi-automatizado con pagos confirmados
 window.Views = window.Views || {};
 
-// Limpieza única: borrar empleados y workLogs antiguos (local + Supabase)
-async function _cleanLegacyPersonal() {
-    const flag = 'clean_personal_v1052';
-    if (localStorage.getItem(flag)) return;
-    try {
-        // Borrar local
-        const emps = await window.db.employees.toArray();
-        const empsToUpdate = emps.map(emp => ({ ...emp, deleted: true }));
-        await window.db.employees.bulkPut(empsToUpdate);
-
-        const logs = await window.db.workLogs.toArray();
-        const logsToUpdate = logs.map(log => ({ ...log, deleted: true }));
-        await window.db.workLogs.bulkPut(logsToUpdate);
-        // Borrar en Supabase
-        const client = window.SyncV2?.client;
-        if (client) {
-            await client.from('employees').update({ deleted: true }).neq('id', 0);
-            await client.from('worklogs').update({ deleted: true }).neq('id', 0);
-        }
-        localStorage.setItem(flag, Date.now().toString());
-        console.log('✅ Personal limpio: todos los empleados y workLogs eliminados');
-    } catch (e) {
-        console.error('Error limpiando personal:', e);
-    }
-}
-
 window.Views.employees = async (container, _tab = 'equipo') => {
     if (!window.Utils) {
         container.innerHTML = "<p>Error: Falta módulo de utilidades.</p>";
         return;
     }
-
-    // Ejecutar limpieza de datos legacy (una sola vez)
-    await _cleanLegacyPersonal();
 
     const tabBarHTML = `
         <div style="display:flex; gap:0; background:var(--bg-input); border-radius:14px; padding:4px; margin-bottom:24px; width:fit-content; box-shadow:0 1px 4px rgba(0,0,0,0.07);">
@@ -257,13 +228,13 @@ window.Views.employees = async (container, _tab = 'equipo') => {
             // Preservar campos existentes
             if (emp) {
                 employeeData.lastPaymentDate = emp.lastPaymentDate || null;
-                employeeData.startDate = emp.startDate || new Date().toISOString().split('T')[0];
+                employeeData.startDate = emp.startDate || window.Utils.todayChile();
                 employeeData.workHoursPerDay = emp.workHoursPerDay || 9;
                 employeeData.breakMinutes = emp.breakMinutes || 60;
                 employeeData.defaultStartTime = emp.defaultStartTime || '09:00';
                 employeeData.defaultEndTime = emp.defaultEndTime || '18:00';
             } else {
-                employeeData.startDate = new Date().toISOString().split('T')[0];
+                employeeData.startDate = window.Utils.todayChile();
                 employeeData.lastPaymentDate = null;
                 employeeData.workHoursPerDay = 9;
                 employeeData.breakMinutes = 60;
@@ -526,7 +497,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                         amount: finalAmount,
                         category: 'Sueldos',
                         paymentMethod: payMethod,
-                        date: new Date().toISOString().split('T')[0],
+                        date: window.Utils.todayChile(),
                         isFixed: false,
                         deleted: false,
                     };
@@ -542,7 +513,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                     }
 
                     // 3. Actualizar lastPaymentDate del empleado
-                    emp.lastPaymentDate = new Date().toISOString().split('T')[0];
+                    emp.lastPaymentDate = window.Utils.todayChile();
                     await window.DataManager.saveAndSync('employees', emp);
 
                     modalContainer.classList.add('hidden');
@@ -604,7 +575,7 @@ window.Views.employees = async (container, _tab = 'equipo') => {
                 if (amount <= 0) { window.showToast('El monto debe ser mayor a 0.', 'error'); return; }
                 const note = document.getElementById('adv-note').value.trim();
                 const payMethod = document.getElementById('adv-method').value;
-                const today = new Date().toISOString().split('T')[0];
+                const today = window.Utils.todayChile();
 
                 try {
                     // 1. Crear registro de adelanto
