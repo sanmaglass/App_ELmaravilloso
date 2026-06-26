@@ -327,8 +327,8 @@ async function init() {
                     <button class="bottom-nav-item" data-view="caja_dia">
                         <i class="ph-fill ph-wallet"></i><span>Caja</span>
                     </button>
-                    <button class="bottom-nav-item" data-view="team_scanner">
-                        <i class="ph-fill ph-barcode"></i><span>Precio</span>
+                    <button class="bottom-nav-item" data-view="announcements">
+                        <i class="ph-fill ph-chat-circle-dots"></i><span>Avisos</span>
                     </button>
                     <button class="bottom-nav-item" data-view="team_reports">
                         <i class="ph-fill ph-pencil-line"></i><span>Reportar</span>
