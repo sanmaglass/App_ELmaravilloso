@@ -235,8 +235,9 @@ window.Views = window.Views || {};
         // Cerrar sesión
         const logoutBtn = container.querySelector('#th-logout');
         if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                if (confirm('¿Cerrar sesión?')) window.Auth.logout();
+            logoutBtn.addEventListener('click', async () => {
+                const ok = await window.showConfirmDialog('Cerrar sesión', '¿Segura que quieres cerrar sesión?');
+                if (ok) window.Auth.logout();
             });
         }
 

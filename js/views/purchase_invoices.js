@@ -1977,7 +1977,7 @@ async function showInvoiceModal(invoiceToEdit = null) {
     // FETCH SUPPLIERS - Simple and Robust
     const allSuppliers = await window.db.suppliers.toArray();
     const suppliers = allSuppliers.filter(s => !s.deleted);
-    suppliers.sort((a, b) => a.name.localeCompare(b.name));
+    suppliers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     // DATALIST OPTIONS
     const supplierDatalist = suppliers.map(s =>
@@ -2656,7 +2656,7 @@ async function populateSupplierFilter(cachedInvoices, cachedSuppliers) {
     const supplierOptions = usedSupplierIds
         .filter(id => supplierMap[id])
         .map(id => ({ id, name: supplierMap[id] }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     const currentValue = select.value;
     select.innerHTML = '<option value="all">Todos los Proveedores</option>' +

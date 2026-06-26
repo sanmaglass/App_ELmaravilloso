@@ -541,7 +541,8 @@ window.Views = window.Views || {};
             // ── Eliminar gasto ──
             body.querySelectorAll('.btn-del-gasto').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    if (!confirm('¿Eliminar este gasto?')) return;
+                    const ok = await window.showConfirmDialog('Eliminar gasto', '¿Eliminar este gasto de caja chica?');
+                    if (!ok) return;
                     await deleteGasto(btn.dataset.id);
                     render();
                 });

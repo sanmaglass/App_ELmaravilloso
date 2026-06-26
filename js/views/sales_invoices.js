@@ -265,6 +265,10 @@ async function showSaleModal() {
             const manualPrice = prompt("Producto no encontrado. Ingresa el precio:", "0");
             if (manualPrice === null) return;
             price = parseFloat(manualPrice);
+            if (isNaN(price) || price <= 0) {
+                window.showToast?.('Precio inválido');
+                return;
+            }
         }
 
         if (name && qty > 0) {

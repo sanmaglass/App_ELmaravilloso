@@ -99,7 +99,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
     async function populateLoanSuppliers() {
         const select = document.getElementById('filter-loan-supplier');
         const suppliers = await window.db.suppliers.toArray();
-        const activeSuppliers = suppliers.filter(s => !s.deleted).sort((a,b) => a.name.localeCompare(b.name));
+        const activeSuppliers = suppliers.filter(s => !s.deleted).sort((a,b) => (a.name || '').localeCompare(b.name || ''));
         
         activeSuppliers.forEach(s => {
             const opt = document.createElement('option');
@@ -267,7 +267,7 @@ window.Views.loans = async (container, filterSupplierId = null) => {
 
     async function showLoanModal(loanToEdit = null) {
         const suppliers = await window.db.suppliers.toArray();
-        const activeSuppliers = suppliers.filter(s => !s.deleted).sort((a,b) => a.name.localeCompare(b.name));
+        const activeSuppliers = suppliers.filter(s => !s.deleted).sort((a,b) => (a.name || '').localeCompare(b.name || ''));
         
         const modal = document.getElementById('modal-container');
         const isEdit = !!loanToEdit;

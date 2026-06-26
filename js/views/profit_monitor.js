@@ -148,10 +148,12 @@ window.Views.profit_monitor = async (container) => {
             return true;
         });
 
-        // Sort
+        // Sort — mapear data-sort keys a campos reales del objeto
+        const sortFieldMap = { margin: 'marginPct', profit: 'profitTotal', price: 'price', revenue: 'revenue', qty: 'qty' };
+        const field = sortFieldMap[_sortKey] || _sortKey;
         list.sort((a, b) => {
             const v = _sortAsc ? 1 : -1;
-            return (a[_sortKey] - b[_sortKey]) * v;
+            return ((a[field] || 0) - (b[field] || 0)) * v;
         });
 
         if (list.length === 0) {

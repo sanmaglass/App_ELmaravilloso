@@ -42,7 +42,7 @@ window.Views = window.Views || {};
             }
         } catch { /* tabla puede no existir */ }
 
-        return Array.from(catalog.values()).sort((a, b) => a.name.localeCompare(b.name, 'es-CL'));
+        return Array.from(catalog.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es-CL'));
     }
 
     function renderResults(products, container) {

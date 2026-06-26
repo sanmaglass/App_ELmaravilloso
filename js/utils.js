@@ -410,7 +410,8 @@ window.Utils = {
                         throw new Error("El archivo no es una copia de seguridad válida.");
                     }
 
-                    if (!confirm("Esto sobrescribirá todos tus datos actuales de forma permanente. ¿Continuar?")) {
+                    const ok = await window.showConfirmDialog('Importar respaldo', 'Esto sobrescribirá todos tus datos actuales de forma permanente. ¿Continuar?');
+                    if (!ok) {
                         return resolve(false);
                     }
 
