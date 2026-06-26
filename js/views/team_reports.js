@@ -89,7 +89,7 @@ window.Views = window.Views || {};
     }
 
     // ── Construir HTML de una tarjeta ──
-    async function buildCardHTML(r) {
+    async function buildCardHTML(r, currentUserId) {
         const typeCfg  = TIPOS[r.type]  || TIPOS.reporte;
         const desc     = r.description ? (r.description.length > 60 ? r.description.slice(0, 60) + '…' : r.description) : '';
         const hasPhotos = r.photo_urls && r.photo_urls.length > 0;
@@ -134,7 +134,10 @@ window.Views = window.Views || {};
                     ${desc ? `<div style="font-size:0.85rem; color:var(--text-muted);">${window.escapeHTML(desc)}</div>` : ''}
                     ${vendHTML}
                 </div>
-                <div style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap; flex-shrink:0;">${timeAgo(r.created_at)}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap; flex-shrink:0; text-align:right;">
+                    ${r.user_id !== currentUserId && r.user_email ? `<div style="font-weight:600; margin-bottom:2px;">${window.escapeHTML((r.user_email || '').split('@')[0])}</div>` : ''}
+                    ${timeAgo(r.created_at)}
+                </div>
             </div>
             ${photoSlotsHTML}
             ${responseHTML}
@@ -276,7 +279,7 @@ window.Views = window.Views || {};
             <!-- ── SECCIÓN B: LISTA DE REPORTES ── -->
             <div>
                 <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:14px;">
-                    Mis reportes enviados
+                    Reportes del equipo
                 </div>
                 <div id="tr-list" style="display:flex; flex-direction:column; gap:10px;">
                     <div style="text-align:center; padding:20px; color:var(--text-muted);">
@@ -516,37 +519,64 @@ window.Views = window.Views || {};
             try {
                 const userId = window.Auth.session?.user?.id;
                 const all    = await window.db.team_reports.toArray();
-                const mine   = all
-                    .filter(r => !r.deleted && r.user_id === userId)
+                const reports = all
+                    .filter(r => !r.deleted)
                     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-                if (mine.length === 0) {
+                if (reports.length === 0) {
                     listEl.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-muted);">
                         <i class="ph ph-clipboard-text" style="font-size:2.5rem; display:block; margin-bottom:8px; opacity:0.4;"></i>
-                        <p style="margin:0;">Aún no has enviado ningún reporte</p>
+                        <p style="margin:0;">Aún no hay reportes del equipo</p>
                     </div>`;
                     return;
                 }
 
-                const toShow = _showingAll ? mine : mine.slice(0, PAGE_SIZE);
-                const cards  = await Promise.all(toShow.map(r => buildCardHTML(r)));
+                // Separar recientes (últimos 3 días) vs antiguos
+                const DAYS_RECENT = 3;
+                const cutoff = Date.now() - DAYS_RECENT * 86400000;
+                const recientes = reports.filter(r => new Date(r.created_at).getTime() >= cutoff);
+                const antiguos  = reports.filter(r => new Date(r.created_at).getTime() < cutoff);
 
-                let html = cards.join('');
+                const toShowRecent = _showingAll ? recientes : recientes.slice(0, PAGE_SIZE);
+                const recentCards  = await Promise.all(toShowRecent.map(r => buildCardHTML(r, userId)));
 
-                if (mine.length > PAGE_SIZE) {
-                    if (!_showingAll) {
-                        html += `<div style="text-align:center; margin-top:8px;">
-                            <button id="tr-ver-mas" style="background:none; border:1px solid var(--border); border-radius:10px; padding:8px 22px; cursor:pointer; color:var(--text-muted); font-size:0.9rem;">
-                                Ver más (${mine.length - PAGE_SIZE} restantes)
+                let html = '';
+
+                // Sección recientes
+                if (recientes.length > 0) {
+                    html += `<div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">
+                        Últimos ${DAYS_RECENT} días (${recientes.length})
+                    </div>`;
+                    html += recentCards.join('');
+                }
+
+                // Sección antiguos (colapsable)
+                if (antiguos.length > 0) {
+                    const antiguosCards = await Promise.all(antiguos.slice(0, 10).map(r => buildCardHTML(r, userId)));
+                    html += `
+                        <div style="margin-top:16px;">
+                            <button id="tr-toggle-old" style="width:100%; background:none; border:1px solid var(--border); border-radius:10px; padding:10px; cursor:pointer; color:var(--text-muted); font-size:0.82rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                <i class="ph ph-caret-down" id="tr-old-caret" style="transition:transform 0.2s;"></i>
+                                Reportes anteriores (${antiguos.length})
                             </button>
+                            <div id="tr-old-list" style="display:none; margin-top:8px; opacity:0.7;">
+                                ${antiguosCards.join('')}
+                            </div>
                         </div>`;
-                    } else {
-                        html += `<div style="text-align:center; margin-top:8px;">
-                            <button id="tr-ver-menos" style="background:none; border:1px solid var(--border); border-radius:10px; padding:8px 22px; cursor:pointer; color:var(--text-muted); font-size:0.9rem;">
-                                Ver menos
-                            </button>
-                        </div>`;
-                    }
+                }
+
+                if (recientes.length > PAGE_SIZE && !_showingAll) {
+                    html += `<div style="text-align:center; margin-top:8px;">
+                        <button id="tr-ver-mas" style="background:none; border:1px solid var(--border); border-radius:10px; padding:8px 22px; cursor:pointer; color:var(--text-muted); font-size:0.9rem;">
+                            Ver más (${recientes.length - PAGE_SIZE} restantes)
+                        </button>
+                    </div>`;
+                } else if (_showingAll && recientes.length > PAGE_SIZE) {
+                    html += `<div style="text-align:center; margin-top:8px;">
+                        <button id="tr-ver-menos" style="background:none; border:1px solid var(--border); border-radius:10px; padding:8px 22px; cursor:pointer; color:var(--text-muted); font-size:0.9rem;">
+                            Ver menos
+                        </button>
+                    </div>`;
                 }
 
                 listEl.innerHTML = html;
@@ -556,8 +586,23 @@ window.Views = window.Views || {};
                 if (verMasBtn)   verMasBtn.addEventListener('click',   () => { _showingAll = true;  renderList(); });
                 if (verMenosBtn) verMenosBtn.addEventListener('click', () => { _showingAll = false; renderList(); });
 
+                // Toggle reportes antiguos
+                const toggleOld = listEl.querySelector('#tr-toggle-old');
+                if (toggleOld) {
+                    toggleOld.addEventListener('click', () => {
+                        const oldList = listEl.querySelector('#tr-old-list');
+                        const caret = listEl.querySelector('#tr-old-caret');
+                        if (oldList) {
+                            const show = oldList.style.display === 'none';
+                            oldList.style.display = show ? 'block' : 'none';
+                            if (caret) caret.style.transform = show ? 'rotate(180deg)' : '';
+                        }
+                    });
+                }
+
                 // Cargar fotos de forma asíncrona (no bloquea render)
-                toShow.forEach(r => {
+                const allShown = [...toShowRecent, ...antiguos.slice(0, 10)];
+                allShown.forEach(r => {
                     if (r.photo_urls && r.photo_urls.length > 0) {
                         loadCardPhotos(r.id, r.photo_urls);
                     }
