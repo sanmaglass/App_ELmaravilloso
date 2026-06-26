@@ -377,7 +377,7 @@ window.Views = window.Views || {};
                     const done = savedItems[i]?.done || false;
                     return `
                     <label style="display:flex; align-items:center; gap:12px; padding:14px 16px;
-                                  border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.15s;
+                                  ${i < clTasks.length - 1 ? 'border-bottom:1px solid var(--border);' : ''} cursor:pointer; transition:background 0.15s;
                                   ${done ? 'opacity:0.5;' : ''}"
                            data-cl-idx="${i}">
                         <input type="checkbox" ${done ? 'checked' : ''} data-cl-idx="${i}"
@@ -427,8 +427,10 @@ window.Views = window.Views || {};
             try {
                 const promos = await window.db.promotions.toArray();
                 const vigentes = promos.filter(p => !p.deleted);
+                // Ordenar por updated_at_hlc desc para mostrar la más reciente
+                vigentes.sort((a, b) => (b.updated_at_hlc || 0) - (a.updated_at_hlc || 0));
                 if (vigentes.length > 0) {
-                    const promo = vigentes[vigentes.length - 1]; // la más reciente
+                    const promo = vigentes[0];
                     const promoSection = container.querySelector('#th-promo-section');
                     const promoCard = container.querySelector('#th-promo-card');
                     promoSection.style.display = 'block';

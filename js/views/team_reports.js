@@ -17,7 +17,7 @@ window.Views = window.Views || {};
         pendiente:   { label: 'Enviado',     bg: 'rgba(107,114,128,0.12)', color: '#6b7280', checks: 1 },
         visto:       { label: 'Recibido',    bg: 'rgba(37,99,235,0.12)',   color: '#1e40af', checks: 2 },
         respondido:  { label: 'Respondido',  bg: 'rgba(22,163,74,0.12)',   color: '#166534', checks: 2 },
-        resuelto:    { label: 'Resuelto',    bg: 'rgba(107,114,128,0.12)', color: '#6b7280', checks: 2 },
+        resuelto:    { label: 'Resuelto',    bg: 'rgba(22,163,74,0.12)',   color: '#16a34a', checks: 2 },
     };
 
     const MAX_FOTOS = 3;
@@ -423,11 +423,25 @@ window.Views = window.Views || {};
                 let photoPaths = [];
                 let photosFailed = false;
                 if (_pendingFiles.length > 0) {
-                    try {
-                        photoPaths = await uploadFotos(_pendingFiles.map(f => f.file));
-                    } catch (uploadErr) {
-                        console.warn('Upload de fotos falló, guardando reporte sin fotos:', uploadErr);
+                    // Avisar si no hay conexión — las fotos se perderían
+                    if (!navigator.onLine) {
+                        const seguir = confirm('No hay conexión a internet. Si envías ahora, las fotos no se guardarán. ¿Enviar sin fotos?');
+                        if (!seguir) {
+                            if (submitBtn) {
+                                submitBtn.disabled = false;
+                                submitBtn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Enviar Reporte';
+                            }
+                            return;
+                        }
                         photosFailed = true;
+                    }
+                    if (!photosFailed) {
+                        try {
+                            photoPaths = await uploadFotos(_pendingFiles.map(f => f.file));
+                        } catch (uploadErr) {
+                            console.warn('Upload de fotos falló, guardando reporte sin fotos:', uploadErr);
+                            photosFailed = true;
+                        }
                     }
                 }
 

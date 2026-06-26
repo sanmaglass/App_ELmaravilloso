@@ -15,7 +15,8 @@ window.Views = window.Views || {};
 
     function nombreDesdeEmail(email) {
         if (!email) return email || '—';
-        return email.split('@')[0];
+        const name = email.split('@')[0].replace(/[._]/g, ' ');
+        return name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     }
 
     // ── Sonido + vibración para avisos urgentes ────────────────────────────────
