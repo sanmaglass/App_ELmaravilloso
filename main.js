@@ -352,6 +352,13 @@ async function init() {
                     window.Views[vName] = () => { console.warn('[Security] Vista bloqueada:', vName); };
                 }
             }
+        } else {
+            // Admin: ocultar vistas de empleada del sidebar (se acceden desde Panel Equipo)
+            const adminHide = ['team_home', 'team_reports', 'team_scanner'];
+            adminHide.forEach(v => {
+                const el = document.querySelector(`.nav-item[data-view="${v}"]`);
+                if (el) el.style.display = 'none';
+            });
         }
         localStorage.setItem('wm_auth', 'true');
         localStorage.setItem('wm_auth_email', session.user.email);
