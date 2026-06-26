@@ -319,13 +319,13 @@ window.Views = window.Views || {};
                         </div>
                         ${esHoy ? `
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <input type="number" id="fondo-input" placeholder="0" inputmode="numeric" value="${fondoMonto || ''}"
+                            <input type="number" id="fondo-input" placeholder="0" inputmode="numeric" value="${isEmp ? '' : (fondoMonto || '')}"
                                 style="width:120px; padding:8px 10px; background:var(--bg-input, var(--bg-secondary)); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font:inherit; font-size:0.95rem; box-sizing:border-box;">
                             <button id="btn-guardar-fondo" class="btn btn-secondary" style="padding:8px 14px; font-size:0.82rem;">
                                 <i class="ph ph-floppy-disk"></i> ${fondo ? 'Actualizar' : 'Guardar'}
                             </button>
                         </div>` : `
-                        <span style="font-size:1.3rem; font-weight:800; color:#f59e0b;">${fondoMonto ? fmt(fondoMonto) : '—'}</span>`}
+                        <span style="font-size:1.3rem; font-weight:800; color:#f59e0b;">${isEmp ? (fondo ? '✓' : '—') : (fondoMonto ? fmt(fondoMonto) : '—')}</span>`}
                     </div>
                     ${fondo ? `<span style="font-size:0.72rem; color:var(--text-muted); margin-top:4px; display:block;">Registrado${isEmp ? '' : ': ' + fmt(fondoMonto)}${fondo.reference ? ` por ${fondo.reference.split('@')[0]}` : ''}${fondo.updated_at_hlc ? ` · ${new Date(Math.floor(fondo.updated_at_hlc / 1e6)).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}` : ''}</span>` : ''}
                 </div>

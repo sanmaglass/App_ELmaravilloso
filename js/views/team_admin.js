@@ -1455,7 +1455,7 @@ window.Views = window.Views || {};
                         <div style="flex:1;">
                             <span style="font-weight:700; font-size:0.95rem; color:var(--text-primary); word-break:break-word;">${window.escapeHTML(s.title)}</span>
                             <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
-                                ${nameFromEmail(s.user_email)} · ${tiempoRelativo(s.created_at)}
+                                ${window.escapeHTML(nameFromEmail(s.user_email))} · ${tiempoRelativo(s.created_at)}
                             </div>
                         </div>
                         <select class="ta-sug-status" data-id="${s.id}"
@@ -1517,10 +1517,14 @@ window.Views = window.Views || {};
                 const input = el.querySelector(`.ta-sug-reply[data-id="${id}"]`);
                 const reply = input?.value.trim();
                 if (!reply) { window.showToast?.('Escribe una respuesta'); return; }
+                // Solo subir status si está en pendiente (no downgrade si ya es mayor)
+                const currentStatus = el.querySelector(`.ta-sug-status[data-id="${id}"]`)?.value || 'pendiente';
+                const statusOrder = ['pendiente', 'vista', 'en_proceso', 'implementada'];
+                const newStatus = statusOrder.indexOf(currentStatus) <= statusOrder.indexOf('vista') ? 'vista' : currentStatus;
                 btn.disabled = true;
                 try {
                     const { error } = await supabase.from('suggestions')
-                        .update({ admin_response: reply, status: 'vista', updated_at: new Date().toISOString() })
+                        .update({ admin_response: reply, status: newStatus, updated_at: new Date().toISOString() })
                         .eq('id', id);
                     if (error) throw error;
                     window.showToast?.('Respuesta enviada');
