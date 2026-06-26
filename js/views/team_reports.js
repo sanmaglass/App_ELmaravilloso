@@ -113,10 +113,10 @@ window.Views = window.Views || {};
             : '';
 
         const photoSlotsHTML = hasPhotos
-            ? `<div id="photos-${r.id}" style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;">
+            ? `<div id="photos-${r.id}" style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; padding:10px; background:var(--bg-main); border-radius:10px; border:1px solid var(--border);">
                 ${r.photo_urls.map(() => `
-                    <div style="width:60px; height:60px; border-radius:8px; background:var(--bg-main); border:1px solid var(--border); display:flex; align-items:center; justify-content:center;">
-                        <i class="ph ph-image" style="color:var(--text-muted); font-size:1.2rem;"></i>
+                    <div style="width:88px; height:88px; border-radius:10px; background:var(--bg-card); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                        <i class="ph ph-image" style="color:var(--text-muted); font-size:1.4rem;"></i>
                     </div>
                 `).join('')}
                </div>`
@@ -153,7 +153,7 @@ window.Views = window.Views || {};
             if (!url || !slots[i]) return;
             slots[i].innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block; width:100%; height:100%;">
                 <img src="${url}" alt="Foto ${i + 1}"
-                     style="width:100%; height:100%; object-fit:cover; border-radius:8px;">
+                     style="width:100%; height:100%; object-fit:cover; border-radius:10px;">
             </a>`;
             slots[i].style.background = 'transparent';
             slots[i].style.border = 'none';

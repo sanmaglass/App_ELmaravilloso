@@ -291,10 +291,10 @@ window.Views = window.Views || {};
                 <!-- Fotos -->
                 ${hasPhotos ? `
                 <div class="ta-photos" data-id="${r.id}" data-urls='${JSON.stringify(r.photo_urls)}'
-                     style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                     style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; padding:10px; background:var(--bg-main); border-radius:10px; border:1px solid var(--border);">
                     ${r.photo_urls.map(() => `
-                        <div style="width:64px; height:64px; border-radius:10px; background:var(--bg-main);
-                                    border:1px solid var(--border); display:flex; align-items:center; justify-content:center;">
+                        <div style="width:88px; height:88px; border-radius:10px; background:var(--bg-card);
+                                    border:1px solid var(--border); display:flex; align-items:center; justify-content:center; overflow:hidden;">
                             <i class="ph ph-image" style="font-size:1.4rem; color:var(--text-muted);"></i>
                         </div>
                     `).join('')}
@@ -367,10 +367,10 @@ window.Views = window.Views || {};
                 if (url) {
                     return `<img src="${url}" alt="Foto ${i + 1}"
                                  data-open-url="${url.replace(/"/g, '&quot;')}"
-                                 style="width:64px; height:64px; border-radius:10px; object-fit:cover;
+                                 style="width:88px; height:88px; border-radius:10px; object-fit:cover;
                                         border:1px solid var(--border); cursor:pointer;">`;
                 }
-                return `<div style="width:64px; height:64px; border-radius:10px; background:var(--bg-main);
+                return `<div style="width:88px; height:88px; border-radius:10px; background:var(--bg-card);
                                     border:1px solid var(--border); display:flex; align-items:center; justify-content:center;">
                             <i class="ph ph-image-broken" style="font-size:1.4rem; color:var(--text-muted);"></i>
                         </div>`;
