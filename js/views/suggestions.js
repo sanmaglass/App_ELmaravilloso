@@ -50,8 +50,8 @@ window.Views = window.Views || {};
                 .order('created_at', { ascending: false })
                 .limit(50);
 
-            // Employee solo ve las suyas
-            if (isEmp) query.eq('user_id', userId);
+            // Employee solo ve las suyas (reasignar — .eq devuelve nuevo objeto)
+            if (isEmp) query = query.eq('user_id', userId);
 
             const { data, error } = await query;
             if (error) throw error;

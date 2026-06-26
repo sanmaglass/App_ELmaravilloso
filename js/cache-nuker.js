@@ -5,7 +5,7 @@
 // (caja, ventas, reportes pendientes de subir) quedan INTACTOS — el usuario
 // sigue adentro y no pierde nada. Solo se cierra sesión si la cierra él mismo.
 (function cacheNuker() {
-    var NUKE_VERSION = 'v1101';
+    var NUKE_VERSION = 'v1106';
     var FLAG = 'wm_cache_nuked_' + NUKE_VERSION;
     if (localStorage.getItem(FLAG)) return;
 

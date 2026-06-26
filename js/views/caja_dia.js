@@ -608,9 +608,15 @@ window.Views = window.Views || {};
                 const v = parseFloat(contado.value);
                 if (isNaN(v)) { difEl.textContent = ''; return; }
                 const dif = v - efectivoEsperado;
-                if (Math.abs(dif) < 1) { difEl.textContent = '✓ Cuadra'; difEl.style.color = '#16a34a'; }
-                else if (dif > 0) { difEl.innerHTML = `Sobra ${fmt(dif)}`; difEl.style.color = '#d97706'; }
-                else { difEl.innerHTML = `Falta ${fmt(-dif)}`; difEl.style.color = 'var(--danger)'; }
+                if (isEmp) {
+                    // Cajera solo ve si cuadra o no, sin montos
+                    if (Math.abs(dif) < 1) { difEl.textContent = '✓ Cuadra'; difEl.style.color = '#16a34a'; }
+                    else { difEl.textContent = '⚠ No cuadra'; difEl.style.color = 'var(--danger)'; }
+                } else {
+                    if (Math.abs(dif) < 1) { difEl.textContent = '✓ Cuadra'; difEl.style.color = '#16a34a'; }
+                    else if (dif > 0) { difEl.innerHTML = `Sobra ${fmt(dif)}`; difEl.style.color = '#d97706'; }
+                    else { difEl.innerHTML = `Falta ${fmt(-dif)}`; difEl.style.color = 'var(--danger)'; }
+                }
             }
 
             if (contado) {
@@ -633,7 +639,9 @@ window.Views = window.Views || {};
                     btnCuadre.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Guardando...';
                     const dif = v - efectivoEsperado;
                     const notes = Math.abs(dif) < 1 ? 'Cuadra perfecto' : (dif > 0 ? `Sobra ${fmt(dif)}` : `Falta ${fmt(-dif)}`);
-                    const desc = `Contado: ${fmt(v)} | Esperado: ${fmt(efectivoEsperado)} | Dif: ${fmt(dif)}`;
+                    const desc = isEmp
+                        ? `Contado: ${fmt(v)} | ${Math.abs(dif) < 1 ? 'Cuadra' : 'No cuadra'}`
+                        : `Contado: ${fmt(v)} | Esperado: ${fmt(efectivoEsperado)} | Dif: ${fmt(dif)}`;
                     const result = await saveRecord(dia, 'cuadre', 'cierre_cajera', v, desc, { notes });
                     if (result.success) {
                         btnCuadre.innerHTML = '<i class="ph-fill ph-check-circle"></i> Guardado';
