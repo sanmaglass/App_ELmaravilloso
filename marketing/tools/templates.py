@@ -421,9 +421,12 @@ def style_clasica(name,price,product,tag="OFERTA DE LA SEMANA"):
     prod=load_product(product,int(W*0.70),int(H*0.32))
     paste_c(im,shadow_of(prod),cx+10,H*0.43+prod.height*0.45+16)
     paste_c(im,prod,cx,H*0.43)
-    txt(d,(cx,H*0.625),name.upper(),f_black(64),WHITE,stroke=3,sfill=RED_DARK)
-    bs=starburst(560,YELLOW); paste_c(im,bs,cx,H*0.80)
-    txt(d,(cx,H*0.80),fmt(price),f_impact(230),RED)
+    txt(d,(cx,H*0.625),name.upper(),f_black(72),WHITE,stroke=3,sfill=RED_DARK)
+    # precio en pastilla crema con filete oro (look premium, en vez del starburst viejo)
+    pw,ph=int(W*0.64),int(H*0.122); pcy=H*0.80
+    d.rounded_rectangle([cx-pw/2,pcy-ph/2,cx+pw/2,pcy+ph/2],radius=ph//2,fill=CREAM_HI)
+    d.rounded_rectangle([cx-pw/2,pcy-ph/2,cx+pw/2,pcy+ph/2],radius=ph//2,outline=GOLD,width=5)
+    txt(d,(cx,pcy),fmt(price),f_impact(168),RED)
     txt(d,(cx,H-150),"HUALPEN · PUBLICO Y NEGOCIOS",f_bold(40),WHITE)
     txt(d,(cx,H-98),"DESPACHO A DOMICILIO",f_bold(36),YELLOW)
     return im
@@ -624,10 +627,10 @@ def style_premium(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt=
     paste_c(im,prod,cx,py)
     # nombre + línea roja + filete oro + guiño azul
     ny=Hf*(0.60 if feed else 0.665)
-    txt(d,(cx,ny),name.upper(),f_display(72),INK)
-    lw=180
-    d.line([(cx-lw,ny+58),(cx+lw,ny+58)],fill=RED,width=6)
-    d.line([(cx-lw,ny+66),(cx+lw,ny+66)],fill=GOLD,width=3)
+    txt(d,(cx,ny),name.upper(),f_display(82),INK)
+    lw=215
+    d.line([(cx-lw,ny+64),(cx+lw,ny+64)],fill=RED,width=6)
+    d.line([(cx-lw,ny+72),(cx+lw,ny+72)],fill=GOLD,width=3)
     d.line([(cx-70,ny+74),(cx+70,ny+74)],fill=BLUE,width=3)
     # precio (más contenido en feed cuadrado para que no domine toda la imagen)
     sc=(Wf/1080.0)*(0.58 if feed else 1.0)
@@ -656,8 +659,8 @@ def premium_dark(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt="
     contact_shadow(im,cx,py+prod.height*0.50,prod.width*0.82,op=0.35)
     paste_c(im,prod,cx,py)
     ny=Hf*0.665
-    txt(d,(cx,ny),name.upper(),f_display(72),CREAM_HI)
-    d.line([(cx-180,ny+58),(cx+180,ny+58)],fill=GOLD,width=5)
+    txt(d,(cx,ny),name.upper(),f_display(80),CREAM_HI)
+    d.line([(cx-205,ny+64),(cx+205,ny+64)],fill=GOLD,width=5)
     sc=Wf/1080.0
     price_block(im,cx,int(Hf*0.815),price,price_old,unit,color=(255,90,96),scale=sc)
     txt(d,(cx,Hf-bar*0.5),"HUALPEN  ·  PUBLICO Y NEGOCIOS  ·  DESPACHO",f_ui(int(34*sc)),CREAM_HI)
@@ -668,11 +671,11 @@ def premium_giant(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt=
     im=bg_cream(Wf,Hf); d=ImageDraw.Draw(im)
     bar=int(Hf*0.078); bar_red(im,0,bar,"bottom"); bar_red(im,Hf-bar,Hf,"top")
     place_brand_header(im,cx,bar*0.5,int(bar*0.78),(255,255,255))
-    prod=load_product(product,int(Wf*0.66),int(Hf*0.35)); py=Hf*0.285
+    prod=load_product(product,int(Wf*0.73),int(Hf*0.385)); py=Hf*0.28
     contact_shadow(im,cx,py+prod.height*0.50,prod.width*0.8,op=0.22)
     paste_c(im,prod,cx,py)
-    ny=Hf*0.49
-    txt(d,(cx,ny),name.upper(),f_display(64),INK)
+    ny=Hf*0.505
+    txt(d,(cx,ny),name.upper(),f_display(76),INK)
     if price_old:
         old="Normal "+fmt_money(price_old)
         oy=ny+58; txt(d,(cx,oy),old,f_strike(44),GREY_STRIKE)
@@ -698,8 +701,9 @@ def premium_split(name,price,product,tag="OFERTA",price_old=None,unit="c/u",fmt=
     contact_shadow(im,cx,py+prod.height*0.50,prod.width*0.8,op=0.20)
     paste_c(im,prod,cx,py)
     sc=Wf/1080.0
-    ny=Hf*0.685
-    txt(d,(cx,ny),name.upper(),f_display(66),CREAM_HI)
+    ny=Hf*0.69
+    txt(d,(cx,ny),name.upper(),f_display(76),CREAM_HI)
+    d.line([(cx-175,ny+54),(cx+175,ny+54)],fill=GOLD,width=4)  # filete que separa nombre del precio
     # precio sobre rojo en crema/amarillo, tachado a mano
     if price_old:
         old="Normal "+fmt_money(price_old); oy=ny+56

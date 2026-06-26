@@ -361,10 +361,10 @@ def _build_look(args, look="premium"):
             "footer_color": CREAM_HI,
             "glow": brand_glow(cx, H * 0.44, W * 0.55, BLUE, 0.10),
             "vign": radial_vignette(0.14),
-            "prod_cy": H * 0.285,      # producto más arriba
-            "prod_maxw": W * 0.66,     # producto con más presencia
-            "prod_maxh": H * 0.35,
-            "name_y": H * 0.49,        # nombre bajo el producto más grande
+            "prod_cy": H * 0.28,       # producto más arriba
+            "prod_maxw": W * 0.73,     # producto con más presencia (+10%)
+            "prod_maxh": H * 0.385,
+            "name_y": H * 0.505,       # nombre bajo el producto más grande
             "price_y": int(H * 0.725), # precio gigante en tercio inferior
             "filetes": "none",
             "logo_asset": "normal",
@@ -437,7 +437,7 @@ def _build_look(args, look="premium"):
     floor = drop_shadow_ellipse(prod.width, op=0.30)
 
     # Textos
-    name_im = text_img(args.name.upper(), f_display(72 if look != "giant" else 64), cfg["name_color"])
+    name_im = text_img(args.name.upper(), f_display(80 if look != "giant" else 76), cfg["name_color"])
 
     # Bloque precio: número + símbolo separados para el pop animado
     num_str = fmt_price(args.price)[1:]  # sin el $
