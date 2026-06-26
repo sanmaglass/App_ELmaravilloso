@@ -327,7 +327,7 @@ window.Views = window.Views || {};
                         </div>` : `
                         <span style="font-size:1.3rem; font-weight:800; color:#f59e0b;">${fondoMonto ? fmt(fondoMonto) : '—'}</span>`}
                     </div>
-                    ${fondo && esHoy ? `<span style="font-size:0.72rem; color:var(--text-muted); margin-top:4px; display:block;">Registrado: ${fmt(fondoMonto)}</span>` : ''}
+                    ${fondo ? `<span style="font-size:0.72rem; color:var(--text-muted); margin-top:4px; display:block;">Registrado: ${fmt(fondoMonto)}${fondo.reference ? ` por ${fondo.reference.split('@')[0]}` : ''}${fondo.updated_at_hlc ? ` · ${new Date(Math.floor(fondo.updated_at_hlc / 1e6)).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}` : ''}</span>` : ''}
                 </div>
 
                 ${nTickets > 0 ? (isEmp ? `

@@ -74,8 +74,8 @@ async function renderSales() {
 
         // Filter
         let filtered = activeSales.filter(s => {
-            return s.clientName.toLowerCase().includes(search) ||
-                s.invoiceNumber.toString().includes(search);
+            return (s.clientName || '').toLowerCase().includes(search) ||
+                (s.invoiceNumber || '').toString().includes(search);
         });
 
         // Sort by Date DESC

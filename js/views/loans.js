@@ -158,7 +158,8 @@ window.Views.loans = async (container, filterSupplierId = null) => {
                 list.innerHTML = `
                     <div class="card p-10 text-center text-muted border-dashed">
                         <i class="ph ph-hand-coins mb-2" style="font-size:3rem; opacity:0.3;"></i>
-                        <p>No se encontraron préstamos registrados</p>
+                        <p>No se encontraron préstamos${viewState.status === 'Pendiente' ? ' pendientes' : ''}</p>
+                        ${viewState.status === 'Pendiente' ? `<p style="font-size:0.85rem; margin-top:8px;">Cambia el filtro a <strong>"Historial (Pagados)"</strong> para ver préstamos anteriores</p>` : ''}
                         <button class="btn btn-primary" onclick="document.getElementById('btn-add-loan').click()" style="margin-top:16px;">
                             <i class="ph ph-plus-circle"></i> Registrar Préstamo
                         </button>
