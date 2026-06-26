@@ -106,7 +106,7 @@ window.Views = window.Views || {};
     function navTo(view) {
         // Preferir el router directo (funciona para vistas sin nav-item, ej. factura_upload).
         if (typeof window.navigateToView === 'function') {
-            const labels = { factura_upload: 'Subir factura', announcements: 'Avisos', team_reports: 'Mis Reportes', caja_dia: 'Caja del Día', team_home: 'Inicio' };
+            const labels = { factura_upload: 'Subir factura', announcements: 'Avisos', team_reports: 'Mis Reportes', caja_dia: 'Caja del Día', team_home: 'Inicio', suggestions: 'Mejoras' };
             window.navigateToView(view, labels[view] || '');
             return;
         }
@@ -213,8 +213,26 @@ window.Views = window.Views || {};
                     </div>
                 </div>
 
+                <!-- Sugerir mejoras -->
+                <div style="margin-top:24px;">
+                    <button id="th-btn-mejoras"
+                        style="width:100%; padding:16px 20px; background:var(--bg-card); border:1px solid var(--border);
+                               border-radius:14px; cursor:pointer; display:flex; align-items:center; gap:12px;
+                               transition:border-color 0.15s;">
+                        <div style="width:40px; height:40px; background:linear-gradient(135deg, #8b5cf624, #6d28d924);
+                                    border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                            <i class="ph-fill ph-lightbulb" style="font-size:1.2rem; color:#8b5cf6;"></i>
+                        </div>
+                        <div style="text-align:left; flex:1;">
+                            <div style="font-weight:700; font-size:0.92rem; color:var(--text-primary);">Ideas y Mejoras</div>
+                            <div style="font-size:0.78rem; color:var(--text-muted);">Sugiere funciones nuevas para la app</div>
+                        </div>
+                        <i class="ph ph-caret-right" style="font-size:1.1rem; color:var(--text-muted);"></i>
+                    </button>
+                </div>
+
                 <!-- Cerrar sesión -->
-                <div style="margin-top:32px; padding-top:20px; border-top:1px solid var(--border);">
+                <div style="margin-top:16px; padding-top:20px; border-top:1px solid var(--border);">
                     <button id="th-logout" style="width:100%; padding:14px; background:none; border:1px solid rgba(239,68,68,0.25);
                             border-radius:12px; color:#ef4444; font-size:0.9rem; font-weight:600; cursor:pointer;
                             display:flex; align-items:center; justify-content:center; gap:8px;
@@ -230,6 +248,12 @@ window.Views = window.Views || {};
         const facturaBtn = container.querySelector('#th-btn-factura');
         if (facturaBtn) {
             facturaBtn.addEventListener('click', () => navTo('factura_upload'));
+        }
+
+        // Botón mejoras
+        const mejorasBtn = container.querySelector('#th-btn-mejoras');
+        if (mejorasBtn) {
+            mejorasBtn.addEventListener('click', () => navTo('suggestions'));
         }
 
         // Cerrar sesión

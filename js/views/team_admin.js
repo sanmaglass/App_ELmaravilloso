@@ -91,6 +91,7 @@ window.Views = window.Views || {};
             { id: 'avisos',     label: 'Avisos',      icon: 'ph-megaphone' },
             { id: 'lecturas',   label: 'Lecturas',    icon: 'ph-eye' },
             { id: 'checklists', label: 'Checklists',  icon: 'ph-check-square' },
+            { id: 'mejoras',    label: 'Mejoras',     icon: 'ph-lightbulb' },
         ];
 
         container.innerHTML = `
@@ -136,6 +137,7 @@ window.Views = window.Views || {};
         else if (_tab === 'avisos') await renderAvisos(content, tenantId, userId, userEmail);
         else if (_tab === 'lecturas') await renderLecturas(content, tenantId);
         else if (_tab === 'checklists') await renderChecklists(content, tenantId);
+        else if (_tab === 'mejoras') await renderMejoras(content, tenantId);
     };
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -1397,6 +1399,140 @@ window.Views = window.Views || {};
 
         wireCardEvents('apertura');
         wireCardEvents('cierre');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // TAB 5 — MEJORAS (sugerencias del equipo)
+    // ═══════════════════════════════════════════════════════════════════════
+    const SUG_STATUS = {
+        pendiente:    { label: 'Pendiente',    color: '#d97706', bg: 'rgba(217,119,6,0.12)' },
+        vista:        { label: 'Vista',        color: '#2563eb', bg: 'rgba(37,99,235,0.12)' },
+        en_proceso:   { label: 'En proceso',   color: '#7c3aed', bg: 'rgba(124,58,237,0.12)' },
+        implementada: { label: 'Implementada', color: '#16a34a', bg: 'rgba(22,163,74,0.12)' },
+        descartada:   { label: 'Descartada',   color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
+    };
+
+    async function renderMejoras(el, tenantId) {
+        el.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">Cargando sugerencias…</div>';
+
+        const supabase = window.SyncV2?.client;
+        if (!supabase) { el.innerHTML = '<p style="color:var(--text-muted);">Sin conexión.</p>'; return; }
+
+        let suggestions = [];
+        try {
+            const { data, error } = await supabase.from('suggestions')
+                .select('*')
+                .eq('tenant_id', tenantId)
+                .order('created_at', { ascending: false })
+                .limit(100);
+            if (error) throw error;
+            suggestions = data || [];
+        } catch (e) {
+            el.innerHTML = `<p style="color:#ef4444;">Error: ${e.message}</p>`;
+            return;
+        }
+
+        if (!suggestions.length) {
+            el.innerHTML = `
+                <div style="text-align:center; padding:40px;">
+                    <i class="ph ph-lightbulb" style="font-size:2.5rem; color:var(--text-muted); opacity:0.4;"></i>
+                    <p style="color:var(--text-muted); margin:12px 0 0;">El equipo aún no ha enviado sugerencias.</p>
+                </div>`;
+            return;
+        }
+
+        const statusOpts = Object.entries(SUG_STATUS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+
+        el.innerHTML = `
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0 0 16px;">
+                ${suggestions.length} sugerencia${suggestions.length !== 1 ? 's' : ''} del equipo
+            </p>
+            ${suggestions.map((s, i) => {
+                const st = SUG_STATUS[s.status] || SUG_STATUS.pendiente;
+                return `
+                <div class="ta-sug-card" data-idx="${i}" style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:12px;">
+                    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:8px;">
+                        <div style="flex:1;">
+                            <span style="font-weight:700; font-size:0.95rem; color:var(--text-primary); word-break:break-word;">${window.escapeHTML(s.title)}</span>
+                            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+                                ${nameFromEmail(s.user_email)} · ${tiempoRelativo(s.created_at)}
+                            </div>
+                        </div>
+                        <select class="ta-sug-status" data-id="${s.id}"
+                                style="padding:4px 8px; font-size:0.75rem; font-weight:600; border:1px solid var(--border);
+                                       border-radius:8px; background:${st.bg}; color:${st.color}; cursor:pointer;">
+                            ${Object.entries(SUG_STATUS).map(([k, v]) =>
+                                `<option value="${k}" ${k === s.status ? 'selected' : ''}>${v.label}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    ${s.description ? `<p style="margin:0 0 10px; font-size:0.85rem; color:var(--text-muted); word-break:break-word; white-space:pre-line;">${window.escapeHTML(s.description)}</p>` : ''}
+                    <!-- Respuesta admin -->
+                    <div style="margin-top:8px;">
+                        ${s.admin_response ? `
+                        <div style="padding:8px 12px; background:rgba(37,99,235,0.06); border-left:3px solid #3b82f6; border-radius:0 8px 8px 0; margin-bottom:8px;">
+                            <p style="margin:0; font-size:0.82rem; color:var(--text-primary);">${window.escapeHTML(s.admin_response)}</p>
+                        </div>` : ''}
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" class="ta-sug-reply" data-id="${s.id}" placeholder="Responder..." maxlength="300"
+                                   value="${s.admin_response ? window.escapeHTML(s.admin_response) : ''}"
+                                   style="flex:1; padding:8px 10px; font-size:0.82rem; background:var(--bg-input, var(--bg-secondary));
+                                          border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font:inherit; box-sizing:border-box;">
+                            <button class="ta-sug-reply-btn" data-id="${s.id}"
+                                    style="padding:8px 14px; background:var(--primary); color:#fff; border:none; border-radius:8px;
+                                           font-size:0.78rem; font-weight:600; cursor:pointer; white-space:nowrap;">
+                                <i class="ph ph-paper-plane-tilt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('')}
+        `;
+
+        // Wire status change
+        el.querySelectorAll('.ta-sug-status').forEach(sel => {
+            sel.addEventListener('change', async () => {
+                const id = sel.dataset.id;
+                const newStatus = sel.value;
+                try {
+                    const { error } = await supabase.from('suggestions')
+                        .update({ status: newStatus, updated_at: new Date().toISOString() })
+                        .eq('id', id);
+                    if (error) throw error;
+                    const st = SUG_STATUS[newStatus] || SUG_STATUS.pendiente;
+                    sel.style.background = st.bg;
+                    sel.style.color = st.color;
+                    window.showToast?.('Estado actualizado');
+                } catch (e) {
+                    window.showToast?.('Error al actualizar');
+                    console.error('[mejoras] status update:', e);
+                }
+            });
+        });
+
+        // Wire reply buttons
+        el.querySelectorAll('.ta-sug-reply-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.id;
+                const input = el.querySelector(`.ta-sug-reply[data-id="${id}"]`);
+                const reply = input?.value.trim();
+                if (!reply) { window.showToast?.('Escribe una respuesta'); return; }
+                btn.disabled = true;
+                try {
+                    const { error } = await supabase.from('suggestions')
+                        .update({ admin_response: reply, status: 'vista', updated_at: new Date().toISOString() })
+                        .eq('id', id);
+                    if (error) throw error;
+                    window.showToast?.('Respuesta enviada');
+                    await renderMejoras(el, tenantId);
+                } catch (e) {
+                    window.showToast?.('Error al responder');
+                    console.error('[mejoras] reply:', e);
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        });
     }
 
 })();

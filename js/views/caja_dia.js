@@ -274,7 +274,7 @@ window.Views = window.Views || {};
                 <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);">
                     <span style="font-size:0.85rem; color:var(--text-primary);">${window.escapeHTML ? window.escapeHTML(g.description) : g.description}</span>
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-weight:700; color:#ef4444; font-size:0.88rem;">-${fmt(Math.abs(g.amount))}</span>
+                        ${isEmp ? '' : `<span style="font-weight:700; color:#ef4444; font-size:0.88rem;">-${fmt(Math.abs(g.amount))}</span>`}
                         ${esHoy && !isEmp ? `<button class="btn-del-gasto" data-id="${g.id}" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:2px 4px; font-size:0.9rem;" title="Eliminar"><i class="ph ph-x-circle"></i></button>` : ''}
                     </div>
                 </div>
@@ -284,7 +284,7 @@ window.Views = window.Views || {};
             const cuadreBadge = cuadre
                 ? `<div style="display:flex; align-items:center; gap:6px; padding:8px 12px; background:#16a34a18; border-radius:8px; margin-top:12px;">
                         <i class="ph-fill ph-check-circle" style="color:#16a34a; font-size:1.1rem;"></i>
-                        <span style="color:#16a34a; font-size:0.82rem; font-weight:600;">Cuadre guardado: ${fmt(cuadre.amount)} — ${cuadre.notes}</span>
+                        <span style="color:#16a34a; font-size:0.82rem; font-weight:600;">Cuadre guardado${isEmp ? '' : ': ' + fmt(cuadre.amount)} — ${cuadre.notes || ''}</span>
                    </div>` : '';
 
             // ── Lista de ventas (5 iniciales + ver más) ──
@@ -327,7 +327,7 @@ window.Views = window.Views || {};
                         </div>` : `
                         <span style="font-size:1.3rem; font-weight:800; color:#f59e0b;">${fondoMonto ? fmt(fondoMonto) : '—'}</span>`}
                     </div>
-                    ${fondo ? `<span style="font-size:0.72rem; color:var(--text-muted); margin-top:4px; display:block;">Registrado: ${fmt(fondoMonto)}${fondo.reference ? ` por ${fondo.reference.split('@')[0]}` : ''}${fondo.updated_at_hlc ? ` · ${new Date(Math.floor(fondo.updated_at_hlc / 1e6)).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}` : ''}</span>` : ''}
+                    ${fondo ? `<span style="font-size:0.72rem; color:var(--text-muted); margin-top:4px; display:block;">Registrado${isEmp ? '' : ': ' + fmt(fondoMonto)}${fondo.reference ? ` por ${fondo.reference.split('@')[0]}` : ''}${fondo.updated_at_hlc ? ` · ${new Date(Math.floor(fondo.updated_at_hlc / 1e6)).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' })}` : ''}</span>` : ''}
                 </div>
 
                 ${nTickets > 0 ? (isEmp ? `
@@ -358,7 +358,7 @@ window.Views = window.Views || {};
                             <i class="ph-fill ph-coins" style="color:#ef4444; font-size:1.1rem;"></i>
                             <span style="font-weight:700; font-size:0.92rem; color:var(--text-primary);">Gastos caja chica</span>
                         </div>
-                        <span style="font-weight:700; color:#ef4444; font-size:0.95rem;">${totalGastos > 0 ? '-' + fmt(totalGastos) : '$0'}</span>
+                        <span style="font-weight:700; color:#ef4444; font-size:0.95rem;">${isEmp ? `${gastos.length} gasto${gastos.length !== 1 ? 's' : ''}` : (totalGastos > 0 ? '-' + fmt(totalGastos) : '$0')}</span>
                     </div>
                     ${gastosListHTML}
                     ${esHoy ? `
@@ -379,7 +379,13 @@ window.Views = window.Views || {};
                         <i class="ph-fill ph-scales" style="color:#16a34a; font-size:1.1rem;"></i>
                         <span style="font-weight:700; font-size:0.92rem; color:var(--text-primary);">Cuadre de efectivo</span>
                     </div>
-                    <!-- Resumen del esperado -->
+                    <!-- Resumen del esperado (solo admin) -->
+                    ${isEmp ? `
+                    <div style="margin-bottom:14px;">
+                        <div style="font-size:0.92rem; color:var(--text-muted);">
+                            Cuenta cuánto efectivo hay en caja
+                        </div>
+                    </div>` : `
                     <div style="margin-bottom:14px;">
                         <div style="font-size:1.15rem; font-weight:800; color:var(--text-primary); margin-bottom:6px;">
                             Esperado: ${fmt(efectivoEsperado)}
@@ -389,7 +395,7 @@ window.Views = window.Views || {};
                             <span>+ Efectivo ${fmt(efectivoVentas)}</span>
                             <span>- Gastos ${fmt(totalGastos)}</span>
                         </div>
-                    </div>
+                    </div>`}
                     ${esHoy ? `
                     <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;">
                         <div>

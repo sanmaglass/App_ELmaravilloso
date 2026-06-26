@@ -43,7 +43,8 @@ const views = {
     team_reports: () => window.Views.team_reports(document.getElementById('view-container')),
     team_scanner: () => window.Views.team_scanner(document.getElementById('view-container')),
     team_admin: () => window.Views.team_admin(document.getElementById('view-container')),
-    factura_upload: () => window.Views.factura_upload(document.getElementById('view-container'))
+    factura_upload: () => window.Views.factura_upload(document.getElementById('view-container')),
+    suggestions: () => window.Views.suggestions(document.getElementById('view-container'))
 };
 
 // ── Tema neutro premium para Chart.js (gris-dominante, sin glow) ──
@@ -290,7 +291,7 @@ async function init() {
         // localStorage NO se usa aquí para evitar que el usuario manipule su propio rol.
         const _userRole = window.Auth.getRole();
         window._isEmployee = (_userRole === 'employee');
-        window._employeeAllowed = new Set(['team_home', 'caja_dia', 'announcements', 'team_reports', 'factura_upload']);
+        window._employeeAllowed = new Set(['team_home', 'caja_dia', 'announcements', 'team_reports', 'factura_upload', 'team_scanner', 'suggestions']);
         if (window._isEmployee) {
             // Tema claro para cajeras
             document.body.classList.add('light-theme');
@@ -307,7 +308,16 @@ async function init() {
             if (moreBtn) moreBtn.style.display = 'none';
             const moreMenu = document.getElementById('more-menu');
             if (moreMenu) moreMenu.style.display = 'none';
-            // Reemplazar bottom-nav con las 5 vistas de employee
+            // Ocultar hamburger (sidebar vacía para employee)
+            const _mobileToggle = document.getElementById('btn-mobile-menu');
+            if (_mobileToggle) _mobileToggle.style.display = 'none';
+            // Ocultar botones admin del header (privacidad, notificaciones)
+            const _privBtn = document.getElementById('btn-toggle-privacy');
+            if (_privBtn) _privBtn.style.display = 'none';
+            const _bellBtn = document.getElementById('btn-header-bell');
+            if (_bellBtn) _bellBtn.style.display = 'none';
+
+            // Reemplazar bottom-nav con las vistas de employee
             const bn = document.getElementById('bottom-nav');
             if (bn) {
                 bn.innerHTML = `
@@ -316,6 +326,9 @@ async function init() {
                     </button>
                     <button class="bottom-nav-item" data-view="caja_dia">
                         <i class="ph-fill ph-wallet"></i><span>Caja</span>
+                    </button>
+                    <button class="bottom-nav-item" data-view="team_scanner">
+                        <i class="ph-fill ph-barcode"></i><span>Precio</span>
                     </button>
                     <button class="bottom-nav-item" data-view="announcements">
                         <i class="ph-fill ph-chat-circle-dots"></i><span>Avisos</span>
@@ -330,7 +343,7 @@ async function init() {
                         bn.querySelectorAll('.bottom-nav-item').forEach(t => t.classList.remove('active'));
                         tab.classList.add('active');
                         const vName = tab.dataset.view;
-                        const titleMap = { team_home: 'Inicio', caja_dia: 'Caja del Día', announcements: 'Avisos', team_reports: 'Reportar', team_scanner: 'Consultar Precio' };
+                        const titleMap = { team_home: 'Inicio', caja_dia: 'Caja del Día', announcements: 'Avisos', team_reports: 'Reportar', team_scanner: 'Consultar Precio', suggestions: 'Mejoras' };
                         navigateToView(vName, titleMap[vName] || vName);
                     });
                 });
@@ -338,8 +351,9 @@ async function init() {
             window.state.currentView = 'team_home';
 
             // ── Limpiar datos sensibles de Dexie (employee no debe tener datos de admin en local) ──
+            // cash_register NO se limpia: cajera escribe fondo/gastos/cuadre ahí y perdería datos si sync no completó
             const _sensitiveTables = ['employees', 'workLogs', 'expenses', 'purchase_invoices',
-                'cash_register', 'loans', 'advances', 'daily_sales', 'suppliers',
+                'loans', 'advances', 'daily_sales', 'suppliers',
                 'sales_invoices', 'electronic_invoices', 'reminders'];
             for (const t of _sensitiveTables) {
                 try { if (window.db[t]) await window.db[t].clear(); } catch (e) { /* tabla puede no existir */ }
@@ -360,9 +374,21 @@ async function init() {
                 if (el) el.style.display = 'none';
             });
         }
+        // ── Actualizar avatar/nombre/rol del sidebar dinámicamente ──
+        const _email = session.user.email || '';
+        const _userName = _email.split('@')[0];
+        const _initials = _userName.slice(0, 2).toUpperCase();
+        const _roleLabels = { owner: 'Dueño', admin: 'Gerente', employee: 'Equipo' };
+        const _avatarEl = document.getElementById('sidebar-avatar');
+        const _nameEl = document.getElementById('sidebar-user-name');
+        const _roleEl = document.getElementById('sidebar-user-role');
+        if (_avatarEl) _avatarEl.textContent = _initials;
+        if (_nameEl) _nameEl.textContent = _userName;
+        if (_roleEl) _roleEl.textContent = _roleLabels[_userRole] || _userRole;
+
         localStorage.setItem('wm_auth', 'true');
-        localStorage.setItem('wm_auth_email', session.user.email);
-        localStorage.setItem('wm_user', session.user.email.split('@')[0]);
+        localStorage.setItem('wm_auth_email', _email);
+        localStorage.setItem('wm_user', _userName);
 
         // Auth passed - iniciar guard de inactividad
         if (window.InactivityGuard) window.InactivityGuard.start();
