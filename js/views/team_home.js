@@ -59,26 +59,43 @@ window.Views = window.Views || {};
 
     // Checklist tareas — se cargan desde BD (checklist_templates), con fallback hardcodeado
     const FALLBACK_APERTURA = [
-        { task: 'Abrir caja y contar efectivo', icon: 'ph-fill ph-wallet' },
-        { task: 'Limpiar mesón y vitrinas', icon: 'ph-fill ph-broom' },
-        { task: 'Verificar stock de productos destacados', icon: 'ph-fill ph-package' },
-        { task: 'Revisar promos del día', icon: 'ph-fill ph-tag' },
-        { task: 'Encender luces y letrero', icon: 'ph-fill ph-lightning' }
+        { task: 'Contar caja inicial y anotar monto', icon: 'ph-fill ph-wallet' },
+        { task: 'Trapear el piso', icon: 'ph-fill ph-broom' },
+        { task: 'Aseo general (mesón, vitrinas, estantes)', icon: 'ph-fill ph-sparkle' },
+        { task: 'Reponer vitrina y dejar cartones en su lugar', icon: 'ph-fill ph-package' },
+        { task: 'Revisar que todos los productos tengan precio y cartulina', icon: 'ph-fill ph-tag' },
+        { task: 'Revisar productos próximos a vencer', icon: 'ph-fill ph-calendar-check' }
     ];
     const FALLBACK_CIERRE = [
-        { task: 'Cuadrar caja del día', icon: 'ph-fill ph-wallet' },
-        { task: 'Cerrar y limpiar', icon: 'ph-fill ph-broom' },
-        { task: 'Revisar vencimientos próximos', icon: 'ph-fill ph-calendar-check' },
-        { task: 'Reportar novedades del turno', icon: 'ph-fill ph-pencil-line' }
+        { task: 'Cuadrar caja: contar efectivo + revisar tarjetas', icon: 'ph-fill ph-wallet' },
+        { task: 'Anotar productos que se agotaron', icon: 'ph-fill ph-package' },
+        { task: 'Registrar novedades (devoluciones, fiados, problemas)', icon: 'ph-fill ph-pencil-line' },
+        { task: 'Botar basura y sacar cartones', icon: 'ph-fill ph-trash' },
+        { task: 'Apagar luces de vitrina y letrero', icon: 'ph-fill ph-lightning' },
+        { task: 'Cerrar bien (cortina, llaves)', icon: 'ph-fill ph-lock' }
     ];
+    // Tarea extra de baño — solo aparece sábado y domingo (finde)
+    const TAREA_BANO_FINDE = { task: 'Limpiar baño', icon: 'ph-fill ph-toilet' };
+
+    function esFinDeSemana() {
+        const day = chileNow().getDay(); // 0=dom, 6=sáb
+        return day === 0 || day === 6;
+    }
 
     async function loadChecklistTasks(type) {
+        let tasks;
         try {
             const templates = await window.db.checklist_templates.toArray();
             const tpl = templates.find(t => t.checklist_type === type && !t.deleted && t.active);
-            if (tpl && Array.isArray(tpl.tasks) && tpl.tasks.length > 0) return tpl.tasks;
+            if (tpl && Array.isArray(tpl.tasks) && tpl.tasks.length > 0) tasks = [...tpl.tasks];
         } catch { /* tabla aún no existe, usar fallback */ }
-        return type === 'apertura' ? FALLBACK_APERTURA : FALLBACK_CIERRE;
+        if (!tasks) tasks = type === 'apertura' ? [...FALLBACK_APERTURA] : [...FALLBACK_CIERRE];
+        // Agregar tarea de baño solo en apertura los fines de semana
+        if (type === 'apertura' && esFinDeSemana()) {
+            const yaExiste = tasks.some(t => t.task.toLowerCase().includes('baño'));
+            if (!yaExiste) tasks.push(TAREA_BANO_FINDE);
+        }
+        return tasks;
     }
 
     function getChecklistType() {
