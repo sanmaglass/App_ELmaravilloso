@@ -1,6 +1,6 @@
 // Caja del Día — vista para trabajadoras
-// Fondo de apertura + ventas + gastos caja chica + cuadre + facturas recientes
-// Todo persiste en cash_register y el admin lo ve en Arqueo de Caja.
+// Fondo de apertura + ventas + salidas de caja (auto Eleventa) + cuadre + facturas recientes
+// Fondo y cuadre persisten en cash_register; las salidas vienen de eleventa_flujo_caja.
 window.Views = window.Views || {};
 
 (function () {
@@ -36,17 +36,22 @@ window.Views = window.Views || {};
         return window.DataManager.saveAndSync('cash_register', data);
     }
 
-    async function saveGasto(dia, desc, amount) {
-        const data = {
-            date: dia, type: 'gasto_caja', category: 'caja_chica',
-            amount: -Math.abs(amount), description: desc,
-            paymentMethod: 'Efectivo', reference: userRef(), deleted: false
-        };
-        return window.DataManager.saveAndSync('cash_register', data);
-    }
-
-    async function deleteGasto(id) {
-        return window.DataManager.deleteAndSync('cash_register', id);
+    // Salidas de efectivo registradas en Eleventa (tabla nube `eleventa_flujo_caja`, tipo='salida').
+    // Reemplaza el ingreso manual de gastos: la caja chica se anota en el computador (Eleventa) y llega sola.
+    // Devuelve null si no se pudo cargar (offline / sin cliente) para distinguirlo de "0 salidas".
+    async function loadEleventaSalidas(dia) {
+        try {
+            const client = window.SyncV2?.client;
+            if (!client) return null;
+            const { data, error } = await client
+                .from('eleventa_flujo_caja')
+                .select('fecha,monto,descripcion,tipo');
+            if (error) return null;
+            return (data || [])
+                .filter(f => (f.tipo || '').toLowerCase() === 'salida' && chileDate(f.fecha) === dia)
+                .map(f => ({ desc: f.descripcion || 'Salida de caja', monto: Math.abs(parseFloat(f.monto) || 0) }))
+                .filter(s => s.monto > 0);
+        } catch { return null; }
     }
 
     // ── Cruce Mercado Pago (async, fire-and-forget render) ──
@@ -204,7 +209,7 @@ window.Views = window.Views || {};
                 <div>
                     <div style="font-size:0.8rem; color:var(--primary); font-weight:bold; letter-spacing:1px; text-transform:uppercase;">El Maravilloso</div>
                     <h1 style="margin:4px 0 4px; color:var(--text-primary);">Caja del Día</h1>
-                    <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">Fondo, ventas, gastos y cuadre</p>
+                    <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">Fondo, ventas, salidas y cuadre</p>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     ${isEmp ? '' : `<input type="date" id="caja-fecha" value="${today}" max="${today}"
@@ -245,12 +250,14 @@ window.Views = window.Views || {};
 
             const fondo = await loadOne(dia, 'fondo_apertura');
             const fondoMonto = fondo ? (parseFloat(fondo.amount) || 0) : 0;
-            const gastos = await loadByType(dia, 'gasto_caja');
-            const totalGastos = gastos.reduce((s, g) => s + Math.abs(parseFloat(g.amount) || 0), 0);
+            const salidasRaw = await loadEleventaSalidas(dia);
+            const salidasError = salidasRaw === null;        // no se pudo cargar desde la nube
+            const salidas = salidasRaw || [];
+            const totalSalidas = salidas.reduce((s, x) => s + x.monto, 0);
             const cuadre = await loadOne(dia, 'cuadre');
 
-            // Efectivo esperado = fondo + ventas efectivo - gastos caja chica
-            const efectivoEsperado = fondoMonto + efectivoVentas - totalGastos;
+            // Efectivo esperado = fondo + ventas efectivo - salidas de caja (Eleventa)
+            const efectivoEsperado = fondoMonto + efectivoVentas - totalSalidas;
 
             const orden = ['Efectivo', 'Tarjeta', 'Transferencia', 'Crédito', 'Mixto'];
             const formas = orden.filter(k => grupos[k]).concat(Object.keys(grupos).filter(k => !orden.includes(k)));
@@ -269,16 +276,15 @@ window.Views = window.Views || {};
                 </div>`;
             }).join('');
 
-            // ── Gastos caja chica list ──
-            const gastosListHTML = gastos.length ? gastos.map(g => `
+            // ── Salidas de caja (auto Eleventa) ──
+            const salidasListHTML = salidasError
+                ? '<p style="color:#d97706; font-size:0.82rem; margin:4px 0;"><i class="ph ph-warning" style="vertical-align:-2px;"></i> No se pudieron cargar las salidas de Eleventa. Revisa la conexión.</p>'
+                : (salidas.length ? salidas.map(s => `
                 <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);">
-                    <span style="font-size:0.85rem; color:var(--text-primary);">${window.escapeHTML ? window.escapeHTML(g.description) : g.description}</span>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        ${isEmp ? '' : `<span style="font-weight:700; color:#ef4444; font-size:0.88rem;">-${fmt(Math.abs(g.amount))}</span>`}
-                        ${esHoy && !isEmp ? `<button class="btn-del-gasto" data-id="${g.id}" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:2px 4px; font-size:0.9rem;" title="Eliminar"><i class="ph ph-x-circle"></i></button>` : ''}
-                    </div>
+                    <span style="font-size:0.85rem; color:var(--text-primary);">${window.escapeHTML ? window.escapeHTML(s.desc) : s.desc}</span>
+                    ${isEmp ? '' : `<span style="font-weight:700; color:#ef4444; font-size:0.88rem;">-${fmt(s.monto)}</span>`}
                 </div>
-            `).join('') : '<p style="color:var(--text-muted); font-size:0.82rem; margin:4px 0;">Sin gastos registrados.</p>';
+            `).join('') : '<p style="color:var(--text-muted); font-size:0.82rem; margin:4px 0;">Sin salidas registradas en Eleventa.</p>');
 
             // ── Cuadre badge ──
             const cuadreBadge = cuadre
@@ -351,26 +357,19 @@ window.Views = window.Views || {};
                     <p style="color:var(--text-muted); margin:10px 0 0; font-size:0.9rem;">Sin ventas ${esHoy ? 'todavía hoy' : 'ese día'}</p>
                 </div>`}
 
-                <!-- ── GASTOS CAJA CHICA ── -->
+                <!-- ── SALIDAS DE CAJA (auto Eleventa) ── -->
                 <div style="background:var(--bg-card); border:1px solid var(--border); border-left:4px solid #ef4444; border-radius:14px; padding:16px; margin-bottom:16px;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             <i class="ph-fill ph-coins" style="color:#ef4444; font-size:1.1rem;"></i>
-                            <span style="font-weight:700; font-size:0.92rem; color:var(--text-primary);">Gastos caja chica</span>
+                            <span style="font-weight:700; font-size:0.92rem; color:var(--text-primary);">Salidas de caja</span>
                         </div>
-                        <span style="font-weight:700; color:#ef4444; font-size:0.95rem;">${isEmp ? `${gastos.length} gasto${gastos.length !== 1 ? 's' : ''}` : (totalGastos > 0 ? '-' + fmt(totalGastos) : '$0')}</span>
+                        <span style="font-weight:700; color:#ef4444; font-size:0.95rem;">${isEmp ? `${salidas.length} salida${salidas.length !== 1 ? 's' : ''}` : (totalSalidas > 0 ? '-' + fmt(totalSalidas) : '$0')}</span>
                     </div>
-                    ${gastosListHTML}
-                    ${esHoy ? `
-                    <div id="gasto-form" style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; align-items:flex-end;">
-                        <input type="text" id="gasto-desc" placeholder="Ej: Artículos de limpieza" maxlength="80"
-                            style="flex:2; min-width:140px; padding:8px 10px; background:var(--bg-input, var(--bg-secondary)); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font:inherit; font-size:0.88rem; box-sizing:border-box;">
-                        <input type="number" id="gasto-monto" placeholder="$" inputmode="numeric"
-                            style="width:90px; padding:8px 10px; background:var(--bg-input, var(--bg-secondary)); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font:inherit; font-size:0.88rem; box-sizing:border-box;">
-                        <button id="btn-add-gasto" class="btn btn-secondary" style="padding:8px 14px; font-size:0.82rem; white-space:nowrap;">
-                            <i class="ph ph-plus"></i> Agregar
-                        </button>
-                    </div>` : ''}
+                    <div style="font-size:0.74rem; color:var(--text-muted); margin-bottom:10px; display:flex; align-items:center; gap:5px;">
+                        <i class="ph ph-lightning" style="color:#f59e0b;"></i> Automático desde Eleventa — se registran en el computador
+                    </div>
+                    ${salidasListHTML}
                 </div>
 
                 <!-- ── CUADRE DE EFECTIVO ── -->
@@ -393,9 +392,10 @@ window.Views = window.Views || {};
                         <div style="display:flex; flex-wrap:wrap; gap:8px; font-size:0.78rem; color:var(--text-muted);">
                             <span>Fondo ${fmt(fondoMonto)}</span>
                             <span>+ Efectivo ${fmt(efectivoVentas)}</span>
-                            <span>- Gastos ${fmt(totalGastos)}</span>
+                            <span>- Salidas ${fmt(totalSalidas)}</span>
                         </div>
                     </div>`}
+                    ${salidasError ? `<div style="margin-top:-4px; margin-bottom:12px; padding:7px 10px; background:#d9770618; border-radius:8px; font-size:0.76rem; color:#d97706;"><i class="ph ph-warning" style="vertical-align:-2px;"></i> No se pudieron cargar las salidas de Eleventa; el esperado puede estar incompleto.</div>` : ''}
                     ${esHoy ? `
                     <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;">
                         <div>
@@ -518,41 +518,7 @@ window.Views = window.Views || {};
                 });
             }
 
-            // ── Agregar gasto ──
-            const btnGasto = body.querySelector('#btn-add-gasto');
-            if (btnGasto) {
-                btnGasto.addEventListener('click', async () => {
-                    const desc = body.querySelector('#gasto-desc')?.value.trim();
-                    const monto = parseFloat(body.querySelector('#gasto-monto')?.value);
-                    if (!desc) { window.showToast?.('Describe el gasto'); return; }
-                    if (isNaN(monto) || monto <= 0) { window.showToast?.('Monto inválido'); return; }
-                    btnGasto.disabled = true;
-                    try {
-                        const res = await saveGasto(dia, desc, monto);
-                        if (res && res.success === false) {
-                            window.showToast?.('No se pudo registrar el gasto, intenta de nuevo');
-                        } else {
-                            window.showToast?.('Gasto registrado');
-                        }
-                        await render();
-                    } catch (e) {
-                        console.error('[caja] Error guardando gasto:', e);
-                        window.showToast?.('No se pudo registrar el gasto, intenta de nuevo');
-                    } finally {
-                        btnGasto.disabled = false;
-                    }
-                });
-            }
-
-            // ── Eliminar gasto ──
-            body.querySelectorAll('.btn-del-gasto').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    const ok = await window.showConfirmDialog('Eliminar gasto', '¿Eliminar este gasto de caja chica?');
-                    if (!ok) return;
-                    await deleteGasto(btn.dataset.id);
-                    render();
-                });
-            });
+            // ── Salidas de caja: automáticas desde Eleventa, sin ingreso manual ──
 
             // ── Contador por denominación ──
             const btnToggleDenom = body.querySelector('#btn-toggle-denom');
