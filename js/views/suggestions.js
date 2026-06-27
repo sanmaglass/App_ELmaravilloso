@@ -44,7 +44,7 @@ window.Views = window.Views || {};
         // Cargar sugerencias
         let suggestions = [];
         try {
-            const query = supabase.from('suggestions')
+            let query = supabase.from('suggestions')
                 .select('*')
                 .eq('tenant_id', tenantId)
                 .order('created_at', { ascending: false })

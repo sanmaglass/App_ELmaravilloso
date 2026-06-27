@@ -46,7 +46,7 @@ window.Views = window.Views || {};
                         transition:border-color 0.2s;">
                         <i class="ph-fill ph-camera" style="font-size:3rem; color:var(--primary); display:block; margin-bottom:12px; opacity:0.85;"></i>
                         <p style="margin:0 0 20px; color:var(--text-muted); font-size:0.9rem; line-height:1.5;">
-                            Toma una foto clara de la factura.<br>
+                            Toma o sube una foto clara de la factura.<br>
                             <span style="font-size:0.82rem; opacity:0.75;">El sistema mejorará el contraste automáticamente.</span>
                         </p>
                         <label id="fu-label-foto" style="
@@ -54,8 +54,8 @@ window.Views = window.Views || {};
                             padding:14px 28px; background:var(--primary); color:#fff;
                             border-radius:14px; font-weight:700; font-size:1rem; cursor:pointer;
                             box-shadow:0 4px 14px rgba(76,141,255,0.35); transition:opacity 0.15s;">
-                            <i class="ph-fill ph-camera"></i> Tomar foto
-                            <input id="fu-input-foto" type="file" accept="image/*" capture="environment"
+                            <i class="ph-fill ph-camera"></i> Tomar o subir foto
+                            <input id="fu-input-foto" type="file" accept="image/*"
                                 style="display:none; position:absolute; width:0; height:0; opacity:0;">
                         </label>
                     </div>
@@ -82,7 +82,7 @@ window.Views = window.Views || {};
                                 border:1px solid var(--border); border-radius:10px;
                                 font-size:0.88rem; font-weight:600; cursor:pointer; transition:all 0.15s;">
                                 <i class="ph ph-arrow-clockwise"></i> Repetir foto
-                                <input id="fu-input-repetir" type="file" accept="image/*" capture="environment"
+                                <input id="fu-input-repetir" type="file" accept="image/*"
                                     style="display:none; position:absolute; width:0; height:0; opacity:0;">
                             </label>
                         </div>

@@ -265,7 +265,7 @@ window.Views = window.Views || {};
                         <button id="tr-btn-foto" style="display:inline-flex; align-items:center; gap:7px; padding:9px 16px; border:2px dashed var(--border); border-radius:12px; background:var(--bg-main); color:var(--text-muted); font-size:0.88rem; cursor:pointer; transition:border-color 0.15s;">
                             <i class="ph ph-camera" style="font-size:1rem;"></i> Adjuntar Foto
                         </button>
-                        <input id="tr-file-input" type="file" accept="image/*" capture="environment" style="display:none;" multiple>
+                        <input id="tr-file-input" type="file" accept="image/*" style="display:none;" multiple>
                         <div id="tr-photo-previews" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;"></div>
                     </div>
 
