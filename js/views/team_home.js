@@ -114,129 +114,193 @@ window.Views = window.Views || {};
         if (btn) btn.click();
     }
 
+    // Mapa de íconos a paleta pastel (v1 cálido)
+    function iconChipStyle(icon) {
+        if (icon.includes('wallet'))          return 'background:#fff0e8; color:#f08a5d;';
+        if (icon.includes('broom'))           return 'background:#eafaf0; color:#4cae7a;';
+        if (icon.includes('sparkle'))         return 'background:#fef3f2; color:#e8654e;';
+        if (icon.includes('package'))         return 'background:#f3eefc; color:#9b6dd6;';
+        if (icon.includes('tag'))             return 'background:#fff8e1; color:#e6a817;';
+        if (icon.includes('calendar'))        return 'background:#e8f5e9; color:#43a05b;';
+        if (icon.includes('pencil'))          return 'background:#fff3e0; color:#ef8c2c;';
+        if (icon.includes('trash'))           return 'background:#fce4ec; color:#d95577;';
+        if (icon.includes('lightning'))       return 'background:#fffde7; color:#c8a800;';
+        if (icon.includes('lock'))            return 'background:#ede7f6; color:#7b52c7;';
+        if (icon.includes('toilet'))          return 'background:#e8f5e9; color:#43a05b;';
+        return 'background:#f3eefc; color:#9b6dd6;';
+    }
+
     window.Views.team_home = async (container) => {
         const userId   = window.Auth?.session?.user?.id;
         const email    = window.Auth?.session?.user?.email || '';
         const nombre   = nombreDesdeEmail(email);
         const tenantId = window.Auth?.getTenantId();
         const hoy      = formatFechaChile(chileNow());
+        const clTypeLabel = getChecklistType() === 'apertura' ? 'Apertura' : 'Cierre';
 
-        // Esqueleto base — sin accesos rápidos (ya están en el bottom-nav)
+        // Esqueleto base — estilo cálido (v1) + anillo motivador (v3)
         container.innerHTML = `
-            <div style="max-width:680px; margin:0 auto; padding:0 16px 32px;">
+            <div style="
+                max-width:680px; margin:0 auto; padding:0 16px 40px;
+                min-height:100vh;
+                background:linear-gradient(180deg,#fff4ec 0%,#fdeef0 30%,#f6f0fb 100%);
+            ">
 
                 <!-- Saludo -->
-                <div style="margin-bottom:24px;">
-                    <p style="margin:0 0 2px; color:var(--text-muted); font-size:0.82rem; text-transform:capitalize;">
+                <div style="margin-bottom:22px; padding-top:8px;">
+                    <p style="margin:0 0 2px; color:#b08968; font-size:0.82rem; font-weight:700; text-transform:capitalize;">
                         ${hoy}
                     </p>
-                    <h1 style="margin:0; font-size:1.6rem; color:var(--text-primary); font-weight:800;">
-                        ${saludoContextual()}, ${window.escapeHTML(nombre)}
+                    <h1 style="margin:0; font-size:1.6rem; color:#3d2c2e; font-weight:800; display:flex; align-items:center; gap:8px;">
+                        ${saludoContextual()}, ${window.escapeHTML(nombre)} <span style="font-size:1.4rem;">👋</span>
                     </h1>
+                    <p style="margin:4px 0 0; font-size:0.88rem; color:#9a8478;">Que tengas un lindo turno ✨</p>
+                </div>
+
+                <!-- Anillo motivador -->
+                <div style="margin-bottom:20px;">
+                    <div id="th-ring" style="
+                        background:#fff; border-radius:22px;
+                        box-shadow:0 6px 20px rgba(186,120,100,.10);
+                        padding:18px 20px;
+                        display:flex; align-items:center; gap:18px;
+                    ">
+                        <div style="flex-shrink:0; position:relative; width:58px; height:58px;">
+                            <svg id="th-ring-svg" viewBox="0 0 58 58" width="58" height="58" style="transform:rotate(-90deg);">
+                                <circle cx="29" cy="29" r="24" fill="none" stroke="#fde8df" stroke-width="6"/>
+                                <circle id="th-ring-arc" cx="29" cy="29" r="24" fill="none"
+                                        stroke="#ee7a59" stroke-width="6"
+                                        stroke-linecap="round"
+                                        stroke-dasharray="150.8" stroke-dashoffset="150.8"
+                                        style="transition:stroke-dashoffset 0.5s ease;"/>
+                            </svg>
+                            <span id="th-ring-frac" style="
+                                position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+                                font-size:0.72rem; font-weight:800; color:#3d2c2e; white-space:nowrap;
+                            ">0/0</span>
+                        </div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:800; font-size:1rem; color:#3d2c2e; margin-bottom:3px;">
+                                ${clTypeLabel} en marcha
+                            </div>
+                            <div id="th-ring-text" style="font-size:0.84rem; color:#9a8478;">Cargando…</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Checklist del turno -->
-                <div style="margin-bottom:24px;">
+                <div style="margin-bottom:22px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                        <h3 style="margin:0; font-size:0.82rem; font-weight:700; color:var(--text-muted);
-                                   text-transform:uppercase; letter-spacing:0.8px;">
-                            <i class="ph-fill ph-list-checks" style="margin-right:5px;"></i>${getChecklistType() === 'apertura' ? 'Apertura' : 'Cierre'}
+                        <h3 style="margin:0; font-size:0.75rem; font-weight:800; color:#c9776a;
+                                   text-transform:uppercase; letter-spacing:0.8px;
+                                   display:flex; align-items:center; gap:6px;">
+                            <i class="ph-fill ph-list-checks"></i>${clTypeLabel}
                         </h3>
-                        <span id="th-checklist-progress" style="font-size:0.78rem; color:var(--text-muted);"></span>
+                        <span id="th-checklist-progress" style="font-size:0.78rem; color:#e08f7e;
+                              background:#fff; padding:3px 11px; border-radius:20px;
+                              box-shadow:0 2px 6px rgba(224,143,126,.18); font-weight:700;"></span>
                     </div>
-                    <div id="th-checklist" style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden;">
-                        <div style="color:var(--text-muted); font-size:0.88rem; padding:16px;">Cargando...</div>
+                    <div id="th-checklist" style="
+                        background:#fff; border-radius:22px;
+                        box-shadow:0 6px 20px rgba(186,120,100,.10);
+                        overflow:hidden;
+                    ">
+                        <div style="color:#9a8478; font-size:0.88rem; padding:18px 20px;">Cargando…</div>
                     </div>
                 </div>
 
                 <!-- Subir factura de mercadería -->
-                <div style="margin-bottom:24px;">
+                <div style="margin-bottom:22px;">
                     <button id="th-btn-factura"
-                        style="width:100%; padding:18px 20px; background:linear-gradient(135deg, var(--primary), #2f6fe0);
-                               color:#fff; border:none; border-radius:16px; cursor:pointer;
+                        style="width:100%; padding:17px 18px;
+                               background:linear-gradient(135deg,#ffb088,#ff8f6b);
+                               color:#fff; border:none; border-radius:22px; cursor:pointer;
                                display:flex; align-items:center; gap:14px;
-                               box-shadow:0 4px 16px rgba(76,141,255,0.28); transition:opacity 0.15s;">
-                        <div style="width:46px; height:46px; background:rgba(255,255,255,0.18); border-radius:12px;
+                               box-shadow:0 10px 24px rgba(255,143,107,.30); transition:opacity 0.15s;">
+                        <div style="width:46px; height:46px; background:rgba(255,255,255,0.22); border-radius:14px;
                                     display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                             <i class="ph-fill ph-receipt" style="font-size:1.5rem;"></i>
                         </div>
                         <div style="text-align:left; flex:1;">
                             <div style="font-weight:800; font-size:1rem; margin-bottom:2px;">Subir factura</div>
-                            <div style="font-size:0.82rem; opacity:0.85;">Fotografía la factura cuando llega mercadería</div>
+                            <div style="font-size:0.82rem; opacity:0.9;">Fotografía la factura cuando llega mercadería</div>
                         </div>
                         <i class="ph ph-caret-right" style="font-size:1.2rem; opacity:0.7;"></i>
                     </button>
                 </div>
 
                 <!-- Promo del día -->
-                <div id="th-promo-section" style="margin-bottom:24px; display:none;">
-                    <h3 style="margin:0 0 10px; font-size:0.82rem; font-weight:700; color:var(--text-muted);
-                               text-transform:uppercase; letter-spacing:0.8px;">
-                        <i class="ph-fill ph-sparkle" style="margin-right:5px;"></i>Promo vigente
+                <div id="th-promo-section" style="margin-bottom:22px; display:none;">
+                    <h3 style="margin:0 0 10px; font-size:0.75rem; font-weight:800; color:#c9776a;
+                               text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:6px;">
+                        <i class="ph-fill ph-sparkle"></i>Promo vigente
                     </h3>
                     <div id="th-promo-card"></div>
                 </div>
 
                 <!-- Avisos recientes -->
-                <div style="margin-bottom:24px;">
+                <div style="margin-bottom:22px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                        <h3 style="margin:0; font-size:0.82rem; font-weight:700; color:var(--text-muted);
-                                   text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:8px;">
-                            <i class="ph-fill ph-chat-circle-dots" style="margin-right:2px;"></i>Avisos
-                            <span id="th-avisos-badge" style="display:none; background:#2563eb; color:#fff; font-size:0.65rem;
-                                  padding:2px 7px; border-radius:10px; font-weight:700;"></span>
+                        <h3 style="margin:0; font-size:0.75rem; font-weight:800; color:#c9776a;
+                                   text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:6px;">
+                            <i class="ph-fill ph-chat-circle-dots"></i>Avisos
+                            <span id="th-avisos-badge" style="display:none; background:#ee7a59; color:#fff; font-size:0.65rem;
+                                  padding:2px 8px; border-radius:10px; font-weight:800;"></span>
                         </h3>
                         <button class="th-ver-mas" data-nav="announcements"
-                            style="font-size:0.8rem; color:var(--primary); background:none; border:none; cursor:pointer; padding:0;">
+                            style="font-size:0.8rem; color:#ee7a59; background:none; border:none; cursor:pointer; padding:0; font-weight:700;">
                             Ver todos →
                         </button>
                     </div>
                     <div id="th-avisos-list">
-                        <div style="color:var(--text-muted); font-size:0.88rem; padding:16px 0;">Cargando avisos…</div>
+                        <div style="color:#9a8478; font-size:0.88rem; padding:16px 0;">Cargando avisos…</div>
                     </div>
                 </div>
 
                 <!-- Mis reportes recientes -->
-                <div>
+                <div style="margin-bottom:22px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                        <h3 style="margin:0; font-size:0.82rem; font-weight:700; color:var(--text-muted);
-                                   text-transform:uppercase; letter-spacing:0.8px;">
-                            <i class="ph-fill ph-clipboard-text" style="margin-right:5px;"></i>Mis reportes
+                        <h3 style="margin:0; font-size:0.75rem; font-weight:800; color:#c9776a;
+                                   text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:6px;">
+                            <i class="ph-fill ph-clipboard-text"></i>Mis reportes
                         </h3>
                         <button class="th-ver-mas" data-nav="team_reports"
-                            style="font-size:0.8rem; color:var(--primary); background:none; border:none; cursor:pointer; padding:0;">
+                            style="font-size:0.8rem; color:#ee7a59; background:none; border:none; cursor:pointer; padding:0; font-weight:700;">
                             Ver todos →
                         </button>
                     </div>
                     <div id="th-reportes-list">
-                        <div style="color:var(--text-muted); font-size:0.88rem; padding:16px 0;">Cargando reportes…</div>
+                        <div style="color:#9a8478; font-size:0.88rem; padding:16px 0;">Cargando reportes…</div>
                     </div>
                 </div>
 
                 <!-- Sugerir mejoras -->
-                <div style="margin-top:24px;">
+                <div style="margin-bottom:16px;">
                     <button id="th-btn-mejoras"
-                        style="width:100%; padding:16px 20px; background:var(--bg-card); border:1px solid var(--border);
-                               border-radius:14px; cursor:pointer; display:flex; align-items:center; gap:12px;
-                               transition:border-color 0.15s;">
-                        <div style="width:40px; height:40px; background:linear-gradient(135deg, #8b5cf624, #6d28d924);
-                                    border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                            <i class="ph-fill ph-lightbulb" style="font-size:1.2rem; color:#8b5cf6;"></i>
+                        style="width:100%; padding:16px 18px; background:#fff;
+                               border:none; border-radius:22px; cursor:pointer;
+                               display:flex; align-items:center; gap:14px;
+                               box-shadow:0 6px 20px rgba(186,120,100,.10); transition:opacity 0.15s;">
+                        <div style="width:40px; height:40px; background:#f3eefc;
+                                    border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                            <i class="ph-fill ph-lightbulb" style="font-size:1.25rem; color:#9b6dd6;"></i>
                         </div>
                         <div style="text-align:left; flex:1;">
-                            <div style="font-weight:700; font-size:0.92rem; color:var(--text-primary);">Ideas y Mejoras</div>
-                            <div style="font-size:0.78rem; color:var(--text-muted);">Sugiere funciones nuevas para la app</div>
+                            <div style="font-weight:800; font-size:0.95rem; color:#3d2c2e;">Ideas y Mejoras</div>
+                            <div style="font-size:0.78rem; color:#9a8478;">Sugiere funciones nuevas para la app</div>
                         </div>
-                        <i class="ph ph-caret-right" style="font-size:1.1rem; color:var(--text-muted);"></i>
+                        <i class="ph ph-caret-right" style="font-size:1.1rem; color:#c9b5ae;"></i>
                     </button>
                 </div>
 
                 <!-- Cerrar sesión -->
-                <div style="margin-top:16px; padding-top:20px; border-top:1px solid var(--border);">
-                    <button id="th-logout" style="width:100%; padding:14px; background:none; border:1px solid rgba(239,68,68,0.25);
-                            border-radius:12px; color:#ef4444; font-size:0.9rem; font-weight:600; cursor:pointer;
+                <div style="padding-top:4px;">
+                    <button id="th-logout" style="width:100%; padding:14px; background:#fff;
+                            border:none; border-radius:22px;
+                            box-shadow:0 4px 14px rgba(186,120,100,.08);
+                            color:#e05050; font-size:0.9rem; font-weight:700; cursor:pointer;
                             display:flex; align-items:center; justify-content:center; gap:8px;
-                            transition:background 0.15s;">
+                            transition:opacity 0.15s;">
                         <i class="ph ph-sign-out"></i> Cerrar sesión
                     </button>
                 </div>
@@ -295,38 +359,45 @@ window.Views = window.Views || {};
 
             const avisosEl = container.querySelector('#th-avisos-list');
             if (avisosRecientes.length === 0) {
-                avisosEl.innerHTML = `<p style="color:var(--text-muted); font-size:0.88rem; padding:12px 0;">Sin avisos por ahora.</p>`;
+                avisosEl.innerHTML = `<p style="color:#9a8478; font-size:0.88rem; padding:12px 0;">Sin avisos por ahora.</p>`;
             } else {
                 avisosEl.innerHTML = avisosRecientes.map(a => {
                     const noLeido = !leidasPorMi.has(a.id);
                     const esUrgente = a.priority === 'urgente';
                     return `
-                    <div style="background:var(--bg-card); border:1px solid var(--border);
-                                border-left:3px solid ${noLeido ? 'var(--primary)' : 'transparent'};
-                                border-radius:12px; padding:14px 16px; margin-bottom:8px;
-                                display:flex; align-items:flex-start; gap:12px; cursor:pointer;"
+                    <div style="
+                        background:#fff;
+                        border-left:3px solid ${noLeido ? '#ee7a59' : 'transparent'};
+                        border-radius:20px; padding:14px 16px; margin-bottom:10px;
+                        display:flex; align-items:flex-start; gap:12px; cursor:pointer;
+                        box-shadow:0 6px 18px rgba(186,120,100,.10);"
                          class="th-aviso-item" data-nav="announcements">
+                        <div style="width:38px; height:38px; border-radius:12px; background:#ffe1da;
+                                    color:#e8654e; display:flex; align-items:center; justify-content:center;
+                                    font-size:1.1rem; flex-shrink:0;">
+                            <i class="ph-fill ph-megaphone"></i>
+                        </div>
                         <div style="flex:1; min-width:0;">
                             <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap;">
                                 ${esUrgente
-                                    ? `<span style="font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:6px;
-                                                background:rgba(239,68,68,0.15); color:#ef4444; text-transform:uppercase;">
+                                    ? `<span style="font-size:0.68rem; font-weight:800; padding:2px 9px; border-radius:8px;
+                                                background:#ffe1da; color:#e8654e; text-transform:uppercase;">
                                            🔴 Urgente
                                        </span>`
                                     : ''}
                                 ${noLeido
-                                    ? `<span style="font-size:0.7rem; font-weight:700; color:var(--primary);">● Nuevo</span>`
+                                    ? `<span style="font-size:0.7rem; font-weight:800; color:#ee7a59;">● Nuevo</span>`
                                     : ''}
                             </div>
-                            <div style="font-weight:600; color:var(--text-primary); font-size:0.92rem; margin-bottom:2px;
+                            <div style="font-weight:700; color:#3d2c2e; font-size:0.92rem; margin-bottom:2px;
                                         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                                 ${window.escapeHTML(a.title || 'Sin título')}
                             </div>
-                            <div style="font-size:0.78rem; color:var(--text-muted);">
+                            <div style="font-size:0.78rem; color:#9a8478;">
                                 ${tiempoRelativo(a.created_at)}
                             </div>
                         </div>
-                        <i class="ph ph-caret-right" style="color:var(--text-muted); flex-shrink:0; margin-top:2px;"></i>
+                        <i class="ph ph-caret-right" style="color:#c9b5ae; flex-shrink:0; margin-top:4px;"></i>
                     </div>
                     `;
                 }).join('');
@@ -344,27 +415,28 @@ window.Views = window.Views || {};
 
             const reportesEl = container.querySelector('#th-reportes-list');
             if (misReportes.length === 0) {
-                reportesEl.innerHTML = `<p style="color:var(--text-muted); font-size:0.88rem; padding:12px 0;">Aún no has enviado reportes.</p>`;
+                reportesEl.innerHTML = `<p style="color:#9a8478; font-size:0.88rem; padding:12px 0;">Aún no has enviado reportes.</p>`;
             } else {
                 reportesEl.innerHTML = misReportes.map(r => {
                     const st = STATUS_CONFIG[r.status] || STATUS_CONFIG.pendiente;
                     const tipoLabel = TYPE_LABELS[r.type] || r.type || 'Reporte';
                     return `
-                    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:12px;
-                                padding:14px 16px; margin-bottom:8px; display:flex; align-items:center; gap:12px;
-                                cursor:pointer;" class="th-reporte-item">
+                    <div style="background:#fff; border-radius:20px;
+                                padding:14px 16px; margin-bottom:10px; display:flex; align-items:center; gap:12px;
+                                cursor:pointer; box-shadow:0 6px 18px rgba(186,120,100,.10);"
+                         class="th-reporte-item">
                         <div style="flex:1; min-width:0;">
-                            <div style="font-weight:600; color:var(--text-primary); font-size:0.92rem; margin-bottom:4px;
+                            <div style="font-weight:700; color:#3d2c2e; font-size:0.92rem; margin-bottom:4px;
                                         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                                 ${window.escapeHTML(r.title || tipoLabel)}
                             </div>
                             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                                <span style="font-size:0.75rem; color:var(--text-muted);">${tipoLabel}</span>
-                                <span style="font-size:0.75rem; color:var(--text-muted);">·</span>
-                                <span style="font-size:0.75rem; color:var(--text-muted);">${tiempoRelativo(r.created_at)}</span>
+                                <span style="font-size:0.75rem; color:#9a8478;">${tipoLabel}</span>
+                                <span style="font-size:0.75rem; color:#c9b5ae;">·</span>
+                                <span style="font-size:0.75rem; color:#9a8478;">${tiempoRelativo(r.created_at)}</span>
                             </div>
                         </div>
-                        <span style="font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:8px;
+                        <span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:10px;
                                      background:${st.bg}; color:${st.color}; white-space:nowrap; flex-shrink:0;">
                             ${st.label}
                         </span>
@@ -392,28 +464,67 @@ window.Views = window.Views || {};
             const clEl = container.querySelector('#th-checklist');
             const progressEl = container.querySelector('#th-checklist-progress');
 
+            // Helper para actualizar el anillo motivador
+            function updateRing(doneCount, total) {
+                const ringArc = container.querySelector('#th-ring-arc');
+                const ringFrac = container.querySelector('#th-ring-frac');
+                const ringText = container.querySelector('#th-ring-text');
+                if (!ringArc || !ringFrac || !ringText) return;
+                const circumference = 2 * Math.PI * 24; // r=24 → ~150.8
+                const pct = total > 0 ? doneCount / total : 0;
+                ringArc.style.strokeDashoffset = circumference * (1 - pct);
+                ringFrac.textContent = `${doneCount}/${total}`;
+                const pending = total - doneCount;
+                if (pending === 0) {
+                    ringText.textContent = '¡Todo listo! 🎉';
+                    ringText.style.color = '#4cae7a';
+                    ringArc.setAttribute('stroke', '#4cae7a');
+                } else {
+                    ringText.textContent = `Te faltan ${pending} tarea${pending !== 1 ? 's' : ''} 💪`;
+                    ringText.style.color = '#9a8478';
+                    ringArc.setAttribute('stroke', '#ee7a59');
+                }
+            }
+
             function renderChecklist() {
                 const doneCount = clTasks.filter((_, i) => savedItems[i]?.done).length;
                 const allDone = doneCount === clTasks.length;
                 progressEl.textContent = `${doneCount}/${clTasks.length}`;
-                if (allDone) progressEl.style.color = 'var(--success)';
+                if (allDone) progressEl.style.color = '#4cae7a';
+                else progressEl.style.color = '#e08f7e';
+
+                // Actualizar anillo motivador
+                updateRing(doneCount, clTasks.length);
 
                 clEl.innerHTML = clTasks.map((t, i) => {
                     const done = savedItems[i]?.done || false;
+                    const chipStyle = iconChipStyle(t.icon);
                     return `
-                    <label style="display:flex; align-items:center; gap:12px; padding:14px 16px;
-                                  ${i < clTasks.length - 1 ? 'border-bottom:1px solid var(--border);' : ''} cursor:pointer; transition:background 0.15s;
-                                  ${done ? 'opacity:0.5;' : ''}"
+                    <label style="display:flex; align-items:center; gap:13px; padding:13px 16px;
+                                  ${i < clTasks.length - 1 ? 'border-bottom:1px solid #faf0ea;' : ''} cursor:pointer;
+                                  transition:background 0.15s; ${done ? 'opacity:0.55;' : ''}"
                            data-cl-idx="${i}">
-                        <input type="checkbox" ${done ? 'checked' : ''} data-cl-idx="${i}"
-                               style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer; flex-shrink:0;">
-                        <i class="${t.icon}" style="font-size:1.1rem; color:${done ? 'var(--text-muted)' : 'var(--primary)'};"></i>
-                        <span style="font-size:0.9rem; color:var(--text-primary); ${done ? 'text-decoration:line-through;' : ''}">${t.task}</span>
+                        <div style="width:24px; height:24px; border-radius:9px; flex-shrink:0;
+                                    display:flex; align-items:center; justify-content:center;
+                                    ${done
+                                        ? 'background:#7ac79a; color:#fff; font-size:0.85rem;'
+                                        : 'border:2.5px solid #f0d3c8; background:transparent;'}">
+                            ${done ? '✓' : ''}
+                            <input type="checkbox" ${done ? 'checked' : ''} data-cl-idx="${i}"
+                                   style="position:absolute; opacity:0; width:0; height:0; pointer-events:none;">
+                        </div>
+                        <div style="width:34px; height:34px; border-radius:11px; flex-shrink:0;
+                                    display:flex; align-items:center; justify-content:center; font-size:1.05rem;
+                                    ${chipStyle}">
+                            <i class="${t.icon}"></i>
+                        </div>
+                        <span style="font-size:0.9rem; color:${done ? '#9a8478' : '#4a3b3b'}; font-weight:600;
+                                     ${done ? 'text-decoration:line-through;' : ''} line-height:1.3;">${t.task}</span>
                     </label>`;
                 }).join('') + (allDone ? `
-                    <div style="padding:14px 16px; text-align:center; background:rgba(22,163,74,0.08);">
+                    <div style="padding:14px 16px; text-align:center; background:rgba(122,199,154,0.08); border-radius:0 0 22px 22px;">
                         <span style="font-size:1rem;">✅</span>
-                        <span style="font-size:0.88rem; color:var(--success); font-weight:600; margin-left:8px;">
+                        <span style="font-size:0.88rem; color:#4cae7a; font-weight:700; margin-left:8px;">
                             ¡Todo listo! Buen trabajo
                         </span>
                     </div>` : '');
@@ -445,6 +556,19 @@ window.Views = window.Views || {};
                         if (allNowDone && navigator.vibrate) navigator.vibrate(100);
                     });
                 });
+
+                // Redirigir clicks en la label al checkbox oculto
+                clEl.querySelectorAll('label[data-cl-idx]').forEach(label => {
+                    label.addEventListener('click', (e) => {
+                        if (e.target.tagName === 'INPUT') return;
+                        const idx = label.dataset.clIdx;
+                        const cb = label.querySelector(`input[data-cl-idx="${idx}"]`);
+                        if (cb) {
+                            cb.checked = !cb.checked;
+                            cb.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    });
+                });
             }
             renderChecklist();
 
@@ -460,15 +584,16 @@ window.Views = window.Views || {};
                     const promoCard = container.querySelector('#th-promo-card');
                     promoSection.style.display = 'block';
                     promoCard.innerHTML = `
-                        <div style="background:linear-gradient(135deg, rgba(234,88,12,0.1), rgba(239,68,68,0.05));
-                                    border:1px solid var(--border); border-left:4px solid #ea580c;
-                                    border-radius:14px; padding:18px 20px;">
-                            <div style="font-weight:700; color:var(--text-primary); font-size:1rem; margin-bottom:6px;">
-                                <i class="ph-fill ph-tag" style="color:#ea580c; margin-right:6px;"></i>
+                        <div style="background:#fff; border-left:4px solid #ee7a59;
+                                    border-radius:20px; padding:18px 20px;
+                                    box-shadow:0 6px 18px rgba(186,120,100,.10);">
+                            <div style="font-weight:800; color:#3d2c2e; font-size:1rem; margin-bottom:6px;
+                                        display:flex; align-items:center; gap:8px;">
+                                <i class="ph-fill ph-tag" style="color:#ee7a59;"></i>
                                 ${window.escapeHTML(promo.name || promo.title || 'Promoción')}
                             </div>
-                            ${promo.description ? `<div style="font-size:0.88rem; color:var(--text-muted);">${window.escapeHTML(promo.description)}</div>` : ''}
-                            ${promo.discount ? `<div style="font-size:1.4rem; font-weight:800; color:#ea580c; margin-top:8px;">${promo.discount}% OFF</div>` : ''}
+                            ${promo.description ? `<div style="font-size:0.88rem; color:#9a8478;">${window.escapeHTML(promo.description)}</div>` : ''}
+                            ${promo.discount ? `<div style="font-size:1.4rem; font-weight:800; color:#ee7a59; margin-top:8px;">${promo.discount}% OFF</div>` : ''}
                         </div>
                     `;
                 }
@@ -476,7 +601,7 @@ window.Views = window.Views || {};
 
         } catch (err) {
             console.error('[team_home] Error cargando datos:', err);
-            const msg = `<p style="color:var(--danger); font-size:0.88rem;">Error al cargar datos. Intenta recargar.</p>`;
+            const msg = `<p style="color:#e05050; font-size:0.88rem;">Error al cargar datos. Intenta recargar.</p>`;
             const av = container.querySelector('#th-avisos-list');
             const rp = container.querySelector('#th-reportes-list');
             if (av) av.innerHTML = msg;
@@ -489,6 +614,7 @@ window.Views = window.Views || {};
                 from { opacity:0; transform:translateY(-6px); }
                 to { opacity:1; transform:translateY(0); }
             }
+            #th-btn-factura:active, #th-btn-mejoras:active, #th-logout:active { opacity:0.8; }
         `;
         container.appendChild(style);
 
