@@ -1,0 +1,53 @@
+{
+  "competidores": [
+    {
+      "nombre": "Biolimpieza",
+      "ig": "@distribuidorabiolimpieza",
+      "zona": "Hualpén",
+      "tipo": "vecino directo, veterano",
+      "url": "https://www.instagram.com/distribuidorabiolimpieza/"
+    },
+    {
+      "nombre": "Los Turcos",
+      "ig": "@losturcoshualpen",
+      "zona": "Hualpén",
+      "tipo": "vecino directo",
+      "url": "https://www.instagram.com/losturcoshualpen/"
+    },
+    {
+      "nombre": "El Baratillo",
+      "ig": "@distribuidora_el_baratillo",
+      "zona": "Hualpén",
+      "tipo": "vecino directo",
+      "url": "https://www.instagram.com/distribuidora_el_baratillo/"
+    },
+    {
+      "nombre": "Maxi Ahorro",
+      "ig": null,
+      "zona": "Hualpén",
+      "tipo": "vecino directo, solo FB",
+      "url": "https://www.facebook.com/pages/Maxi-Ahorro-Hualpen/298576730162180"
+    },
+    {
+      "nombre": "Deconce",
+      "ig": "@distribuidoradeconce",
+      "zona": "Concepción",
+      "tipo": "referencia grande (73K)",
+      "url": "https://www.instagram.com/distribuidoradeconce/"
+    },
+    {
+      "nombre": "M&L",
+      "ig": "@myldistribuidora",
+      "zona": "Concepción",
+      "tipo": "referencia grande (109K)",
+      "url": "https://www.instagram.com/myldistribuidora/"
+    },
+    {
+      "nombre": "Calfulen",
+      "ig": "@distribuidoracalfulen",
+      "zona": "VIII Región",
+      "tipo": "referencia catálogo",
+      "url": "https://www.instagram.com/distribuidoracalfulen/"
+    }
+  ]
+}

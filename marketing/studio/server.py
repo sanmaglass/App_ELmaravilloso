@@ -62,6 +62,32 @@ CUTS    = os.path.join(MKT, "assets", "_cuts")
 IMG_OUT = os.path.join(MKT, "content", "instagram")
 VID_OUT = os.path.join(MKT, "content", "tiktok")
 DATA    = os.path.join(HERE, "studio_data.json")
+METRICS_HISTORY = os.path.join(HERE, "metrics_history.json")
+GOALS_PATH = os.path.join(HERE, "goals.json")
+RECURRING_PATH = os.path.join(HERE, "recurring_templates.json")
+
+def load_recurring():
+    if os.path.exists(RECURRING_PATH):
+        try: return json.load(open(RECURRING_PATH, encoding="utf-8"))
+        except Exception: pass
+    return {"templates": []}
+
+def save_recurring(d):
+    json.dump(d, open(RECURRING_PATH, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+
+def load_goals():
+    if os.path.exists(GOALS_PATH):
+        try: return json.load(open(GOALS_PATH, encoding="utf-8"))
+        except Exception: pass
+    return {"goals": [
+        {"id": "posts_month", "label": "Posts este mes", "target": 15, "unit": "posts", "period": "monthly"},
+        {"id": "followers", "label": "Seguidores", "target": 200, "unit": "seguidores", "period": "milestone"},
+        {"id": "avg_er", "label": "ER promedio", "target": 3.0, "unit": "%", "period": "monthly"},
+    ]}
+
+def save_goals(d):
+    json.dump(d, open(GOALS_PATH, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+
 for d in (ENTRADA, CUTS, IMG_OUT, VID_OUT):
     os.makedirs(d, exist_ok=True)
 
@@ -94,6 +120,15 @@ def load_data():
 
 def save_data(d):
     json.dump(d, open(DATA, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+
+def load_metrics_history():
+    if os.path.exists(METRICS_HISTORY):
+        try: return json.load(open(METRICS_HISTORY, encoding="utf-8"))
+        except Exception: pass
+    return {"posts": {}}
+
+def save_metrics_history(d):
+    json.dump(d, open(METRICS_HISTORY, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 
 def slugify(s):
     s = re.sub(r"[^a-zA-Z0-9]+", "-", s.lower()).strip("-")
@@ -1498,11 +1533,16 @@ def fb_callback(code: str = "", error: str = "", error_reason: str = "",
 
 @app.get("/api/ig-status")
 def ig_status():
+    cached = _cache_get("ig_status")
+    if cached:
+        return cached
     token, ig_id = get_ig_auth()
     a = load_ig_auth()
-    return {"connected": bool(token and ig_id), "ig_user_id": ig_id, "connected_at": a.get("connected_at"),
-            "fb_connected": bool(a.get("page_id") and a.get("page_token")),
-            "page_name": a.get("page_name")}
+    result = {"connected": bool(token and ig_id), "ig_user_id": ig_id, "connected_at": a.get("connected_at"),
+              "fb_connected": bool(a.get("page_id") and a.get("page_token")),
+              "page_name": a.get("page_name")}
+    _cache_set("ig_status", result)
+    return result
 
 @app.post("/api/publish")
 async def publish(req: Request):
@@ -1516,33 +1556,48 @@ async def publish(req: Request):
         return JSONResponse({"error": "post no encontrado"}, status_code=404)
     cap = post.get("caption") or {}
     caption = (cap.get("ig_caption", "") + "\n\n" + cap.get("hashtags", "")).strip() or post["name"]
-    kind = b.get("kind", "reel")  # 'reel' (video) o 'photo' (imagen)
-    rel = post["video"] if kind == "reel" else post["image"]
+    kind = b.get("kind", "reel")  # 'reel' | 'photo' | 'story'
+    # Elegir archivo según tipo
+    if kind == "reel":
+        file_rel = post["video"]
+    elif kind == "story":
+        file_rel = post.get("cover") or post["image"]  # story = imagen 9:16
+    else:
+        file_rel = post["image"]  # photo = feed 1:1
     try:
-        media = storage_upload(os.path.join(MKT, rel), os.path.basename(rel))  # Supabase (Vercel /marketing está 404)
+        media = storage_upload(os.path.join(MKT, file_rel), os.path.basename(file_rel))
     except Exception as e:
         return JSONResponse({"error": "no se pudo hospedar el media: " + str(e)[:120]}, status_code=500)
     try:
         if kind == "reel":
             cont = _ig_api("POST", f"{ig_id}/media",
                            {"media_type": "REELS", "video_url": media, "caption": caption, "access_token": token})
+        elif kind == "story":
+            cont = _ig_api("POST", f"{ig_id}/media",
+                           {"media_type": "STORIES", "image_url": media, "access_token": token})
         else:
             cont = _ig_api("POST", f"{ig_id}/media",
                            {"image_url": media, "caption": caption, "access_token": token})
         cid = cont["id"]
-        # Reels: esperar a que Instagram procese el video antes de publicar
+        # Esperar a que Instagram procese el media
         for _ in range(40):
             st = _ig_api("GET", cid, {"fields": "status_code", "access_token": token})
             code = st.get("status_code")
             if code == "FINISHED":
                 break
             if code == "ERROR":
-                return JSONResponse({"error": "Instagram no pudo procesar el video"}, status_code=500)
+                return JSONResponse({"error": "Instagram no pudo procesar el media"}, status_code=500)
             time.sleep(3)
         pub = _ig_api("POST", f"{ig_id}/media_publish", {"creation_id": cid, "access_token": token})
+        # Guardar IG media ID para tracking de métricas
+        if pub.get("id"):
+            post["ig_media_id"] = pub["id"]
+        # Estado por plataforma
+        pub_status = post.setdefault("published", {})
+        pub_status[f"ig_{kind}"] = datetime.now().strftime("%Y-%m-%d %H:%M")
         post["status"] = "publicado"
         save_data(d)
-        return {"ok": True, "id": pub.get("id")}
+        return {"ok": True, "id": pub.get("id"), "kind": kind}
     except Exception as e:
         return JSONResponse({"error": str(e)[:180]}, status_code=500)
 
@@ -1558,7 +1613,8 @@ async def publish_fb(req: Request):
     if not post:
         return JSONResponse({"error": "post no encontrado"}, status_code=404)
     cap = post.get("caption") or {}
-    msg = (cap.get("ig_caption", "") + "\n\n" + cap.get("hashtags", "")).strip() or post["name"]
+    # FB: solo el texto, sin hashtags (FB no los usa igual que IG)
+    msg = (cap.get("ig_caption", "")).strip() or post["name"]
     kind = b.get("kind", "photo")  # 'video' o 'photo'
     rel = post["video"] if kind == "video" else post["image"]
     try:
@@ -1572,9 +1628,10 @@ async def publish_fb(req: Request):
         else:
             res = _ig_api("POST", f"{page_id}/photos",
                           {"url": media, "caption": msg, "access_token": page_token})
-        post["status_fb"] = "publicado"
+        pub_status = post.setdefault("published", {})
+        pub_status[f"fb_{kind}"] = datetime.now().strftime("%Y-%m-%d %H:%M")
         save_data(d)
-        return {"ok": True, "id": res.get("id") or res.get("post_id")}
+        return {"ok": True, "id": res.get("id") or res.get("post_id"), "kind": kind}
     except Exception as e:
         return JSONResponse({"error": str(e)[:180]}, status_code=500)
 
@@ -1634,8 +1691,186 @@ def _get_metric_value(ig_id, token, metric, period):
     except Exception:
         return None
 
+## ── Caché persistente de insights (disco + memoria + background refresh) ──
+## Arquitectura: NUNCA bloquear al usuario esperando Meta API.
+## 1. Disco (insights_disk_cache.json) → sobrevive reinicios del server
+## 2. Memoria (_insights_cache dict) → acceso instantáneo
+## 3. Hilo de fondo → refresca cada 2h sin que el usuario espere
+## 4. Pre-warm al arrancar → carga disco inmediato + dispara refresh en background
+
+_insights_cache = {}       # {key: {"data": ..., "ts": "ISO string"}}
+INSIGHTS_TTL = 7200        # 2 horas en segundos
+INSIGHTS_DISK = os.path.join(HERE, "insights_disk_cache.json")
+_refresh_lock = threading.Lock()
+_refresh_running = False
+
+def _cache_load_disk():
+    """Carga caché desde disco al arrancar."""
+    global _insights_cache
+    if os.path.exists(INSIGHTS_DISK):
+        try:
+            raw = json.load(open(INSIGHTS_DISK, encoding="utf-8"))
+            for k, v in raw.items():
+                if "ts" in v and "data" in v:
+                    _insights_cache[k] = {"data": v["data"], "ts": datetime.fromisoformat(v["ts"])}
+            print(f"  [cache] Cargado desde disco: {len(_insights_cache)} entradas")
+        except Exception as e:
+            print(f"  [cache] Error cargando disco: {e}")
+
+def _cache_save_disk():
+    """Persiste caché a disco."""
+    try:
+        out = {}
+        for k, v in _insights_cache.items():
+            out[k] = {"data": v["data"], "ts": v["ts"].isoformat() if isinstance(v["ts"], datetime) else v["ts"]}
+        json.dump(out, open(INSIGHTS_DISK, "w", encoding="utf-8"), ensure_ascii=False)
+    except Exception:
+        pass
+
+def _cache_get(key):
+    """Devuelve datos cacheados (memoria). No verifica TTL — siempre devuelve si existe.
+    El TTL se usa solo para decidir cuándo refrescar en background."""
+    c = _insights_cache.get(key)
+    if c:
+        return c["data"]
+    return None
+
+def _cache_age(key):
+    """Edad en segundos del caché. None si no existe."""
+    c = _insights_cache.get(key)
+    if c and isinstance(c.get("ts"), datetime):
+        return (datetime.now() - c["ts"]).total_seconds()
+    return None
+
+def _cache_set(key, data):
+    _insights_cache[key] = {"data": data, "ts": datetime.now()}
+
+def _cache_needs_refresh():
+    """¿Algún key importante tiene más de INSIGHTS_TTL o no existe?"""
+    important = ["account:days_28", "_media_raw:30", "besttimes"]
+    for k in important:
+        age = _cache_age(k)
+        if age is None or age > INSIGHTS_TTL:
+            return True
+    return False
+
+def _background_refresh():
+    """Refresca toda la data de Meta en background. Corre en un thread."""
+    global _refresh_running
+    if _refresh_running:
+        return
+    with _refresh_lock:
+        if _refresh_running:
+            return
+        _refresh_running = True
+    try:
+        token, ig_id = get_ig_auth()
+        if not token or not ig_id:
+            return
+        print("  [cache] Background refresh iniciado...")
+
+        # 1. Account metrics
+        try:
+            profile_raw = _ig_api("GET", ig_id, {
+                "fields": "username,followers_count,follows_count,media_count,name,profile_picture_url",
+                "access_token": token})
+            followers = profile_raw.get("followers_count")
+            profile = {
+                "username": profile_raw.get("username"),
+                "followers": followers,
+                "following": profile_raw.get("follows_count"),
+                "media_count": profile_raw.get("media_count"),
+                "name": profile_raw.get("name"),
+                "profile_picture_url": profile_raw.get("profile_picture_url"),
+            }
+            if followers is not None:
+                try: _save_snapshot_today(int(followers))
+                except Exception: pass
+            metric_names = ["reach", "profile_views", "accounts_engaged",
+                            "total_interactions", "likes", "comments", "views"]
+            metrics = {}
+            for m in metric_names:
+                try: metrics[m] = _get_metric_value(ig_id, token, m, "days_28")
+                except Exception: metrics[m] = None
+            er = None
+            ti = metrics.get("total_interactions")
+            reach = metrics.get("reach")
+            try:
+                if ti is not None and reach and reach > 0: er = round(ti / reach * 100, 1)
+                elif ti is not None and followers and followers > 0: er = round(ti / followers * 100, 1)
+            except Exception: pass
+            _cache_set("account:days_28", {
+                "connected": True, "profile": profile, "period": "days_28",
+                "metrics": metrics, "engagement_rate": er})
+        except Exception as e:
+            print(f"  [cache] Error account: {e}")
+
+        # 2. Media con insights (la más pesada — alimenta besttimes, style-perf, hashtags)
+        try:
+            _fetch_media_with_insights(ig_id, token, limit=30)
+            _fetch_media_with_insights(ig_id, token, limit=12)
+        except Exception as e:
+            print(f"  [cache] Error media: {e}")
+
+        # 3. ig-status
+        try:
+            a = load_ig_auth()
+            _cache_set("ig_status", {
+                "connected": True, "ig_user_id": ig_id, "connected_at": a.get("connected_at"),
+                "fb_connected": bool(a.get("page_id") and a.get("page_token")),
+                "page_name": a.get("page_name")})
+        except Exception: pass
+
+        _cache_save_disk()
+        print("  [cache] Background refresh OK")
+    except Exception as e:
+        print(f"  [cache] Error general: {e}")
+    finally:
+        _refresh_running = False
+
+def _start_background_refresh():
+    """Lanza refresh en un thread separado."""
+    t = threading.Thread(target=_background_refresh, daemon=True)
+    t.start()
+
+def _periodic_refresh():
+    """Hilo que refresca cada INSIGHTS_TTL segundos."""
+    import time as _time
+    _time.sleep(5)  # esperar que el server arranque
+    while True:
+        try:
+            if _cache_needs_refresh():
+                _background_refresh()
+        except Exception:
+            pass
+        _time.sleep(INSIGHTS_TTL)
+
+# --- Arranque: cargar disco + disparar refresh ---
+_cache_load_disk()
+threading.Thread(target=_periodic_refresh, daemon=True).start()
+
+@app.get("/api/cache-status")
+def cache_status():
+    """Info del caché para el frontend."""
+    ages = {}
+    for k in ["account:days_28", "_media_raw:30", "_media_raw:12", "besttimes", "ig_status"]:
+        age = _cache_age(k)
+        ages[k] = round(age) if age is not None else None
+    return {"ages": ages, "refreshing": _refresh_running, "entries": len(_insights_cache)}
+
+@app.post("/api/cache-refresh")
+async def cache_refresh():
+    """Forzar refresh en background."""
+    _start_background_refresh()
+    return {"ok": True, "message": "Refresh iniciado en background"}
+
 @app.get("/api/insights/account")
-def insights_account(period: str = "days_28"):
+def insights_account(period: str = "days_28", refresh: int = 0):
+    ck = f"account:{period}"
+    if not refresh:
+        cached = _cache_get(ck)
+        if cached:
+            return cached
     token, ig_id = get_ig_auth()
     if not token or not ig_id:
         return {"connected": False}
@@ -1685,8 +1920,10 @@ def insights_account(period: str = "days_28"):
     except Exception:
         er = None
 
-    return {"connected": True, "profile": profile, "period": period,
-            "metrics": metrics, "engagement_rate": er}
+    result = {"connected": True, "profile": profile, "period": period,
+              "metrics": metrics, "engagement_rate": er}
+    _cache_set(ck, result)
+    return result
 
 @app.get("/api/insights/growth")
 def insights_growth():
@@ -1697,7 +1934,12 @@ def insights_growth():
     return {"connected": True, "series": data.get("snapshots", [])}
 
 def _fetch_media_with_insights(ig_id, token, limit=12):
-    """Devuelve lista de posts con métricas individuales (defensivo)."""
+    """Devuelve lista de posts con métricas individuales (defensivo).
+    Caché interna de 2h: la 1ra llamada tarda 10-40s (N+1 a Meta), las siguientes <1ms."""
+    ck = f"_media_raw:{limit}"
+    cached = _cache_get(ck)
+    if cached is not None:
+        return cached
     try:
         media_raw = _ig_api("GET", f"{ig_id}/media",
             {"fields": "id,caption,media_type,media_product_type,timestamp,"
@@ -1768,18 +2010,31 @@ def _fetch_media_with_insights(ig_id, token, limit=12):
 
     # ordenar por timestamp desc
     result.sort(key=lambda x: x.get("timestamp") or "", reverse=True)
+    _cache_set(ck, result)
     return result
 
 @app.get("/api/insights/media")
-def insights_media(limit: int = 12):
+def insights_media(limit: int = 12, refresh: int = 0):
+    ck = f"media:{limit}"
+    if not refresh:
+        cached = _cache_get(ck)
+        if cached:
+            return cached
     token, ig_id = get_ig_auth()
     if not token or not ig_id:
         return {"connected": False, "media": []}
     media = _fetch_media_with_insights(ig_id, token, limit)
-    return {"connected": True, "media": media}
+    result = {"connected": True, "media": media}
+    _cache_set(ck, result)
+    return result
 
 @app.get("/api/insights/besttimes")
-def insights_besttimes():
+def insights_besttimes(refresh: int = 0):
+    ck = "besttimes"
+    if not refresh:
+        cached = _cache_get(ck)
+        if cached:
+            return cached
     token, ig_id = get_ig_auth()
     if not token or not ig_id:
         return {"connected": False,
@@ -1848,12 +2103,814 @@ def insights_besttimes():
         best_wd_label = LABELS[best_key[0]]
         best_hr = best_key[1]
 
-    return {
+    result = {
         "connected": True,
         "by_weekday": by_weekday,
         "by_hour": by_hour,
         "best": {"weekday_label": best_wd_label, "hour": best_hr},
     }
+    _cache_set(ck, result)
+    return result
+
+
+def _take_metrics_snapshot():
+    """Toma snapshot diario de métricas por post desde IG API."""
+    token, ig_id = get_ig_auth()
+    if not token or not ig_id:
+        return
+    history = load_metrics_history()
+    media = _fetch_media_with_insights(ig_id, token, limit=50)
+    today = datetime.now().strftime("%Y-%m-%d")
+    studio = load_data()
+    # lookup: ig_media_id -> studio post
+    id_to_post = {}
+    for p in studio.get("posts", []):
+        mid = p.get("ig_media_id")
+        if mid:
+            id_to_post[mid] = p
+    for m in media:
+        mid = m.get("id")
+        if not mid:
+            continue
+        entry = history["posts"].setdefault(mid, {
+            "slug": None, "name": None, "style": None,
+            "snapshots": [], "first_seen": today,
+            "ig_timestamp": m.get("timestamp"),
+        })
+        sp = id_to_post.get(mid)
+        if sp:
+            entry["slug"] = sp.get("slug")
+            entry["name"] = sp.get("name")
+            entry["style"] = sp.get("style")
+        if not any(s["date"] == today for s in entry["snapshots"]):
+            entry["snapshots"].append({
+                "date": today,
+                "reach": m.get("reach"),
+                "likes": m.get("likes"),
+                "comments": m.get("comments"),
+                "views": m.get("views"),
+                "er": m.get("engagement_rate"),
+            })
+    save_metrics_history(history)
+
+@app.get("/api/metrics-history")
+def api_metrics_history():
+    return load_metrics_history()
+
+@app.post("/api/metrics-history/refresh")
+def api_metrics_history_refresh():
+    try:
+        _take_metrics_snapshot()
+        return {"ok": True}
+    except Exception as e:
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+
+# ---------- METAS -----------------------------------------------
+
+@app.get("/api/goals")
+def api_goals():
+    data = load_goals()
+    goals = data.get("goals", [])
+    studio = load_data()
+    snapshots = _load_snapshots().get("snapshots", [])
+    now = datetime.now()
+    month_prefix = now.strftime("%Y-%m")
+    posts_this_month = len([p for p in studio.get("posts", [])
+                            if (p.get("created") or "").startswith(month_prefix)
+                            and p.get("status") == "publicado"])
+    current_followers = snapshots[-1]["followers"] if snapshots else None
+    # ER promedio de posts recientes
+    avg_er = None
+    token, ig_id = get_ig_auth()
+    if token and ig_id:
+        try:
+            media = _fetch_media_with_insights(ig_id, token, limit=12)
+            ers = [m["engagement_rate"] for m in media if m.get("engagement_rate") is not None]
+            if ers:
+                avg_er = round(sum(ers) / len(ers), 1)
+        except Exception:
+            pass
+    for g in goals:
+        if g["id"] == "posts_month":
+            g["current"] = posts_this_month
+        elif g["id"] == "followers":
+            g["current"] = current_followers
+        elif g["id"] == "avg_er":
+            g["current"] = avg_er
+        else:
+            g["current"] = None
+    return {"goals": goals}
+
+@app.post("/api/goals")
+async def api_goals_update(req: Request):
+    b = await req.json()
+    data = load_goals()
+    goals = data.get("goals", [])
+    gid = b.get("id")
+    target = b.get("target")
+    if not gid or target is None:
+        return JSONResponse({"error": "id y target requeridos"}, status_code=400)
+    found = False
+    for g in goals:
+        if g["id"] == gid:
+            g["target"] = float(target)
+            found = True
+            break
+    if not found:
+        goals.append({"id": gid, "label": b.get("label", gid), "target": float(target),
+                       "unit": b.get("unit", ""), "period": b.get("period", "monthly")})
+    data["goals"] = goals
+    save_goals(data)
+    return {"ok": True}
+
+@app.get("/api/recurring")
+def api_recurring_list():
+    return load_recurring()
+
+@app.post("/api/recurring")
+async def api_recurring_save(req: Request):
+    b = await req.json()
+    data = load_recurring()
+    templates = data.get("templates", [])
+    tid = b.get("id")
+    if not tid:
+        # New template
+        import uuid
+        tid = str(uuid.uuid4())[:8]
+        templates.append({
+            "id": tid,
+            "label": b.get("label", "Sin nombre"),
+            "weekdays": b.get("weekdays", []),
+            "angle": b.get("angle", "oferta"),
+            "style": b.get("style", "premium"),
+            "product_selection": b.get("product_selection", "not_featured_recently"),
+            "enabled": True,
+            "created": datetime.now().strftime("%Y-%m-%d"),
+        })
+    else:
+        # Update existing
+        for t in templates:
+            if t["id"] == tid:
+                for k in ("label", "weekdays", "angle", "style", "product_selection", "enabled"):
+                    if k in b:
+                        t[k] = b[k]
+                break
+    data["templates"] = templates
+    save_recurring(data)
+    return {"ok": True, "id": tid}
+
+@app.post("/api/recurring/delete")
+async def api_recurring_delete(req: Request):
+    b = await req.json()
+    tid = b.get("id")
+    data = load_recurring()
+    data["templates"] = [t for t in data.get("templates", []) if t.get("id") != tid]
+    save_recurring(data)
+    return {"ok": True}
+
+@app.post("/api/recurring/run")
+async def api_recurring_run(req: Request):
+    """Ejecuta plantillas del día: selecciona producto y crea entry pendiente."""
+    data = load_recurring()
+    studio = load_data()
+    today_wd = datetime.now().weekday()  # 0=Monday
+    created = []
+    # products from cache
+    prods = []
+    try:
+        cache_path = os.path.join(HERE, "products_cache.json")
+        if os.path.exists(cache_path):
+            raw = json.load(open(cache_path, encoding="utf-8"))
+            prods = raw.get("products", []) if isinstance(raw, dict) else raw
+    except Exception:
+        pass
+    # recently featured slugs (last 14 days)
+    recent_slugs = set()
+    cutoff = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")
+    for p in studio.get("posts", []):
+        if (p.get("created") or "") >= cutoff:
+            recent_slugs.add(p.get("slug", ""))
+    import random
+    for tmpl in data.get("templates", []):
+        if not tmpl.get("enabled", True):
+            continue
+        if today_wd not in tmpl.get("weekdays", []):
+            continue
+        # Select product
+        product = None
+        sel = tmpl.get("product_selection", "not_featured_recently")
+        if sel == "not_featured_recently" and prods:
+            candidates = [pr for pr in prods if slugify(pr.get("name", "")) not in recent_slugs]
+            if not candidates:
+                candidates = prods
+            product = random.choice(candidates) if candidates else None
+        elif prods:
+            product = random.choice(prods)
+        if not product:
+            continue
+        pname = product.get("name", "Producto")
+        pprice = product.get("salePrice", product.get("price", 0))
+        slug = slugify(pname) + (f"-{pprice}" if pprice else "") + "-auto"
+        # Check if already generated today
+        today_prefix = datetime.now().strftime("%Y-%m-%d")
+        already = any(p.get("slug") == slug and (p.get("created") or "").startswith(today_prefix)
+                      for p in studio.get("posts", []))
+        if already:
+            continue
+        new_post = {
+            "slug": slug,
+            "filename": "",
+            "name": pname,
+            "price": pprice,
+            "style": tmpl.get("style", "premium"),
+            "tag": tmpl.get("angle", "OFERTA").upper(),
+            "image": "",
+            "cover": "",
+            "video": "",
+            "status": "pendiente-auto",
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "time": "",
+            "created": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "caption": {},
+            "published": {},
+            "recurring_template": tmpl.get("id"),
+        }
+        studio["posts"].insert(0, new_post)
+        created.append({"slug": slug, "name": pname, "template": tmpl.get("label")})
+    if created:
+        save_data(studio)
+    return {"ok": True, "created": created}
+
+@app.get("/api/insights/style-performance")
+def insights_style_performance(refresh: int = 0):
+    """Rendimiento por estilo: cruza metrics_history con studio_data."""
+    ck = "style_perf"
+    if not refresh:
+        cached = _cache_get(ck)
+        if cached:
+            return cached
+    history = load_metrics_history()
+    studio = load_data()
+    # lookup slug -> style
+    slug_style = {}
+    for p in studio.get("posts", []):
+        if p.get("style") and p.get("slug"):
+            slug_style[p["slug"]] = p["style"]
+    # aggregate by style
+    from collections import defaultdict
+    style_data = defaultdict(lambda: {"reaches": [], "ers": [], "likes": [], "posts": 0})
+    for mid, entry in history.get("posts", {}).items():
+        style = entry.get("style") or slug_style.get(entry.get("slug"))
+        if not style:
+            continue
+        snaps = entry.get("snapshots", [])
+        if not snaps:
+            continue
+        # use latest snapshot
+        latest = snaps[-1]
+        sd = style_data[style]
+        sd["posts"] += 1
+        if latest.get("reach") is not None:
+            sd["reaches"].append(latest["reach"])
+        if latest.get("er") is not None:
+            sd["ers"].append(latest["er"])
+        if latest.get("likes") is not None:
+            sd["likes"].append(latest["likes"])
+    # If no history data, try live IG data
+    if not any(v["posts"] for v in style_data.values()):
+        token, ig_id = get_ig_auth()
+        if token and ig_id:
+            try:
+                media = _fetch_media_with_insights(ig_id, token, limit=30)
+                for m in media:
+                    # match to studio by timestamp proximity
+                    ts = (m.get("timestamp") or "")[:16]
+                    matched_style = None
+                    for p in studio.get("posts", []):
+                        pub = p.get("published", {})
+                        for v in pub.values():
+                            if v and ts and v[:16] == ts[:16]:
+                                matched_style = p.get("style")
+                                break
+                        if matched_style:
+                            break
+                    if matched_style:
+                        sd = style_data[matched_style]
+                        sd["posts"] += 1
+                        if m.get("reach") is not None: sd["reaches"].append(m["reach"])
+                        if m.get("engagement_rate") is not None: sd["ers"].append(m["engagement_rate"])
+                        if m.get("likes") is not None: sd["likes"].append(m["likes"])
+            except Exception:
+                pass
+    def avg(lst):
+        return round(sum(lst) / len(lst), 1) if lst else 0
+    result = []
+    for style, sd in style_data.items():
+        if sd["posts"] == 0:
+            continue
+        result.append({
+            "style": style,
+            "posts": sd["posts"],
+            "avg_reach": avg(sd["reaches"]),
+            "avg_er": avg(sd["ers"]),
+            "avg_likes": avg(sd["likes"]),
+        })
+    result.sort(key=lambda x: x["avg_er"], reverse=True)
+    out = {"styles": result}
+    _cache_set(ck, out)
+    return out
+
+
+@app.get("/api/insights/repurpose")
+def insights_repurpose():
+    """Sugiere re-publicar posts antiguos con buen rendimiento."""
+    history = load_metrics_history()
+    studio = load_data()
+    now = datetime.now()
+    STYLES_ALL = ["premium", "premium_dark", "premium_giant", "premium_split", "clasica", "amigable"]
+    candidates = []
+    for mid, entry in history.get("posts", {}).items():
+        snaps = entry.get("snapshots", [])
+        if not snaps:
+            continue
+        first = entry.get("first_seen", "")
+        if not first:
+            continue
+        try:
+            age = (now - datetime.fromisoformat(first)).days
+        except Exception:
+            continue
+        if age < 14:  # at least 2 weeks old
+            continue
+        latest = snaps[-1]
+        er = latest.get("er")
+        if er is None or er < 2.0:  # only good performers
+            continue
+        slug = entry.get("slug")
+        style = entry.get("style")
+        # suggest a different style
+        other_styles = [s for s in STYLES_ALL if s != style]
+        suggested = other_styles[0] if other_styles else style
+        # find original post for image path
+        studio_post = next((p for p in studio.get("posts", []) if p.get("slug") == slug), None)
+        candidates.append({
+            "slug": slug,
+            "name": entry.get("name") or (studio_post.get("name") if studio_post else slug),
+            "style": style,
+            "suggested_style": suggested,
+            "er": er,
+            "reach": latest.get("reach"),
+            "age_days": age,
+            "image": studio_post.get("image") if studio_post else None,
+        })
+    candidates.sort(key=lambda x: x.get("er", 0), reverse=True)
+    return {"candidates": candidates[:6]}
+
+
+@app.get("/api/insights/hashtags")
+def insights_hashtags(refresh: int = 0):
+    """Analiza qué hashtags rinden mejor basado en reach de cada post."""
+    ck = "hashtags"
+    if not refresh:
+        cached = _cache_get(ck)
+        if cached:
+            return cached
+    studio = load_data()
+    history = load_metrics_history()
+    # Build slug -> latest metrics
+    slug_metrics = {}
+    for mid, entry in history.get("posts", {}).items():
+        slug = entry.get("slug")
+        snaps = entry.get("snapshots", [])
+        if slug and snaps:
+            slug_metrics[slug] = snaps[-1]
+    # Fallback: if no history, try live IG data matched by timestamp
+    if not slug_metrics:
+        token, ig_id = get_ig_auth()
+        if token and ig_id:
+            try:
+                media = _fetch_media_with_insights(ig_id, token, limit=30)
+                for m in media:
+                    ts = (m.get("timestamp") or "")[:16]
+                    for p in studio.get("posts", []):
+                        pub = p.get("published", {})
+                        for v in pub.values():
+                            if v and ts and v[:16] == ts[:16]:
+                                slug_metrics[p["slug"]] = {
+                                    "reach": m.get("reach"),
+                                    "er": m.get("engagement_rate"),
+                                    "likes": m.get("likes"),
+                                }
+                                break
+            except Exception:
+                pass
+    # Extract hashtags per post and cross with metrics
+    from collections import defaultdict
+    ht_data = defaultdict(lambda: {"posts": 0, "reaches": [], "ers": []})
+    for p in studio.get("posts", []):
+        if p.get("status") != "publicado":
+            continue
+        cap = p.get("caption", {})
+        ht_str = ""
+        if isinstance(cap, dict):
+            ht_str = cap.get("hashtags", "") or ""
+            # Also extract from ig_caption
+            ig_cap = cap.get("ig_caption", "") or ""
+            import re as _re
+            ht_str += " " + " ".join(_re.findall(r"#\w+", ig_cap))
+        tags = [t.strip().lower() for t in ht_str.replace(",", " ").split() if t.strip().startswith("#")]
+        tags = list(dict.fromkeys(tags))  # dedupe preserving order
+        metrics = slug_metrics.get(p.get("slug"), {})
+        for tag in tags:
+            d = ht_data[tag]
+            d["posts"] += 1
+            if metrics.get("reach") is not None:
+                d["reaches"].append(metrics["reach"])
+            if metrics.get("er") is not None:
+                d["ers"].append(metrics["er"])
+    def avg(lst):
+        return round(sum(lst) / len(lst), 1) if lst else 0
+    result = []
+    for tag, d in ht_data.items():
+        result.append({
+            "hashtag": tag,
+            "posts": d["posts"],
+            "avg_reach": avg(d["reaches"]),
+            "avg_er": avg(d["ers"]),
+        })
+    result.sort(key=lambda x: x["avg_reach"], reverse=True)
+    # suggested set: top 5 by reach
+    suggested = [r["hashtag"] for r in result[:5]]
+    out = {"hashtags": result[:15], "suggested": " ".join(suggested)}
+    _cache_set(ck, out)
+    return out
+
+
+@app.get("/api/report/generate")
+def report_generate(period: str = ""):
+    """Genera un reporte HTML mensual descargable."""
+    from datetime import date
+    if not period:
+        period = datetime.now().strftime("%Y-%m")
+    try:
+        year, month = int(period[:4]), int(period[5:7])
+    except Exception:
+        return JSONResponse({"error": "Formato: YYYY-MM"}, status_code=400)
+
+    MESES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
+             'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+    mes_label = f"{MESES[month]} {year}"
+    prefix = f"{year}-{month:02d}"
+
+    # Datos
+    studio = load_data()
+    posts_month = [p for p in studio.get("posts", [])
+                   if (p.get("created") or "").startswith(prefix) and p.get("status") == "publicado"]
+    total_posts = len(posts_month)
+
+    snapshots = _load_snapshots().get("snapshots", [])
+    month_snaps = [s for s in snapshots if s.get("date", "").startswith(prefix)]
+    followers_start = month_snaps[0]["followers"] if month_snaps else None
+    followers_end = month_snaps[-1]["followers"] if month_snaps else None
+    followers_gained = (followers_end - followers_start) if followers_start and followers_end else None
+
+    # Metrics from history
+    history = load_metrics_history()
+    month_metrics = []
+    for mid, entry in history.get("posts", {}).items():
+        for snap in entry.get("snapshots", []):
+            if snap.get("date", "").startswith(prefix):
+                month_metrics.append({**snap, "style": entry.get("style"), "name": entry.get("name")})
+                break
+
+    total_reach = sum(m.get("reach") or 0 for m in month_metrics)
+    total_likes = sum(m.get("likes") or 0 for m in month_metrics)
+    ers = [m.get("er") for m in month_metrics if m.get("er") is not None]
+    avg_er = round(sum(ers) / len(ers), 1) if ers else None
+
+    # Top 3 posts by ER
+    top3 = sorted(month_metrics, key=lambda x: x.get("er") or 0, reverse=True)[:3]
+
+    # Style performance
+    from collections import defaultdict
+    style_stats = defaultdict(lambda: {"ers": [], "count": 0})
+    for m in month_metrics:
+        s = m.get("style")
+        if s:
+            style_stats[s]["count"] += 1
+            if m.get("er") is not None:
+                style_stats[s]["ers"].append(m["er"])
+    best_style = None
+    if style_stats:
+        best_style = max(style_stats.keys(), key=lambda s: (sum(style_stats[s]["ers"])/len(style_stats[s]["ers"])) if style_stats[s]["ers"] else 0)
+
+    # AI summary (optional, Groq)
+    ai_summary = ""
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if groq_key and month_metrics:
+        try:
+            import urllib.request
+            ctx = json.dumps({
+                "mes": mes_label, "posts": total_posts, "reach_total": total_reach,
+                "likes_total": total_likes, "er_promedio": avg_er,
+                "seguidores_inicio": followers_start, "seguidores_fin": followers_end,
+                "mejor_estilo": best_style,
+                "top3": [{"name": t.get("name"), "er": t.get("er"), "reach": t.get("reach")} for t in top3],
+            }, ensure_ascii=False)
+            payload = json.dumps({
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": "Eres analista de marketing para una distribuidora chilena pequeña (Hualpén). Escribe un resumen ejecutivo de 2-3 párrafos del mes, en español, directo y accionable. Sin markdown."},
+                    {"role": "user", "content": f"Datos del mes:\n{ctx}"},
+                ],
+                "max_tokens": 600, "temperature": 0.5,
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                "https://api.groq.com/openai/v1/chat/completions",
+                data=payload,
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {groq_key}", "User-Agent": "Mozilla/5.0"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                ai_summary = json.loads(resp.read().decode("utf-8"))["choices"][0]["message"]["content"]
+        except Exception:
+            ai_summary = ""
+
+    STYLE_LABELS = {"premium": "Premium", "premium_dark": "Dark", "premium_giant": "Gigante",
+                    "premium_split": "Split", "clasica": "Clásica", "amigable": "Amigable"}
+
+    top3_html = ""
+    for i, t in enumerate(top3):
+        top3_html += f'''<div style="background:#fff;border-radius:12px;padding:16px;border:1px solid #e6e1d8;flex:1">
+            <div style="font-size:.78rem;color:#85838c;margin-bottom:4px">#{i+1}</div>
+            <div style="font-weight:700;font-size:.95rem;margin-bottom:6px">{t.get("name","—")}</div>
+            <div style="color:#ed1c24;font-weight:800;font-size:1.1rem">ER {t.get("er",0):.1f}%</div>
+            <div style="font-size:.82rem;color:#85838c">Alcance: {t.get("reach",0):,}</div>
+        </div>'''
+
+    style_html = ""
+    for s, sd in sorted(style_stats.items(), key=lambda x: -(sum(x[1]["ers"])/len(x[1]["ers"]) if x[1]["ers"] else 0)):
+        avg_s = round(sum(sd["ers"])/len(sd["ers"]),1) if sd["ers"] else 0
+        style_html += f'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0ebe1"><span style="font-weight:600">{STYLE_LABELS.get(s,s)}</span><span>ER {avg_s}% · {sd["count"]} posts</span></div>'
+
+    html = f'''<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reporte {mes_label} — El Maravilloso</title>
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{font-family:Bahnschrift,"Segoe UI",system-ui,sans-serif;background:#faf8f4;color:#1b1b1f;padding:32px;max-width:800px;margin:0 auto}}
+h1{{font-size:1.5rem;color:#ed1c24;margin-bottom:4px}}
+.sub{{color:#85838c;font-size:.88rem;margin-bottom:28px}}
+.kpis{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}}
+.kpi{{background:#fff;border:1px solid #e6e1d8;border-radius:14px;padding:18px;text-align:center}}
+.kpi .n{{font-size:1.8rem;font-weight:800;color:#1b1b1f;line-height:1}}
+.kpi .n.red{{color:#ed1c24}}
+.kpi .l{{font-size:.78rem;color:#85838c;margin-top:4px}}
+h2{{font-size:1.1rem;margin:24px 0 12px;display:flex;align-items:center;gap:8px}}
+h2::before{{content:"";width:8px;height:8px;border-radius:50%;background:#ed1c24;display:inline-block}}
+.top3{{display:flex;gap:12px;margin-bottom:24px}}
+.summary{{background:#fff;border:1px solid #e6e1d8;border-radius:14px;padding:20px;line-height:1.65;font-size:.92rem;margin-bottom:24px;white-space:pre-line}}
+.footer{{text-align:center;color:#85838c;font-size:.78rem;margin-top:40px;padding-top:16px;border-top:1px solid #e6e1d8}}
+@media print{{body{{padding:16px}} .kpis{{grid-template-columns:repeat(4,1fr)}}}}
+@media(max-width:600px){{.kpis{{grid-template-columns:repeat(2,1fr)}} .top3{{flex-direction:column}}}}
+</style></head>
+<body>
+<h1>📊 Reporte Mensual</h1>
+<div class="sub">{mes_label} — Distribuidora El Maravilloso</div>
+<div class="kpis">
+  <div class="kpi"><div class="n">{total_posts}</div><div class="l">Publicaciones</div></div>
+  <div class="kpi"><div class="n">{total_reach:,}</div><div class="l">Alcance total</div></div>
+  <div class="kpi"><div class="n red">{f"{avg_er:.1f}%" if avg_er else "—"}</div><div class="l">ER promedio</div></div>
+  <div class="kpi"><div class="n">{f"+{followers_gained}" if followers_gained and followers_gained>0 else (str(followers_gained) if followers_gained else "—")}</div><div class="l">Seguidores ganados</div></div>
+</div>
+{"<h2>Top publicaciones</h2><div class='top3'>" + top3_html + "</div>" if top3_html else ""}
+{"<h2>Rendimiento por estilo</h2><div style='background:#fff;border:1px solid #e6e1d8;border-radius:14px;padding:16px;margin-bottom:24px'>" + style_html + "</div>" if style_html else ""}
+{"<h2>Resumen IA</h2><div class='summary'>" + ai_summary + "</div>" if ai_summary else ""}
+<div class="footer">Generado automáticamente por Estudio El Maravilloso · {datetime.now().strftime("%d/%m/%Y %H:%M")}</div>
+</body></html>'''
+
+    return HTMLResponse(content=html, headers={
+        "Content-Disposition": f'inline; filename="reporte-{period}.html"'
+    })
+
+
+# ---------- INTELIGENCIA: análisis semanal con Claude ----------
+
+_INTEL_CACHE = {"data": None, "ts": 0}
+
+@app.get("/api/insights/intelligence")
+def insights_intelligence(force: bool = False):
+    import time
+
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not anthropic_key and not groq_key:
+        return {"error": "no_key", "message": "Configura GROQ_API_KEY o ANTHROPIC_API_KEY en el .env"}
+
+    # caché unificada (2h como el resto de insights)
+    if not force:
+        cached = _cache_get("intelligence")
+        if cached:
+            return cached
+
+    token, ig_id = get_ig_auth()
+
+    # --- recopilar datos disponibles ---
+    account_data = {}
+    media_data = []
+    besttimes_data = {}
+
+    if token and ig_id:
+        try:
+            account_data = insights_account()
+        except Exception:
+            account_data = {"connected": False}
+        try:
+            media_data = _fetch_media_with_insights(ig_id, token, limit=30)
+        except Exception:
+            media_data = []
+        try:
+            besttimes_data = insights_besttimes()
+        except Exception:
+            besttimes_data = {}
+
+    # datos del estudio (posts generados, publicados, pendientes)
+    studio = load_data()
+    studio_posts = studio.get("posts", [])
+    published = [p for p in studio_posts if p.get("status") == "publicado"]
+    pending   = [p for p in studio_posts if p.get("status") not in ("publicado", "archivado")]
+
+    # resumen compacto de posts del estudio para el prompt
+    def _studio_summary(posts, max_items=8):
+        items = []
+        for p in posts[:max_items]:
+            cap = p.get("caption", {})
+            ig_cap = cap.get("ig_caption", "") if isinstance(cap, dict) else str(cap)
+            items.append({
+                "producto": (p.get("name") or p.get("product") or "")[:60],
+                "status": p.get("status", ""),
+                "fecha": (p.get("created") or p.get("date") or "")[:10],
+                "caption": ig_cap[:80],
+                "published": p.get("published", {}),
+            })
+        return items
+
+    # resumen compacto de posts de IG con métricas
+    def _media_summary(posts, max_items=20):
+        items = []
+        for m in posts[:max_items]:
+            items.append({
+                "tipo": m.get("media_type", ""),
+                "fecha": (m.get("timestamp") or "")[:10],
+                "caption": (m.get("caption") or "")[:80],
+                "likes": m.get("likes"),
+                "comments": m.get("comments"),
+                "reach": m.get("reach"),
+                "views": m.get("views"),
+                "er": m.get("engagement_rate"),
+            })
+        return items
+
+    # perfil y métricas de cuenta
+    profile = account_data.get("profile", {})
+    metrics = account_data.get("metrics", {})
+    er_cuenta = account_data.get("engagement_rate")
+
+    best = besttimes_data.get("best", {})
+    best_str = ""
+    if best.get("weekday_label") and best.get("hour") is not None:
+        best_str = f"{best['weekday_label']} a las {best['hour']}:00"
+
+    now_str = datetime.now().isoformat(timespec="seconds")
+
+    # construir contexto de datos para el prompt
+    data_ctx = {
+        "fecha_analisis": now_str,
+        "cuenta": {
+            "username": profile.get("username"),
+            "seguidores": profile.get("followers"),
+            "publicaciones_totales": profile.get("media_count"),
+            "engagement_rate_cuenta": er_cuenta,
+            "metricas_28d": metrics,
+        },
+        "mejor_horario": best_str or "sin datos suficientes",
+        "posts_ig_recientes": _media_summary(media_data),
+        "studio_publicados": _studio_summary(published),
+        "studio_pendientes_publicar": _studio_summary(pending),
+        "total_generados": len(studio_posts),
+        "total_publicados": len(published),
+        "total_pendientes": len(pending),
+    }
+
+    system_prompt = (
+        "Eres un analista de marketing especializado en micro-cuentas de Instagram para negocios locales chilenos. "
+        "Analizas 'Distribuidora El Maravilloso', una distribuidora ubicada en Hualpén, Chile, "
+        "con aproximadamente 137 seguidores — una cuenta en etapa de crecimiento inicial.\n\n"
+        "Tu rol es entregar un diagnóstico semanal accionable y específico, NO genérico. "
+        "Cuando digas 'publica más', di exactamente qué, cuándo y por qué. "
+        "Considera que es una micro-cuenta y que el crecimiento orgánico es lento al comienzo.\n\n"
+        "Analiza:\n"
+        "- Engagement rate (bueno para micro: >3%, excelente: >6%)\n"
+        "- Tipos de contenido que más reach generan (foto vs reel vs carrusel)\n"
+        "- Consistencia y frecuencia de publicación\n"
+        "- Mejores horarios según datos históricos\n"
+        "- Qué contenido hay en pipeline (generado pero no publicado)\n"
+        "- Oportunidades específicas para la distribuidora (productos, promociones, tips)\n\n"
+        "Responde ÚNICAMENTE con un JSON válido (sin markdown, sin bloques de código) con esta estructura exacta:\n"
+        "{\n"
+        '  "diagnosis": "1-3 párrafos de diagnóstico semanal en español",\n'
+        '  "recommendations": [\n'
+        '    {"type": "reel|photo|story|combo", "suggestion": "qué publicar", "reason": "por qué", "priority": "alta|media|baja"}\n'
+        "  ],\n"
+        '  "post_analysis": [\n'
+        '    {"caption_preview": "primeros 60 caracteres", "performance": "bueno|regular|malo", "insight": "por qué funcionó o no", "er": 2.1}\n'
+        "  ],\n"
+        '  "alerts": [\n'
+        '    {"level": "warning|info|success", "icon": "⚠️|💡|✅", "message": "texto de alerta"}\n'
+        "  ],\n"
+        '  "best_content_type": "tipo de contenido que mejor funciona",\n'
+        '  "posting_cadence": "frecuencia recomendada de publicación",\n'
+        '  "generated_at": "' + now_str + '"\n'
+        "}"
+    )
+
+    user_msg = (
+        "Analiza estos datos de Instagram y el estudio de contenido y entrega el diagnóstico semanal:\n\n"
+        + json.dumps(data_ctx, ensure_ascii=False, indent=2)
+    )
+
+    try:
+        if groq_key:
+            import urllib.request
+            payload = json.dumps({
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_msg},
+                ],
+                "response_format": {"type": "json_object"},
+                "max_tokens": 1500,
+                "temperature": 0.6,
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                "https://api.groq.com/openai/v1/chat/completions",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {groq_key}",
+                    "User-Agent": "Mozilla/5.0",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            raw_text = data["choices"][0]["message"]["content"]
+        else:
+            import anthropic as _anthropic
+            client = _anthropic.Anthropic(api_key=anthropic_key)
+            msg = client.messages.create(
+                model="claude-sonnet-4-6-20250514",
+                max_tokens=1500,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_msg}],
+            )
+            raw_text = next((b.text for b in msg.content if b.type == "text"), "")
+    except Exception as e:
+        return JSONResponse(
+            {"error": "ai_error", "message": str(e)[:300]},
+            status_code=502,
+        )
+
+    # parseo robusto: extraer JSON aunque venga en bloque markdown
+    json_text = raw_text.strip()
+    # quitar bloque ```json ... ``` si existe
+    md_match = re.search(r"```(?:json)?\s*([\s\S]+?)\s*```", json_text)
+    if md_match:
+        json_text = md_match.group(1).strip()
+    # quitar texto previo o posterior al JSON (buscar primer { y último })
+    start = json_text.find("{")
+    end   = json_text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        json_text = json_text[start:end+1]
+
+    try:
+        result = json.loads(json_text)
+    except Exception as e:
+        return JSONResponse(
+            {"error": "parse_error", "message": f"Claude no devolvió JSON válido: {str(e)[:120]}",
+             "raw": raw_text[:500]},
+            status_code=502,
+        )
+
+    # asegurar generated_at
+    result.setdefault("generated_at", now_str)
+
+    # guardar en caché
+    _cache_set("intelligence", result)
+
+    return result
 
 
 # ---------- INBOX: comentarios y DMs de Instagram ----------
@@ -2056,8 +3113,182 @@ async def inbox_ai_reply(req: Request):
     except Exception:
         return JSONResponse({"error": "fallo"}, status_code=500)
 
+## ========== CHAT MARK (asistente IA conversacional) ==========
+
+CHAT_HISTORY = []  # historial en memoria (se pierde al reiniciar, no importa)
+
+def _gather_chat_context():
+    """Recopila datos reales del negocio para inyectar al prompt del chat."""
+    ctx = {}
+
+    # Productos top
+    try:
+        prods = fetch_products()
+        top = prods.get("products", [])[:20]
+        ctx["productos"] = ", ".join(
+            f"{p['name']} ${int(p.get('salePrice',0)):,}".replace(",",".")
+            for p in top if p.get("salePrice")
+        )
+        ctx["total_productos"] = len(prods.get("products", []))
+    except Exception:
+        ctx["productos"] = "(no disponible)"
+        ctx["total_productos"] = 0
+
+    # Métricas IG
+    try:
+        token, ig_id = get_ig_auth()
+        if token and ig_id:
+            profile_raw = _ig_api("GET", ig_id, {
+                "fields": "username,followers_count,media_count",
+                "access_token": token
+            })
+            ctx["ig_followers"] = profile_raw.get("followers_count", "?")
+            ctx["ig_posts"] = profile_raw.get("media_count", "?")
+            ctx["ig_user"] = profile_raw.get("username", "?")
+        else:
+            ctx["ig_followers"] = ctx["ig_posts"] = ctx["ig_user"] = "no conectado"
+    except Exception:
+        ctx["ig_followers"] = ctx["ig_posts"] = ctx["ig_user"] = "error"
+
+    # Piezas listas
+    try:
+        sd = json.load(open(DATA, encoding="utf-8"))
+        piezas = [p for p in sd if p.get("video") or p.get("image")]
+        ctx["piezas_listas"] = len(piezas)
+        ctx["piezas_agendadas"] = len([p for p in sd if p.get("scheduled")])
+    except Exception:
+        ctx["piezas_listas"] = 0
+        ctx["piezas_agendadas"] = 0
+
+    # Contexto temporal
+    now = datetime.now()
+    dias = ["lunes","martes","miércoles","jueves","viernes","sábado","domingo"]
+    meses_temp = {12:"verano",1:"verano",2:"verano",3:"otoño",4:"otoño",5:"otoño",
+                  6:"invierno",7:"invierno",8:"invierno",9:"primavera",10:"primavera",11:"primavera"}
+    ctx["dia"] = dias[now.weekday()]
+    ctx["fecha"] = now.strftime("%d/%m/%Y")
+    ctx["temporada"] = meses_temp.get(now.month, "")
+
+    # Competidores
+    try:
+        cfg_path = os.path.join(TOOLS, "vigia_config.json")
+        cfg = json.load(open(cfg_path, encoding="utf-8"))
+        comps = cfg.get("competidores", [])
+        ctx["competidores"] = ", ".join(f"{c['nombre']} ({c.get('ig','sin IG')})" for c in comps)
+    except Exception:
+        ctx["competidores"] = "Biolimpieza, Los Turcos, El Baratillo, Deconce, M&L, Calfulen"
+
+    return ctx
+
+def _build_chat_system_prompt(ctx):
+    estilo = load_estilo()
+    negocio = estilo.get("negocio", {})
+    return f"""Eres Mark, el asistente de marketing de El Maravilloso — una distribuidora de abarrotes en Hualpén, Chile.
+Dirección: {negocio.get('direccion', 'Grecia 1841, Hualpén')}.
+Referencia: {negocio.get('referencia', 'a metros del colegio Montaner')}.
+
+DATOS EN VIVO:
+- Instagram: @{ctx.get('ig_user','?')} | {ctx.get('ig_followers','?')} seguidores | {ctx.get('ig_posts','?')} posts
+- Catálogo: {ctx.get('total_productos',0)} productos. Top ventas: {ctx.get('productos','')}
+- Piezas listas: {ctx.get('piezas_listas',0)} | Agendadas: {ctx.get('piezas_agendadas',0)}
+- Competidores zona: {ctx.get('competidores','')}
+- Hoy: {ctx.get('dia','')} {ctx.get('fecha','')} | Temporada: {ctx.get('temporada','')}
+
+PERSONALIDAD:
+- Habla en español chileno neutro, trato de tú, cercano pero profesional.
+- Respuestas CORTAS y directas (máximo 3-4 líneas por respuesta).
+- Cuando propongas contenido, di el producto + precio real del catálogo.
+- Si te preguntan métricas, da los números reales de arriba.
+- Si te piden generar un video o publicar, explica qué botón usar en el panel (no puedes ejecutar acciones directamente aún).
+- Si no sabes algo, dilo honestamente.
+- NO uses asteriscos markdown (**) — el chat es texto plano.
+- NO inventes datos. Solo usa los datos reales de arriba."""
+
+def _groq_chat(messages):
+    """Llama a Groq con historial de mensajes."""
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        raise RuntimeError("no_key")
+    payload = json.dumps({
+        "model": "llama-3.3-70b-versatile",
+        "messages": messages,
+        "max_tokens": 600,
+        "temperature": 0.7,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.groq.com/openai/v1/chat/completions",
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {groq_key}",
+            "User-Agent": "Mozilla/5.0",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    return data["choices"][0]["message"]["content"]
+
+@app.post("/api/chat")
+async def api_chat(req: Request):
+    global CHAT_HISTORY
+    try:
+        b = await req.json()
+    except Exception:
+        return JSONResponse({"error": "JSON inválido"}, status_code=400)
+
+    user_msg = (b.get("message") or "").strip()
+    if not user_msg:
+        return JSONResponse({"error": "Mensaje vacío"}, status_code=400)
+
+    # Recopilar contexto fresco
+    ctx = _gather_chat_context()
+    system_prompt = _build_chat_system_prompt(ctx)
+
+    # Mantener últimos 10 mensajes de historial
+    CHAT_HISTORY.append({"role": "user", "content": user_msg})
+    if len(CHAT_HISTORY) > 20:
+        CHAT_HISTORY = CHAT_HISTORY[-20:]
+
+    messages = [{"role": "system", "content": system_prompt}] + CHAT_HISTORY
+
+    try:
+        reply = _groq_chat(messages)
+        CHAT_HISTORY.append({"role": "assistant", "content": reply})
+        return {"reply": reply}
+    except RuntimeError as e:
+        if "no_key" in str(e):
+            return JSONResponse({"error": "Configura GROQ_API_KEY en el .env para activar el chat."}, status_code=400)
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+    except Exception as e:
+        return JSONResponse({"error": f"Error IA: {str(e)[:200]}"}, status_code=500)
+
+@app.post("/api/chat/clear")
+async def api_chat_clear():
+    global CHAT_HISTORY
+    CHAT_HISTORY = []
+    return {"ok": True}
+
+## ========== FIN CHAT MARK ==========
+
 def open_browser():
     webbrowser.open("http://127.0.0.1:8000")
+
+# ---------- Background: snapshot diario de métricas ----------
+def _schedule_daily_snapshot():
+    import time as _time
+    while True:
+        now = datetime.now()
+        target = now.replace(hour=23, minute=30, second=0, microsecond=0)
+        if target <= now:
+            target += timedelta(days=1)
+        _time.sleep((target - now).total_seconds())
+        try:
+            _take_metrics_snapshot()
+        except Exception:
+            pass
+
+threading.Thread(target=_schedule_daily_snapshot, daemon=True).start()
 
 if __name__ == "__main__":
     import uvicorn
