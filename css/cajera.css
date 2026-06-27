@@ -1,0 +1,81 @@
+/* ================================================================
+   PANEL CAJERAS — piel cálida "editorial suave"
+   Solo aplica bajo body.light-theme (empleadas). El admin queda intacto.
+   Carga DESPUÉS de style.css para ganar en el override de variables.
+   ================================================================ */
+
+body.light-theme {
+  /* — Paleta cálida — */
+  --text-primary:   #3a2a28;   /* marrón cálido oscuro */
+  --text-secondary: #7a655c;
+  --text-muted:     #a78d80;   /* taupe cálido */
+  --bg-card:        #fffdfb;    /* blanco cálido */
+  --bg-elevated:    #fffdfb;
+  --bg-input:       #fff6f1;
+  --bg-secondary:   #fff4ee;
+  --bg-main:        #fdf2ec;
+  --bg-app:         #fdf2ec;
+  --primary:        #ee6a47;    /* terracota */
+  --primary-dark:   #d8542f;
+  --border:         rgba(150, 95, 70, 0.13);
+  --success:        #46b07a;
+  --danger:         #e8443a;
+
+  font-family: 'Nunito', -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Fondo crema con halos suaves */
+  background:
+    radial-gradient(120% 70% at 100% 0%, #ffe9da 0%, rgba(255,233,218,0) 52%),
+    radial-gradient(120% 60% at 0% 6%,  #ffe1ea 0%, rgba(255,225,234,0) 46%),
+    linear-gradient(178deg, #fff7f0 0%, #fdeef0 48%, #f7eefb 100%) !important;
+  background-image:
+    radial-gradient(120% 70% at 100% 0%, #ffe9da 0%, rgba(255,233,218,0) 52%),
+    radial-gradient(120% 60% at 0% 6%,  #ffe1ea 0%, rgba(255,225,234,0) 46%),
+    linear-gradient(178deg, #fff7f0 0%, #fdeef0 48%, #f7eefb 100%) !important;
+}
+
+/* — Títulos con carácter (Fraunces) — */
+body.light-theme h1,
+body.light-theme h2,
+body.light-theme .cj-display {
+  font-family: 'Fraunces', Georgia, 'Times New Roman', serif !important;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+
+/* — Tarjetas un poco más cálidas: sombra y radio cuando usan la clase .card — */
+body.light-theme .card {
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(190, 110, 80, 0.09);
+  border-color: var(--border);
+}
+
+/* — Inputs cálidos al enfocar — */
+body.light-theme input:focus,
+body.light-theme textarea:focus,
+body.light-theme select:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(238, 106, 71, 0.14) !important;
+  outline: none;
+}
+
+/* — Bottom-nav cálido — */
+body.light-theme #bottom-nav,
+body.light-theme .bottom-nav {
+  background: rgba(255, 250, 246, 0.92) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(200, 140, 110, 0.14) !important;
+}
+body.light-theme .bottom-nav-item.active,
+body.light-theme .bottom-nav-item.active i {
+  color: var(--primary) !important;
+}
+body.light-theme .bottom-nav-item.active i {
+  filter: drop-shadow(0 3px 6px rgba(238, 106, 71, 0.28));
+}
+
+/* — Botón de Ideas/Mejoras (Enviar sugerencia): al tono cálido — */
+body.light-theme .sug-btn {
+  background: linear-gradient(135deg, #ff9e72, #f0683f) !important;
+}

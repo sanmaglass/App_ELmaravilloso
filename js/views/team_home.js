@@ -138,117 +138,142 @@ window.Views = window.Views || {};
         const hoy      = formatFechaChile(chileNow());
         const clTypeLabel = getChecklistType() === 'apertura' ? 'Apertura' : 'Cierre';
 
-        // Esqueleto base — estilo cálido (v1) + anillo motivador (v3)
+        // Esqueleto base — estilo pulido v2 (Fraunces + anillo héroe 78px)
+        const inicial = nombre.charAt(0).toUpperCase();
+        const svgGradId = 'th-ring-grad';
         container.innerHTML = `
             <div style="
-                max-width:680px; margin:0 auto; padding:0 16px 40px;
+                max-width:680px; margin:0 auto; padding:26px 20px 96px;
                 min-height:100vh;
-                background:linear-gradient(180deg,#fff4ec 0%,#fdeef0 30%,#f6f0fb 100%);
+                background:
+                    radial-gradient(120% 80% at 100% 0%,#ffe9da 0%,rgba(255,233,218,0) 55%),
+                    radial-gradient(120% 70% at 0% 8%,#ffe1ea 0%,rgba(255,225,234,0) 50%),
+                    linear-gradient(178deg,#fff7f0 0%,#fdeef0 46%,#f6eefb 100%);
             ">
 
                 <!-- Saludo -->
-                <div style="margin-bottom:22px; padding-top:8px;">
-                    <p style="margin:0 0 2px; color:#b08968; font-size:0.82rem; font-weight:700; text-transform:capitalize;">
-                        ${hoy}
-                    </p>
-                    <h1 style="margin:0; font-size:1.6rem; color:#3d2c2e; font-weight:800; display:flex; align-items:center; gap:8px;">
-                        ${saludoContextual()}, ${window.escapeHTML(nombre)} <span style="font-size:1.4rem;">👋</span>
-                    </h1>
-                    <p style="margin:4px 0 0; font-size:0.88rem; color:#9a8478;">Que tengas un lindo turno ✨</p>
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:7px;">
+                    <div>
+                        <div style="font-size:12.5px; color:#bb8e74; font-weight:700; letter-spacing:.3px; text-transform:capitalize;">
+                            ${hoy}
+                        </div>
+                        <div style="font-family:'Fraunces',serif; font-size:33px; font-weight:600; color:#3a2a28;
+                                    line-height:1.05; letter-spacing:-.5px; margin-top:3px;">
+                            ${saludoContextual()},<br><span style="font-style:italic; color:#e8654e;">${window.escapeHTML(nombre)}</span>
+                        </div>
+                    </div>
+                    <div style="width:42px; height:42px; border-radius:14px;
+                                background:linear-gradient(135deg,#ff9e7d,#ff7a98);
+                                display:flex; align-items:center; justify-content:center;
+                                color:#fff; font-weight:800; font-size:16px;
+                                font-family:'Fraunces',serif;
+                                box-shadow:0 6px 16px rgba(255,122,152,.34); flex-shrink:0;">
+                        ${inicial}
+                    </div>
                 </div>
+                <div style="font-size:14px; color:#a18a7e; font-weight:600; margin-bottom:22px;">Que tengas un lindo turno ✨</div>
 
-                <!-- Anillo motivador -->
-                <div style="margin-bottom:20px;">
-                    <div id="th-ring" style="
-                        background:#fff; border-radius:22px;
-                        box-shadow:0 6px 20px rgba(186,120,100,.10);
-                        padding:18px 20px;
-                        display:flex; align-items:center; gap:18px;
-                    ">
-                        <div style="flex-shrink:0; position:relative; width:58px; height:58px;">
-                            <svg id="th-ring-svg" viewBox="0 0 58 58" width="58" height="58" style="transform:rotate(-90deg);">
-                                <circle cx="29" cy="29" r="24" fill="none" stroke="#fde8df" stroke-width="6"/>
-                                <circle id="th-ring-arc" cx="29" cy="29" r="24" fill="none"
-                                        stroke="#ee7a59" stroke-width="6"
-                                        stroke-linecap="round"
-                                        stroke-dasharray="150.8" stroke-dashoffset="150.8"
-                                        style="transition:stroke-dashoffset 0.5s ease;"/>
-                            </svg>
-                            <span id="th-ring-frac" style="
-                                position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-                                font-size:0.72rem; font-weight:800; color:#3d2c2e; white-space:nowrap;
-                            ">0/0</span>
+                <!-- Anillo héroe -->
+                <div id="th-ring" style="
+                    background:linear-gradient(135deg,#fff,#fff6f1);
+                    border-radius:26px; padding:20px;
+                    display:flex; align-items:center; gap:18px;
+                    box-shadow:0 10px 30px rgba(190,110,80,.13),inset 0 0 0 1px rgba(255,255,255,.7);
+                    margin-bottom:26px;
+                ">
+                    <div style="position:relative; width:78px; height:78px; flex-shrink:0;">
+                        <svg width="78" height="78" viewBox="0 0 78 78" style="transform:rotate(-90deg);">
+                            <circle cx="39" cy="39" r="33" fill="none" stroke="#f6e2d8" stroke-width="9"/>
+                            <circle id="th-ring-arc" cx="39" cy="39" r="33" fill="none"
+                                    stroke="url(#${svgGradId})" stroke-width="9" stroke-linecap="round"
+                                    stroke-dasharray="207.3" stroke-dashoffset="207.3"
+                                    style="transition:stroke-dashoffset 0.5s ease;"/>
+                            <defs>
+                                <linearGradient id="${svgGradId}" x1="0" y1="0" x2="1" y2="1">
+                                    <stop offset="0" stop-color="#ff9e72"/>
+                                    <stop offset="1" stop-color="#ee6a47"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <div style="position:absolute; inset:0; display:flex; flex-direction:column;
+                                    align-items:center; justify-content:center;">
+                            <b id="th-ring-frac" style="font-family:'Fraunces',serif; font-size:21px;
+                                                        color:#3a2a28; line-height:1;">0/0</b>
+                            <span style="font-size:9.5px; color:#bb8e74; font-weight:700;
+                                         text-transform:uppercase; letter-spacing:.5px;">tareas</span>
                         </div>
-                        <div style="flex:1; min-width:0;">
-                            <div style="font-weight:800; font-size:1rem; color:#3d2c2e; margin-bottom:3px;">
-                                ${clTypeLabel} en marcha
-                            </div>
-                            <div id="th-ring-text" style="font-size:0.84rem; color:#9a8478;">Cargando…</div>
-                        </div>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                        <h4 style="font-family:'Fraunces',serif; font-size:18px; font-weight:600;
+                                   color:#3a2a28; margin:0 0 3px;">
+                            ${clTypeLabel} en marcha
+                        </h4>
+                        <p id="th-ring-text" style="font-size:13.5px; color:#a18a7e; font-weight:600; margin:0 0 9px;">Cargando…</p>
+                        <span id="th-ring-pill" style="display:inline-flex; align-items:center; gap:5px;
+                              background:#fff0e8; color:#e8654e; font-size:11.5px; font-weight:800;
+                              padding:4px 11px; border-radius:20px;"></span>
                     </div>
                 </div>
 
                 <!-- Checklist del turno -->
                 <div style="margin-bottom:22px;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                        <h3 style="margin:0; font-size:0.75rem; font-weight:800; color:#c9776a;
-                                   text-transform:uppercase; letter-spacing:0.8px;
-                                   display:flex; align-items:center; gap:6px;">
-                            <i class="ph-fill ph-list-checks"></i>${clTypeLabel}
-                        </h3>
-                        <span id="th-checklist-progress" style="font-size:0.78rem; color:#e08f7e;
-                              background:#fff; padding:3px 11px; border-radius:20px;
-                              box-shadow:0 2px 6px rgba(224,143,126,.18); font-weight:700;"></span>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin:0 4px 12px;">
+                        <span style="display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800;
+                                     color:#c08566; text-transform:uppercase; letter-spacing:1px;">
+                            <i class="ph-fill ph-list-checks"></i>Tareas de ${clTypeLabel.toLowerCase()}
+                        </span>
+                        <span id="th-checklist-progress" style="font-size:12px; color:#e8654e; font-weight:700;"></span>
                     </div>
                     <div id="th-checklist" style="
-                        background:#fff; border-radius:22px;
-                        box-shadow:0 6px 20px rgba(186,120,100,.10);
-                        overflow:hidden;
+                        background:#fffdfb; border-radius:22px; padding:6px;
+                        box-shadow:0 8px 24px rgba(190,110,80,.10),inset 0 0 0 1px rgba(255,240,232,.9);
                     ">
-                        <div style="color:#9a8478; font-size:0.88rem; padding:18px 20px;">Cargando…</div>
+                        <div style="color:#9a8478; font-size:0.88rem; padding:18px 13px;">Cargando…</div>
                     </div>
                 </div>
 
                 <!-- Subir factura de mercadería -->
                 <div style="margin-bottom:22px;">
                     <button id="th-btn-factura"
-                        style="width:100%; padding:17px 18px;
-                               background:linear-gradient(135deg,#ffb088,#ff8f6b);
+                        style="width:100%; padding:18px 19px;
+                               background:linear-gradient(135deg,#ff9e72,#f0683f);
                                color:#fff; border:none; border-radius:22px; cursor:pointer;
-                               display:flex; align-items:center; gap:14px;
-                               box-shadow:0 10px 24px rgba(255,143,107,.30); transition:opacity 0.15s;">
-                        <div style="width:46px; height:46px; background:rgba(255,255,255,0.22); border-radius:14px;
-                                    display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                            <i class="ph-fill ph-receipt" style="font-size:1.5rem;"></i>
+                               display:flex; align-items:center; gap:15px; position:relative; overflow:hidden;
+                               box-shadow:0 14px 30px rgba(240,104,63,.34); transition:opacity 0.15s;">
+                        <div style="width:48px; height:48px; background:rgba(255,255,255,0.22); border-radius:15px;
+                                    display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:23px;">
+                            <i class="ph-fill ph-receipt"></i>
                         </div>
                         <div style="text-align:left; flex:1;">
-                            <div style="font-weight:800; font-size:1rem; margin-bottom:2px;">Subir factura</div>
-                            <div style="font-size:0.82rem; opacity:0.9;">Fotografía la factura cuando llega mercadería</div>
+                            <div style="font-weight:800; font-size:16.5px; letter-spacing:-.2px; margin-bottom:2px;">Subir factura</div>
+                            <div style="font-size:13px; opacity:0.92; font-weight:600;">Fotografía cuando llegue mercadería</div>
                         </div>
-                        <i class="ph ph-caret-right" style="font-size:1.2rem; opacity:0.7;"></i>
+                        <i class="ph ph-caret-right" style="font-size:20px; opacity:0.85; margin-left:auto;"></i>
                     </button>
                 </div>
 
                 <!-- Promo del día -->
                 <div id="th-promo-section" style="margin-bottom:22px; display:none;">
-                    <h3 style="margin:0 0 10px; font-size:0.75rem; font-weight:800; color:#c9776a;
-                               text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:6px;">
-                        <i class="ph-fill ph-sparkle"></i>Promo vigente
-                    </h3>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin:0 4px 12px;">
+                        <span style="display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800;
+                                     color:#c08566; text-transform:uppercase; letter-spacing:1px;">
+                            <i class="ph-fill ph-sparkle"></i>Promo vigente
+                        </span>
+                    </div>
                     <div id="th-promo-card"></div>
                 </div>
 
                 <!-- Avisos recientes -->
                 <div style="margin-bottom:22px;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                        <h3 style="margin:0; font-size:0.75rem; font-weight:800; color:#c9776a;
-                                   text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:6px;">
-                            <i class="ph-fill ph-chat-circle-dots"></i>Avisos
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin:0 4px 12px;">
+                        <span style="display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800;
+                                     color:#c08566; text-transform:uppercase; letter-spacing:1px;">
+                            <i class="ph-fill ph-megaphone"></i>Avisos
                             <span id="th-avisos-badge" style="display:none; background:#ee7a59; color:#fff; font-size:0.65rem;
                                   padding:2px 8px; border-radius:10px; font-weight:800;"></span>
-                        </h3>
+                        </span>
                         <button class="th-ver-mas" data-nav="announcements"
-                            style="font-size:0.8rem; color:#ee7a59; background:none; border:none; cursor:pointer; padding:0; font-weight:700;">
+                            style="font-size:12.5px; color:#e8654e; background:none; border:none; cursor:pointer; padding:0; font-weight:700;">
                             Ver todos →
                         </button>
                     </div>
@@ -259,13 +284,13 @@ window.Views = window.Views || {};
 
                 <!-- Mis reportes recientes -->
                 <div style="margin-bottom:22px;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                        <h3 style="margin:0; font-size:0.75rem; font-weight:800; color:#c9776a;
-                                   text-transform:uppercase; letter-spacing:0.8px; display:flex; align-items:center; gap:6px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin:0 4px 12px;">
+                        <span style="display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800;
+                                     color:#c08566; text-transform:uppercase; letter-spacing:1px;">
                             <i class="ph-fill ph-clipboard-text"></i>Mis reportes
-                        </h3>
+                        </span>
                         <button class="th-ver-mas" data-nav="team_reports"
-                            style="font-size:0.8rem; color:#ee7a59; background:none; border:none; cursor:pointer; padding:0; font-weight:700;">
+                            style="font-size:12.5px; color:#e8654e; background:none; border:none; cursor:pointer; padding:0; font-weight:700;">
                             Ver todos →
                         </button>
                     </div>
@@ -277,17 +302,18 @@ window.Views = window.Views || {};
                 <!-- Sugerir mejoras -->
                 <div style="margin-bottom:16px;">
                     <button id="th-btn-mejoras"
-                        style="width:100%; padding:16px 18px; background:#fff;
+                        style="width:100%; padding:16px 18px; background:#fffdfb;
                                border:none; border-radius:22px; cursor:pointer;
                                display:flex; align-items:center; gap:14px;
-                               box-shadow:0 6px 20px rgba(186,120,100,.10); transition:opacity 0.15s;">
+                               box-shadow:0 8px 22px rgba(190,110,80,.09),inset 0 0 0 1px rgba(255,240,232,.9);
+                               transition:opacity 0.15s;">
                         <div style="width:40px; height:40px; background:#f3eefc;
                                     border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                             <i class="ph-fill ph-lightbulb" style="font-size:1.25rem; color:#9b6dd6;"></i>
                         </div>
                         <div style="text-align:left; flex:1;">
-                            <div style="font-weight:800; font-size:0.95rem; color:#3d2c2e;">Ideas y Mejoras</div>
-                            <div style="font-size:0.78rem; color:#9a8478;">Sugiere funciones nuevas para la app</div>
+                            <div style="font-weight:800; font-size:14.5px; color:#3a2a28;">Ideas y Mejoras</div>
+                            <div style="font-size:12.5px; color:#a18a7e; font-weight:600; margin-top:2px;">Sugiere funciones nuevas para la app</div>
                         </div>
                         <i class="ph ph-caret-right" style="font-size:1.1rem; color:#c9b5ae;"></i>
                     </button>
@@ -295,9 +321,9 @@ window.Views = window.Views || {};
 
                 <!-- Cerrar sesión -->
                 <div style="padding-top:4px;">
-                    <button id="th-logout" style="width:100%; padding:14px; background:#fff;
+                    <button id="th-logout" style="width:100%; padding:14px; background:#fffdfb;
                             border:none; border-radius:22px;
-                            box-shadow:0 4px 14px rgba(186,120,100,.08);
+                            box-shadow:0 8px 22px rgba(190,110,80,.09),inset 0 0 0 1px rgba(255,240,232,.9);
                             color:#e05050; font-size:0.9rem; font-weight:700; cursor:pointer;
                             display:flex; align-items:center; justify-content:center; gap:8px;
                             transition:opacity 0.15s;">
@@ -361,43 +387,38 @@ window.Views = window.Views || {};
             if (avisosRecientes.length === 0) {
                 avisosEl.innerHTML = `<p style="color:#9a8478; font-size:0.88rem; padding:12px 0;">Sin avisos por ahora.</p>`;
             } else {
-                avisosEl.innerHTML = avisosRecientes.map(a => {
+                avisosEl.innerHTML = avisosRecientes.map((a, idx) => {
                     const noLeido = !leidasPorMi.has(a.id);
                     const esUrgente = a.priority === 'urgente';
                     return `
                     <div style="
-                        background:#fff;
-                        border-left:3px solid ${noLeido ? '#ee7a59' : 'transparent'};
-                        border-radius:20px; padding:14px 16px; margin-bottom:10px;
-                        display:flex; align-items:flex-start; gap:12px; cursor:pointer;
-                        box-shadow:0 6px 18px rgba(186,120,100,.10);"
+                        background:#fffdfb; border-radius:20px; padding:15px 16px;
+                        display:flex; gap:13px; align-items:flex-start; cursor:pointer;
+                        box-shadow:0 8px 22px rgba(190,110,80,.09),inset 0 0 0 1px rgba(255,240,232,.9);
+                        ${idx > 0 ? 'margin-top:9px;' : ''}"
                          class="th-aviso-item" data-nav="announcements">
-                        <div style="width:38px; height:38px; border-radius:12px; background:#ffe1da;
-                                    color:#e8654e; display:flex; align-items:center; justify-content:center;
-                                    font-size:1.1rem; flex-shrink:0;">
+                        <div style="width:40px; height:40px; border-radius:13px;
+                                    background:${esUrgente ? '#ffe6e1' : '#ffe1da'};
+                                    color:${esUrgente ? '#e8443a' : '#e8654e'};
+                                    display:flex; align-items:center; justify-content:center;
+                                    font-size:19px; flex-shrink:0;">
                             <i class="ph-fill ph-megaphone"></i>
                         </div>
                         <div style="flex:1; min-width:0;">
-                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap;">
-                                ${esUrgente
-                                    ? `<span style="font-size:0.68rem; font-weight:800; padding:2px 9px; border-radius:8px;
-                                                background:#ffe1da; color:#e8654e; text-transform:uppercase;">
-                                           🔴 Urgente
-                                       </span>`
-                                    : ''}
-                                ${noLeido
-                                    ? `<span style="font-size:0.7rem; font-weight:800; color:#ee7a59;">● Nuevo</span>`
-                                    : ''}
-                            </div>
-                            <div style="font-weight:700; color:#3d2c2e; font-size:0.92rem; margin-bottom:2px;
+                            ${esUrgente
+                                ? `<span style="display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:800;
+                                              color:#fff; background:linear-gradient(135deg,#ff6b5e,#e8443a);
+                                              padding:3px 10px; border-radius:8px; text-transform:uppercase; letter-spacing:.4px;
+                                              box-shadow:0 3px 8px rgba(232,68,58,.3); margin-bottom:5px;">
+                                       <i class="ph-fill ph-warning-circle"></i> Urgente
+                                   </span>`
+                                : (noLeido ? `<span style="font-size:0.7rem; font-weight:800; color:#ee7a59; display:block; margin-bottom:3px;">● Nuevo</span>` : '')}
+                            <div style="font-size:14.5px; color:#3a2a28; font-weight:800; line-height:1.25; margin-top:${esUrgente ? '0' : '5px'};
                                         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                                 ${window.escapeHTML(a.title || 'Sin título')}
                             </div>
-                            <div style="font-size:0.78rem; color:#9a8478;">
-                                ${tiempoRelativo(a.created_at)}
-                            </div>
+                            <small style="color:#b3a298; font-size:12px; font-weight:600;">${tiempoRelativo(a.created_at)}</small>
                         </div>
-                        <i class="ph ph-caret-right" style="color:#c9b5ae; flex-shrink:0; margin-top:4px;"></i>
                     </div>
                     `;
                 }).join('');
@@ -417,27 +438,27 @@ window.Views = window.Views || {};
             if (misReportes.length === 0) {
                 reportesEl.innerHTML = `<p style="color:#9a8478; font-size:0.88rem; padding:12px 0;">Aún no has enviado reportes.</p>`;
             } else {
-                reportesEl.innerHTML = misReportes.map(r => {
+                reportesEl.innerHTML = misReportes.map((r, idx) => {
                     const st = STATUS_CONFIG[r.status] || STATUS_CONFIG.pendiente;
                     const tipoLabel = TYPE_LABELS[r.type] || r.type || 'Reporte';
                     return `
-                    <div style="background:#fff; border-radius:20px;
-                                padding:14px 16px; margin-bottom:10px; display:flex; align-items:center; gap:12px;
-                                cursor:pointer; box-shadow:0 6px 18px rgba(186,120,100,.10);"
+                    <div style="background:#fffdfb; border-radius:20px;
+                                padding:14px 16px; display:flex; align-items:center; gap:12px;
+                                cursor:pointer;
+                                box-shadow:0 8px 22px rgba(190,110,80,.09),inset 0 0 0 1px rgba(255,240,232,.9);
+                                ${idx > 0 ? 'margin-top:9px;' : ''}"
                          class="th-reporte-item">
                         <div style="flex:1; min-width:0;">
-                            <div style="font-weight:700; color:#3d2c2e; font-size:0.92rem; margin-bottom:4px;
+                            <div style="font-size:14.5px; color:#3a2a28; font-weight:800;
                                         white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                                 ${window.escapeHTML(r.title || tipoLabel)}
                             </div>
-                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                                <span style="font-size:0.75rem; color:#9a8478;">${tipoLabel}</span>
-                                <span style="font-size:0.75rem; color:#c9b5ae;">·</span>
-                                <span style="font-size:0.75rem; color:#9a8478;">${tiempoRelativo(r.created_at)}</span>
+                            <div style="font-size:12px; color:#a18a7e; font-weight:600; margin-top:2px;">
+                                ${tipoLabel} · ${tiempoRelativo(r.created_at)}
                             </div>
                         </div>
-                        <span style="font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:10px;
-                                     background:${st.bg}; color:${st.color}; white-space:nowrap; flex-shrink:0;">
+                        <span style="font-size:11px; font-weight:800; padding:4px 11px; border-radius:9px;
+                                     background:${st.bg}; color:${st.color}; white-space:nowrap; flex-shrink:0; margin-left:auto;">
                             ${st.label}
                         </span>
                     </div>
@@ -466,23 +487,24 @@ window.Views = window.Views || {};
 
             // Helper para actualizar el anillo motivador
             function updateRing(doneCount, total) {
-                const ringArc = container.querySelector('#th-ring-arc');
+                const ringArc  = container.querySelector('#th-ring-arc');
                 const ringFrac = container.querySelector('#th-ring-frac');
                 const ringText = container.querySelector('#th-ring-text');
+                const ringPill = container.querySelector('#th-ring-pill');
                 if (!ringArc || !ringFrac || !ringText) return;
-                const circumference = 2 * Math.PI * 24; // r=24 → ~150.8
+                const circumference = 2 * Math.PI * 33; // r=33 → 207.3
                 const pct = total > 0 ? doneCount / total : 0;
                 ringArc.style.strokeDashoffset = circumference * (1 - pct);
                 ringFrac.textContent = `${doneCount}/${total}`;
                 const pending = total - doneCount;
                 if (pending === 0) {
                     ringText.textContent = '¡Todo listo! 🎉';
-                    ringText.style.color = '#4cae7a';
-                    ringArc.setAttribute('stroke', '#4cae7a');
+                    ringText.style.color = '#46b07a';
+                    if (ringPill) { ringPill.innerHTML = '✅ ¡Completado!'; ringPill.style.background = '#e9f8ef'; ringPill.style.color = '#46b07a'; }
                 } else {
-                    ringText.textContent = `Te faltan ${pending} tarea${pending !== 1 ? 's' : ''} 💪`;
-                    ringText.style.color = '#9a8478';
-                    ringArc.setAttribute('stroke', '#ee7a59');
+                    ringText.textContent = 'Vas bien, sigue así';
+                    ringText.style.color = '#a18a7e';
+                    if (ringPill) { ringPill.innerHTML = `<i class="ph-fill ph-fire"></i> Te faltan ${pending}`; ringPill.style.background = '#fff0e8'; ringPill.style.color = '#e8654e'; }
                 }
             }
 
@@ -500,33 +522,31 @@ window.Views = window.Views || {};
                     const done = savedItems[i]?.done || false;
                     const chipStyle = iconChipStyle(t.icon);
                     return `
-                    <label style="display:flex; align-items:center; gap:13px; padding:13px 16px;
-                                  ${i < clTasks.length - 1 ? 'border-bottom:1px solid #faf0ea;' : ''} cursor:pointer;
-                                  transition:background 0.15s; ${done ? 'opacity:0.55;' : ''}"
+                    <label style="display:flex; align-items:center; gap:13px; padding:13px 13px;
+                                  border-radius:16px; cursor:pointer; transition:background 0.15s;
+                                  ${i > 0 ? 'border-top:1px solid #fbf0ea;' : ''}
+                                  ${done ? 'opacity:.78;' : ''}"
                            data-cl-idx="${i}">
-                        <div style="width:24px; height:24px; border-radius:9px; flex-shrink:0;
+                        <div style="width:25px; height:25px; border-radius:9px; flex-shrink:0;
                                     display:flex; align-items:center; justify-content:center;
                                     ${done
-                                        ? 'background:#7ac79a; color:#fff; font-size:0.85rem;'
-                                        : 'border:2.5px solid #f0d3c8; background:transparent;'}">
-                            ${done ? '✓' : ''}
+                                        ? 'background:linear-gradient(135deg,#67c98f,#46b07a); color:#fff; font-size:14px; box-shadow:0 3px 8px rgba(70,176,122,.32);'
+                                        : 'border:2.5px solid #f1d6cb; background:transparent;'}">
+                            ${done ? '<i class="ph-fill ph-check"></i>' : ''}
                             <input type="checkbox" ${done ? 'checked' : ''} data-cl-idx="${i}"
                                    style="position:absolute; opacity:0; width:0; height:0; pointer-events:none;">
                         </div>
-                        <div style="width:34px; height:34px; border-radius:11px; flex-shrink:0;
-                                    display:flex; align-items:center; justify-content:center; font-size:1.05rem;
+                        <div style="width:36px; height:36px; border-radius:12px; flex-shrink:0;
+                                    display:flex; align-items:center; justify-content:center; font-size:18px;
                                     ${chipStyle}">
                             <i class="${t.icon}"></i>
                         </div>
-                        <span style="font-size:0.9rem; color:${done ? '#9a8478' : '#4a3b3b'}; font-weight:600;
-                                     ${done ? 'text-decoration:line-through;' : ''} line-height:1.3;">${t.task}</span>
+                        <span style="font-size:14.5px; color:${done ? '#bcaaa0' : '#46352f'}; font-weight:700; line-height:1.25;
+                                     ${done ? 'text-decoration:line-through; text-decoration-color:#e3cabe;' : ''}">${window.escapeHTML(t.task)}</span>
                     </label>`;
                 }).join('') + (allDone ? `
-                    <div style="padding:14px 16px; text-align:center; background:rgba(122,199,154,0.08); border-radius:0 0 22px 22px;">
-                        <span style="font-size:1rem;">✅</span>
-                        <span style="font-size:0.88rem; color:#4cae7a; font-weight:700; margin-left:8px;">
-                            ¡Todo listo! Buen trabajo
-                        </span>
+                    <div style="padding:14px 16px; text-align:center; background:rgba(103,201,143,0.08); border-radius:0 0 16px 16px;">
+                        <span style="font-size:0.88rem; color:#46b07a; font-weight:700;">✅ ¡Todo listo! Buen trabajo</span>
                     </div>` : '');
 
                 clEl.querySelectorAll('input[data-cl-idx]').forEach(cb => {
@@ -584,16 +604,15 @@ window.Views = window.Views || {};
                     const promoCard = container.querySelector('#th-promo-card');
                     promoSection.style.display = 'block';
                     promoCard.innerHTML = `
-                        <div style="background:#fff; border-left:4px solid #ee7a59;
-                                    border-radius:20px; padding:18px 20px;
-                                    box-shadow:0 6px 18px rgba(186,120,100,.10);">
-                            <div style="font-weight:800; color:#3d2c2e; font-size:1rem; margin-bottom:6px;
+                        <div style="background:#fffdfb; border-radius:20px; padding:16px 18px;
+                                    box-shadow:0 8px 22px rgba(190,110,80,.09),inset 0 0 0 1px rgba(255,240,232,.9);">
+                            <div style="font-size:14.5px; font-weight:800; color:#3a2a28; margin-bottom:5px;
                                         display:flex; align-items:center; gap:8px;">
-                                <i class="ph-fill ph-tag" style="color:#ee7a59;"></i>
+                                <i class="ph-fill ph-tag" style="color:#e8654e;"></i>
                                 ${window.escapeHTML(promo.name || promo.title || 'Promoción')}
                             </div>
-                            ${promo.description ? `<div style="font-size:0.88rem; color:#9a8478;">${window.escapeHTML(promo.description)}</div>` : ''}
-                            ${promo.discount ? `<div style="font-size:1.4rem; font-weight:800; color:#ee7a59; margin-top:8px;">${promo.discount}% OFF</div>` : ''}
+                            ${promo.description ? `<div style="font-size:13px; color:#a18a7e; font-weight:600;">${window.escapeHTML(promo.description)}</div>` : ''}
+                            ${promo.discount ? `<div style="font-size:22px; font-weight:800; color:#e8654e; margin-top:6px;">${promo.discount}% OFF</div>` : ''}
                         </div>
                     `;
                 }
@@ -615,6 +634,8 @@ window.Views = window.Views || {};
                 to { opacity:1; transform:translateY(0); }
             }
             #th-btn-factura:active, #th-btn-mejoras:active, #th-logout:active { opacity:0.8; }
+            #th-btn-factura:hover { opacity:0.93; }
+            .th-aviso-item:hover, .th-reporte-item:hover { opacity:0.85; }
         `;
         container.appendChild(style);
 
