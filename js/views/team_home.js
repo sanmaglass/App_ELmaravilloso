@@ -522,7 +522,7 @@ window.Views = window.Views || {};
                     const done = savedItems[i]?.done || false;
                     const chipStyle = iconChipStyle(t.icon);
                     return `
-                    <label style="display:flex; align-items:center; gap:13px; padding:13px 13px;
+                    <div role="button" style="display:flex; align-items:center; gap:13px; padding:13px 13px;
                                   border-radius:16px; cursor:pointer; transition:background 0.15s;
                                   ${i > 0 ? 'border-top:1px solid #fbf0ea;' : ''}
                                   ${done ? 'opacity:.78;' : ''}"
@@ -543,7 +543,7 @@ window.Views = window.Views || {};
                         </div>
                         <span style="font-size:14.5px; color:${done ? '#bcaaa0' : '#46352f'}; font-weight:700; line-height:1.25;
                                      ${done ? 'text-decoration:line-through; text-decoration-color:#e3cabe;' : ''}">${window.escapeHTML(t.task)}</span>
-                    </label>`;
+                    </div>`;
                 }).join('') + (allDone ? `
                     <div style="padding:14px 16px; text-align:center; background:rgba(103,201,143,0.08); border-radius:0 0 16px 16px;">
                         <span style="font-size:0.88rem; color:#46b07a; font-weight:700;">✅ ¡Todo listo! Buen trabajo</span>
@@ -577,8 +577,8 @@ window.Views = window.Views || {};
                     });
                 });
 
-                // Redirigir clicks en la label al checkbox oculto
-                clEl.querySelectorAll('label[data-cl-idx]').forEach(label => {
+                // Toggle al tocar la fila (div, sin <label> nativo → un solo toggle)
+                clEl.querySelectorAll('div[data-cl-idx]').forEach(label => {
                     label.addEventListener('click', (e) => {
                         if (e.target.tagName === 'INPUT') return;
                         const idx = label.dataset.clIdx;
