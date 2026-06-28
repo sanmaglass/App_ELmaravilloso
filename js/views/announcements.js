@@ -414,7 +414,7 @@ window.Views = window.Views || {};
 
             if (btnDel) {
                 const annId = btnDel.dataset.annId;
-                const ok = await window.showConfirm?.('¿Eliminar este aviso?', 'Esta acción no se puede deshacer.') ?? true;
+                const ok = await window.showConfirmDialog('¿Eliminar este aviso?', 'Esta acción no se puede deshacer.');
                 if (!ok) return;
                 try {
                     const aviso = await window.db.announcements.get(annId);
