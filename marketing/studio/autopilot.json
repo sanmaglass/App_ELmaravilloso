@@ -1,0 +1,29 @@
+{
+  "enabled": false,
+  "per_day": 1,
+  "weekdays": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "style": "premium",
+  "remove_bg": true,
+  "queue_to_cloud": false,
+  "hour": "08:00",
+  "last_run": "2026-06-28",
+  "history": [
+    {
+      "at": "2026-06-28 21:07",
+      "manual": true,
+      "created": 1
+    },
+    {
+      "at": "2026-06-27 20:56",
+      "manual": true,
+      "created": 1
+    }
+  ]
+}

@@ -59,12 +59,14 @@ def save_textos(d):
 
 ENTRADA = os.path.join(MKT, "assets", "entrada")
 CUTS    = os.path.join(MKT, "assets", "_cuts")
+BANCO   = os.path.join(MKT, "assets", "banco")   # banco de fotos para el Piloto automático
 IMG_OUT = os.path.join(MKT, "content", "instagram")
 VID_OUT = os.path.join(MKT, "content", "tiktok")
 DATA    = os.path.join(HERE, "studio_data.json")
 METRICS_HISTORY = os.path.join(HERE, "metrics_history.json")
 GOALS_PATH = os.path.join(HERE, "goals.json")
 RECURRING_PATH = os.path.join(HERE, "recurring_templates.json")
+AUTOPILOT_PATH = os.path.join(HERE, "autopilot.json")
 
 def load_recurring():
     if os.path.exists(RECURRING_PATH):
@@ -88,7 +90,7 @@ def load_goals():
 def save_goals(d):
     json.dump(d, open(GOALS_PATH, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 
-for d in (ENTRADA, CUTS, IMG_OUT, VID_OUT):
+for d in (ENTRADA, CUTS, BANCO, IMG_OUT, VID_OUT):
     os.makedirs(d, exist_ok=True)
 
 from fastapi import FastAPI, UploadFile, File, Request
@@ -353,6 +355,258 @@ async def generate_amigable(req: Request):
 @app.get("/api/progress")
 def api_progress(slug: str = ""):
     return JSONResponse(GEN_PROGRESS.get(slug, {"pct": 0, "done": False}))
+
+# ---------- AVISOS informativos (horarios, feriados, cierres) ----------
+AVISOS_OUT = os.path.join(MKT, "content", "avisos")
+os.makedirs(AVISOS_OUT, exist_ok=True)
+
+@app.post("/api/aviso")
+async def api_aviso(req: Request):
+    """Genera un aviso informativo al instante (preview en vivo). Reusa tools/aviso.py."""
+    b = await req.json()
+    titular = (b.get("titular") or "AVISO").strip()
+    sub     = (b.get("sub") or "").strip()
+    horario = (b.get("horario") or "").strip()
+    pie     = (b.get("pie") or "").strip()
+    pal     = b.get("pal", "marca")
+    story   = bool(b.get("story", False))
+    if pal not in T.PALETTES:
+        pal = "marca"
+    try:
+        import importlib, aviso as AV
+        importlib.reload(AV)          # tomar cambios de aviso.py sin reiniciar el server
+        slug = slugify(titular)[:40] + ("-story" if story else "-feed")
+        out = os.path.join(AVISOS_OUT, slug + ".png")
+        AV.build(titular, sub, horario, pie, out, story=story, pal=pal)
+        return JSONResponse({"ok": True, "url": "/files/" + rel(out)})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+def _aviso_caption(titular, sub, horario, pie):
+    parts = [titular.strip()]
+    if sub.strip():
+        parts.append(sub.strip())
+    if horario.strip():
+        parts.append(f"🕒 Horario de atención: {horario.strip()}")
+    if pie.strip():
+        parts.append(f"📍 {pie.strip()}")
+    return "\n".join(parts)
+
+
+@app.post("/api/aviso-publish")
+async def api_aviso_publish(req: Request):
+    """Publica un aviso directo a IG (foto o historia) o FB (foto). Genera la imagen,
+    la hospeda en Supabase Storage y publica vía Graph API. TikTok va por descarga (manual)."""
+    b = await req.json()
+    target  = b.get("target", "ig_photo")          # ig_photo | ig_story | fb_photo
+    titular = (b.get("titular") or "AVISO").strip()
+    sub     = (b.get("sub") or "").strip()
+    horario = (b.get("horario") or "").strip()
+    pie     = (b.get("pie") or "").strip()
+    pal     = b.get("pal", "marca")
+    if pal not in T.PALETTES:
+        pal = "marca"
+    story = (target == "ig_story")
+    caption = (b.get("caption") or "").strip() or _aviso_caption(titular, sub, horario, pie)
+    try:
+        import importlib, aviso as AV
+        importlib.reload(AV)
+        from PIL import Image as _PIL
+        slug = "aviso-" + slugify(titular)[:36] + ("-story" if story else "-feed")
+        png = os.path.join(AVISOS_OUT, slug + ".png")
+        AV.build(titular, sub, horario, pie, png, story=story, pal=pal)
+        jpg = os.path.join(AVISOS_OUT, slug + ".jpg")   # IG/FB requieren JPEG
+        _PIL.open(png).convert("RGB").save(jpg, quality=92, optimize=True)
+        media = storage_upload(jpg, os.path.basename(jpg))
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": "no se pudo generar/hospedar: " + str(e)[:140]},
+                            status_code=500)
+
+    try:
+        if target == "tiktok":
+            return tiktok_publish_photo(media, caption, b.get("tiktok_privacy") or "PUBLIC_TO_EVERYONE")
+        if target.startswith("ig"):
+            token, ig_id = get_ig_auth()
+            if not token or not ig_id:
+                return JSONResponse({"ok": False, "error": "no_token"}, status_code=400)
+            if story:
+                cont = _ig_api("POST", f"{ig_id}/media",
+                               {"media_type": "STORIES", "image_url": media, "access_token": token})
+            else:
+                cont = _ig_api("POST", f"{ig_id}/media",
+                               {"image_url": media, "caption": caption, "access_token": token})
+            cid = cont["id"]
+            for _ in range(40):
+                st = _ig_api("GET", cid, {"fields": "status_code", "access_token": token})
+                code = st.get("status_code")
+                if code == "FINISHED":
+                    break
+                if code == "ERROR":
+                    return JSONResponse({"ok": False, "error": "Instagram no pudo procesar la imagen"},
+                                        status_code=500)
+                time.sleep(3)
+            pub = _ig_api("POST", f"{ig_id}/media_publish", {"creation_id": cid, "access_token": token})
+            return {"ok": True, "id": pub.get("id"), "target": target}
+        else:  # fb_photo
+            page_id, page_token = get_page_auth()
+            if not page_id or not page_token:
+                return JSONResponse({"ok": False, "error": "no_page"}, status_code=400)
+            res = _ig_api("POST", f"{page_id}/photos",
+                          {"url": media, "caption": caption, "access_token": page_token})
+            return {"ok": True, "id": res.get("id") or res.get("post_id"), "target": target}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)[:180]}, status_code=500)
+
+
+# ================= TikTok (Content Posting API — foto directa) =================
+TIKTOK_AUTH_FILE = os.path.join(HERE, "tiktok_auth.json")
+TIKTOK_REDIRECT  = os.environ.get("TIKTOK_REDIRECT_URI", "http://localhost:8000/api/tiktok-callback")
+TIKTOK_SCOPES    = "user.info.basic,video.publish"
+
+TIKTOK_PKCE = {}  # state -> code_verifier (en memoria, corto plazo)
+
+def _load_tiktok_auth():
+    if os.path.exists(TIKTOK_AUTH_FILE):
+        try: return json.load(open(TIKTOK_AUTH_FILE, encoding="utf-8"))
+        except Exception: pass
+    return {}
+
+def _save_tiktok_auth(d):
+    json.dump(d, open(TIKTOK_AUTH_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+
+def _tiktok_token_request(params):
+    import urllib.request, urllib.parse
+    req = urllib.request.Request(
+        "https://open.tiktokapis.com/v2/oauth/token/",
+        data=urllib.parse.urlencode(params).encode(),
+        headers={"Content-Type": "application/x-www-form-urlencoded"}, method="POST")
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.loads(r.read())
+
+def get_tiktok_token():
+    """access_token vigente (refresca si expiró). None si no hay conexión."""
+    import time as _t
+    a = _load_tiktok_auth()
+    if not a.get("access_token"):
+        return None
+    if a.get("expires_at", 0) - 120 > _t.time():
+        return a["access_token"]
+    ck = os.environ.get("TIKTOK_CLIENT_KEY"); cs = os.environ.get("TIKTOK_CLIENT_SECRET")
+    rt = a.get("refresh_token")
+    if ck and cs and rt:
+        try:
+            res = _tiktok_token_request({"client_key": ck, "client_secret": cs,
+                                         "grant_type": "refresh_token", "refresh_token": rt})
+            if res.get("access_token"):
+                a.update(access_token=res["access_token"],
+                         refresh_token=res.get("refresh_token", rt),
+                         expires_at=_t.time() + int(res.get("expires_in", 86400)))
+                _save_tiktok_auth(a)
+                return a["access_token"]
+        except Exception:
+            pass
+    return a.get("access_token")
+
+@app.get("/api/tiktok-connect")
+def tiktok_connect():
+    import urllib.parse, time as _t
+    import hashlib, base64, secrets
+    ck = os.environ.get("TIKTOK_CLIENT_KEY")
+    if not ck:
+        return JSONResponse({"error": "Falta TIKTOK_CLIENT_KEY en el .env"}, status_code=400)
+    # PKCE: code_verifier aleatorio + code_challenge = SHA256(verifier) en base64url
+    verifier = secrets.token_urlsafe(64)[:96]
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
+    state = "av" + str(int(_t.time()))
+    TIKTOK_PKCE.clear()              # solo guardamos el más reciente
+    TIKTOK_PKCE[state] = verifier
+    url = "https://www.tiktok.com/v2/auth/authorize/?" + urllib.parse.urlencode({
+        "client_key": ck, "scope": TIKTOK_SCOPES, "response_type": "code",
+        "redirect_uri": TIKTOK_REDIRECT, "state": state,
+        "code_challenge": challenge, "code_challenge_method": "S256"})
+    return RedirectResponse(url)
+
+@app.get("/api/tiktok-callback")
+def tiktok_callback(code: str = "", error: str = "", error_description: str = "", state: str = ""):
+    import time as _t
+    if error:
+        return HTMLResponse(f"<div style='font-family:sans-serif;padding:40px'><h2>TikTok: {error}</h2><p>{error_description}</p></div>")
+    ck = os.environ.get("TIKTOK_CLIENT_KEY"); cs = os.environ.get("TIKTOK_CLIENT_SECRET")
+    if not (ck and cs):
+        return HTMLResponse("<h2 style='font-family:sans-serif'>Falta TIKTOK_CLIENT_KEY/SECRET en el .env</h2>")
+    def _ttlog(msg):
+        try:
+            open(os.path.join(HERE, "tiktok_debug.log"), "a", encoding="utf-8").write(
+                datetime.now().strftime("%H:%M:%S ") + msg + "\n")
+        except Exception:
+            pass
+    try:
+        verifier = TIKTOK_PKCE.get(state) or (list(TIKTOK_PKCE.values())[0] if TIKTOK_PKCE else "")
+        _ttlog(f"CALLBACK code_len={len(code or '')} state={state} has_verifier={bool(verifier)} redirect={TIKTOK_REDIRECT}")
+        params = {"client_key": ck, "client_secret": cs, "code": code,
+                  "grant_type": "authorization_code", "redirect_uri": TIKTOK_REDIRECT}
+        if verifier:
+            params["code_verifier"] = verifier
+        try:
+            res = _tiktok_token_request(params)
+        except urllib.error.HTTPError as he:
+            body = he.read().decode("utf-8", "ignore")
+            _ttlog(f"HTTPError {he.code}: {body[:400]}")
+            raise
+        _ttlog("RES: " + json.dumps(res)[:400])
+        if not res.get("access_token"):
+            return HTMLResponse(f"<div style='font-family:sans-serif;padding:40px'><h2>No se pudo conectar</h2><pre>{json.dumps(res)[:600]}</pre><p style='color:#888'>Detalle guardado en tiktok_debug.log</p></div>")
+        _save_tiktok_auth({
+            "access_token": res["access_token"], "refresh_token": res.get("refresh_token"),
+            "open_id": res.get("open_id"), "scope": res.get("scope", ""),
+            "expires_at": _t.time() + int(res.get("expires_in", 86400)),
+            "connected_at": datetime.now().strftime("%Y-%m-%d %H:%M")})
+        return HTMLResponse("<div style='font-family:sans-serif;text-align:center;padding:60px'><h1>✅ TikTok conectado</h1><p>Cierra esta pestaña y vuelve al Estudio.</p></div>")
+    except urllib.error.HTTPError as e:
+        return HTMLResponse(f"<div style='font-family:sans-serif;padding:40px'><h2>Error</h2><pre>{e.read().decode('utf-8','ignore')[:600]}</pre></div>")
+    except Exception as e:
+        return HTMLResponse(f"<div style='font-family:sans-serif;padding:40px'><h2>Error</h2><pre>{str(e)[:600]}</pre></div>")
+
+@app.get("/api/tiktok-status")
+def tiktok_status():
+    a = _load_tiktok_auth()
+    return {"connected": bool(a.get("access_token")), "open_id": a.get("open_id"),
+            "connected_at": a.get("connected_at"),
+            "has_keys": bool(os.environ.get("TIKTOK_CLIENT_KEY") and os.environ.get("TIKTOK_CLIENT_SECRET"))}
+
+def tiktok_publish_photo(image_url, caption, privacy="PUBLIC_TO_EVERYONE"):
+    """Publica una foto en TikTok vía Content Posting API (DIRECT_POST, PULL_FROM_URL).
+    OJO: la URL de la imagen debe estar en un dominio VERIFICADO en la consola de TikTok,
+    y el post público requiere que la app tenga la auditoría aprobada (si no, error claro)."""
+    import urllib.request
+    token = get_tiktok_token()
+    if not token:
+        return JSONResponse({"ok": False, "error": "no_tiktok"}, status_code=400)
+    title = (caption or "").split("\n")[0][:90]
+    body = {
+        "post_info": {"title": title, "description": (caption or "")[:4000],
+                      "privacy_level": privacy, "disable_comment": False, "auto_add_music": True},
+        "source_info": {"source": "PULL_FROM_URL", "photo_cover_index": 0, "photo_images": [image_url]},
+        "post_mode": "DIRECT_POST", "media_type": "PHOTO",
+    }
+    req = urllib.request.Request(
+        "https://open.tiktokapis.com/v2/post/publish/content/init/",
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json; charset=UTF-8"},
+        method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=90) as r:
+            res = json.loads(r.read())
+        err = res.get("error") or {}
+        if err.get("code") not in (None, "", "ok"):
+            return JSONResponse({"ok": False, "error": err.get("message") or err.get("code")}, status_code=500)
+        return {"ok": True, "id": (res.get("data") or {}).get("publish_id"), "target": "tiktok"}
+    except urllib.error.HTTPError as e:
+        return JSONResponse({"ok": False, "error": e.read().decode("utf-8", "ignore")[:300]}, status_code=500)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)[:200]}, status_code=500)
+
 
 @app.get("/api/textos")
 def api_get_textos():
@@ -3270,6 +3524,299 @@ async def api_chat_clear():
     return {"ok": True}
 
 ## ========== FIN CHAT MARK ==========
+
+## ========== PILOTO AUTOMÁTICO ==========
+# Genera piezas solo: elige producto del BANCO no usado hace poco -> imagen+video+caption+agenda
+# -> (opcional) encola a la nube para que el VPS publique. Cron interno mientras el panel está abierto.
+
+def load_autopilot():
+    base = {"enabled": False, "per_day": 1, "weekdays": [0, 1, 2, 3, 4, 5],
+            "style": "premium", "remove_bg": True, "queue_to_cloud": False,
+            "hour": "08:00", "last_run": "", "history": []}
+    if os.path.exists(AUTOPILOT_PATH):
+        try:
+            d = json.load(open(AUTOPILOT_PATH, encoding="utf-8"))
+            base.update(d)
+        except Exception:
+            pass
+    return base
+
+def save_autopilot(d):
+    json.dump(d, open(AUTOPILOT_PATH, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    return d
+
+def _nice_product_name(fname):
+    """Nombre de producto desde el archivo del banco (filename = producto)."""
+    stem = os.path.splitext(os.path.basename(fname))[0]
+    stem = re.sub(r"[-_]+", " ", stem).strip()
+    stem = re.sub(r"\s+", " ", stem)
+    return stem.title() if stem else "Producto"
+
+def _bank_photos():
+    try:
+        return sorted([f for f in os.listdir(BANCO) if f.lower().endswith(IMG_EXT)])
+    except Exception:
+        return []
+
+def _recent_featured(days=14):
+    """Map nombre-normalizado -> última fecha que se usó (de studio_data)."""
+    last = {}
+    for p in load_data().get("posts", []):
+        nm = _normaliza(p.get("name", ""))
+        ds = (p.get("created") or p.get("date") or "")[:10]
+        if nm and ds and ds > last.get(nm, ""):
+            last[nm] = ds
+    return last
+
+def _autopilot_pick(n, days=14):
+    """Elige n fotos del banco, priorizando productos NO usados en los últimos `days`,
+    y dentro de eso el menos-recientemente usado primero."""
+    photos = _bank_photos()
+    if not photos:
+        return []
+    last = _recent_featured(days)
+    cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    def keyf(f):
+        nm = _normaliza(_nice_product_name(f))
+        used = last.get(nm, "")            # "" = nunca usado -> máxima prioridad
+        fresh = 0 if (not used or used < cutoff) else 1  # 0 = no usado reciente
+        return (fresh, used, f)
+    return sorted(photos, key=keyf)[:max(1, n)]
+
+# Estado en vivo de la corrida (para el panel)
+AUTOPILOT_RUN = {"running": False, "log": [], "created": [], "started": "", "finished": ""}
+
+def _next_free_slot(taken):
+    """Próximo (fecha,hora) libre del ritmo semanal, hacia adelante (máx 60 días)."""
+    day = datetime.now().date()
+    for _ in range(60):
+        slot = WEEKLY_SLOTS.get(day.weekday())
+        ds = day.strftime("%Y-%m-%d")
+        if slot and (ds, slot) not in taken:
+            return ds, slot
+        day += timedelta(days=1)
+    return datetime.now().strftime("%Y-%m-%d"), "13:00"
+
+def _autopilot_generate_one(fname, cfg, taken):
+    """Genera UNA pieza completa desde una foto del banco. Devuelve el post o lanza."""
+    name = _nice_product_name(fname)
+    # precio desde la BD (catálogo Eleventa); si no hay match, 0 (el usuario lo corrige)
+    price = 0
+    matched = None
+    try:
+        prods = fetch_products().get("products", [])
+        best, _cands = _match_price(name, prods)
+        if best:
+            price = int(best.get("salePrice") or best.get("price") or 0)
+            matched = best.get("name")
+    except Exception:
+        pass
+    # copia la foto del banco a ENTRADA para reutilizar el motor de render
+    src_bank = os.path.join(BANCO, fname)
+    src = os.path.join(ENTRADA, fname)
+    try:
+        if os.path.abspath(src_bank) != os.path.abspath(src):
+            shutil.copyfile(src_bank, src)
+    except Exception:
+        src = src_bank
+    product = maybe_cut(src, bool(cfg.get("remove_bg", True)))
+
+    style = cfg.get("style", "premium")
+    tag = (load_textos().get("tag") or "OFERTA")
+    slug = slugify(name) + (f"-{price}" if price else "") + "-auto"
+    STYLE_ALIAS = {"dark": "premium_dark", "giant": "premium_giant", "split": "premium_split"}
+    drawer = T.STYLES.get(STYLE_ALIAS.get(style, style), T.style_premium)
+
+    img_path = os.path.join(IMG_OUT, slug + ".png")
+    try:
+        drawer(name, price, product, tag=tag, fmt="feed").convert("RGB").save(img_path, quality=92, optimize=True)
+    except TypeError:
+        drawer(name, price, product, tag=tag).convert("RGB").save(img_path, quality=92)
+    cover_path = os.path.join(IMG_OUT, slug + "-story.png")
+    try:
+        drawer(name, price, product, tag=tag, fmt="story").convert("RGB").save(cover_path, quality=92, optimize=True)
+    except TypeError:
+        cover_path = img_path
+
+    # video (sincrónico: el piloto corre en su propio thread)
+    vid_path = os.path.join(VID_OUT, slug + ".mp4")
+    tx = load_textos()
+    args = argparse.Namespace(product=product, name=name, price=str(price), out=vid_path,
+                              tag=tag, seconds=6.0, style=style,
+                              footer=tx.get("footer") or None, cta_text=tx.get("cta") or None,
+                              on_progress=None)
+    MV.render(args)
+
+    # caption según ángulo de la mezcla
+    angle = CONTENT_MIX[len(AUTOPILOT_RUN["created"]) % len(CONTENT_MIX)]
+    try:
+        cap = _caption_for(name, price, angle=angle)
+    except Exception:
+        cap = {}
+
+    # agenda en el próximo slot libre
+    ds, slot = _next_free_slot(taken)
+    taken.add((ds, slot))
+
+    post = {"slug": slug, "filename": fname, "name": name, "price": price,
+            "style": style, "tag": tag, "angle": angle,
+            "image": rel(img_path), "cover": rel(cover_path), "video": rel(vid_path),
+            "status": "programado", "date": ds, "time": slot,
+            "created": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "caption": cap, "published": {}, "auto": True,
+            "price_from_bd": matched}
+
+    # encola a la nube si está activado (IG+FB+TikTok; el VPS publica a la hora)
+    if cfg.get("queue_to_cloud"):
+        try:
+            media_url = storage_upload(vid_path, os.path.basename(vid_path))
+            text = (cap.get("ig_caption", "") + ("\n\n" + cap.get("hashtags", "") if cap.get("hashtags") else "")).strip()
+            sched = _santiago_iso(ds, slot)
+            row = supabase_insert_post(name, text, media_url, "video",
+                                       ["instagram", "facebook", "tiktok"], sched)
+            post["cloud_id"] = row[0]["id"] if isinstance(row, list) and row else None
+            post["status"] = "programado"
+        except Exception as e:
+            post["cloud_error"] = str(e)[:160]
+
+    d = load_data()
+    d["posts"] = [p for p in d["posts"] if p.get("slug") != slug]
+    d["posts"].insert(0, post)
+    save_data(d)
+    return post
+
+def _autopilot_run(n=None, manual=False):
+    """Corre el piloto: genera `n` piezas (o per_day) desde el banco. Idempotente por día."""
+    if AUTOPILOT_RUN["running"]:
+        return
+    cfg = load_autopilot()
+    n = n or int(cfg.get("per_day", 1) or 1)
+    AUTOPILOT_RUN.update(running=True, log=[], created=[],
+                         started=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), finished="")
+    def log(m):
+        AUTOPILOT_RUN["log"].append(m)
+    try:
+        picks = _autopilot_pick(n)
+        if not picks:
+            log("⚠️ El banco está vacío. Sube fotos de productos (una vez) para que el piloto trabaje.")
+            return
+        log(f"Banco: {len(_bank_photos())} fotos. Generando {len(picks)} pieza(s)…")
+        taken = {(p.get("date"), p.get("time")) for p in load_data().get("posts", []) if p.get("date")}
+        for f in picks:
+            nm = _nice_product_name(f)
+            log(f"🎬 {nm} — renderizando imagen + video…")
+            try:
+                post = _autopilot_generate_one(f, cfg, taken)
+                extra = []
+                if post.get("price"):
+                    extra.append(f"${post['price']:,}".replace(",", "."))
+                if post.get("cloud_error"):
+                    extra.append("nube: " + post["cloud_error"])
+                elif cfg.get("queue_to_cloud"):
+                    extra.append("encolado IG+FB ☁️")
+                log(f"✅ {nm} → {post['date']} {post['time']}" + (("  ·  " + " · ".join(extra)) if extra else ""))
+                AUTOPILOT_RUN["created"].append({"slug": post["slug"], "name": nm,
+                                                 "date": post["date"], "time": post["time"]})
+            except Exception as e:
+                import traceback; traceback.print_exc()
+                log(f"❌ {nm}: {str(e)[:160]}")
+        # registra la corrida
+        cfg = load_autopilot()
+        cfg["last_run"] = datetime.now().strftime("%Y-%m-%d")
+        cfg.setdefault("history", []).insert(0, {
+            "at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "manual": manual, "created": len(AUTOPILOT_RUN["created"])})
+        cfg["history"] = cfg["history"][:30]
+        save_autopilot(cfg)
+        log(f"Listo. {len(AUTOPILOT_RUN['created'])} pieza(s) creada(s) y agendada(s).")
+    finally:
+        AUTOPILOT_RUN.update(running=False, finished=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+@app.get("/api/autopilot")
+def api_autopilot_get():
+    cfg = load_autopilot()
+    photos = _bank_photos()
+    last = _recent_featured(14)
+    cutoff = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")
+    fresh = sum(1 for f in photos if last.get(_normaliza(_nice_product_name(f)), "") < cutoff
+                or not last.get(_normaliza(_nice_product_name(f))))
+    return {"config": cfg,
+            "bank": [{"file": f, "name": _nice_product_name(f)} for f in photos],
+            "bank_count": len(photos), "fresh_count": fresh,
+            "running": AUTOPILOT_RUN["running"]}
+
+@app.post("/api/autopilot")
+async def api_autopilot_save(req: Request):
+    b = await req.json()
+    cfg = load_autopilot()
+    for k in ("enabled", "per_day", "weekdays", "style", "remove_bg", "queue_to_cloud", "hour"):
+        if k in b:
+            cfg[k] = b[k]
+    cfg["per_day"] = max(1, min(5, int(cfg.get("per_day", 1) or 1)))
+    save_autopilot(cfg)
+    return {"ok": True, "config": cfg}
+
+@app.post("/api/autopilot/upload")
+async def api_autopilot_upload(files: list[UploadFile] = File(...)):
+    saved = []
+    for f in files:
+        if not f.filename.lower().endswith(IMG_EXT):
+            continue
+        dest = os.path.join(BANCO, os.path.basename(f.filename))
+        with open(dest, "wb") as out:
+            shutil.copyfileobj(f.file, out)
+        saved.append(os.path.basename(f.filename))
+    return {"saved": saved, "bank_count": len(_bank_photos())}
+
+@app.post("/api/autopilot/bank-delete")
+async def api_autopilot_bank_delete(req: Request):
+    b = await req.json()
+    f = os.path.basename(b.get("file", ""))
+    p = os.path.join(BANCO, f)
+    if f and os.path.exists(p) and os.path.abspath(p).startswith(os.path.abspath(BANCO)):
+        os.remove(p)
+        return {"ok": True, "bank_count": len(_bank_photos())}
+    return JSONResponse({"error": "no encontrado"}, status_code=404)
+
+@app.post("/api/autopilot/run")
+async def api_autopilot_run(req: Request):
+    try:
+        b = await req.json()
+    except Exception:
+        b = {}
+    if AUTOPILOT_RUN["running"]:
+        return {"running": True, "already": True}
+    n = b.get("n")
+    threading.Thread(target=_autopilot_run, kwargs={"n": int(n) if n else None, "manual": True},
+                     daemon=True).start()
+    return {"running": True}
+
+@app.get("/api/autopilot/progress")
+def api_autopilot_progress():
+    return AUTOPILOT_RUN
+
+# ---------- cron interno: corre el piloto a su hora mientras el panel está abierto ----------
+def _schedule_autopilot():
+    import time as _time
+    while True:
+        _time.sleep(60)
+        try:
+            cfg = load_autopilot()
+            if not cfg.get("enabled"):
+                continue
+            now = datetime.now()
+            if now.weekday() not in cfg.get("weekdays", []):
+                continue
+            if cfg.get("last_run") == now.strftime("%Y-%m-%d"):
+                continue
+            hh, mm = (cfg.get("hour", "08:00") + ":00").split(":")[:2]
+            if (now.hour, now.minute) >= (int(hh), int(mm)) and not AUTOPILOT_RUN["running"]:
+                _autopilot_run(manual=False)
+        except Exception:
+            pass
+
+threading.Thread(target=_schedule_autopilot, daemon=True).start()
+## ========== FIN PILOTO AUTOMÁTICO ==========
 
 def open_browser():
     webbrowser.open("http://127.0.0.1:8000")

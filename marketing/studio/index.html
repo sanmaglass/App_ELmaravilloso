@@ -504,6 +504,12 @@
   .btn-inbox-act:disabled{opacity:.6;cursor:wait;transform:none}
   .nokey-warn{font-size:.8rem;color:var(--amber);margin-top:4px;
               background:#fff8ea;border:1px solid rgba(196,127,26,.25);border-radius:9px;padding:6px 10px}
+  /* barra de emojis */
+  .emoji-bar{display:flex;gap:2px;flex-wrap:wrap;margin:-2px 0 2px}
+  .emoji-btn{background:none;border:none;cursor:pointer;font-size:1.18rem;line-height:1;
+             padding:4px 5px;border-radius:9px;transition:transform .12s,background .12s}
+  .emoji-btn:hover{background:#f3efe7;transform:translateY(-2px) scale(1.18)}
+  .emoji-btn:active{transform:scale(.92)}
 
   /* DMs */
   .conv-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;
@@ -735,6 +741,8 @@
     <button class="tab" id="tab-metricas" role="tab" aria-selected="false" aria-controls="sec-metricas" onclick="switchTab('metricas')">📊 Métricas</button>
     <button class="tab" id="tab-inbox" role="tab" aria-selected="false" aria-controls="sec-inbox" onclick="switchTab('inbox')">💬 Inbox</button>
     <button class="tab" id="tab-calendario" role="tab" aria-selected="false" aria-controls="sec-calendario" onclick="switchTab('calendario')">🗓️ Calendario</button>
+    <button class="tab" id="tab-avisos" role="tab" aria-selected="false" aria-controls="sec-avisos" onclick="switchTab('avisos')">📢 Avisos</button>
+    <button class="tab" id="tab-piloto" role="tab" aria-selected="false" aria-controls="sec-piloto" onclick="switchTab('piloto')">🤖 Piloto</button>
     <button class="tab" id="tab-mark" role="tab" aria-selected="false" aria-controls="sec-mark" onclick="switchTab('mark')" style="background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;border:1px solid #0f3460">🤖 Mark</button>
   </div>
 
@@ -801,6 +809,113 @@
     <div id="cal-detail"></div>
   </div>
 
+  <!-- SECCIÓN PILOTO AUTOMÁTICO -->
+  <div id="sec-piloto" class="section" role="tabpanel" aria-labelledby="tab-piloto">
+    <style>
+      .pil-hero{background:linear-gradient(120deg,#fff,#fbf4ec);border:1px solid var(--line);border-left:5px solid var(--red);border-radius:16px;padding:18px 20px;margin-bottom:18px}
+      .pil-hero h2{margin:0 0 4px;border:none;padding:0}
+      .pil-hero p{margin:0;color:var(--muted);font-size:.9rem;line-height:1.5}
+      .pil-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+      @media(max-width:860px){.pil-grid{grid-template-columns:1fr}}
+      .pil-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:var(--shadow-sm)}
+      .pil-card h3{margin:0 0 12px;font-size:1.02rem;display:flex;align-items:center;gap:8px}
+      .pil-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px dashed var(--line);flex-wrap:wrap}
+      .pil-row:last-child{border-bottom:none}
+      .pil-row label{font-weight:600;font-size:.9rem;color:var(--ink)}
+      .pil-row .hint{color:var(--muted);font-size:.76rem;display:block;font-weight:400}
+      .pil-row input[type=number],.pil-row select,.pil-row input[type=time]{padding:8px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:.9rem;background:#fff}
+      .pil-wd{display:flex;gap:5px;flex-wrap:wrap}
+      .pil-wd button{width:38px;height:34px;border-radius:9px;border:1px solid var(--line);background:#f7f2e9;font:inherit;font-size:.82rem;font-weight:700;cursor:pointer;color:var(--muted);transition:.14s}
+      .pil-wd button.on{background:var(--grad-red);color:#fff;border-color:transparent;box-shadow:0 4px 12px -4px rgba(237,28,36,.5)}
+      .switch{position:relative;width:50px;height:28px;flex-shrink:0}
+      .switch input{display:none}
+      .switch span{position:absolute;inset:0;background:#d8d2c6;border-radius:999px;transition:.2s;cursor:pointer}
+      .switch span::after{content:"";position:absolute;width:22px;height:22px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+      .switch input:checked+span{background:var(--ok)}
+      .switch input:checked+span::after{transform:translateX(22px)}
+      .pil-run{background:var(--grad-red);color:#fff;border:none;border-radius:13px;padding:14px 22px;font:inherit;font-size:1rem;font-weight:800;cursor:pointer;width:100%;box-shadow:0 10px 24px -8px rgba(237,28,36,.55);transition:.16s;display:flex;align-items:center;justify-content:center;gap:9px}
+      .pil-run:hover{filter:brightness(1.06);transform:translateY(-1px)}
+      .pil-run:disabled{opacity:.6;cursor:wait;transform:none}
+      .pil-bank{display:flex;flex-wrap:wrap;gap:9px;margin-top:6px}
+      .pil-chip{display:flex;align-items:center;gap:7px;background:#f7f2e9;border:1px solid var(--line);border-radius:999px;padding:5px 6px 5px 5px;font-size:.82rem;max-width:100%}
+      .pil-chip img{width:30px;height:30px;border-radius:50%;object-fit:cover;flex-shrink:0;background:#fff}
+      .pil-chip b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+      .pil-chip .x{border:none;background:none;color:var(--muted);cursor:pointer;font-size:1rem;line-height:1;padding:2px 4px;border-radius:6px}
+      .pil-chip .x:hover{background:#f3d9d9;color:var(--red)}
+      .pil-log{background:#0f1117;border-radius:13px;padding:14px 16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;line-height:1.7;color:#cdd3e0;max-height:300px;overflow-y:auto;margin-top:14px;display:none}
+      .pil-log.show{display:block}
+      .pil-log div{animation:rise .25s ease both}
+      .pil-bignum{font-size:1.7rem;font-weight:800;color:var(--red);line-height:1}
+      .pil-statline{display:flex;gap:22px;margin-bottom:14px;flex-wrap:wrap}
+      .pil-statline .l{font-size:.76rem;color:var(--muted)}
+    </style>
+    <div class="pil-hero">
+      <h2 style="font-size:1.2rem">🤖 Piloto automático</h2>
+      <p>Deja un <b>banco de fotos</b> (una sola vez, nombradas por producto) y el piloto arma las piezas de la semana <b>solo</b>: elige un producto que no salga hace rato, le saca el precio de tu base, genera <b>imagen + video + descripción</b> y lo <b>agenda</b>. Si activas la nube, también lo encola para que el VPS publique a la hora — sin tu PC.</p>
+    </div>
+
+    <div class="pil-statline">
+      <div><div class="pil-bignum" id="pil-bank-count">0</div><div class="l">fotos en el banco</div></div>
+      <div><div class="pil-bignum" id="pil-fresh-count">0</div><div class="l">listas para usar hoy</div></div>
+      <div><div class="pil-bignum" id="pil-last">—</div><div class="l">última corrida</div></div>
+    </div>
+
+    <button class="pil-run" id="pil-run-btn" onclick="runPiloto()">▶ Generar lote automático ahora</button>
+    <div class="pil-log" id="pil-log"></div>
+
+    <div class="pil-grid" style="margin-top:18px">
+      <div class="pil-card">
+        <h3>⚙️ Configuración</h3>
+        <div class="pil-row">
+          <label>Piloto encendido<span class="hint">corre solo a la hora elegida (con el panel abierto)</span></label>
+          <span class="switch"><input type="checkbox" id="pil-enabled" onchange="savePiloto()"><span onclick="this.previousElementSibling.click()"></span></span>
+        </div>
+        <div class="pil-row">
+          <label>Piezas por día</label>
+          <input type="number" id="pil-perday" min="1" max="5" value="1" style="width:70px" onchange="savePiloto()">
+        </div>
+        <div class="pil-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+          <label>Días que publica</label>
+          <div class="pil-wd" id="pil-weekdays"></div>
+        </div>
+        <div class="pil-row">
+          <label>Hora</label>
+          <input type="time" id="pil-hour" value="08:00" onchange="savePiloto()">
+        </div>
+        <div class="pil-row">
+          <label>Estilo del video</label>
+          <select id="pil-style" onchange="savePiloto()">
+            <option value="premium">Premium</option>
+            <option value="dark">Dark</option>
+            <option value="giant">Gigante</option>
+            <option value="split">Split</option>
+            <option value="clasica">Clásica</option>
+          </select>
+        </div>
+        <div class="pil-row">
+          <label>Quitar fondo a la foto</label>
+          <span class="switch"><input type="checkbox" id="pil-rembg" checked onchange="savePiloto()"><span onclick="this.previousElementSibling.click()"></span></span>
+        </div>
+        <div class="pil-row">
+          <label>Encolar a la nube (IG+FB)<span class="hint">el VPS publica a la hora, sin tu PC</span></label>
+          <span class="switch"><input type="checkbox" id="pil-cloud" onchange="savePiloto()"><span onclick="this.previousElementSibling.click()"></span></span>
+        </div>
+      </div>
+
+      <div class="pil-card">
+        <h3>📸 Banco de fotos</h3>
+        <p style="color:var(--muted);font-size:.84rem;margin:0 0 12px;line-height:1.5">Sube fotos de productos <b>nombradas por el producto</b> (ej: <code>coca cola 1.5.jpg</code>, <code>milo.png</code>). El piloto rota entre ellas y no repite un producto usado hace menos de 14 días.</p>
+        <label class="drop" style="padding:22px" id="pil-drop">
+          <div class="ic" style="font-size:1.6rem">📥</div>
+          <b>Arrastra fotos al banco</b>
+          <span style="font-size:.8rem">o haz clic · una vez · nombra con el producto</span>
+          <input type="file" id="pil-file" multiple accept="image/*" style="display:none">
+        </label>
+        <div class="pil-bank" id="pil-bank-list"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- SECCIÓN MARK (chat IA) -->
   <div id="sec-mark" class="section" role="tabpanel" aria-labelledby="tab-mark">
     <style>
@@ -850,6 +965,83 @@
       <div class="mark-input">
         <input type="text" id="mark-input" placeholder="Escríbele a Mark..." onkeydown="if(event.key==='Enter')markSend()">
         <button id="mark-send-btn" onclick="markSend()">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN AVISOS (informativos: horarios, feriados, cierres) -->
+  <div id="sec-avisos" class="section" role="tabpanel" aria-labelledby="tab-avisos">
+    <style>
+      .av-wrap{display:grid;grid-template-columns:minmax(0,360px) 1fr;gap:24px;align-items:start}
+      @media(max-width:760px){.av-wrap{grid-template-columns:1fr}}
+      .av-form{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px}
+      .av-form label{display:block;font-weight:700;font-size:.78rem;color:var(--ink);margin:14px 0 5px}
+      .av-form label:first-of-type{margin-top:0}
+      .av-form input,.av-form select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:.92rem;outline:none;transition:border .15s}
+      .av-form input:focus,.av-form select:focus{border-color:var(--red)}
+      .av-row{display:flex;gap:10px}
+      .av-row>div{flex:1}
+      .av-pals{display:flex;gap:8px;margin-top:6px}
+      .av-pal{width:34px;height:34px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:transform .12s}
+      .av-pal:hover{transform:scale(1.12)}
+      .av-pal.on{border-color:var(--ink);box-shadow:0 0 0 2px #fff inset}
+      .av-fmt{display:flex;gap:8px;margin-top:6px}
+      .av-fmt button{flex:1;padding:9px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;font-size:.84rem;font-weight:600;color:var(--muted)}
+      .av-fmt button.on{background:var(--red);color:#fff;border-color:var(--red)}
+      .av-preview{background:#f4eee4;border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:420px;position:relative}
+      .av-preview img{max-width:100%;max-height:560px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+      .av-preview .ph{color:var(--muted);font-size:.9rem;text-align:center}
+      .av-spin{position:absolute;top:12px;right:14px;font-size:.78rem;color:var(--red);font-weight:700;display:none}
+      .av-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+    </style>
+    <h2 style="margin-top:4px"><span class="dot"></span>Avisos informativos</h2>
+    <p style="color:var(--muted);font-size:.9rem;margin:-6px 0 18px">Escribe los datos y el diseño se arma solo con tu marca. El preview se actualiza al instante.</p>
+    <div class="av-wrap">
+      <div class="av-form">
+        <label>Titular</label>
+        <input id="av-titular" value="¡Abierto este feriado!" maxlength="40" oninput="avDebounced()">
+        <label>Fecha / contexto</label>
+        <input id="av-sub" value="Lunes 29 de junio · San Pedro y San Pablo" maxlength="60" oninput="avDebounced()">
+        <label>Horario (en la píldora)</label>
+        <input id="av-horario" value="10:00 a 18:00 hrs" maxlength="28" oninput="avDebounced()">
+        <label>Pie (dirección)</label>
+        <input id="av-pie" value="Grecia 1841, Hualpén · a metros del colegio Montaner" maxlength="80" oninput="avDebounced()">
+        <label>Descripción para la publicación (caption)
+          <button type="button" onclick="avAutoCaption()" style="float:right;font-weight:600;font-size:.72rem;border:1px solid var(--line);background:#fff;border-radius:8px;padding:3px 8px;cursor:pointer;color:var(--red)">↺ Auto</button>
+        </label>
+        <textarea id="av-caption" rows="4" maxlength="2000" placeholder="Escribe el texto que acompaña la publicación en Instagram y Facebook…" style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:.9rem;outline:none;resize:vertical;font-family:inherit;line-height:1.45"></textarea>
+        <label>Color de fondo</label>
+        <div class="av-pals" id="av-pals">
+          <div class="av-pal on" data-pal="marca" style="background:#f7eee0" title="Crema (marca)"></div>
+          <div class="av-pal" data-pal="teal" style="background:#96d2d6" title="Teal"></div>
+          <div class="av-pal" data-pal="warm" style="background:#faecde" title="Cálido"></div>
+          <div class="av-pal" data-pal="mint" style="background:#cce4c8" title="Menta"></div>
+        </div>
+        <label>Formato</label>
+        <div class="av-fmt" id="av-fmt">
+          <button class="on" data-story="0" onclick="avSetFmt(0)">⬛ Cuadrado (feed)</button>
+          <button data-story="1" onclick="avSetFmt(1)">📱 Historia (vertical)</button>
+        </div>
+      </div>
+      <div>
+        <div class="av-preview">
+          <div class="av-spin" id="av-spin">Generando…</div>
+          <img id="av-img" style="display:none" alt="preview">
+          <div class="ph" id="av-ph">El preview aparecerá aquí…</div>
+        </div>
+        <div class="av-actions">
+          <button class="btn btn-sm" style="width:auto;background:linear-gradient(135deg,#e1306c,#c13584);color:#fff" onclick="avPublish('ig_photo',this)">📤 Instagram</button>
+          <button class="btn btn-sm" style="width:auto;background:linear-gradient(135deg,#feda75,#d62976);color:#fff" onclick="avPublish('ig_story',this)">📲 Historia IG</button>
+          <button class="btn btn-sm" style="width:auto;background:#1877f2;color:#fff" onclick="avPublish('fb_photo',this)">📘 Facebook</button>
+          <button class="btn btn-sm" style="width:auto;background:#111;color:#fff" onclick="avPublish('tiktok',this)">🎵 TikTok</button>
+          <a class="btn btn-ghost btn-sm" id="av-download" style="width:auto;display:none" download>⬇️ Descargar</a>
+          <button class="btn btn-ghost btn-sm" style="width:auto" onclick="avRender()">🔄 Regenerar</button>
+        </div>
+        <div id="av-tt-bar" style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap">
+          <span id="av-tt-status" style="font-size:.8rem;color:var(--muted)">TikTok: verificando…</span>
+          <button id="av-tt-connect" class="btn btn-sm" style="width:auto;display:none;background:#111;color:#fff;padding:6px 12px;font-size:.78rem" onclick="window.open('/api/tiktok-connect','_blank')">🔗 Conectar TikTok</button>
+        </div>
+        <p style="color:var(--muted);font-size:.78rem;margin:10px 0 0">IG · Historia · Facebook publican al toque. <b>TikTok</b> requiere conectar tu cuenta una vez (botón de arriba). La publicación pública necesita la auditoría de TikTok aprobada.</p>
       </div>
     </div>
   </div>
@@ -923,7 +1115,203 @@ function switchTab(name){
   if(name==='inbox') loadInbox();
   if(name==='calendario') loadCalendario();
   if(name==='estudio') loadRecurring();
+  if(name==='piloto') loadPiloto();
+  if(name==='avisos'){ avRender(); avTiktokStatus(); }
   if(name==='mark') document.getElementById('mark-input').focus();
+}
+
+/* ========== AVISOS INFORMATIVOS ========== */
+let _avPal='marca', _avStory=0, _avTimer=null, _avBusy=false;
+function avSetFmt(s){
+  _avStory=s;
+  document.querySelectorAll('#av-fmt button').forEach(b=>b.classList.toggle('on',+b.dataset.story===s));
+  avRender();
+}
+document.addEventListener('click',e=>{
+  const p=e.target.closest('.av-pal'); if(!p)return;
+  _avPal=p.dataset.pal;
+  document.querySelectorAll('.av-pal').forEach(x=>x.classList.toggle('on',x===p));
+  avRender();
+});
+function avDebounced(){ clearTimeout(_avTimer); _avTimer=setTimeout(avRender,450); }
+async function avRender(){
+  if(_avBusy)return;
+  const capEl=document.getElementById('av-caption');
+  if(capEl && !capEl.value.trim()) capEl.value=_avBuildCaption();
+  const spin=document.getElementById('av-spin'); if(spin)spin.style.display='block';
+  _avBusy=true;
+  try{
+    const r=await api('/api/aviso',{
+      titular:document.getElementById('av-titular').value,
+      sub:document.getElementById('av-sub').value,
+      horario:document.getElementById('av-horario').value,
+      pie:document.getElementById('av-pie').value,
+      pal:_avPal, story:!!_avStory
+    });
+    if(r.ok){
+      const img=document.getElementById('av-img');
+      img.src=r.url+'?t='+Date.now();
+      img.style.display='block';
+      document.getElementById('av-ph').style.display='none';
+      const dl=document.getElementById('av-download');
+      dl.href=img.src; dl.download='aviso.png'; dl.style.display='inline-block';
+      const tk=document.getElementById('av-tiktok');
+      tk.href=img.src; tk.download='aviso-tiktok.png'; tk.style.display='inline-block';
+    }else{ toast('Error: '+(r.error||'no se pudo generar')); }
+  }catch(e){ toast('Error generando el aviso'); }
+  finally{ _avBusy=false; if(spin)spin.style.display='none'; }
+}
+function _avFields(){return{
+  titular:document.getElementById('av-titular').value,
+  sub:document.getElementById('av-sub').value,
+  horario:document.getElementById('av-horario').value,
+  pie:document.getElementById('av-pie').value,
+  caption:document.getElementById('av-caption').value, pal:_avPal };}
+function _avBuildCaption(){
+  const t=document.getElementById('av-titular').value.trim();
+  const s=document.getElementById('av-sub').value.trim();
+  const h=document.getElementById('av-horario').value.trim();
+  const p=document.getElementById('av-pie').value.trim();
+  let out=[]; if(t)out.push(t); if(s)out.push(s);
+  if(h)out.push('🕒 Horario de atención: '+h);
+  if(p)out.push('📍 '+p);
+  return out.join('\n');
+}
+function avAutoCaption(){
+  document.getElementById('av-caption').value=_avBuildCaption();
+  toast('Descripción generada — edítala a tu gusto');
+}
+async function avPublish(target,btn){
+  const NAMES={ig_photo:'Instagram',ig_story:'la Historia de IG',fb_photo:'Facebook',tiktok:'TikTok'};
+  const old=btn.textContent; btn.disabled=true; btn.textContent='Publicando…';
+  try{
+    const r=await api('/api/aviso-publish',{...(_avFields()),target});
+    if(r.ok){ toast('✅ Publicado en '+NAMES[target]); }
+    else if(r.error==='no_token'){ toast('⚠ Conecta Instagram primero (botón 🔗 arriba)'); }
+    else if(r.error==='no_page'){ toast('⚠ Falta vincular la página de Facebook'); }
+    else if(r.error==='no_tiktok'){ toast('⚠ Conecta TikTok primero (botón 🔗 Conectar TikTok)'); }
+    else{ toast('Error: '+(r.error||'no se pudo publicar')); }
+  }catch(e){ toast('Error al publicar'); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
+async function avTiktokStatus(){
+  try{
+    const r=await fetch('/api/tiktok-status').then(x=>x.json());
+    const st=document.getElementById('av-tt-status'), cn=document.getElementById('av-tt-connect');
+    if(!st)return;
+    if(r.connected){ st.textContent='🎵 TikTok conectado'+(r.connected_at?' · '+r.connected_at:''); cn.style.display='none'; }
+    else if(!r.has_keys){ st.textContent='TikTok: falta configurar la app (TIKTOK_CLIENT_KEY en .env)'; cn.style.display='none'; }
+    else{ st.textContent='TikTok: sin conectar'; cn.style.display='inline-block'; }
+  }catch(e){}
+}
+
+/* ========== PILOTO AUTOMÁTICO ========== */
+const WD_LABELS=['L','M','M','J','V','S','D'];  // 0=lunes
+let _pilCfg={weekdays:[0,1,2,3,4,5]};
+function renderWeekdays(){
+  const box=document.getElementById('pil-weekdays');
+  box.innerHTML=WD_LABELS.map((l,i)=>
+    `<button class="${(_pilCfg.weekdays||[]).includes(i)?'on':''}" onclick="toggleWeekday(${i})" title="${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'][i]}">${l}</button>`
+  ).join('');
+}
+function toggleWeekday(i){
+  const wd=new Set(_pilCfg.weekdays||[]);
+  wd.has(i)?wd.delete(i):wd.add(i);
+  _pilCfg.weekdays=[...wd].sort((a,b)=>a-b);
+  renderWeekdays(); savePiloto();
+}
+async function loadPiloto(){
+  try{
+    const r=await fetch('/api/autopilot').then(x=>x.json());
+    _pilCfg=r.config||{};
+    document.getElementById('pil-enabled').checked=!!_pilCfg.enabled;
+    document.getElementById('pil-perday').value=_pilCfg.per_day||1;
+    document.getElementById('pil-hour').value=_pilCfg.hour||'08:00';
+    document.getElementById('pil-style').value=_pilCfg.style||'premium';
+    document.getElementById('pil-rembg').checked=_pilCfg.remove_bg!==false;
+    document.getElementById('pil-cloud').checked=!!_pilCfg.queue_to_cloud;
+    renderWeekdays();
+    document.getElementById('pil-bank-count').textContent=r.bank_count||0;
+    document.getElementById('pil-fresh-count').textContent=r.fresh_count||0;
+    document.getElementById('pil-last').textContent=_pilCfg.last_run||'—';
+    renderBank(r.bank||[]);
+    if(r.running){startPilotoPolling();}
+  }catch(e){toast('Error cargando el piloto');}
+}
+function renderBank(bank){
+  const box=document.getElementById('pil-bank-list');
+  if(!bank.length){box.innerHTML='<span style="color:var(--muted);font-size:.85rem">Banco vacío. Sube fotos arriba 👆</span>';return;}
+  box.innerHTML=bank.map(b=>
+    `<div class="pil-chip"><img src="/files/assets/banco/${encodeURIComponent(b.file)}" alt=""><b title="${b.name}">${b.name}</b><button class="x" onclick="bankDelete('${b.file.replace(/'/g,"\\'")}')" aria-label="Quitar">×</button></div>`
+  ).join('');
+}
+async function savePiloto(){
+  const body={
+    enabled:document.getElementById('pil-enabled').checked,
+    per_day:parseInt(document.getElementById('pil-perday').value)||1,
+    hour:document.getElementById('pil-hour').value||'08:00',
+    style:document.getElementById('pil-style').value,
+    remove_bg:document.getElementById('pil-rembg').checked,
+    queue_to_cloud:document.getElementById('pil-cloud').checked,
+    weekdays:_pilCfg.weekdays||[0,1,2,3,4,5],
+  };
+  try{const r=await api('/api/autopilot',body);_pilCfg=r.config||_pilCfg;}catch(e){}
+}
+async function bankDelete(file){
+  try{const r=await api('/api/autopilot/bank-delete',{file});if(r.ok){toast('Quitada del banco');loadPiloto();}}catch(e){}
+}
+let _pilPoll=null;
+async function runPiloto(){
+  const btn=document.getElementById('pil-run-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Generando…';
+  document.getElementById('pil-log').classList.add('show');
+  try{
+    const r=await api('/api/autopilot/run',{});
+    if(r.already){toast('Ya está corriendo');}
+    startPilotoPolling();
+  }catch(e){toast('Error al iniciar');btn.disabled=false;btn.innerHTML='▶ Generar lote automático ahora';}
+}
+function startPilotoPolling(){
+  if(_pilPoll)clearInterval(_pilPoll);
+  _pilPoll=_trackInterval(setInterval(pilotoTick,1200));
+  pilotoTick();
+}
+async function pilotoTick(){
+  try{
+    const r=await fetch('/api/autopilot/progress').then(x=>x.json());
+    const log=document.getElementById('pil-log');
+    log.innerHTML=(r.log||[]).map(l=>`<div>${l.replace(/</g,'&lt;')}</div>`).join('');
+    log.scrollTop=log.scrollHeight;
+    if(!r.running){
+      clearInterval(_pilPoll);_pilPoll=null;
+      const btn=document.getElementById('pil-run-btn');
+      btn.disabled=false;btn.innerHTML='▶ Generar lote automático ahora';
+      if((r.created||[]).length){toast(`${r.created.length} pieza(s) creada(s) ✓`);loadPiloto();if(typeof load==='function')load();}
+    }
+  }catch(e){}
+}
+/* upload al banco (drag&drop + click) */
+(function(){
+  const init=()=>{
+    const inp=document.getElementById('pil-file'),drop=document.getElementById('pil-drop');
+    if(!inp||!drop||drop._wired)return; drop._wired=true;
+    inp.addEventListener('change',()=>uploadBank(inp.files));
+    drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});
+    drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+    drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');uploadBank(e.dataTransfer.files);});
+  };
+  document.addEventListener('DOMContentLoaded',init);setTimeout(init,500);
+})();
+async function uploadBank(files){
+  if(!files||!files.length)return;
+  const fd=new FormData();
+  [...files].forEach(f=>fd.append('files',f));
+  toast('Subiendo al banco…');
+  try{
+    const r=await fetch('/api/autopilot/upload',{method:'POST',body:fd}).then(x=>x.json());
+    toast(`${(r.saved||[]).length} foto(s) al banco ✓`);
+    loadPiloto();
+  }catch(e){toast('Error subiendo');}
 }
 
 /* ========== CHAT MARK ========== */
@@ -1801,8 +2189,10 @@ function capBlock(p){
   return `<div class="cap">
       <div class="lab"><span class="lab-title">Instagram</span><button class="copy" data-copy>📋 Copiar</button></div>
       <textarea data-ig>${ig}</textarea>
+      ${emojiBarRel()}
       <div class="lab"><span class="lab-title">TikTok</span><button class="copy" data-copytk>📋 Copiar</button></div>
       <textarea data-tk>${c.tiktok_text||''}</textarea>
+      ${emojiBarRel()}
       <div class="cap-actions">
         <button class="btn btn-ghost btn-sm" data-cap>🔁 Regenerar</button>
         <button class="btn btn-ghost btn-sm" data-cap-ai>✨ IA</button>
@@ -2075,6 +2465,36 @@ function inboxNotConnected(){
     </div>`;
 }
 
+/* ── EMOJIS más usados (iPhone/Android) ─────────────────── */
+const TOP_EMOJIS=['😂','❤️','🙏','😍','🔥','👍','🥰','😊','🎉','🙌','👏','💯','😘','✨','🤣','😅','👀','💪','✅','😉'];
+function emojiBar(targetId){
+  return `<div class="emoji-bar">${TOP_EMOJIS.map(e=>
+    `<button type="button" class="emoji-btn" onclick="insertEmoji('${targetId}','${e}')" aria-label="Agregar ${e}">${e}</button>`
+  ).join('')}</div>`;
+}
+function insertEmoji(targetId,emoji){
+  insertEmojiInto(document.getElementById(targetId),emoji);
+}
+/* barra que inserta en el <textarea> inmediatamente anterior (sin id) */
+function emojiBarRel(){
+  return `<div class="emoji-bar">${TOP_EMOJIS.map(e=>
+    `<button type="button" class="emoji-btn" onclick="insertEmojiRel(this,'${e}')" aria-label="Agregar ${e}">${e}</button>`
+  ).join('')}</div>`;
+}
+function insertEmojiRel(btn,emoji){
+  const bar=btn.closest('.emoji-bar');
+  insertEmojiInto(bar&&bar.previousElementSibling,emoji);
+}
+function insertEmojiInto(ta,emoji){
+  if(!ta||ta.tagName!=='TEXTAREA')return;
+  const s=ta.selectionStart??ta.value.length, e=ta.selectionEnd??ta.value.length;
+  ta.value=ta.value.slice(0,s)+emoji+ta.value.slice(e);
+  const pos=s+emoji.length;
+  ta.focus();
+  try{ta.setSelectionRange(pos,pos);}catch(_){}
+  ta.dispatchEvent(new Event('input',{bubbles:true}));
+}
+
 /* ── COMENTARIOS ────────────────────────────────────────── */
 function renderComments(comments){
   if(!comments.length) return `<div class="empty">No hay comentarios recientes.</div>`;
@@ -2101,6 +2521,7 @@ function commentCard(c,i=0){
         </div>
         <div class="cmt-text">${esc(c.text)}</div>
         <textarea class="cmt-textarea" id="ta-${esc(c.id)}" placeholder="Escribe tu respuesta…" rows="2" aria-label="Respuesta al comentario de @${esc(c.username)}"></textarea>
+        ${emojiBar('ta-'+esc(c.id))}
         <div id="nokey-${esc(c.id)}" class="nokey-warn" style="display:none">⚠️ Falta la API key de Claude en .env</div>
         <div class="cmt-actions">
           <button class="btn-ai" onclick="cmtAI('${esc(c.id)}','${esc(c.text).replace(/'/g,"\\'")}',this)" aria-label="Sugerir respuesta con IA">✨ Sugerir IA</button>
