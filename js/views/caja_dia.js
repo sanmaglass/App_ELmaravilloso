@@ -143,11 +143,21 @@ window.Views = window.Views || {};
                 Mixto <b>${fmt(eleventa.mixto)}</b> sin desglosar — revisar manualmente
                </div>` : '';
 
+        // Entró más por transferencia a MP de lo registrado: suelen ser ingresos que
+        // no son ventas (reembolsos, fondeos). No es descuadre, pero se avisa por si
+        // alguna fue una venta sin registrar.
+        const notaTransfExtra = (data.transferenciaSobrante || 0) > 0
+            ? `<div style="margin-top:6px; padding:7px 10px; background:#16a34a10; border-radius:8px; font-size:0.76rem; color:#16a34a;">
+                <i class="ph ph-info" style="vertical-align:-2px;"></i>
+                Entró <b>${fmt(data.transferenciaSobrante)}</b> de más por transferencia a MP. No corresponde a ventas registradas (reembolsos, fondeos…). Confirma que ninguna haya sido una venta sin registrar.
+               </div>` : '';
+
         return wrap(`
             ${fila('TARJETAS', eleventa.tarjeta || 0, mp.totalTarjetas || 0, diff.tarjeta, alerts.tarjeta, desgloseTarjeta)}
             ${fila('TRANSFERENCIA', eleventa.transferencia || 0, mp.transferencia || 0, diff.transferencia, alerts.transferencia, '')}
             ${notaCredito}
             ${notaMixto}
+            ${notaTransfExtra}
         `);
     }
 

@@ -230,8 +230,9 @@ export default async function handler(req, res) {
                 partesCuadre.push(`Tarjeta: ${d < 0 ? 'faltan' : 'sobran'} ${money(Math.abs(d))}`);
             }
             if (recon.alerts.transferencia && recon.diff.transferencia != null) {
-                const d = recon.diff.transferencia;
-                partesCuadre.push(`Transferencia: ${d < 0 ? 'faltan' : 'sobran'} ${money(Math.abs(d))}`);
+                // alerts.transferencia solo salta cuando FALTA en MP (Eleventa registró
+                // más de lo que llegó). El sobrante en MP no es descuadre y no alerta.
+                partesCuadre.push(`Transferencia: no llegó ${money(Math.abs(recon.diff.transferencia))} a MP`);
             }
             if (recon.alerts.efectivo && recon.diff.efectivo != null) {
                 const d = recon.diff.efectivo;

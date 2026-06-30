@@ -137,15 +137,21 @@ export async function buildReconciliation(sb, date) {
         transferencia: eleventa.transferencia - mp.transferencia,
         efectivo: contado != null ? contado - esperado : null,
     };
+    // Transferencia: a la cuenta MP también entran ingresos que NO son ventas
+    // (reembolsos entre conocidos, fondeos propios) y MP los registra como
+    // account_fund sin identificar al remitente. Por eso solo es descuadre cuando
+    // FALTA en MP (Eleventa registró más de lo que llegó). Si sobra en MP (entró de
+    // más) no es falta de plata: se informa aparte, sin alarma.
+    const transferenciaSobrante = diff.transferencia < -THRESHOLD ? Math.abs(diff.transferencia) : 0;
     const alerts = {
         tarjeta: Math.abs(diff.tarjeta) > THRESHOLD,
-        transferencia: Math.abs(diff.transferencia) > THRESHOLD,
+        transferencia: diff.transferencia > THRESHOLD,
         efectivo: diff.efectivo != null && Math.abs(diff.efectivo) > THRESHOLD,
     };
     return {
         date, threshold: THRESHOLD, mp, eleventa,
         cash: { fondo, gastos, efectivoVentas: eleventa.efectivo, esperado, contado },
-        diff, alerts,
+        diff, alerts, transferenciaSobrante,
         hayDescuadre: alerts.tarjeta || alerts.transferencia || alerts.efectivo,
     };
 }
