@@ -129,8 +129,11 @@ export async function buildReconciliation(sb, date) {
     };
     const fondo = Number(r.fondo) || 0;
     const gastos = Number(r.gastos) || 0;
+    // Salidas de caja en efectivo que Eleventa sincroniza (PAGO FACTURA, etc.).
+    // Sin restarlas, el efectivo esperado quedaba inflado y disparaba falsos descuadres.
+    const salidas = Number(r.salidas) || 0;
     const contado = r.cuadre && r.cuadre.contado != null ? Number(r.cuadre.contado) : null;
-    const esperado = fondo + eleventa.efectivo - gastos;
+    const esperado = fondo + eleventa.efectivo - gastos - salidas;
 
     const diff = {
         tarjeta: eleventa.tarjeta - mp.totalTarjetas,
@@ -150,7 +153,7 @@ export async function buildReconciliation(sb, date) {
     };
     return {
         date, threshold: THRESHOLD, mp, eleventa,
-        cash: { fondo, gastos, efectivoVentas: eleventa.efectivo, esperado, contado },
+        cash: { fondo, gastos, salidas, efectivoVentas: eleventa.efectivo, esperado, contado },
         diff, alerts, transferenciaSobrante,
         hayDescuadre: alerts.tarjeta || alerts.transferencia || alerts.efectivo,
     };
