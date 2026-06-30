@@ -36,10 +36,11 @@ window.Views = window.Views || {};
         return window.DataManager.saveAndSync('cash_register', data);
     }
 
-    // Salidas de efectivo registradas en Eleventa (tabla nube `eleventa_flujo_caja`, tipo='salida').
-    // Reemplaza el ingreso manual de gastos: la caja chica se anota en el computador (Eleventa) y llega sola.
-    // Devuelve null si no se pudo cargar (offline / sin cliente) para distinguirlo de "0 salidas".
-    async function loadEleventaSalidas(dia) {
+    // Movimientos de efectivo registrados en Eleventa (tabla nube `eleventa_flujo_caja`).
+    // El cajón es uno solo: las Entradas (efectivo que se agrega, ej. sencillo) suman y
+    // las Salidas (caja chica, pagos) restan. Todo se anota en el computador y llega solo.
+    // Devuelve null si no se pudo cargar (offline / sin cliente) para distinguirlo de "0".
+    async function loadEleventaFlujo(dia) {
         try {
             const client = window.SyncV2?.client;
             if (!client) return null;
@@ -47,10 +48,12 @@ window.Views = window.Views || {};
                 .from('eleventa_flujo_caja')
                 .select('fecha,monto,descripcion,tipo');
             if (error) return null;
-            return (data || [])
-                .filter(f => (f.tipo || '').toLowerCase() === 'salida' && chileDate(f.fecha) === dia)
-                .map(f => ({ desc: f.descripcion || 'Salida de caja', monto: Math.abs(parseFloat(f.monto) || 0) }))
-                .filter(s => s.monto > 0);
+            const delDia = (data || []).filter(f => chileDate(f.fecha) === dia);
+            const pick = (t, etiqueta) => delDia
+                .filter(f => (f.tipo || '').toLowerCase() === t)
+                .map(f => ({ desc: f.descripcion || etiqueta, monto: Math.abs(parseFloat(f.monto) || 0) }))
+                .filter(x => x.monto > 0);
+            return { salidas: pick('salida', 'Salida de caja'), entradas: pick('entrada', 'Entrada de caja') };
         } catch { return null; }
     }
 
@@ -260,14 +263,16 @@ window.Views = window.Views || {};
 
             const fondo = await loadOne(dia, 'fondo_apertura');
             const fondoMonto = fondo ? (parseFloat(fondo.amount) || 0) : 0;
-            const salidasRaw = await loadEleventaSalidas(dia);
-            const salidasError = salidasRaw === null;        // no se pudo cargar desde la nube
-            const salidas = salidasRaw || [];
+            const flujoRaw = await loadEleventaFlujo(dia);
+            const salidasError = flujoRaw === null;          // no se pudo cargar desde la nube
+            const salidas = flujoRaw ? flujoRaw.salidas : [];
+            const entradas = flujoRaw ? flujoRaw.entradas : [];
             const totalSalidas = salidas.reduce((s, x) => s + x.monto, 0);
+            const totalEntradas = entradas.reduce((s, x) => s + x.monto, 0);
             const cuadre = await loadOne(dia, 'cuadre');
 
-            // Efectivo esperado = fondo + ventas efectivo - salidas de caja (Eleventa)
-            const efectivoEsperado = fondoMonto + efectivoVentas - totalSalidas;
+            // El cajón es uno solo: fondo + ventas efectivo + entradas - salidas (todo Eleventa)
+            const efectivoEsperado = fondoMonto + efectivoVentas + totalEntradas - totalSalidas;
 
             const orden = ['Efectivo', 'Tarjeta', 'Transferencia', 'Crédito', 'Mixto'];
             const formas = orden.filter(k => grupos[k]).concat(Object.keys(grupos).filter(k => !orden.includes(k)));
@@ -295,6 +300,14 @@ window.Views = window.Views || {};
                     ${isEmp ? '' : `<span style="font-weight:700; color:#ef4444; font-size:0.88rem;">-${fmt(s.monto)}</span>`}
                 </div>
             `).join('') : '<p style="color:var(--text-muted); font-size:0.82rem; margin:4px 0;">Sin salidas registradas en Eleventa.</p>');
+
+            // ── Entradas de caja (auto Eleventa) — se muestran solo si hay ──
+            const entradasListHTML = entradas.map(s => `
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);">
+                    <span style="font-size:0.85rem; color:var(--text-primary);">${window.escapeHTML ? window.escapeHTML(s.desc) : s.desc}</span>
+                    ${isEmp ? '' : `<span style="font-weight:700; color:#16a34a; font-size:0.88rem;">+${fmt(s.monto)}</span>`}
+                </div>
+            `).join('');
 
             // ── Cuadre badge ──
             const cuadreBadge = cuadre
@@ -367,6 +380,22 @@ window.Views = window.Views || {};
                     <p style="color:var(--text-muted); margin:10px 0 0; font-size:0.9rem;">Sin ventas ${esHoy ? 'todavía hoy' : 'ese día'}</p>
                 </div>`}
 
+                ${entradas.length ? `
+                <!-- ── ENTRADAS DE CAJA (auto Eleventa) ── -->
+                <div style="background:var(--bg-card); border:1px solid var(--border); border-left:4px solid #16a34a; border-radius:14px; padding:16px; margin-bottom:16px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <i class="ph-fill ph-coins" style="color:#16a34a; font-size:1.1rem;"></i>
+                            <span style="font-weight:700; font-size:0.92rem; color:var(--text-primary);">Entradas de caja</span>
+                        </div>
+                        <span style="font-weight:700; color:#16a34a; font-size:0.95rem;">${isEmp ? `${entradas.length} entrada${entradas.length !== 1 ? 's' : ''}` : '+' + fmt(totalEntradas)}</span>
+                    </div>
+                    <div style="font-size:0.74rem; color:var(--text-muted); margin-bottom:10px; display:flex; align-items:center; gap:5px;">
+                        <i class="ph ph-lightning" style="color:#f59e0b;"></i> Automático desde Eleventa — se registran en el computador
+                    </div>
+                    ${entradasListHTML}
+                </div>` : ''}
+
                 <!-- ── SALIDAS DE CAJA (auto Eleventa) ── -->
                 <div style="background:var(--bg-card); border:1px solid var(--border); border-left:4px solid #ef4444; border-radius:14px; padding:16px; margin-bottom:16px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
@@ -402,6 +431,7 @@ window.Views = window.Views || {};
                         <div style="display:flex; flex-wrap:wrap; gap:8px; font-size:0.78rem; color:var(--text-muted);">
                             <span>Fondo ${fmt(fondoMonto)}</span>
                             <span>+ Efectivo ${fmt(efectivoVentas)}</span>
+                            ${totalEntradas > 0 ? `<span>+ Entradas ${fmt(totalEntradas)}</span>` : ''}
                             <span>- Salidas ${fmt(totalSalidas)}</span>
                         </div>
                     </div>`}
