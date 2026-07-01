@@ -213,7 +213,25 @@ export default async function handler(req, res) {
             const date = body.date || (req.query && req.query.date) || dateCL();
             const tenantId = caller?.tenantId;
 
+            // Fix 1 — Solo se notifica el descuadre del DÍA ACTUAL (Santiago).
+            // Editar/re-guardar un cuadre de un día pasado guarda el registro pero
+            // NO manda push (evita el reenvío "llegó de ayer").
+            if (date !== dateCL()) {
+                return res.status(200).json({ ok: true, skipped: 'no_es_hoy', date });
+            }
+
             const recon = await buildReconciliation(sb, date);
+
+            // Fix 3 — Anti falso-positivo por datos a medio asentar.
+            // El cruce de tarjeta/transferencia depende de que Mercado Pago ya tenga
+            // los pagos del día. Si aún no llegó NINGÚN pago a MP (count===0), esas
+            // alertas no son confiables → se ignoran. El descuadre de EFECTIVO
+            // (contado − esperado) no depende de MP, así que se conserva.
+            if (recon.mp && recon.mp.count === 0) {
+                recon.alerts.tarjeta = false;
+                recon.alerts.transferencia = false;
+                recon.hayDescuadre = recon.alerts.efectivo === true;
+            }
 
             // Sin descuadre → responder sin mandar push
             if (!recon.hayDescuadre) {
@@ -245,6 +263,15 @@ export default async function handler(req, res) {
                 tag: 'cuadre-' + date,
                 data: { url: '/', view: 'mp_cuadre' }
             };
+
+            // Fix 2 — Idempotencia: un solo push de descuadre por (tenant, día).
+            // Si ya se avisó hoy, no se reenvía aunque se vuelva a apretar "Actualizar".
+            if (!tenantId) return res.status(200).json({ ok: true, skipped: 'sin_tenant' });
+            const { data: yaAvisado } = await sb.from('cuadre_notif')
+                .select('date').eq('tenant_id', tenantId).eq('date', date).maybeSingle();
+            if (yaAvisado) {
+                return res.status(200).json({ ok: true, descuadre: true, deduped: true });
+            }
 
             // Obtener IDs de admins/owners del tenant
             const { data: admins } = await sb.from('user_tenants')
@@ -280,6 +307,12 @@ export default async function handler(req, res) {
                     }
                 }
             }
+
+            // Registrar que este día ya se avisó (idempotencia — Fix 2).
+            await sb.from('cuadre_notif')
+                .upsert({ tenant_id: tenantId, date, body: bodyTextCuadre, sent_at: new Date().toISOString() },
+                        { onConflict: 'tenant_id,date' });
+
             return res.status(200).json({ ok: true, descuadre: true, alerts: recon.alerts, sent });
         }
 
