@@ -339,40 +339,47 @@ export default async function handler(req, res) {
             }
         }
 
-        // ── DAILY: resumen de la mañana ──
+        // ── DAILY: resumen de la mañana (un resumen POR TENANT) ──
         if (job === 'all' || job === 'daily') {
             const ayer = dateCL(-1);
-            const [elev, man] = await Promise.all([
-                sb.from('eleventa_sales').select('total').eq('date_local', ayer).eq('deleted', false),
-                sb.from('daily_sales').select('total').eq('date', ayer).eq('deleted', false)
-            ]);
-            const ventasAyer = [...(elev.data || []), ...(man.data || [])]
-                .reduce((s, r) => s + (+r.total || 0), 0);
-
             const limite = dateCL(3);
-            const { data: cred } = await sb.from('purchase_invoices')
-                .select('amount, paidAmount, dueDate')
-                .eq('paymentMethod', 'Crédito')
-                .eq('paymentStatus', 'Pendiente')
-                .eq('deleted', false)
-                .lte('dueDate', limite);
-            const porPagar = (cred || []).reduce((s, i) => s + ((+i.amount || 0) - (+i.paidAmount || 0)), 0);
-            const nCred = (cred || []).length;
+            // Antes se mandaba con sendToTenant(null,…) → llegaba a TODOS los tenants
+            // con datos globales (fuga entre negocios). Ahora se calcula y envía por
+            // cada tenant que tenga suscripciones, con sus propios datos.
+            const tenantIds = [...new Set(subs.map(s => s.tenant_id).filter(Boolean))];
+            for (const t of tenantIds) {
+                const [elev, man] = await Promise.all([
+                    sb.from('eleventa_sales').select('total').eq('tenant_id', t).eq('date_local', ayer).eq('deleted', false),
+                    sb.from('daily_sales').select('total').eq('tenant_id', t).eq('date', ayer).eq('deleted', false)
+                ]);
+                const ventasAyer = [...(elev.data || []), ...(man.data || [])]
+                    .reduce((s, r) => s + (+r.total || 0), 0);
 
-            const { count: pend } = await sb.from('reminders')
-                .select('id', { count: 'exact', head: true })
-                .eq('completed', 0).eq('deleted', 0);
+                const { data: cred } = await sb.from('purchase_invoices')
+                    .select('amount, paidAmount, dueDate')
+                    .eq('tenant_id', t)
+                    .eq('paymentMethod', 'Crédito')
+                    .eq('paymentStatus', 'Pendiente')
+                    .eq('deleted', false)
+                    .lte('dueDate', limite);
+                const porPagar = (cred || []).reduce((s, i) => s + ((+i.amount || 0) - (+i.paidAmount || 0)), 0);
+                const nCred = (cred || []).length;
 
-            const partes = [`Ventas ayer: ${money(ventasAyer)}`];
-            if (nCred) partes.push(`${nCred} factura(s) a crédito por vencer (${money(porPagar)})`);
-            if (pend) partes.push(`${pend} recordatorio(s) pendiente(s)`);
+                const { count: pend } = await sb.from('reminders')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('tenant_id', t).eq('completed', 0).eq('deleted', 0);
 
-            out.sent += await sendToTenant(null, {
-                title: '☀️ Resumen del día — El Maravilloso',
-                body: partes.join(' · '),
-                tag: 'daily-' + dateCL(),
-                data: { url: '/' }
-            });
+                const partes = [`Ventas ayer: ${money(ventasAyer)}`];
+                if (nCred) partes.push(`${nCred} factura(s) a crédito por vencer (${money(porPagar)})`);
+                if (pend) partes.push(`${pend} recordatorio(s) pendiente(s)`);
+
+                out.sent += await sendToTenant(t, {
+                    title: '☀️ Resumen del día — El Maravilloso',
+                    body: partes.join(' · '),
+                    tag: 'daily-' + dateCL(),
+                    data: { url: '/' }
+                });
+            }
         }
 
         return res.status(200).json({ ok: true, ...out });

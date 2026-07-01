@@ -72,16 +72,16 @@ Deno.serve(async (req) => {
     );
 
     // Buscar reminders: next_run <= NOW(), no completados, no eliminados,
-    // y no enviados en los últimos 5 min (evitar spam)
-    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-
+    // y que NO se hayan enviado todavía (push_sent_at IS NULL).
+    // Antes se reenviaba cada 5 min mientras el reminder siguiera sin completar,
+    // lo que spameaba al equipo sin parar. Ahora se manda UNA sola vez.
     const { data: reminders, error: remErr } = await supabase
       .from('reminders')
       .select('id, title, priority, next_run, tenant_id')
       .lte('next_run', new Date().toISOString())
       .eq('completed', 0)
       .eq('deleted', 0)
-      .or(`push_sent_at.is.null,push_sent_at.lt.${fiveMinAgo}`);
+      .is('push_sent_at', null);
 
     if (remErr) {
       console.error('Error buscando reminders:', remErr);
