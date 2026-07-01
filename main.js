@@ -88,45 +88,58 @@ function showEmailGate() {
     const splash = document.getElementById('splash-screen');
     if (splash) splash.style.display = 'none';
 
+    // Reconocer al que vuelve: pre-cargamos su correo y saludamos por su nombre,
+    // así solo teclea la contraseña (en un mismo celular casi nunca cambian de
+    // cuenta). Entrada más fluida y cálida, sin el frío gate de correo+clave.
+    const _savedEmail = (localStorage.getItem('wm_auth_email') || '').trim();
+    const _savedNameRaw = (localStorage.getItem('wm_user') || (_savedEmail ? _savedEmail.split('@')[0] : '')).trim();
+    const _prettyName = _savedNameRaw ? _savedNameRaw.charAt(0).toUpperCase() + _savedNameRaw.slice(1) : '';
+    const _returning = !!_savedEmail;
+    const _emailAttr = _savedEmail.replace(/"/g, '&quot;');
+
     document.body.innerHTML = `
         <style>
-            @keyframes wm-blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
-            @keyframes wm-scan { from{background-position:0 0} to{background-position:0 200px} }
-            #email-gate::before { content:''; position:absolute; inset:0; pointer-events:none; opacity:.55;
-                background:
-                    repeating-linear-gradient(0deg, rgba(76,141,255,0.05) 0 1px, transparent 1px 3px),
-                    radial-gradient(circle at 50% -10%, rgba(76,141,255,0.14), transparent 55%);
-                animation: wm-scan 9s linear infinite; }
-            #email-gate input::placeholder { color:#5f6b7a; letter-spacing:.05em; }
-            #email-gate input:focus { border-color:#4c8dff !important; box-shadow:0 0 0 1px rgba(76,141,255,.5), 0 0 18px rgba(76,141,255,.25) !important; }
-            #gate-btn:hover:not(:disabled) { box-shadow:0 0 26px rgba(76,141,255,.5) !important; filter:brightness(1.12); }
-            #gate-toggle-pass:hover, #gate-forgot:hover { color:#4c8dff !important; }
-            .wm-cursor { display:inline-block; width:9px; color:#4c8dff; animation: wm-blink 1.1s step-end infinite; }
+            @keyframes wm-gate-in { from{opacity:0; transform:translateY(12px)} to{opacity:1; transform:translateY(0)} }
+            #email-gate { --accent:#b45309; }
+            #email-gate input::placeholder { color:#a89a86; }
+            #email-gate input:focus { border-color:var(--accent) !important; background:#fff !important; box-shadow:0 0 0 3px rgba(180,83,9,0.12) !important; }
+            #gate-btn:hover:not(:disabled) { filter:brightness(1.1); transform:translateY(-1px); box-shadow:0 10px 24px rgba(35,32,32,0.22); }
+            #gate-btn:active:not(:disabled) { transform:translateY(0); }
+            #gate-toggle-pass:hover, #gate-forgot:hover, #gate-change-email:hover { color:var(--accent) !important; }
+            #email-gate .wm-card { animation: wm-gate-in .45s cubic-bezier(.22,1,.36,1) both; }
         </style>
-        <div id="email-gate" style="position:fixed; inset:0; overflow:hidden; background:#070b08; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono','Cascadia Code','SF Mono','Consolas','Courier New',monospace; z-index:99999;">
-            <div style="position:relative; z-index:1; width:90%; max-width:380px; text-align:center;">
-                <img src="assets/logo-dark.png" alt="Logo" style="width:80px; height:80px; border-radius:18px; margin-bottom:22px; filter:drop-shadow(0 0 18px rgba(76,141,255,0.45)); border:1px solid rgba(76,141,255,0.25);">
-                <h1 style="color:#eef1f5; font-size:1.4rem; font-weight:700; margin:0 0 8px; letter-spacing:0.06em; text-shadow:0 0 12px rgba(76,141,255,0.5);">EL_MARAVILLOSO</h1>
-                <p id="gate-subtitle" style="color:#4c8dff; font-size:0.72rem; margin:0 0 30px; letter-spacing:0.12em; text-transform:uppercase;">&gt; acceso_autorizado<span class="wm-cursor">_</span></p>
-                <input id="gate-email" type="email" placeholder="correo" autocomplete="email" autofocus
-                    style="width:100%; padding:14px 18px; background:#0a0f0b; border:1px solid rgba(76,141,255,0.18); border-radius:11px; color:#eef1f5; font-size:0.95rem; font-family:inherit; outline:none; caret-color:#4c8dff; transition:all 0.2s; margin-bottom:12px; box-sizing:border-box;">
+        <div id="email-gate" style="position:fixed; inset:0; overflow:auto; background:linear-gradient(165deg,#fbf6ef 0%,#f4e9d9 100%); display:flex; align-items:center; justify-content:center; padding:24px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif; z-index:99999;">
+            <div class="wm-card" style="width:100%; max-width:360px; background:#fff; border-radius:26px; padding:34px 28px 28px; box-shadow:0 26px 70px rgba(90,60,25,0.14), 0 2px 8px rgba(90,60,25,0.06); text-align:center;">
+                <img src="assets/logo.png" alt="El Maravilloso" style="width:66px; height:66px; border-radius:18px; margin-bottom:18px; box-shadow:0 6px 18px rgba(90,60,25,0.16);">
+                <h1 id="gate-greeting" style="font-family:'Fraunces',Georgia,'Times New Roman',serif; color:#2a2320; font-size:1.65rem; font-weight:600; margin:0 0 4px; letter-spacing:-0.01em;">${_returning ? 'Hola de nuevo' : 'Bienvenido'}</h1>
+                <p id="gate-sub" style="color:#8a7b68; font-size:0.92rem; margin:0 0 26px;">${_returning ? _prettyName : 'Distribuidora El Maravilloso'}</p>
+
+                <div id="gate-email-wrap" style="${_returning ? 'display:none;' : ''} margin-bottom:12px;">
+                    <input id="gate-email" type="email" placeholder="Correo" autocomplete="email" inputmode="email" value="${_emailAttr}"
+                        style="width:100%; padding:15px 16px; background:#faf6f0; border:1px solid #e7dcc9; border-radius:14px; color:#2a2320; font-size:1rem; outline:none; transition:all .2s; box-sizing:border-box;">
+                </div>
+
                 <div style="position:relative;">
-                    <input id="gate-pass" type="password" placeholder="contraseña" autocomplete="current-password"
-                        style="width:100%; padding:14px 18px; background:#0a0f0b; border:1px solid rgba(76,141,255,0.18); border-radius:11px; color:#eef1f5; font-size:0.95rem; font-family:inherit; outline:none; caret-color:#4c8dff; transition:all 0.2s; padding-right:48px; box-sizing:border-box;">
-                    <button id="gate-toggle-pass" type="button" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:#5f6b7a; cursor:pointer; font-size:1.1rem; padding:4px; transition:color .2s;">
+                    <input id="gate-pass" type="password" placeholder="Contraseña" autocomplete="current-password"
+                        style="width:100%; padding:15px 48px 15px 16px; background:#faf6f0; border:1px solid #e7dcc9; border-radius:14px; color:#2a2320; font-size:1rem; outline:none; transition:all .2s; box-sizing:border-box;">
+                    <button id="gate-toggle-pass" type="button" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:#a89a86; cursor:pointer; font-size:1.15rem; padding:4px; transition:color .2s;">
                         <i class="ph ph-eye"></i>
                     </button>
                 </div>
-                <div id="gate-error" style="color:#ff6b6b; font-size:0.8rem; margin-top:10px; min-height:1.2em;"></div>
-                <button id="gate-btn" style="width:100%; margin-top:16px; padding:14px; background:linear-gradient(135deg,#4c8dff,#2f6fe0); color:#07121f; border:none; border-radius:11px; font-size:0.95rem; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:0.08em; text-transform:uppercase; transition:all 0.2s; box-shadow:0 0 20px rgba(76,141,255,0.3);">
+
+                <div id="gate-error" style="color:#c0392b; font-size:0.82rem; margin-top:10px; min-height:1.2em; text-align:left; padding-left:2px;"></div>
+
+                <button id="gate-btn" style="width:100%; margin-top:6px; padding:15px; background:#232020; color:#fdf7ee; border:none; border-radius:14px; font-size:1rem; font-weight:600; cursor:pointer; transition:all .18s; box-shadow:0 6px 16px rgba(35,32,32,0.18);">
                     Ingresar
                 </button>
-                <div style="margin-top:16px;">
-                    <button id="gate-forgot" type="button" style="background:none; border:none; color:#5f6b7a; font-size:0.76rem; cursor:pointer; font-family:inherit; text-decoration:underline; transition:color .2s;">
+
+                ${_returning ? `<button id="gate-change-email" type="button" style="background:none; border:none; color:#a89a86; font-size:0.8rem; cursor:pointer; margin-top:16px; transition:color .2s;">¿No eres tú? Cambiar cuenta</button>` : ''}
+
+                <div style="margin-top:${_returning ? '10' : '18'}px;">
+                    <button id="gate-forgot" type="button" style="background:none; border:none; color:#a89a86; font-size:0.82rem; cursor:pointer; text-decoration:underline; transition:color .2s;">
                         Olvidé mi contraseña
                     </button>
                 </div>
-                <p style="color:#3a5c48; font-size:0.62rem; margin-top:24px; letter-spacing:0.1em;">// SISTEMA DE GESTIÓN COMERCIAL</p>
             </div>
         </div>
     `;
@@ -137,6 +150,21 @@ function showEmailGate() {
     const btn = document.getElementById('gate-btn');
     const toggleBtn = document.getElementById('gate-toggle-pass');
     const forgotBtn = document.getElementById('gate-forgot');
+    const emailWrap = document.getElementById('gate-email-wrap');
+    const changeEmailBtn = document.getElementById('gate-change-email');
+
+    // Enfocar el campo correcto: si volvemos, directo a la contraseña.
+    setTimeout(() => { (_returning ? passInput : emailInput)?.focus(); }, 60);
+
+    // "¿No eres tú?" → revelar el campo de correo y empezar de cero.
+    if (changeEmailBtn) changeEmailBtn.addEventListener('click', () => {
+        if (emailWrap) emailWrap.style.display = '';
+        emailInput.value = '';
+        const g = document.getElementById('gate-greeting'); if (g) g.textContent = 'Bienvenido';
+        const s = document.getElementById('gate-sub'); if (s) s.textContent = 'Distribuidora El Maravilloso';
+        changeEmailBtn.style.display = 'none';
+        emailInput.focus();
+    });
 
     // Toggle ver/ocultar contraseña
     toggleBtn.addEventListener('click', () => {
@@ -265,8 +293,8 @@ function showEmailGate() {
     btn.addEventListener('click', attemptLogin);
     emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passInput.focus(); });
     passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptLogin(); });
-    emailInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#ff6b6b'; emailInput.style.borderColor = 'rgba(76,141,255,0.18)'; });
-    passInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#ff6b6b'; passInput.style.borderColor = 'rgba(76,141,255,0.18)'; });
+    emailInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#c0392b'; emailInput.style.borderColor = '#e7dcc9'; });
+    passInput.addEventListener('input', () => { errorEl.textContent = ''; errorEl.style.color = '#c0392b'; passInput.style.borderColor = '#e7dcc9'; });
 }
 
 // Initialize App
@@ -274,6 +302,20 @@ async function init() {
     try {
         // --- AUTH CHECK: Supabase Auth ---
         window.Auth.init();
+
+        // Almacenamiento persistente: sin esto, iOS/Safari trata IndexedDB +
+        // localStorage como descartables y los BORRA por presión de espacio o
+        // inactividad (~7 días) → la sesión se pierde, la cajera vuelve al login
+        // y "desaparece" el fondo de caja. persist() le pide al navegador que
+        // NO los descarte. Fire-and-forget, no bloquea el arranque.
+        try {
+            if (navigator.storage?.persist) {
+                navigator.storage.persisted()
+                    .then(already => { if (!already) return navigator.storage.persist(); })
+                    .catch(() => {});
+            }
+        } catch (_) { /* navegador sin Storage API */ }
+
         const session = await window.Auth.getSession();
 
         if (!session) {
@@ -461,6 +503,23 @@ async function init() {
                 window.Sync?.updateIndicator?.('error', syncError.message || 'Error de sincronización');
             }
         })();
+
+        // Refrescar al volver a la app (foreground): la cajera reabre el celular
+        // y ve datos frescos al instante, sin esperar los 90s del polling. Así se
+        // siente "todo actualizado". Throttle 8s para no gatillar sync en ráfaga.
+        if (!window._foregroundSyncBound) {
+            window._foregroundSyncBound = true;
+            let _lastFgSync = 0;
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState !== 'visible') return;
+                const now = Date.now();
+                if (now - _lastFgSync < 8000) return;
+                _lastFgSync = now;
+                if (window.SyncV2?.client && !window.SyncV2.isSyncing) {
+                    window.SyncV2.syncAll();
+                }
+            });
+        }
 
         // Navigation Logic
         const navItems = document.querySelectorAll('.nav-item');
@@ -703,9 +762,15 @@ async function init() {
             s.textContent = '@keyframes wm-modal-in{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}';
             document.head.appendChild(s);
         }
-        // ── Prompt agresivo de notificaciones (employees) ──────────
+        // ── Prompt de notificaciones (employees) ──────────
         // Muestra modal la primera vez si no tiene permiso. Se guarda en localStorage.
-        if (window._isEmployee && typeof Notification !== 'undefined' && Notification.permission !== 'granted' && !localStorage.getItem('wm_push_asked')) {
+        // Anti-ruido: si esta misma sesión va a mostrar el prompt de biometría, NO
+        // apilar dos modales encima. La biometría tiene prioridad (re-entrada rápida);
+        // el de notificaciones aparece en el siguiente ingreso.
+        const _bioKeyNow = 'wm_bio_' + (session.user.email || '');
+        const _bioWillPrompt = window._isEmployee && window.PublicKeyCredential
+            && !localStorage.getItem(_bioKeyNow) && !localStorage.getItem(_bioKeyNow + '_skip');
+        if (window._isEmployee && !_bioWillPrompt && typeof Notification !== 'undefined' && Notification.permission !== 'granted' && !localStorage.getItem('wm_push_asked')) {
             setTimeout(() => {
                 const overlay = document.createElement('div');
                 overlay.id = 'push-prompt-overlay';
@@ -749,27 +814,63 @@ async function init() {
             const bioRegistered = localStorage.getItem(bioKey);
 
             if (bioRegistered) {
-                // Ya registró biométrico → verificar antes de mostrar la app
-                try {
-                    const credId = Uint8Array.from(atob(bioRegistered), c => c.charCodeAt(0));
-                    await navigator.credentials.get({
-                        publicKey: {
-                            challenge: crypto.getRandomValues(new Uint8Array(32)),
-                            allowCredentials: [{ id: credId, type: 'public-key', transports: ['internal'] }],
-                            userVerification: 'required',
-                            timeout: 60000
-                        }
+                // Ya registró biométrico → verificar antes de mostrar la app.
+                const credId = Uint8Array.from(atob(bioRegistered), c => c.charCodeAt(0));
+                const _verifyBio = () => navigator.credentials.get({
+                    publicKey: {
+                        challenge: crypto.getRandomValues(new Uint8Array(32)),
+                        allowCredentials: [{ id: credId, type: 'public-key', transports: ['internal'] }],
+                        userVerification: 'required',
+                        timeout: 60000
+                    }
+                });
+
+                // Overlay de bloqueo con Reintentar / Usar contraseña. Antes, un
+                // fallo o cancelación de Face ID hacía logout completo y mandaba a
+                // teclear correo+contraseña — se sentía "pegada". Ahora cubre la
+                // app y deja reintentar sin re-login.
+                const _showBioLock = () => {
+                    if (document.getElementById('bio-lock-overlay')) return;
+                    const ov = document.createElement('div');
+                    ov.id = 'bio-lock-overlay';
+                    ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(12,10,9,0.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;padding:24px;animation:wm-modal-in 0.25s ease-out;';
+                    ov.innerHTML = `
+                        <div style="text-align:center;max-width:320px;width:100%;">
+                            <div style="width:72px;height:72px;border-radius:22px;background:rgba(255,255,255,0.10);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;border:1px solid rgba(255,255,255,0.14);">
+                                <i class="ph-fill ph-lock-key" style="font-size:2rem;color:#fff;"></i>
+                            </div>
+                            <h3 style="margin:0 0 8px;font-size:1.15rem;color:#fff;font-weight:800;">App bloqueada</h3>
+                            <p style="margin:0 0 22px;font-size:0.9rem;color:rgba(255,255,255,0.72);line-height:1.5;">
+                                Desbloquea con Face ID, huella o el código de tu celular para continuar.
+                            </p>
+                            <button id="bio-lock-retry" style="width:100%;padding:14px;border-radius:13px;border:none;background:#fff;color:#1a1613;font-size:0.95rem;font-weight:700;cursor:pointer;margin-bottom:10px;">
+                                Reintentar
+                            </button>
+                            <button id="bio-lock-pass" style="width:100%;padding:12px;border-radius:13px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.8);font-size:0.9rem;font-weight:600;cursor:pointer;">
+                                Usar contraseña
+                            </button>
+                        </div>
+                    `;
+                    document.body.appendChild(ov);
+                    document.getElementById('bio-lock-retry').addEventListener('click', async () => {
+                        try { await _verifyBio(); ov.remove(); }
+                        catch (e) { /* sigue bloqueada, deja reintentar */ }
                     });
+                    document.getElementById('bio-lock-pass').addEventListener('click', () => {
+                        ov.remove();
+                        window.Auth.logout();
+                    });
+                };
+
+                try {
+                    await _verifyBio();
                     // Verificación OK — la app ya está visible
                 } catch (bioErr) {
-                    // Falló o canceló → logout por seguridad
                     console.warn('[Bio] Verificación fallida:', bioErr.name);
-                    if (bioErr.name !== 'NotAllowedError') {
-                        // Error técnico, no bloquear (puede que el celu no soporte)
-                    } else {
-                        window.Auth.logout();
-                        return;
-                    }
+                    // NotAllowedError = canceló/falló la verificación → bloquear con
+                    // opción de reintentar (no expulsar). Otros errores son técnicos
+                    // (celu sin soporte) → no bloquear.
+                    if (bioErr.name === 'NotAllowedError') _showBioLock();
                 }
             } else if (!localStorage.getItem(bioKey + '_skip')) {
                 // No registrado → ofrecer registrar (una vez, con opción de omitir)
