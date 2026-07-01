@@ -342,11 +342,27 @@ window.Views = window.Views || {};
             `).join('');
 
             // ── Cuadre badge ──
-            const cuadreBadge = cuadre
-                ? `<div style="display:flex; align-items:center; gap:6px; padding:8px 12px; background:#16a34a18; border-radius:8px; margin-top:12px;">
-                        <i class="ph-fill ph-check-circle" style="color:#16a34a; font-size:1.1rem;"></i>
-                        <span style="color:#16a34a; font-size:0.82rem; font-weight:600;">Cuadre guardado${isEmp ? '' : ': ' + fmt(cuadre.amount)} — ${cuadre.notes || ''}</span>
-                   </div>` : '';
+            // Recalculamos la diferencia contra el esperado ACTUAL (no usamos cuadre.notes,
+            // que quedó congelado al guardar). Si un movimiento de Eleventa sincronizó después
+            // del guardado, el esperado cambia y la nota vieja mentiría (ej: "Sobra $9.990"
+            // cuando ya cuadra). Fuente de verdad = esperado actual, coherente con el vivo.
+            let cuadreBadge = '';
+            if (cuadre) {
+                const difGuardado = cuadre.amount - efectivoEsperado;
+                const cuadra = Math.abs(difGuardado) < 1;
+                const col = cuadra ? '#16a34a' : (difGuardado > 0 ? '#d97706' : 'var(--danger)');
+                const icon = cuadra ? 'ph-fill ph-check-circle' : 'ph-fill ph-warning-circle';
+                let etiqueta;
+                if (isEmp) {
+                    etiqueta = cuadra ? '✓ Cuadra' : '⚠ No cuadra';
+                } else {
+                    etiqueta = cuadra ? '✓ Cuadra' : (difGuardado > 0 ? `Sobra ${fmt(difGuardado)}` : `Falta ${fmt(-difGuardado)}`);
+                }
+                cuadreBadge = `<div style="display:flex; align-items:center; gap:6px; padding:8px 12px; background:${col}18; border-radius:8px; margin-top:12px;">
+                        <i class="${icon}" style="color:${col}; font-size:1.1rem;"></i>
+                        <span style="color:${col}; font-size:0.82rem; font-weight:600;">Cuadre guardado${isEmp ? '' : ': ' + fmt(cuadre.amount)} — ${etiqueta}</span>
+                   </div>`;
+            }
 
             // ── Lista de ventas (5 iniciales + ver más) ──
             const VENTAS_INIT = 5;
@@ -370,6 +386,9 @@ window.Views = window.Views || {};
                 : '';
 
             // ═══════════════════════ RENDER HTML ═══════════════════════
+            // Preservamos lo que la cajera ya escribió: un re-render (refresh/intervalo)
+            // no debe borrar su conteo en curso.
+            const contadoPrevio = body.querySelector('#caja-contado')?.value || '';
             body.innerHTML = `
                 <!-- ── FONDO DE APERTURA ── (solo admin ve el monto, cajera solo registra) -->
                 <div style="background:var(--bg-card); border:1px solid var(--border); border-left:4px solid #f59e0b; border-radius:14px; padding:16px; margin-bottom:16px;">
@@ -469,6 +488,15 @@ window.Views = window.Views || {};
                     </div>`}
                     ${salidasError ? `<div style="margin-top:-4px; margin-bottom:12px; padding:7px 10px; background:#d9770618; border-radius:8px; font-size:0.76rem; color:#d97706;"><i class="ph ph-warning" style="vertical-align:-2px;"></i> No se pudieron cargar las salidas de Eleventa; el esperado puede estar incompleto.</div>` : ''}
                     ${esHoy ? `
+                    <!-- Aviso de frescura: no podemos saber si el PC tiene ventas sin subir,
+                         pero sí mostrar la hora de la última venta ya sincronizada para que
+                         la cajera decida si esperar/refrescar antes de cuadrar. -->
+                    <div style="margin-bottom:12px; padding:9px 11px; background:#2563eb14; border-radius:9px; font-size:0.76rem; color:#2563eb; display:flex; align-items:flex-start; gap:7px; line-height:1.35;">
+                        <i class="ph ph-clock-countdown" style="font-size:1rem; margin-top:1px; flex-shrink:0;"></i>
+                        <span>${sales.length
+                            ? `Última venta sincronizada: <b>${chileTime(sales[0].date)}</b>. Si vendiste después de esa hora, toca <i class="ph ph-arrows-clockwise" style="vertical-align:-1px;"></i> y espera unos segundos a que el PC la suba <b>antes</b> de cuadrar.`
+                            : `Aún no hay ventas sincronizadas hoy. Si ya vendiste, espera a que el PC las suba (toca <i class="ph ph-arrows-clockwise" style="vertical-align:-1px;"></i>).`}</span>
+                    </div>
                     <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;">
                         <div>
                             <label style="color:var(--text-muted); font-size:0.78rem; display:block; margin-bottom:4px;">¿Cuánto contaste? ($)</label>
@@ -646,20 +674,36 @@ window.Views = window.Views || {};
                 const v = parseFloat(contado.value);
                 if (isNaN(v)) { difEl.textContent = ''; return; }
                 const dif = v - efectivoEsperado;
-                if (isEmp) {
-                    // Cajera solo ve si cuadra o no, sin montos
-                    if (Math.abs(dif) < 1) { difEl.textContent = '✓ Cuadra'; difEl.style.color = '#16a34a'; }
-                    else { difEl.textContent = '⚠ No cuadra'; difEl.style.color = 'var(--danger)'; }
+                const cuadra = Math.abs(dif) < 1;
+                difEl.style.transition = 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1)';
+                if (cuadra) {
+                    // Refuerzo positivo: ✓ grande + pop suave. Cuadrar debe sentirse como un logro.
+                    difEl.style.color = '#16a34a';
+                    difEl.style.fontSize = '1.15rem';
+                    difEl.innerHTML = '<i class="ph-fill ph-check-circle"></i> ¡Perfecto! Cuadra';
+                    difEl.style.transform = 'scale(1.12)';
+                    setTimeout(() => { difEl.style.transform = 'scale(1)'; }, 220);
+                } else if (isEmp) {
+                    // Modo tranquilo: la cajera NO ve rojo de alarma. Ámbar suave + copy amable,
+                    // porque casi siempre es un desfase de sincronización, no plata faltante.
+                    difEl.style.color = '#d97706';
+                    difEl.style.fontSize = '0.9rem';
+                    difEl.style.transform = 'scale(1)';
+                    difEl.innerHTML = 'Aún no cuadra — puede faltar sincronizar. Toca <i class="ph ph-arrows-clockwise" style="vertical-align:-1px;"></i> y espera un momento.';
                 } else {
-                    if (Math.abs(dif) < 1) { difEl.textContent = '✓ Cuadra'; difEl.style.color = '#16a34a'; }
-                    else if (dif > 0) { difEl.innerHTML = `Sobra ${fmt(dif)}`; difEl.style.color = '#d97706'; }
+                    // Admin sí ve el detalle real (sobra/falta con monto).
+                    difEl.style.fontSize = '1.05rem';
+                    difEl.style.transform = 'scale(1)';
+                    if (dif > 0) { difEl.innerHTML = `Sobra ${fmt(dif)}`; difEl.style.color = '#d97706'; }
                     else { difEl.innerHTML = `Falta ${fmt(-dif)}`; difEl.style.color = 'var(--danger)'; }
                 }
             }
 
             if (contado) {
+                // Restaura el conteo en curso tras un re-render (no lo pierde la cajera).
+                if (contadoPrevio) contado.value = contadoPrevio;
                 contado.addEventListener('input', updateDif);
-                if (cuadre) updateDif();
+                if (contado.value !== '') updateDif();
             }
 
             // ── Cruce MP (async, rellena el placeholder) ──
@@ -683,9 +727,17 @@ window.Views = window.Views || {};
                         : `Contado: ${fmt(v)} | Esperado: ${fmt(efectivoEsperado)} | Dif: ${fmt(dif)}`;
                     const result = await saveRecord(dia, 'cuadre', 'cierre_cajera', v, desc, { notes });
                     if (result.success) {
-                        btnCuadre.innerHTML = '<i class="ph-fill ph-check-circle"></i> Guardado';
+                        const cuadraOk = Math.abs(dif) < 1;
+                        btnCuadre.innerHTML = cuadraOk
+                            ? '<i class="ph-fill ph-check-circle"></i> ¡Cuadrada! 🎉'
+                            : '<i class="ph-fill ph-check-circle"></i> Guardado';
                         btnCuadre.style.background = '#16a34a';
-                        if (statusEl) { statusEl.textContent = 'El admin puede ver este cuadre'; statusEl.style.color = '#16a34a'; }
+                        if (statusEl) {
+                            statusEl.textContent = cuadraOk
+                                ? '¡Bien hecho! El admin ya la puede ver.'
+                                : 'Guardado. El admin lo revisará — si faltaba sincronizar, se corrige solo.';
+                            statusEl.style.color = '#16a34a';
+                        }
                         // Notificación fire-and-forget — no bloquea UI
                         fetch('/api/notify?job=cuadre', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (window.Auth?.session?.access_token || '') }, body: JSON.stringify({ date: dia }) }).catch(() => {});
                         setTimeout(() => { btnCuadre.disabled = false; btnCuadre.innerHTML = '<i class="ph ph-floppy-disk"></i> Actualizar'; btnCuadre.style.background = ''; }, 2000);
@@ -698,10 +750,36 @@ window.Views = window.Views || {};
             }
         }
 
+        // Refresca trayendo lo nuevo de la nube (no solo re-lee local).
+        // Sin esto, la caja mostraba un esperado viejo hasta el poll de fondo (90s),
+        // y la cajera veía un "No cuadra" falso si faltaba sincronizar una venta/salida.
+        async function refreshFromCloud() {
+            try { await window.SyncV2?.pullIncremental?.(); } catch {}
+            await render();
+        }
+
         await render();
         if (fechaInput) fechaInput.addEventListener('change', render);
-        container.querySelector('#caja-refresh').addEventListener('click', render);
-        const iv = setInterval(render, 60000);
+
+        const refreshBtn = container.querySelector('#caja-refresh');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                const icon = refreshBtn.querySelector('i');
+                icon?.classList.add('ph-spin');
+                refreshBtn.disabled = true;
+                await refreshFromCloud();
+                icon?.classList.remove('ph-spin');
+                refreshBtn.disabled = false;
+            });
+        }
+
+        // Auto-refresco: baja datos frescos cada 60s, pero NO mientras la cajera
+        // está escribiendo su conteo (para no interrumpir el foco/tipeo).
+        const iv = setInterval(() => {
+            const contadoEl = body.querySelector('#caja-contado');
+            if (contadoEl && document.activeElement === contadoEl) return;
+            refreshFromCloud();
+        }, 60000);
         window._viewCleanup = () => clearInterval(iv);
     };
 })();
