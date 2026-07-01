@@ -152,10 +152,41 @@ export async function buildReconciliation(sb, date) {
         transferencia: diff.transferencia > THRESHOLD,
         efectivo: diff.efectivo != null && Math.abs(diff.efectivo) > THRESHOLD,
     };
+
+    // ── Detección de venta con MÉTODO DE PAGO mal clasificado ──
+    // Huella: el efectivo descuadra y otro medio (tarjeta/transferencia) descuadra
+    // por un monto PARECIDO y en el MISMO sentido → una venta quedó cargada al
+    // método equivocado; no falta ni sobra plata de verdad, está mal etiquetada.
+    // Signos (ambos relativos a "lo registrado en el sistema"):
+    //   diff.efectivo = contado − esperado  (>0 hay más efectivo del que el sistema esperaba)
+    //   diff.tarjeta  = Eleventa − MP        (>0 el sistema marcó más tarjeta que la que llegó a MP)
+    // Solo se evalúa si MP tiene pagos del día (si no, el cruce no es confiable).
+    const MISCLASS_TOL = 1500; // holgura para considerar que los montos "calzan"
+    const LABEL = { efectivo: 'EFECTIVO', tarjeta: 'TARJETA', transferencia: 'TRANSFERENCIA' };
+    const fmtCLP = (n) => '$' + Math.round(Math.abs(+n) || 0).toLocaleString('es-CL');
+    function detectarSwap(nombreOtro, montoOtro) {
+        const me = diff.efectivo, mo = montoOtro;
+        if (me == null || mo == null) return null;
+        if (Math.sign(me) !== Math.sign(mo)) return null;              // mismo sentido
+        if (Math.abs(me) <= THRESHOLD || Math.abs(mo) <= THRESHOLD) return null;
+        if (Math.abs(Math.abs(me) - Math.abs(mo)) > MISCLASS_TOL) return null; // magnitudes parecidas
+        const monto = Math.round((Math.abs(me) + Math.abs(mo)) / 2);
+        const efectivoAOtro = me > 0;                                 // sobra efectivo → venta EN efectivo marcada como <otro>
+        const de = efectivoAOtro ? 'efectivo' : nombreOtro;
+        const a = efectivoAOtro ? nombreOtro : 'efectivo';
+        return {
+            tipo: `${de}_a_${a}`, monto, montoFmt: fmtCLP(monto), de, a,
+            mensaje: `Parece que una venta de ~${fmtCLP(monto)} la cobraste en ${LABEL[de]} pero quedó marcada como ${LABEL[a]}. Revisa esa venta antes de cerrar.`,
+        };
+    }
+    const misclasificacion = mp.count > 0
+        ? (detectarSwap('tarjeta', diff.tarjeta) || detectarSwap('transferencia', diff.transferencia) || null)
+        : null;
+
     return {
         date, threshold: THRESHOLD, mp, eleventa,
         cash: { fondo, gastos, salidas, entradas, efectivoVentas: eleventa.efectivo, esperado, contado },
-        diff, alerts, transferenciaSobrante,
+        diff, alerts, transferenciaSobrante, misclasificacion,
         hayDescuadre: alerts.tarjeta || alerts.transferencia || alerts.efectivo,
     };
 }
@@ -195,6 +226,9 @@ export default async function handler(req, res) {
                     efectivo: st(recon.alerts.efectivo),
                 },
                 hayDescuadre: recon.hayDescuadre,
+                // La cajera SÍ ve el aviso de método mal clasificado (con monto)
+                // para poder corregir la venta en el momento.
+                misclasificacion: recon.misclasificacion,
             });
         }
 

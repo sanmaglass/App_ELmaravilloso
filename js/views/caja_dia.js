@@ -20,6 +20,24 @@ window.Views = window.Views || {};
     };
     const pmInfo = (k) => PM[k] || { col: '#64748b', icon: 'ph-receipt' };
 
+    // Alerta local cuando aparece una venta con método de pago mal clasificado,
+    // para que la cajera la corrija en el momento. Suena solo cuando el aviso es
+    // NUEVO (cambió tipo/monto), no en cada auto-refresco de 60s.
+    let _lastMisclassKey = null;
+    function notificarMisclasificacion(dia, mis) {
+        if (!mis) { _lastMisclassKey = null; return; }
+        const key = `${dia}:${mis.tipo}:${mis.monto}`;
+        if (key === _lastMisclassKey) return;
+        _lastMisclassKey = key;
+        try {
+            window.AppNotify?.playChime('urgent');
+            if (document.visibilityState !== 'visible') {
+                window.AppNotify?.showNotification('⚠️ Revisa una venta', mis.mensaje, 'misclass');
+            }
+            window.Sync?.showToast('⚠️ ' + mis.mensaje, 'warning');
+        } catch { /* noop */ }
+    }
+
     // ── Helpers DB (cash_register) ──
     async function loadByType(dia, type) {
         try {
@@ -83,6 +101,18 @@ window.Views = window.Views || {};
             return wrap(`<p style="color:var(--text-muted); font-size:0.82rem; margin:0;">Cruce MP no disponible</p>`);
         }
 
+        // Aviso de venta con método de pago mal clasificado (efectivo↔tarjeta/transferencia).
+        // Se muestra tanto a la cajera como al admin, con el monto para ubicar la venta.
+        const mis = data.misclasificacion;
+        const swapBanner = mis ? `
+            <div style="background:#d9770618; border:1px solid #d97706; border-radius:10px; padding:12px 14px; margin-bottom:14px; display:flex; gap:10px; align-items:flex-start;">
+                <i class="ph-fill ph-warning-circle" style="color:#d97706; font-size:1.3rem; flex-shrink:0;"></i>
+                <div>
+                    <div style="font-weight:700; font-size:0.86rem; color:#b45309; margin-bottom:2px;">Revisa una venta</div>
+                    <div style="font-size:0.82rem; color:var(--text-primary); line-height:1.35;">${mis.mensaje}</div>
+                </div>
+            </div>` : '';
+
         if (isEmp) {
             // Cajera: solo badges, sin montos
             const badge = (label, status) => {
@@ -97,6 +127,7 @@ window.Views = window.Views || {};
                 </div>`;
             };
             return wrap(`
+                ${swapBanner}
                 <div style="display:flex; flex-wrap:wrap; gap:4px;">
                     ${badge('Tarjetas', data.status?.tarjeta)}
                     ${badge('Transferencia', data.status?.transferencia)}
@@ -156,6 +187,7 @@ window.Views = window.Views || {};
                </div>` : '';
 
         return wrap(`
+            ${swapBanner}
             ${fila('TARJETAS', eleventa.tarjeta || 0, mp.totalTarjetas || 0, diff.tarjeta, alerts.tarjeta, desgloseTarjeta)}
             ${fila('TRANSFERENCIA', eleventa.transferencia || 0, mp.transferencia || 0, diff.transferencia, alerts.transferencia, '')}
             ${notaCredito}
@@ -635,6 +667,7 @@ window.Views = window.Views || {};
                 const placeholder = body.querySelector('#mp-cruce-placeholder');
                 if (!placeholder) return;
                 placeholder.outerHTML = renderMPCard(data, isEmp);
+                notificarMisclasificacion(dia, data && data.misclasificacion);
             });
 
             if (btnCuadre) {

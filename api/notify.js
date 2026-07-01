@@ -256,9 +256,14 @@ export default async function handler(req, res) {
                 const d = recon.diff.efectivo;
                 partesCuadre.push(`Efectivo: ${d < 0 ? 'faltan' : 'sobran'} ${money(Math.abs(d))}`);
             }
-            const bodyTextCuadre = partesCuadre.join(' · ') || 'Hay un descuadre en caja';
+            // Si el descuadre tiene pinta de venta mal clasificada (método de pago
+            // equivocado), el aviso va DIAGNOSTICADO en vez de "faltan/sobran".
+            const mis = recon.misclasificacion;
+            const bodyTextCuadre = mis
+                ? `Probable venta mal clasificada: ${mis.montoFmt} (${mis.de} → ${mis.a}). Revisar esa venta.`
+                : (partesCuadre.join(' · ') || 'Hay un descuadre en caja');
             const payloadCuadre = {
-                title: '⚠️ Caja descuadrada',
+                title: mis ? '⚠️ Revisar método de pago' : '⚠️ Caja descuadrada',
                 body: bodyTextCuadre,
                 tag: 'cuadre-' + date,
                 data: { url: '/', view: 'mp_cuadre' }
