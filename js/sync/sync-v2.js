@@ -87,6 +87,18 @@ window.SyncV2 = {
     'suppliers', 'reminders', 'settings'
   ]),
 
+  // Tablas del módulo equipo (ids uuid, muy pocas filas): SIEMPRE se re-leen
+  // completas ignorando el cursor incremental. Motivo: si un dispositivo con el
+  // reloj adelantado escribe un HLC "futuro", el cursor .gt(updated_at_hlc) se
+  // envenena — salta a ese valor y los avisos nuevos con HLC real (menor) quedan
+  // bajo la marca y NUNCA se descargan por polling (la cajera "no recibe las
+  // publicaciones"). Con ≤50 filas re-leer todo es trivial, y el chequeo de HLC
+  // por registro (más abajo) evita pisar datos locales más nuevos.
+  FULL_PULL_TABLES: new Set([
+    'announcements', 'announcement_reads', 'team_reports',
+    'team_checklists', 'checklist_templates'
+  ]),
+
   async pullIncremental() {
     const tables = window.Constants.REMOTE_TABLE_MAP;
     const isEmployee = window._isEmployee || (window.Auth?.getRole?.() === 'employee');
@@ -106,10 +118,18 @@ window.SyncV2 = {
         let iterations = 0;
         const maxIterations = 200;
 
+        // Tablas del módulo equipo: ignorar el cursor y re-leer todo (ver
+        // FULL_PULL_TABLES). Forzamos el piso del cursor a 0 para que la ruta de
+        // cursor SIMPLE por HLC — .gt('updated_at_hlc', 0), compatible con ids
+        // uuid — traiga todas las filas, inmune al envenenamiento por skew.
+        const fullPull = this.FULL_PULL_TABLES.has(local);
+        if (fullPull) { lastHlc = 0; lastId = 0; }
+
         // Si es sync inicial (HLC=0), traer TODO paginando por id.
         // Registros antiguos pueden tener updated_at_hlc = NULL o 0,
         // y el filtro .gt(0) los excluiría, causando pérdida de datos.
-        const isInitialSync = lastHlc === 0 && lastId === 0;
+        // (fullPull usa la ruta incremental con cursor simple, no la de id.)
+        const isInitialSync = !fullPull && lastHlc === 0 && lastId === 0;
 
         while (iterations < maxIterations) {
           let query = this.client.from(remote).select('*');

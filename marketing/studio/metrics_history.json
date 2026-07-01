@@ -20,6 +20,14 @@
           "comments": 0,
           "views": null,
           "er": 4.8
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 31,
+          "likes": 1,
+          "comments": 0,
+          "views": null,
+          "er": 3.2
         }
       ],
       "first_seen": "2026-06-26",
@@ -44,6 +52,14 @@
           "likes": 2,
           "comments": 0,
           "views": 196,
+          "er": 1.2
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 168,
+          "likes": 2,
+          "comments": 0,
+          "views": 209,
           "er": 1.2
         }
       ],
@@ -70,6 +86,14 @@
           "comments": 0,
           "views": 168,
           "er": 0.7
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 142,
+          "likes": 1,
+          "comments": 0,
+          "views": 181,
+          "er": 0.7
         }
       ],
       "first_seen": "2026-06-26",
@@ -90,6 +114,14 @@
         },
         {
           "date": "2026-06-28",
+          "reach": 75,
+          "likes": 0,
+          "comments": 0,
+          "views": null,
+          "er": 0.0
+        },
+        {
+          "date": "2026-07-01",
           "reach": 75,
           "likes": 0,
           "comments": 0,
@@ -120,6 +152,14 @@
           "comments": 0,
           "views": null,
           "er": 7.3
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 42,
+          "likes": 3,
+          "comments": 0,
+          "views": null,
+          "er": 7.1
         }
       ],
       "first_seen": "2026-06-26",
@@ -145,6 +185,14 @@
           "comments": 0,
           "views": 311,
           "er": 1.6
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 190,
+          "likes": 2,
+          "comments": 0,
+          "views": 313,
+          "er": 1.6
         }
       ],
       "first_seen": "2026-06-26",
@@ -165,6 +213,14 @@
         },
         {
           "date": "2026-06-28",
+          "reach": 108,
+          "likes": 4,
+          "comments": 0,
+          "views": null,
+          "er": 4.6
+        },
+        {
+          "date": "2026-07-01",
           "reach": 108,
           "likes": 4,
           "comments": 0,
@@ -195,6 +251,14 @@
           "comments": 0,
           "views": null,
           "er": 2.9
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 69,
+          "likes": 1,
+          "comments": 0,
+          "views": null,
+          "er": 2.9
         }
       ],
       "first_seen": "2026-06-26",
@@ -219,6 +283,14 @@
           "likes": 3,
           "comments": 0,
           "views": 256,
+          "er": 1.9
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 160,
+          "likes": 3,
+          "comments": 0,
+          "views": 258,
           "er": 1.9
         }
       ],
@@ -245,6 +317,14 @@
           "comments": 0,
           "views": 340,
           "er": 2.1
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 240,
+          "likes": 3,
+          "comments": 0,
+          "views": 342,
+          "er": 2.1
         }
       ],
       "first_seen": "2026-06-26",
@@ -265,6 +345,14 @@
         },
         {
           "date": "2026-06-28",
+          "reach": 100,
+          "likes": 2,
+          "comments": 0,
+          "views": null,
+          "er": 2.0
+        },
+        {
+          "date": "2026-07-01",
           "reach": 100,
           "likes": 2,
           "comments": 0,
@@ -295,6 +383,14 @@
           "comments": 0,
           "views": null,
           "er": 1.9
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 103,
+          "likes": 2,
+          "comments": 0,
+          "views": null,
+          "er": 1.9
         }
       ],
       "first_seen": "2026-06-26",
@@ -320,6 +416,14 @@
           "comments": 0,
           "views": null,
           "er": 2.9
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 70,
+          "likes": 2,
+          "comments": 0,
+          "views": null,
+          "er": 2.9
         }
       ],
       "first_seen": "2026-06-26",
@@ -340,6 +444,14 @@
         },
         {
           "date": "2026-06-28",
+          "reach": 97,
+          "likes": 2,
+          "comments": 0,
+          "views": null,
+          "er": 2.1
+        },
+        {
+          "date": "2026-07-01",
           "reach": 97,
           "likes": 2,
           "comments": 0,
@@ -370,6 +482,14 @@
           "comments": 0,
           "views": null,
           "er": 2.7
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 110,
+          "likes": 2,
+          "comments": 0,
+          "views": null,
+          "er": 2.7
         }
       ],
       "first_seen": "2026-06-26",
@@ -394,6 +514,14 @@
           "likes": 2,
           "comments": 0,
           "views": 143,
+          "er": 2.7
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 75,
+          "likes": 2,
+          "comments": 0,
+          "views": 145,
           "er": 2.7
         }
       ],
@@ -420,6 +548,14 @@
           "comments": 0,
           "views": null,
           "er": 3.0
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 68,
+          "likes": 2,
+          "comments": 0,
+          "views": null,
+          "er": 2.9
         }
       ],
       "first_seen": "2026-06-26",
@@ -445,6 +581,14 @@
           "comments": 0,
           "views": null,
           "er": 3.0
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 68,
+          "likes": 2,
+          "comments": 0,
+          "views": null,
+          "er": 2.9
         }
       ],
       "first_seen": "2026-06-26",
@@ -465,6 +609,14 @@
         },
         {
           "date": "2026-06-28",
+          "reach": 85,
+          "likes": 1,
+          "comments": 0,
+          "views": null,
+          "er": 1.2
+        },
+        {
+          "date": "2026-07-01",
           "reach": 85,
           "likes": 1,
           "comments": 0,
@@ -495,6 +647,14 @@
           "comments": 1,
           "views": null,
           "er": 8.7
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 103,
+          "likes": 6,
+          "comments": 1,
+          "views": null,
+          "er": 8.7
         }
       ],
       "first_seen": "2026-06-26",
@@ -519,6 +679,14 @@
           "likes": 5,
           "comments": 0,
           "views": 337,
+          "er": 2.5
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 202,
+          "likes": 5,
+          "comments": 0,
+          "views": 339,
           "er": 2.5
         }
       ],
@@ -545,6 +713,14 @@
           "comments": 0,
           "views": 294,
           "er": 3.3
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 183,
+          "likes": 5,
+          "comments": 0,
+          "views": 296,
+          "er": 3.3
         }
       ],
       "first_seen": "2026-06-26",
@@ -569,6 +745,14 @@
           "likes": 2,
           "comments": 0,
           "views": 303,
+          "er": 1.5
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 203,
+          "likes": 2,
+          "comments": 0,
+          "views": 305,
           "er": 1.5
         }
       ],
@@ -595,6 +779,14 @@
           "comments": 0,
           "views": 214,
           "er": 8.7
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 103,
+          "likes": 6,
+          "comments": 0,
+          "views": 215,
+          "er": 8.7
         }
       ],
       "first_seen": "2026-06-26",
@@ -620,6 +812,14 @@
           "comments": 0,
           "views": 330,
           "er": 2.4
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 207,
+          "likes": 3,
+          "comments": 0,
+          "views": 332,
+          "er": 2.4
         }
       ],
       "first_seen": "2026-06-26",
@@ -640,6 +840,14 @@
         },
         {
           "date": "2026-06-28",
+          "reach": 90,
+          "likes": 1,
+          "comments": 0,
+          "views": null,
+          "er": 2.2
+        },
+        {
+          "date": "2026-07-01",
           "reach": 90,
           "likes": 1,
           "comments": 0,
@@ -670,6 +878,14 @@
           "comments": 0,
           "views": null,
           "er": 0.0
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 79,
+          "likes": 0,
+          "comments": 0,
+          "views": null,
+          "er": 0.0
         }
       ],
       "first_seen": "2026-06-26",
@@ -694,6 +910,14 @@
           "likes": 1,
           "comments": 0,
           "views": 127,
+          "er": 1.4
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 74,
+          "likes": 1,
+          "comments": 0,
+          "views": 128,
           "er": 1.4
         }
       ],
@@ -720,6 +944,14 @@
           "comments": 0,
           "views": 134,
           "er": 3.4
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 89,
+          "likes": 2,
+          "comments": 0,
+          "views": 135,
+          "er": 3.4
         }
       ],
       "first_seen": "2026-06-26",
@@ -744,6 +976,14 @@
           "likes": 2,
           "comments": 0,
           "views": 253,
+          "er": 2.0
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 197,
+          "likes": 2,
+          "comments": 0,
+          "views": 254,
           "er": 2.0
         }
       ],
@@ -770,6 +1010,14 @@
           "comments": 0,
           "views": 130,
           "er": 4.8
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 84,
+          "likes": 1,
+          "comments": 0,
+          "views": 131,
+          "er": 4.8
         }
       ],
       "first_seen": "2026-06-26",
@@ -795,6 +1043,14 @@
           "comments": 0,
           "views": 232,
           "er": 4.0
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 149,
+          "likes": 5,
+          "comments": 0,
+          "views": 233,
+          "er": 4.0
         }
       ],
       "first_seen": "2026-06-26",
@@ -815,6 +1071,14 @@
         },
         {
           "date": "2026-06-28",
+          "reach": 88,
+          "likes": 4,
+          "comments": 0,
+          "views": null,
+          "er": 4.5
+        },
+        {
+          "date": "2026-07-01",
           "reach": 88,
           "likes": 4,
           "comments": 0,
@@ -845,6 +1109,14 @@
           "comments": 0,
           "views": 148,
           "er": 3.3
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 90,
+          "likes": 2,
+          "comments": 0,
+          "views": 149,
+          "er": 3.3
         }
       ],
       "first_seen": "2026-06-26",
@@ -865,6 +1137,14 @@
         },
         {
           "date": "2026-06-28",
+          "reach": null,
+          "likes": 5,
+          "comments": 1,
+          "views": null,
+          "er": null
+        },
+        {
+          "date": "2026-07-01",
           "reach": null,
           "likes": 5,
           "comments": 1,
@@ -895,6 +1175,14 @@
           "comments": 0,
           "views": null,
           "er": null
+        },
+        {
+          "date": "2026-07-01",
+          "reach": null,
+          "likes": 2,
+          "comments": 0,
+          "views": null,
+          "er": null
         }
       ],
       "first_seen": "2026-06-26",
@@ -915,6 +1203,14 @@
         },
         {
           "date": "2026-06-28",
+          "reach": null,
+          "likes": 5,
+          "comments": 0,
+          "views": null,
+          "er": null
+        },
+        {
+          "date": "2026-07-01",
           "reach": null,
           "likes": 5,
           "comments": 0,
@@ -945,6 +1241,14 @@
           "comments": 0,
           "views": null,
           "er": null
+        },
+        {
+          "date": "2026-07-01",
+          "reach": null,
+          "likes": 6,
+          "comments": 0,
+          "views": null,
+          "er": null
         }
       ],
       "first_seen": "2026-06-26",
@@ -970,6 +1274,14 @@
           "comments": 0,
           "views": null,
           "er": null
+        },
+        {
+          "date": "2026-07-01",
+          "reach": null,
+          "likes": 5,
+          "comments": 0,
+          "views": null,
+          "er": null
         }
       ],
       "first_seen": "2026-06-26",
@@ -987,6 +1299,14 @@
           "comments": 0,
           "views": null,
           "er": 5.6
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 35,
+          "likes": 2,
+          "comments": 0,
+          "views": null,
+          "er": 5.7
         }
       ],
       "first_seen": "2026-06-28",
@@ -1004,10 +1324,52 @@
           "comments": 0,
           "views": 167,
           "er": 1.5
+        },
+        {
+          "date": "2026-07-01",
+          "reach": 138,
+          "likes": 0,
+          "comments": 0,
+          "views": 173,
+          "er": 1.4
         }
       ],
       "first_seen": "2026-06-28",
       "ig_timestamp": "2026-06-27T18:46:04+0000"
+    },
+    "18068578208461739": {
+      "slug": "mayonesa-630g-hellmann-s-1990",
+      "name": "Mayonesa 630g Hellmann's",
+      "style": "clasica",
+      "snapshots": [
+        {
+          "date": "2026-07-01",
+          "reach": 44,
+          "likes": 1,
+          "comments": 0,
+          "views": null,
+          "er": 2.3
+        }
+      ],
+      "first_seen": "2026-07-01",
+      "ig_timestamp": "2026-06-30T20:59:23+0000"
+    },
+    "17919641706394261": {
+      "slug": null,
+      "name": null,
+      "style": null,
+      "snapshots": [
+        {
+          "date": "2026-07-01",
+          "reach": 124,
+          "likes": 1,
+          "comments": 0,
+          "views": 156,
+          "er": 0.8
+        }
+      ],
+      "first_seen": "2026-07-01",
+      "ig_timestamp": "2026-06-30T20:57:34+0000"
     }
   }
 }

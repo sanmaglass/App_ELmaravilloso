@@ -766,6 +766,7 @@
     <h2><span class="dot"></span>Por procesar <small id="pend-c"></small>
       <span class="act" style="display:flex;gap:8px">
         <button class="btn-sync-prices" id="sync-prices" style="display:none" onclick="syncPrices()">💲 Sincronizar precios</button>
+        <button class="btn btn-ghost btn-sm" id="clean-pend" style="width:auto;display:none" onclick="cleanEntrada()">🧹 Limpiar</button>
         <button class="btn btn-ghost btn-sm" id="gen-all" style="width:auto;display:none">⚡ Generar todas</button>
       </span>
     </h2>
@@ -1894,6 +1895,7 @@ async function load(){
   $('#s-prog').textContent=prog; $('#s-pend').textContent=s.entrada.length;
   $('#pend-c').textContent=s.entrada.length?`(${s.entrada.length})`:'';
   $('#gen-all').style.display=s.entrada.length>1?'inline-flex':'none';
+  $('#clean-pend').style.display=s.entrada.length?'inline-flex':'none';
   loadRecurring();
 }
 function guessName(f){return f.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase());}
@@ -2404,7 +2406,25 @@ file.addEventListener('change',()=>upload(file.files));
 async function upload(files){
   if(!files.length)return;
   const fd=new FormData();[...files].forEach(f=>fd.append('files',f));
-  toast('Subiendo…'); await fetch('/api/upload',{method:'POST',body:fd}); toast('Fotos subidas ✓'); load();
+  toast('Subiendo…');
+  try{
+    const r=await fetch('/api/upload',{method:'POST',body:fd});
+    const d=await r.json();
+    const ok=(d.saved||[]).length, bad=(d.skipped||[]).length;
+    if(ok&&bad)      toast(`${ok} subida${ok>1?'s':''} ✓ · ${bad} con formato no soportado`);
+    else if(ok)      toast(`${ok} foto${ok>1?'s':''} subida${ok>1?'s':''} ✓`);
+    else if(bad)     toast(`⚠ Formato no soportado — convierte la foto a JPG/PNG`);
+    else             toast('No se subió ninguna foto');
+  }catch(e){ toast('⚠ Error al subir — revisa la conexión'); }
+  load();
+}
+async function cleanEntrada(){
+  if(!confirm('¿Archivar todas las fotos pendientes? Se mueven a una carpeta de respaldo (assets/_usadas), no se borran.'))return;
+  toast('Limpiando…');
+  try{ const r=await fetch('/api/entrada-clean',{method:'POST'}); const d=await r.json();
+    toast(`${d.moved||0} foto${(d.moved||0)===1?'':'s'} archivada${(d.moved||0)===1?'':'s'} ✓`);
+  }catch(e){ toast('⚠ No se pudo limpiar'); }
+  load();
 }
 /* ─────────────────────────────────────────────────────── */
 /* ── INBOX ────────────────────────────────────────────── */

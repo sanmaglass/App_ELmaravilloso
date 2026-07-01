@@ -639,8 +639,17 @@ window.Views = window.Views || {};
         `;
         container.appendChild(style);
 
-        // Realtime auto-refresh
-        const _handler = () => window.Views.team_home(container);
+        // Realtime auto-refresh — solo re-renderizar si cambió una tabla que
+        // esta vista realmente muestra. Antes se re-renderizaba TODO el inicio en
+        // CADA evento de sync (incluidos los ticks de eleventa_sales, que llegan
+        // seguido), recargando 5 tablas cada vez → la app se sentía muy lenta.
+        const TH_RELEVANT = ['announcements', 'announcement_reads', 'team_reports', 'team_checklists', 'checklist_templates', 'promotions'];
+        const _handler = (e) => {
+            const changed = e?.detail?.tables;
+            // Si no viene el detalle de tablas, re-renderizar por seguridad.
+            if (changed && !changed.some(t => TH_RELEVANT.includes(t))) return;
+            window.Views.team_home(container);
+        };
         window.addEventListener('sync-data-updated', _handler);
         window._viewCleanup = () => window.removeEventListener('sync-data-updated', _handler);
     };

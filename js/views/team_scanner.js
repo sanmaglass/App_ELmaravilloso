@@ -3,8 +3,18 @@
 window.Views = window.Views || {};
 
 (function () {
+    // Cache del catálogo: construirlo recorre miles de ventas (eleventa_sales),
+    // lo que congelaba el teléfono cada vez que se abría "Consultar Precio".
+    // Se cachea 60s (los precios no cambian a cada segundo).
+    let _catalogCache = null;
+    let _catalogCacheAt = 0;
+    const CATALOG_TTL_MS = 60000;
+
     // Construir catálogo de precios desde db.products + eleventa_sales.items
     async function buildCatalog() {
+        if (_catalogCache && (Date.now() - _catalogCacheAt) < CATALOG_TTL_MS) {
+            return _catalogCache;
+        }
         const catalog = new Map(); // name → { name, price, stock, lastSeen }
 
         // 1. Productos de la tabla products (precio oficial + stock)
@@ -42,7 +52,9 @@ window.Views = window.Views || {};
             }
         } catch { /* tabla puede no existir */ }
 
-        return Array.from(catalog.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es-CL'));
+        _catalogCache = Array.from(catalog.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es-CL'));
+        _catalogCacheAt = Date.now();
+        return _catalogCache;
     }
 
     function renderResults(products, container) {

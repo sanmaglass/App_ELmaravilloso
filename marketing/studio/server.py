@@ -59,6 +59,7 @@ def save_textos(d):
 
 ENTRADA = os.path.join(MKT, "assets", "entrada")
 CUTS    = os.path.join(MKT, "assets", "_cuts")
+USADAS  = os.path.join(MKT, "assets", "_usadas")  # fotos ya procesadas (archivo, no se borran)
 BANCO   = os.path.join(MKT, "assets", "banco")   # banco de fotos para el Piloto automático
 IMG_OUT = os.path.join(MKT, "content", "instagram")
 VID_OUT = os.path.join(MKT, "content", "tiktok")
@@ -90,8 +91,16 @@ def load_goals():
 def save_goals(d):
     json.dump(d, open(GOALS_PATH, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 
-for d in (ENTRADA, CUTS, BANCO, IMG_OUT, VID_OUT):
+for d in (ENTRADA, CUTS, USADAS, BANCO, IMG_OUT, VID_OUT):
     os.makedirs(d, exist_ok=True)
+
+# Soporte HEIC/HEIF (fotos de iPhone) si la librería está disponible.
+# Sin esto, una foto .heic se descartaba en silencio -> "no me carga".
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+except Exception:
+    pass
 
 from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
@@ -153,15 +162,55 @@ def state():
 
 @app.post("/api/upload")
 async def upload(files: list[UploadFile] = File(...)):
-    saved = []
+    """Guarda fotos en entrada. Si el formato no es jpg/png/webp directo
+    (ej: HEIC de iPhone, o un archivo sin extensión), intenta abrirlo y
+    convertirlo a JPG. Reporta lo guardado Y lo descartado para que el
+    panel avise al usuario en vez de fallar en silencio."""
+    from PIL import Image
+    saved, skipped = [], []
     for f in files:
-        if not f.filename.lower().endswith(IMG_EXT):
+        name = os.path.basename(f.filename or "foto")
+        ext  = os.path.splitext(name)[1].lower()
+        raw  = await f.read()
+        # 1) formato soportado directo -> guardar tal cual
+        if ext in IMG_EXT:
+            dest = os.path.join(ENTRADA, name)
+            with open(dest, "wb") as out:
+                out.write(raw)
+            saved.append(name)
             continue
-        dest = os.path.join(ENTRADA, os.path.basename(f.filename))
-        with open(dest, "wb") as out:
-            shutil.copyfileobj(f.file, out)
-        saved.append(os.path.basename(f.filename))
-    return {"saved": saved}
+        # 2) formato raro / sin extensión -> intentar convertir a JPG
+        try:
+            im = Image.open(io.BytesIO(raw)); im.load()
+            base = slugify(os.path.splitext(name)[0])[:40] or "foto"
+            dest = os.path.join(ENTRADA, base + ".jpg")
+            n = 1
+            while os.path.exists(dest):
+                dest = os.path.join(ENTRADA, f"{base}-{n}.jpg"); n += 1
+            im.convert("RGB").save(dest, "JPEG", quality=92, optimize=True)
+            saved.append(os.path.basename(dest))
+        except Exception:
+            skipped.append(name)
+    return {"saved": saved, "skipped": skipped}
+
+
+@app.post("/api/entrada-clean")
+async def entrada_clean():
+    """Archiva TODAS las fotos pendientes (las mueve a assets/_usadas).
+    No borra nada: quedan respaldadas por si se necesitan."""
+    moved = 0
+    for f in list(os.listdir(ENTRADA)):
+        if not f.lower().endswith(IMG_EXT):
+            continue
+        try:
+            dst = os.path.join(USADAS, f)
+            if os.path.exists(dst):
+                os.remove(dst)
+            shutil.move(os.path.join(ENTRADA, f), dst)
+            moved += 1
+        except Exception:
+            pass
+    return {"moved": moved}
 
 def maybe_cut(src_path, remove_bg):
     """Quita fondo con rembg si está disponible y se pidió; si no, usa la foto tal cual."""
@@ -205,6 +254,17 @@ def _gen_video_thread(slug, fname, name, price, style, tag, product,
         d["posts"] = [p for p in d["posts"] if p.get("slug") != slug]
         d["posts"].insert(0, post)
         save_data(d)
+        # Archiva la foto de origen para que no se acumule en "Por procesar"
+        # (se mueve a assets/_usadas, no se borra).
+        try:
+            srcp = os.path.join(ENTRADA, fname)
+            if os.path.exists(srcp):
+                dst = os.path.join(USADAS, fname)
+                if os.path.exists(dst):
+                    os.remove(dst)
+                shutil.move(srcp, dst)
+        except Exception:
+            pass
         GEN_PROGRESS[slug].update(done=True, post=post, pct=100)
     except Exception as e:
         GEN_PROGRESS[slug].update(done=True, error=str(e), pct=100)
@@ -314,6 +374,18 @@ def _gen_amigable_thread(slug, name, headline, pal, items, post_base, img_path, 
         d["posts"] = [p for p in d["posts"] if p.get("slug") != slug]
         d["posts"].insert(0, post)
         save_data(d)
+        # Archiva las fotos de origen (no se acumulan en "Por procesar")
+        for it in items:
+            try:
+                fn = it.get("src") or ""
+                srcp = os.path.join(ENTRADA, fn)
+                if fn and os.path.exists(srcp):
+                    dst = os.path.join(USADAS, fn)
+                    if os.path.exists(dst):
+                        os.remove(dst)
+                    shutil.move(srcp, dst)
+            except Exception:
+                pass
         GEN_PROGRESS[slug].update(done=True, post=post, pct=100)
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -334,6 +406,7 @@ async def generate_amigable(req: Request):
         if not os.path.exists(src):
             continue
         items.append({"path": maybe_cut(src, rem_bg),
+                      "src": it.get("filename", ""),   # foto original en entrada (para archivar)
                       "name": (it.get("name") or os.path.splitext(it["filename"])[0]),
                       "price": int(re.sub(r"[^0-9]", "", str(it.get("price", "0"))) or 0),
                       "gram": (it.get("gram") or None)})
@@ -3838,7 +3911,13 @@ def _schedule_daily_snapshot():
 threading.Thread(target=_schedule_daily_snapshot, daemon=True).start()
 
 if __name__ == "__main__":
-    import uvicorn
+    import uvicorn, sys
+    # Windows usa cp1252 en consola y revienta al imprimir emojis; forzamos UTF-8.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
     print("\n  🎬  Estudio El Maravilloso  ->  http://127.0.0.1:8000\n")
     threading.Timer(1.2, open_browser).start()
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
